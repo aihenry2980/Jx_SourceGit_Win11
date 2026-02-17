@@ -843,25 +843,6 @@ namespace SourceGit.Views
                 menu.Items.Add(compareWith);
             }
 
-            if (!repo.IsBare)
-            {
-                var type = repo.GetGitFlowType(branch);
-                if (type != Models.GitFlowBranchType.None)
-                {
-                    var finish = new MenuItem();
-                    finish.Header = App.Text("BranchCM.Finish", branch.Name);
-                    finish.Icon = App.CreateMenuIcon("Icons.GitFlow");
-                    finish.Click += (_, e) =>
-                    {
-                        if (repo.CanCreatePopup())
-                            repo.ShowPopup(new ViewModels.GitFlowFinish(repo, branch, type));
-                        e.Handled = true;
-                    };
-                    menu.Items.Add(new MenuItem() { Header = "-" });
-                    menu.Items.Add(finish);
-                }
-            }
-
             var rename = new MenuItem();
             rename.Header = App.Text("BranchCM.Rename", branch.Name);
             rename.Icon = App.CreateMenuIcon("Icons.Rename");

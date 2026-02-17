@@ -1,4 +1,6 @@
 using Avalonia.Controls;
+using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 
 namespace SourceGit.Views
 {
@@ -7,6 +9,15 @@ namespace SourceGit.Views
         public ToolbarRecursiveOperation()
         {
             InitializeComponent();
+        }
+
+        private void OnManualClose(object sender, RoutedEventArgs e)
+        {
+            var launcherPage = this.FindAncestorOfType<LauncherPage>();
+            if (launcherPage?.DataContext is ViewModels.LauncherPage page)
+                page.CancelPopup();
+
+            e.Handled = true;
         }
     }
 }

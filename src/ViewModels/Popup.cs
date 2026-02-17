@@ -46,6 +46,7 @@ namespace SourceGit.ViewModels
 
         public virtual bool ShowOptions => true;
         public virtual double PopupWidth => 512;
+        public virtual bool AllowCancelWhenRunning => false;
 
         public virtual Task<bool> Sure()
         {

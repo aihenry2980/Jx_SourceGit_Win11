@@ -8,9 +8,21 @@
              x:Class="SourceGit.Views.ToolbarRecursiveOperation"
              x:DataType="vm:ToolbarRecursiveOperation">
   <StackPanel Orientation="Vertical" Margin="8,0">
-    <TextBlock FontSize="18"
-               Classes="bold"
-               Text="{Binding Title}"/>
+    <Grid ColumnDefinitions="*,Auto">
+      <TextBlock Grid.Column="0"
+                 FontSize="18"
+                 Classes="bold"
+                 Text="{Binding Title}"/>
+
+      <Button Grid.Column="1"
+              Classes="icon_button"
+              Width="24"
+              Height="24"
+              Click="OnManualClose"
+              ToolTip.Tip="{DynamicResource Text.Close}">
+        <Path Width="10" Height="10" Data="{StaticResource Icons.Close}"/>
+      </Button>
+    </Grid>
 
     <TextBlock Margin="0,6,0,0"
                Foreground="{DynamicResource Brush.FG2}"

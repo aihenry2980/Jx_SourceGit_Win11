@@ -296,6 +296,7 @@ namespace SourceGit.ViewModels
 
             await ApplyIssueTrackerChangesAsync();
             await _repo.Settings.SaveAsync();
+            _repo.EnsureAutoFetchTimerState();
         }
 
         private async Task SetIfChangedAsync(string key, string value, string defValue)

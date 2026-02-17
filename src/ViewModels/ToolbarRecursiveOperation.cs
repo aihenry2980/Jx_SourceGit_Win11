@@ -29,6 +29,7 @@ namespace SourceGit.ViewModels
 
         public override bool ShowOptions => false;
         public override double PopupWidth => 820;
+        public override bool AllowCancelWhenRunning => true;
 
         public override bool CanStartDirectly()
         {
@@ -48,7 +49,7 @@ namespace SourceGit.ViewModels
                 _ => "Operation",
             };
 
-            Description = "Live git output. This popup auto-closes 3 seconds after success.";
+            Description = "Live git output. This popup auto-closes 2 seconds after success.";
         }
 
         public override async Task<bool> Sure()
@@ -81,7 +82,7 @@ namespace SourceGit.ViewModels
                 return false;
             }
 
-            for (var deciseconds = 30; deciseconds > 0; deciseconds--)
+            for (var deciseconds = 20; deciseconds > 0; deciseconds--)
             {
                 ProgressDescription = $"Done. Closing in {deciseconds / 10.0:F1}s...";
                 await Task.Delay(100);

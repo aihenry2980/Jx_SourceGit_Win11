@@ -1122,25 +1122,6 @@ namespace SourceGit.Views
             submenu.Items.Add(rename);
             submenu.Items.Add(new MenuItem() { Header = "-" });
 
-            if (!repo.IsBare)
-            {
-                var type = repo.GetGitFlowType(current);
-                if (type != Models.GitFlowBranchType.None)
-                {
-                    var finish = new MenuItem();
-                    finish.Header = App.Text("BranchCM.Finish", current.Name);
-                    finish.Icon = App.CreateMenuIcon("Icons.GitFlow");
-                    finish.Click += (_, e) =>
-                    {
-                        if (repo.CanCreatePopup())
-                            repo.ShowPopup(new ViewModels.GitFlowFinish(repo, current, type));
-                        e.Handled = true;
-                    };
-                    submenu.Items.Add(finish);
-                    submenu.Items.Add(new MenuItem() { Header = "-" });
-                }
-            }
-
             var copy = new MenuItem();
             copy.Header = App.Text("BranchCM.CopyName");
             copy.Icon = App.CreateMenuIcon("Icons.Copy");
@@ -1213,25 +1194,6 @@ namespace SourceGit.Views
             };
             submenu.Items.Add(delete);
             submenu.Items.Add(new MenuItem() { Header = "-" });
-
-            if (!repo.IsBare)
-            {
-                var type = repo.GetGitFlowType(branch);
-                if (type != Models.GitFlowBranchType.None)
-                {
-                    var finish = new MenuItem();
-                    finish.Header = App.Text("BranchCM.Finish", branch.Name);
-                    finish.Icon = App.CreateMenuIcon("Icons.GitFlow");
-                    finish.Click += (_, e) =>
-                    {
-                        if (repo.CanCreatePopup())
-                            repo.ShowPopup(new ViewModels.GitFlowFinish(repo, branch, type));
-                        e.Handled = true;
-                    };
-                    submenu.Items.Add(finish);
-                    submenu.Items.Add(new MenuItem() { Header = "-" });
-                }
-            }
 
             var copy = new MenuItem();
             copy.Header = App.Text("BranchCM.CopyName");

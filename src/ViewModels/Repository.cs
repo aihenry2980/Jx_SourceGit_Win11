@@ -557,7 +557,7 @@ namespace SourceGit.ViewModels
             }
 
             _lastFetchTime = DateTime.Now;
-            _autoFetchTimer = new Timer(AutoFetchByTimer, null, 5000, 5000);
+            EnsureAutoFetchTimerState();
             RefreshAll();
         }
 
@@ -580,7 +580,7 @@ namespace SourceGit.ViewModels
             if (_cancellationRefreshStashes is { IsCancellationRequested: false })
                 _cancellationRefreshStashes.Cancel();
 
-            _autoFetchTimer.Dispose();
+            _autoFetchTimer?.Dispose();
             _autoFetchTimer = null;
 
             _settings = null;
@@ -2355,6 +2355,22 @@ namespace SourceGit.ViewModels
             }
 
             log?.Complete();
+        }
+
+        public void EnsureAutoFetchTimerState()
+        {
+            if (_settings is not { EnableAutoFetch: true })
+            {
+                _autoFetchTimer?.Dispose();
+                _autoFetchTimer = null;
+                return;
+            }
+
+            if (_autoFetchTimer == null)
+            {
+                _lastFetchTime = DateTime.Now;
+                _autoFetchTimer = new Timer(AutoFetchByTimer, null, 5000, 5000);
+            }
         }
 
         private readonly string _gitCommonDir = null;
