@@ -5,7 +5,7 @@ namespace SourceGit.Commands
 {
     public class Fetch : Command
     {
-        public Fetch(string repo, string remote, bool noTags, bool force)
+        public Fetch(string repo, string remote, bool noTags, bool force, bool prune = false, bool recurseSubmodules = false)
         {
             _remote = remote;
 
@@ -17,12 +17,16 @@ namespace SourceGit.Commands
             builder.Append(noTags ? "--no-tags " : "--tags ");
             if (force)
                 builder.Append("--force ");
+            if (prune)
+                builder.Append("--prune ");
+            if (recurseSubmodules)
+                builder.Append("--recurse-submodules ");
             builder.Append(remote);
 
             Args = builder.ToString();
         }
 
-        public Fetch(string repo, string remote)
+        public Fetch(string repo, string remote, bool recurseSubmodules = false, bool prune = false)
         {
             _remote = remote;
 
@@ -30,7 +34,15 @@ namespace SourceGit.Commands
             Context = repo;
             RaiseError = false;
 
-            Args = $"fetch --progress --verbose {remote}";
+            var builder = new StringBuilder(256);
+            builder.Append("fetch --progress --verbose ");
+            if (prune)
+                builder.Append("--prune ");
+            if (recurseSubmodules)
+                builder.Append("--recurse-submodules ");
+            builder.Append(remote);
+
+            Args = builder.ToString();
         }
 
         public Fetch(string repo, Models.Branch local, Models.Branch remote)

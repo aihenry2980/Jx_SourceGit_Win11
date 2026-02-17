@@ -399,6 +399,9 @@
   <x:String x:Key="Text.Fetch.NoTags" xml:space="preserve">Fetch sin etiquetas</x:String>
   <x:String x:Key="Text.Fetch.Remote" xml:space="preserve">Remoto:</x:String>
   <x:String x:Key="Text.Fetch.Title" xml:space="preserve">Fetch Cambios Remotos</x:String>
+  <x:String x:Key="Text.Repository.FetchAndPruneRecursively" xml:space="preserve">Fetch and prune recursively</x:String>
+  <x:String x:Key="Text.Repository.FetchRecursively" xml:space="preserve">Fetch recursively</x:String>
+  <x:String x:Key="Text.Repository.UpdateSubmodulesRecursively" xml:space="preserve">Submodules update recursively</x:String>
   <x:String x:Key="Text.FileCM.AssumeUnchanged" xml:space="preserve">Asumir como sin cambios</x:String>
   <x:String x:Key="Text.FileCM.CustomAction" xml:space="preserve">Acción Personalizada</x:String>
   <x:String x:Key="Text.FileCM.Discard" xml:space="preserve">Descartar...</x:String>
@@ -983,6 +986,4 @@
   <x:String x:Key="Text.Repository.BranchesVisibility.EditorHint" xml:space="preserve">Case-sensitive matching: exact OR contains.</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ApplyFilter" xml:space="preserve">Apply filter</x:String>
 </ResourceDictionary>
-
-
 

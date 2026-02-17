@@ -400,6 +400,9 @@ $1, $2, … Werte der Eingabe-Steuerelemente</x:String>
   <x:String x:Key="Text.Fetch.NoTags" xml:space="preserve">Ohne Tags fetchen</x:String>
   <x:String x:Key="Text.Fetch.Remote" xml:space="preserve">Remote:</x:String>
   <x:String x:Key="Text.Fetch.Title" xml:space="preserve">Remote-Änderungen fetchen</x:String>
+  <x:String x:Key="Text.Repository.FetchAndPruneRecursively" xml:space="preserve">Fetch and prune recursively</x:String>
+  <x:String x:Key="Text.Repository.FetchRecursively" xml:space="preserve">Fetch recursively</x:String>
+  <x:String x:Key="Text.Repository.UpdateSubmodulesRecursively" xml:space="preserve">Submodules update recursively</x:String>
   <x:String x:Key="Text.FileCM.AssumeUnchanged" xml:space="preserve">Als unverändert betrachten</x:String>
   <x:String x:Key="Text.FileCM.CustomAction" xml:space="preserve">Benutzerdefinierte Aktion</x:String>
   <x:String x:Key="Text.FileCM.Discard" xml:space="preserve">Verwerfen…</x:String>
@@ -990,6 +993,4 @@ $1, $2, … Werte der Eingabe-Steuerelemente</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.EditorHint" xml:space="preserve">Case-sensitive matching: exact OR contains.</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ApplyFilter" xml:space="preserve">Apply filter</x:String>
 </ResourceDictionary>
-
-
 

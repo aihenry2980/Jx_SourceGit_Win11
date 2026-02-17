@@ -369,6 +369,9 @@
   <x:String x:Key="Text.Fetch.NoTags" xml:space="preserve">태그 없이 Fetch</x:String>
   <x:String x:Key="Text.Fetch.Remote" xml:space="preserve">원격:</x:String>
   <x:String x:Key="Text.Fetch.Title" xml:space="preserve">원격 변경 사항 Fetch</x:String>
+  <x:String x:Key="Text.Repository.FetchAndPruneRecursively" xml:space="preserve">Fetch and prune recursively</x:String>
+  <x:String x:Key="Text.Repository.FetchRecursively" xml:space="preserve">Fetch recursively</x:String>
+  <x:String x:Key="Text.Repository.UpdateSubmodulesRecursively" xml:space="preserve">Submodules update recursively</x:String>
   <x:String x:Key="Text.FileCM.AssumeUnchanged" xml:space="preserve">변경되지 않음으로 간주</x:String>
   <x:String x:Key="Text.FileCM.Discard" xml:space="preserve">폐기...</x:String>
   <x:String x:Key="Text.FileCM.DiscardMulti" xml:space="preserve">{0}개 파일 폐기...</x:String>
@@ -902,6 +905,4 @@
   <x:String x:Key="Text.Repository.BranchesVisibility.EditorHint" xml:space="preserve">Case-sensitive matching: exact OR contains.</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ApplyFilter" xml:space="preserve">Apply filter</x:String>
 </ResourceDictionary>
-
-
 

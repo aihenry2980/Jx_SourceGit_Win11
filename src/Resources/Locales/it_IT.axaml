@@ -399,6 +399,9 @@ ${pure_files:N} Come ${files:N}, ma senza cartelle</x:String>
   <x:String x:Key="Text.Fetch.NoTags" xml:space="preserve">Recupera senza tag</x:String>
   <x:String x:Key="Text.Fetch.Remote" xml:space="preserve">Remoto:</x:String>
   <x:String x:Key="Text.Fetch.Title" xml:space="preserve">Recupera Modifiche Remote</x:String>
+  <x:String x:Key="Text.Repository.FetchAndPruneRecursively" xml:space="preserve">Fetch and prune recursively</x:String>
+  <x:String x:Key="Text.Repository.FetchRecursively" xml:space="preserve">Fetch recursively</x:String>
+  <x:String x:Key="Text.Repository.UpdateSubmodulesRecursively" xml:space="preserve">Submodules update recursively</x:String>
   <x:String x:Key="Text.FileCM.AssumeUnchanged" xml:space="preserve">Presumi invariato</x:String>
   <x:String x:Key="Text.FileCM.CustomAction" xml:space="preserve">Azione Personalizzata</x:String>
   <x:String x:Key="Text.FileCM.Discard" xml:space="preserve">Scarta...</x:String>
@@ -983,6 +986,4 @@ ${pure_files:N} Come ${files:N}, ma senza cartelle</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.EditorHint" xml:space="preserve">Case-sensitive matching: exact OR contains.</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ApplyFilter" xml:space="preserve">Apply filter</x:String>
 </ResourceDictionary>
-
-
 

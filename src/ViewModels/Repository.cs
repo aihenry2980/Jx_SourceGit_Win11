@@ -793,6 +793,16 @@ namespace SourceGit.ViewModels
                 ShowPopup(new Fetch(this));
         }
 
+        public async Task FetchRecursivelyAsync(bool prune)
+        {
+            if (!CanCreatePopup())
+                return;
+
+            var log = CreateLog(prune ? "Fetch and Prune Recursively" : "Fetch Recursively");
+            await RunFetchRecursivelyAsync(prune, log);
+            log.Complete();
+        }
+
         public async Task PullAsync(bool autoStart)
         {
             if (IsBare || !CanCreatePopup())
@@ -1654,6 +1664,78 @@ namespace SourceGit.ViewModels
                 ShowPopup(new UpdateSubmodules(this, null));
         }
 
+        public async Task UpdateSubmodulesRecursivelyAsync()
+        {
+            if (!CanCreatePopup())
+                return;
+
+            var log = CreateLog("Update Submodules Recursively");
+            await RunUpdateSubmodulesRecursivelyAsync(log);
+            log.Complete();
+        }
+
+        public async Task<bool> RunFetchRecursivelyAsync(bool prune, Models.ICommandLog log)
+        {
+            if (_remotes.Count == 0)
+            {
+                log?.AppendLine("No remotes added to this repository.");
+                App.RaiseException(FullPath, "No remotes added to this repository!!!");
+                return false;
+            }
+
+            using var lockWatcher = _watcher?.Lock();
+
+            var noTags = _uiStates.FetchWithoutTags;
+            var force = _uiStates.EnableForceOnFetch;
+            var succ = true;
+
+            if (_uiStates.FetchAllRemotes)
+            {
+                foreach (var remote in _remotes)
+                {
+                    var one = await new Commands.Fetch(FullPath, remote.Name, noTags, force, prune, true)
+                        .Use(log)
+                        .RunAsync();
+                    if (!one)
+                        succ = false;
+                }
+            }
+            else
+            {
+                succ = await new Commands.Fetch(FullPath, GetPreferredRemoteName(), noTags, force, prune, true)
+                    .Use(log)
+                    .RunAsync();
+            }
+
+            if (succ)
+                MarkFetched();
+
+            return succ;
+        }
+
+        public async Task<bool> RunUpdateSubmodulesRecursivelyAsync(Models.ICommandLog log)
+        {
+            var targets = new List<string>();
+            foreach (var submodule in _submodules)
+                targets.Add(submodule.Path);
+
+            if (targets.Count == 0)
+            {
+                log?.AppendLine("No submodules found.");
+                return true;
+            }
+
+            using var lockWatcher = _watcher?.Lock();
+            var succ = await new Commands.Submodule(FullPath)
+                .Use(log)
+                .UpdateAsync(targets, true, false);
+
+            if (succ)
+                MarkSubmodulesDirtyManually();
+
+            return succ;
+        }
+
         public async Task AutoUpdateSubmodulesAsync(Models.ICommandLog log)
         {
             var submodules = await new Commands.QueryUpdatableSubmodules(FullPath, false).GetResultAsync();
@@ -2036,6 +2118,21 @@ namespace SourceGit.ViewModels
             }
 
             return null;
+        }
+
+        private string GetPreferredRemoteName()
+        {
+            if (_remotes.Count == 0)
+                return string.Empty;
+
+            if (!string.IsNullOrEmpty(_settings.DefaultRemote))
+            {
+                var preferred = _remotes.Find(x => x.Name.Equals(_settings.DefaultRemote, StringComparison.Ordinal));
+                if (preferred != null)
+                    return preferred.Name;
+            }
+
+            return _remotes[0].Name;
         }
 
         private void RebuildPresetBranchExactColorItems()

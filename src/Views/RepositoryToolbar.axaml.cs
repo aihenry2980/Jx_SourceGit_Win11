@@ -170,6 +170,33 @@ namespace SourceGit.Views
             }
         }
 
+        private async void FetchAndPruneRecursively(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo && repo.CanCreatePopup())
+            {
+                await repo.ShowAndStartPopupAsync(new ViewModels.ToolbarRecursiveOperation(repo, ViewModels.ToolbarRecursiveOperationKind.FetchAndPruneRecursively));
+                e.Handled = true;
+            }
+        }
+
+        private async void FetchRecursively(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo && repo.CanCreatePopup())
+            {
+                await repo.ShowAndStartPopupAsync(new ViewModels.ToolbarRecursiveOperation(repo, ViewModels.ToolbarRecursiveOperationKind.FetchRecursively));
+                e.Handled = true;
+            }
+        }
+
+        private async void UpdateSubmodulesRecursively(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo && repo.CanCreatePopup())
+            {
+                await repo.ShowAndStartPopupAsync(new ViewModels.ToolbarRecursiveOperation(repo, ViewModels.ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively));
+                e.Handled = true;
+            }
+        }
+
         private async void Pull(object sender, TappedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo)

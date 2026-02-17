@@ -259,6 +259,9 @@
   <x:String x:Key="Text.Fetch.NoTags" xml:space="preserve">குறிச்சொற்கள் இல்லாமல் பெறு</x:String>
   <x:String x:Key="Text.Fetch.Remote" xml:space="preserve">தொலை:</x:String>
   <x:String x:Key="Text.Fetch.Title" xml:space="preserve">தொலை மாற்றங்களைப் பெறு</x:String>
+  <x:String x:Key="Text.Repository.FetchAndPruneRecursively" xml:space="preserve">Fetch and prune recursively</x:String>
+  <x:String x:Key="Text.Repository.FetchRecursively" xml:space="preserve">Fetch recursively</x:String>
+  <x:String x:Key="Text.Repository.UpdateSubmodulesRecursively" xml:space="preserve">Submodules update recursively</x:String>
   <x:String x:Key="Text.FileCM.AssumeUnchanged" xml:space="preserve">மாறாமல் என கருது</x:String>
   <x:String x:Key="Text.FileCM.Discard" xml:space="preserve">நிராகரி...</x:String>
   <x:String x:Key="Text.FileCM.DiscardMulti" xml:space="preserve">{0} கோப்புகளை நிராகரி...</x:String>
@@ -705,6 +708,4 @@
   <x:String x:Key="Text.Repository.BranchesVisibility.EditorHint" xml:space="preserve">Case-sensitive matching: exact OR contains.</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ApplyFilter" xml:space="preserve">Apply filter</x:String>
 </ResourceDictionary>
-
-
 
