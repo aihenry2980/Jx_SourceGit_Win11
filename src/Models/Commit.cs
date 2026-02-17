@@ -37,6 +37,7 @@ namespace SourceGit.Models
 
         public bool IsCommitterVisible => !Author.Equals(Committer) || AuthorTime != CommitterTime;
         public bool IsCurrentHead => Decorators.Find(x => x.Type is DecoratorType.CurrentBranchHead or DecoratorType.CurrentCommitHead) != null;
+        public bool IsSuperProjectPointer => Decorators.Find(x => x.Type == DecoratorType.SuperProjectPointer) != null;
         public bool HasDecorators => Decorators.Count > 0;
 
         public string GetFriendlyName()
@@ -83,6 +84,12 @@ namespace SourceGit.Models
                 else if (d.StartsWith("HEAD -> refs/heads/", StringComparison.Ordinal))
                 {
                     IsMerged = true;
+                    Decorators.Add(new Decorator()
+                    {
+                        Type = DecoratorType.CurrentCommitHead,
+                        Name = "HEAD",
+                    });
+
                     Decorators.Add(new Decorator()
                     {
                         Type = DecoratorType.CurrentBranchHead,

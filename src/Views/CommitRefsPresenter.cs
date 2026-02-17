@@ -213,6 +213,14 @@ namespace SourceGit.Views
                         Decorator = decorator,
                     };
 
+                    if (decorator.Color != 0 &&
+                        decorator.Type is Models.DecoratorType.CurrentBranchHead or
+                                         Models.DecoratorType.LocalBranchHead or
+                                         Models.DecoratorType.RemoteBranchHead)
+                    {
+                        item.Brush = new SolidColorBrush(Color.FromUInt32(decorator.Color));
+                    }
+
                     StreamGeometry geo;
                     switch (decorator.Type)
                     {
@@ -222,6 +230,10 @@ namespace SourceGit.Views
                             break;
                         case Models.DecoratorType.RemoteBranchHead:
                             geo = this.FindResource("Icons.Remote") as StreamGeometry;
+                            break;
+                        case Models.DecoratorType.SuperProjectPointer:
+                            item.Brush = Brushes.DodgerBlue;
+                            geo = this.FindResource("Icons.Submodule") as StreamGeometry;
                             break;
                         case Models.DecoratorType.Tag:
                             item.Brush = Brushes.Gray;

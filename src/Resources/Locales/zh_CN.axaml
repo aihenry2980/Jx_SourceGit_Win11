@@ -975,4 +975,21 @@
   <x:String x:Key="Text.Worktree.Remove" xml:space="preserve">移除工作树</x:String>
   <x:String x:Key="Text.Worktree.Unlock" xml:space="preserve">解除工作树锁定</x:String>
   <x:String x:Key="Text.Yes" xml:space="preserve">好的</x:String>
+  <x:String x:Key="Text.Preferences.General.PresetBranchExactNames" xml:space="preserve">Preset Branch Filter: Exact Names (one per line)</x:String>
+  <x:String x:Key="Text.Preferences.General.PresetBranchContainsPatterns" xml:space="preserve">Preset Branch Filter: Contains Patterns (one per line)</x:String>
+  <x:String x:Key="Text.Preferences.General.PresetBranchFilterHint" xml:space="preserve">Rules are case-sensitive. Branches are shown when name equals any exact rule OR contains any pattern.</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.Empty" xml:space="preserve">No branches are shown by the preset branch filter.</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.SetPresetFilters" xml:space="preserve">Set preset filters</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.ShowAll" xml:space="preserve">Show all branches</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.UsePresetFilter" xml:space="preserve">Use preset filter</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.PresetHeader" xml:space="preserve">PRESET BRANCH FILTER</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.ExactNames" xml:space="preserve">Exact names</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.ExactNames.Placeholder" xml:space="preserve">One branch name per line</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.ContainsPatterns" xml:space="preserve">Contains patterns</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.ContainsPatterns.Placeholder" xml:space="preserve">One pattern per line</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.EditorHint" xml:space="preserve">Case-sensitive matching: exact OR contains.</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.ApplyFilter" xml:space="preserve">Apply filter</x:String>
 </ResourceDictionary>
+
+
+

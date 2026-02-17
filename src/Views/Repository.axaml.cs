@@ -4,6 +4,8 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
+using Avalonia.Media;
 
 namespace SourceGit.Views
 {
@@ -477,6 +479,7 @@ namespace SourceGit.Views
                 menu.Placement = PlacementMode.BottomEdgeAlignedLeft;
                 menu.Items.Add(byNameAsc);
                 menu.Items.Add(byCommitterDate);
+                AddBranchVisibilityMenuItems(menu, repo);
                 menu.Open(button);
             }
 
@@ -514,6 +517,7 @@ namespace SourceGit.Views
                 menu.Placement = PlacementMode.BottomEdgeAlignedLeft;
                 menu.Items.Add(byNameAsc);
                 menu.Items.Add(byCommitterDate);
+                AddBranchVisibilityMenuItems(menu, repo);
                 menu.Open(button);
             }
 
@@ -589,12 +593,248 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
-        private void OnRemoveSelectedHistoryFilter(object sender, RoutedEventArgs e)
+        private void OnOpenHistoryFiltersMenu(object sender, RoutedEventArgs e)
         {
-            if (DataContext is ViewModels.Repository repo && sender is Button { DataContext: Models.HistoryFilter filter })
-                repo.RemoveHistoryFilter(filter);
+            if (sender is not Button button || DataContext is not ViewModels.Repository repo)
+            {
+                e.Handled = true;
+                return;
+            }
+
+            var menu = new ContextMenu();
+            menu.Placement = PlacementMode.BottomEdgeAlignedLeft;
+
+            var title = new MenuItem();
+            title.Header = App.Text("Repository.FilterCommits");
+            title.IsEnabled = false;
+            menu.Items.Add(title);
+
+            foreach (var filter in repo.UIStates.HistoryFilters)
+            {
+                var dump = filter;
+                var item = new MenuItem();
+                item.Header = BuildRemovableHistoryFilterHeader(dump.Pattern, dump.Color);
+                item.Icon = App.CreateMenuIcon(dump.IsBranch ? "Icons.Branch" : "Icons.Tag");
+                item.Click += (_, ev) =>
+                {
+                    repo.RemoveHistoryFilter(dump);
+                    ev.Handled = true;
+                };
+                menu.Items.Add(item);
+            }
+
+            menu.Items.Add(new MenuItem() { Header = "-" });
+
+            var clear = new MenuItem();
+            clear.Header = App.Text("Repository.ClearAllCommitsFilter");
+            clear.Icon = App.CreateMenuIcon("Icons.RemoveAll");
+            clear.Click += (_, ev) =>
+            {
+                repo.ClearHistoryFilters();
+                ev.Handled = true;
+            };
+            menu.Items.Add(clear);
+
+            menu.Open(button);
+            e.Handled = true;
+        }
+
+        private void OnSetPresetBranchFilter(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+            {
+                repo.OpenPresetBranchFilterEditor();
+            }
 
             e.Handled = true;
+        }
+
+        private void OnShowAllBranches(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+                repo.ShowAllBranchesForSession();
+
+            e.Handled = true;
+        }
+
+        private void OnToggleShowAllBranches(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+                repo.ToggleShowAllBranchesAndApplyGraphFilter();
+
+            e.Handled = true;
+        }
+
+        private void OnUsePresetBranchFilter(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+                repo.UsePresetBranchFilterForSession();
+
+            e.Handled = true;
+        }
+
+        private void OnApplyPresetBranchFilter(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+                repo.ApplyPresetBranchFilter();
+
+            e.Handled = true;
+        }
+
+        private void OnClearPresetBranchExactNames(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+                repo.PresetBranchExactNames = string.Empty;
+
+            e.Handled = true;
+        }
+
+        private void OnClearPresetBranchContainsPatterns(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+                repo.PresetBranchContainsPatterns = string.Empty;
+
+            e.Handled = true;
+        }
+
+        private void OnOpenPresetBranchExactColorMenu(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button button ||
+                button.DataContext is not ViewModels.PresetBranchExactColorItem item ||
+                DataContext is not ViewModels.Repository repo)
+            {
+                e.Handled = true;
+                return;
+            }
+
+            var menu = new ContextMenu();
+            menu.Placement = PlacementMode.BottomEdgeAlignedLeft;
+
+            foreach (var option in repo.PresetBranchColorOptions)
+            {
+                var color = option.Color;
+                var colorItem = new MenuItem();
+                colorItem.Header = BuildColorOptionHeader(option.Name, option.Brush);
+                if (item.Color == color)
+                    colorItem.Icon = App.CreateMenuIcon("Icons.Check");
+
+                colorItem.Click += (_, ev) =>
+                {
+                    repo.UpdatePresetBranchExactNameColor(item.Name, color);
+                    ev.Handled = true;
+                };
+                menu.Items.Add(colorItem);
+            }
+
+            menu.Open(button);
+            e.Handled = true;
+        }
+
+        private void AddBranchVisibilityMenuItems(ContextMenu menu, ViewModels.Repository repo)
+        {
+            var setPreset = new MenuItem();
+            setPreset.Header = App.Text("Repository.BranchesVisibility.SetPresetFilters");
+            setPreset.Icon = App.CreateMenuIcon("Icons.Settings");
+            setPreset.Click += (_, ev) =>
+            {
+                repo.OpenPresetBranchFilterEditor();
+                ev.Handled = true;
+            };
+
+            var usePreset = new MenuItem();
+            usePreset.Header = App.Text("Repository.BranchesVisibility.UsePresetFilter");
+            if (!repo.IsShowingAllBranches)
+                usePreset.Icon = App.CreateMenuIcon("Icons.Check");
+            usePreset.Click += (_, ev) =>
+            {
+                repo.UsePresetBranchFilterForSession();
+                ev.Handled = true;
+            };
+
+            var showAll = new MenuItem();
+            showAll.Header = App.Text("Repository.BranchesVisibility.ShowAll");
+            if (repo.IsShowingAllBranches)
+                showAll.Icon = App.CreateMenuIcon("Icons.Check");
+            showAll.Click += (_, ev) =>
+            {
+                repo.ShowAllBranchesForSession();
+                ev.Handled = true;
+            };
+
+            var applyFilter = new MenuItem();
+            applyFilter.Header = App.Text("Repository.BranchesVisibility.ApplyFilter");
+            applyFilter.Icon = App.CreateMenuIcon("Icons.Filter");
+            applyFilter.Click += (_, ev) =>
+            {
+                repo.ApplyPresetBranchFilter();
+                ev.Handled = true;
+            };
+
+            menu.Items.Add(new MenuItem() { Header = "-" });
+            menu.Items.Add(setPreset);
+            menu.Items.Add(usePreset);
+            menu.Items.Add(showAll);
+            menu.Items.Add(applyFilter);
+        }
+
+        private static string TrimHistoryFilterPattern(string pattern)
+        {
+            if (string.IsNullOrEmpty(pattern))
+                return string.Empty;
+            if (pattern.StartsWith("refs/heads/", StringComparison.Ordinal))
+                return pattern.Substring(11);
+            if (pattern.StartsWith("refs/remotes/", StringComparison.Ordinal))
+                return pattern.Substring(13);
+            if (pattern.StartsWith("refs/tags/", StringComparison.Ordinal))
+                return pattern.Substring(10);
+            return pattern;
+        }
+
+        private static StackPanel BuildRemovableHistoryFilterHeader(string pattern, uint color)
+        {
+            var panel = new StackPanel();
+            panel.Orientation = Orientation.Horizontal;
+            panel.Spacing = 8;
+
+            if (color != 0)
+            {
+                panel.Children.Add(new Border()
+                {
+                    Width = 10,
+                    Height = 10,
+                    CornerRadius = new CornerRadius(5),
+                    BorderThickness = new Thickness(1),
+                    BorderBrush = Brushes.Gray,
+                    Background = new SolidColorBrush(Color.FromUInt32(color)),
+                    VerticalAlignment = VerticalAlignment.Center,
+                });
+            }
+
+            panel.Children.Add(new TextBlock() { Text = TrimHistoryFilterPattern(pattern) });
+            panel.Children.Add(new TextBlock() { Text = "x", Opacity = 0.7 });
+
+            return panel;
+        }
+
+        private static StackPanel BuildColorOptionHeader(string name, IBrush brush)
+        {
+            var panel = new StackPanel();
+            panel.Orientation = Orientation.Horizontal;
+            panel.Spacing = 8;
+
+            panel.Children.Add(new Border()
+            {
+                Width = 10,
+                Height = 10,
+                CornerRadius = new CornerRadius(5),
+                BorderThickness = new Thickness(1),
+                BorderBrush = Brushes.Gray,
+                Background = brush,
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+            panel.Children.Add(new TextBlock() { Text = name });
+
+            return panel;
         }
 
         private async void OnBisectCommand(object sender, RoutedEventArgs e)

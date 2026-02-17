@@ -286,12 +286,15 @@ namespace SourceGit.ViewModels
             GC.Collect();
         }
 
-        public void OpenRepositoryInTab(RepositoryNode node, LauncherPage page)
+        public void OpenRepositoryInTab(RepositoryNode node, LauncherPage page, string superProjectSubmoduleSHA = null)
         {
             foreach (var one in Pages)
             {
                 if (one.Node.Id == node.Id)
                 {
+                    if (!string.IsNullOrWhiteSpace(superProjectSubmoduleSHA) && one.Data is Repository existed)
+                        existed.UpdateSuperProjectSubmoduleSHA(superProjectSubmoduleSHA);
+
                     ActivePage = one;
                     return;
                 }
@@ -311,7 +314,7 @@ namespace SourceGit.ViewModels
                 return;
             }
 
-            var repo = new Repository(isBare, node.Id, gitDir);
+            var repo = new Repository(isBare, node.Id, gitDir, superProjectSubmoduleSHA);
             repo.Open();
 
             if (page == null)

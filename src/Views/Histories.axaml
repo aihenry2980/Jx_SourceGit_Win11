@@ -156,7 +156,7 @@
                                               FontFamily="{DynamicResource Fonts.Default}"
                                               CodeFontFamily="{DynamicResource Fonts.Monospace}"
                                               InlineCodeBackground="{DynamicResource Brush.InlineCode}"
-                                              Foreground="{DynamicResource Brush.FG1}"
+                                              Foreground="{Binding ., Converter={x:Static c:CommitConverters.SubjectToBrush}}"
                                               LinkForeground="{DynamicResource Brush.Link}"
                                               Subject="{Binding Subject}"
                                               IssueTrackers="{Binding $parent[v:Histories].IssueTrackers}"

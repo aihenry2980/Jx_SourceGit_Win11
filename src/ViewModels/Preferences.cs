@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Avalonia.Collections;
@@ -127,6 +129,24 @@ namespace SourceGit.ViewModels
             get;
             set;
         } = false;
+
+        public string PresetBranchExactNames
+        {
+            get => _presetBranchExactNames;
+            set => SetProperty(ref _presetBranchExactNames, value);
+        }
+
+        public string PresetBranchContainsPatterns
+        {
+            get => _presetBranchContainsPatterns;
+            set => SetProperty(ref _presetBranchContainsPatterns, value);
+        }
+
+        public string PresetBranchExactNameColors
+        {
+            get => _presetBranchExactNameColors;
+            set => SetProperty(ref _presetBranchExactNameColors, value);
+        }
 
         public int MaxHistoryCommits
         {
@@ -613,6 +633,67 @@ namespace SourceGit.ViewModels
             JsonSerializer.Serialize(stream, this, JsonCodeGen.Default.Preferences);
         }
 
+        public HashSet<string> GetPresetBranchExactNameSet()
+        {
+            return new HashSet<string>(ParsePresetBranchRules(_presetBranchExactNames), StringComparer.Ordinal);
+        }
+
+        public List<string> GetPresetBranchExactNameList()
+        {
+            return ParsePresetBranchRules(_presetBranchExactNames);
+        }
+
+        public List<string> GetPresetBranchContainsRuleList()
+        {
+            return ParsePresetBranchRules(_presetBranchContainsPatterns);
+        }
+
+        public Dictionary<string, uint> GetPresetBranchExactNameColorMap()
+        {
+            var exactNames = GetPresetBranchExactNameSet();
+            var colors = ParsePresetBranchRuleColors(_presetBranchExactNameColors);
+            if (colors.Count == 0)
+                return colors;
+
+            var filtered = new Dictionary<string, uint>(StringComparer.Ordinal);
+            foreach (var kv in colors)
+            {
+                if (exactNames.Contains(kv.Key))
+                    filtered[kv.Key] = kv.Value;
+            }
+
+            return filtered;
+        }
+
+        public uint GetPresetBranchExactNameColor(string exactName)
+        {
+            if (string.IsNullOrEmpty(exactName))
+                return PRESET_BRANCH_EXACT_DEFAULT_COLOR;
+
+            var colors = GetPresetBranchExactNameColorMap();
+            return colors.GetValueOrDefault(exactName, PRESET_BRANCH_EXACT_DEFAULT_COLOR);
+        }
+
+        public bool SetPresetBranchExactNameColor(string exactName, uint color)
+        {
+            if (string.IsNullOrWhiteSpace(exactName))
+                return false;
+
+            var colors = ParsePresetBranchRuleColors(_presetBranchExactNameColors);
+            if (color == PRESET_BRANCH_EXACT_DEFAULT_COLOR)
+                colors.Remove(exactName);
+            else
+                colors[exactName] = color;
+
+            var next = SerializePresetBranchRuleColors(colors);
+            if (next.Equals(_presetBranchExactNameColors, StringComparison.Ordinal))
+                return false;
+
+            _presetBranchExactNameColors = next;
+            OnPropertyChanged(nameof(PresetBranchExactNameColors));
+            return true;
+        }
+
         private static Preferences Load()
         {
             var path = Path.Combine(Native.OS.DataDir, "preference.json");
@@ -682,6 +763,79 @@ namespace SourceGit.ViewModels
                     workspace.ActiveIdx = 0;
                 }
             }
+        }
+
+        private static List<string> ParsePresetBranchRules(string raw)
+        {
+            var parsed = new List<string>();
+            if (string.IsNullOrEmpty(raw))
+                return parsed;
+
+            var dedupe = new HashSet<string>(StringComparer.Ordinal);
+            var lines = raw.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
+            foreach (var line in lines)
+            {
+                var rule = line.Trim();
+                if (string.IsNullOrEmpty(rule))
+                    continue;
+
+                if (dedupe.Add(rule))
+                    parsed.Add(rule);
+            }
+
+            return parsed;
+        }
+
+        private static Dictionary<string, uint> ParsePresetBranchRuleColors(string raw)
+        {
+            var parsed = new Dictionary<string, uint>(StringComparer.Ordinal);
+            if (string.IsNullOrEmpty(raw))
+                return parsed;
+
+            var lines = raw.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
+            foreach (var line in lines)
+            {
+                var sepIdx = line.LastIndexOf('\t');
+                if (sepIdx <= 0 || sepIdx >= line.Length - 1)
+                    continue;
+
+                var name = line.Substring(0, sepIdx).Trim();
+                var colorText = line.Substring(sepIdx + 1).Trim();
+                if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(colorText))
+                    continue;
+
+                if (colorText.StartsWith("#", StringComparison.Ordinal))
+                    colorText = colorText.Substring(1);
+                else if (colorText.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+                    colorText = colorText.Substring(2);
+
+                if (uint.TryParse(colorText, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var color))
+                    parsed[name] = color;
+            }
+
+            return parsed;
+        }
+
+        private static string SerializePresetBranchRuleColors(Dictionary<string, uint> colors)
+        {
+            if (colors == null || colors.Count == 0)
+                return string.Empty;
+
+            var names = new List<string>(colors.Keys);
+            names.Sort(StringComparer.Ordinal);
+
+            var builder = new StringBuilder();
+            foreach (var name in names)
+            {
+                if (builder.Length > 0)
+                    builder.Append('\n');
+
+                builder.Append(name);
+                builder.Append('\t');
+                builder.Append(colors[name].ToString("X8", CultureInfo.InvariantCulture));
+            }
+
+            return builder.ToString();
         }
 
         private RepositoryNode FindNodeRecursive(string id, List<RepositoryNode> collection)
@@ -774,6 +928,9 @@ namespace SourceGit.ViewModels
         private bool _useGitHubStyleAvatar = true;
         private bool _showAuthorTimeInGraph = false;
         private bool _showChildren = false;
+        private string _presetBranchExactNames = string.Empty;
+        private string _presetBranchContainsPatterns = string.Empty;
+        private string _presetBranchExactNameColors = string.Empty;
 
         private bool _check4UpdatesOnStartup = true;
         private double _lastCheckUpdateTime = 0;
@@ -800,5 +957,7 @@ namespace SourceGit.ViewModels
         private string _gitDefaultCloneDir = string.Empty;
         private int _shellOrTerminalType = -1;
         private uint _statisticsSampleColor = 0xFF00FF00;
+
+        public const uint PRESET_BRANCH_EXACT_DEFAULT_COLOR = 0xFF10893E;
     }
 }

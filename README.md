@@ -1,5 +1,22 @@
 # SourceGit - Opensource Git GUI client.
 
+> [!IMPORTANT]
+> ## Fork Notice
+> This repository is a **fork** of the original SourceGit project:  
+> https://github.com/sourcegit-scm/sourcegit
+>
+> All core credits and copyrights belong to the original authors and contributors.
+> This fork contains additional local/custom features and is **not an official release** from the upstream project.
+>
+> Custom features added in this fork include:
+> - Preset branch visibility filters (`exact match` and `contains`) applied across repositories and submodules.
+> - Default branch sidebar behavior changed to preset-filter mode (with session toggle for `Show all branches`).
+> - Inline preset filter editor in the repository sidebar with `Apply filter`, `Show all branches`, and per-field `Clear` actions.
+> - `Visibility in Graph` improvements: cleaner dropdown list, single-item removal UI, and branch color selection.
+> - Persistent user-selected colors for exact-match preset branches, propagated to graph visibility branch refs.
+> - Commit graph highlighting tweaks: stronger `HEAD` emphasis, `SPP` (super-project pointer) support for submodules, and combined `HEAD+SPP` precedence.
+> - Added shortcut for `Navigate to HEAD` with tooltip hint (`Ctrl+H` on Windows/Linux, `⌘+⌥+H` on macOS).
+
 [![stars](https://img.shields.io/github/stars/sourcegit-scm/sourcegit.svg)](https://github.com/sourcegit-scm/sourcegit/stargazers)
 [![forks](https://img.shields.io/github/forks/sourcegit-scm/sourcegit.svg)](https://github.com/sourcegit-scm/sourcegit/forks)
 [![license](https://img.shields.io/github/license/sourcegit-scm/sourcegit.svg)](LICENSE)

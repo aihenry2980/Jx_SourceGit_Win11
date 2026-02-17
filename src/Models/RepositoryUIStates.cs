@@ -278,6 +278,11 @@ namespace SourceGit.Models
 
         public bool UpdateHistoryFilters(string pattern, FilterType type, FilterMode mode)
         {
+            return UpdateHistoryFilters(pattern, type, mode, 0);
+        }
+
+        public bool UpdateHistoryFilters(string pattern, FilterType type, FilterMode mode, uint color)
+        {
             // Clear all filters when there's a filter that has different mode.
             if (mode != FilterMode.None)
             {
@@ -294,7 +299,7 @@ namespace SourceGit.Models
                 if (clear)
                 {
                     HistoryFilters.Clear();
-                    HistoryFilters.Add(new HistoryFilter(pattern, type, mode));
+                    HistoryFilters.Add(new HistoryFilter(pattern, type, mode, color));
                     return true;
                 }
             }
@@ -319,10 +324,16 @@ namespace SourceGit.Models
                     continue;
 
                 if (filter.Pattern.Equals(pattern, StringComparison.Ordinal))
-                    return false;
+                {
+                    if (filter.Color == color)
+                        return false;
+
+                    filter.Color = color;
+                    return true;
+                }
             }
 
-            HistoryFilters.Add(new HistoryFilter(pattern, type, mode));
+            HistoryFilters.Add(new HistoryFilter(pattern, type, mode, color));
             return true;
         }
 

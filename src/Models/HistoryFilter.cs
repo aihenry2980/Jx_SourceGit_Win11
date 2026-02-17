@@ -43,18 +43,26 @@ namespace SourceGit.Models
             get => Type != FilterType.Tag;
         }
 
+        public uint Color
+        {
+            get => _color;
+            set => SetProperty(ref _color, value);
+        }
+
         public HistoryFilter()
         {
         }
 
-        public HistoryFilter(string pattern, FilterType type, FilterMode mode)
+        public HistoryFilter(string pattern, FilterType type, FilterMode mode, uint color = 0)
         {
             _pattern = pattern;
             _mode = mode;
+            _color = color;
             Type = type;
         }
 
         private string _pattern = string.Empty;
         private FilterMode _mode = FilterMode.None;
+        private uint _color = 0;
     }
 }

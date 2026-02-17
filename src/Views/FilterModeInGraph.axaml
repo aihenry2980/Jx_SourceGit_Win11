@@ -12,8 +12,9 @@
                FontWeight="Bold"
                Foreground="{DynamicResource MenuFlyoutItemKeyboardAcceleratorTextForeground}"/>
 
-    <StackPanel Grid.Row="1" Orientation="Horizontal">
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,*">
       <ToggleButton Classes="line_path"
+                    Grid.Column="0"
                     Width="15" Height="26"
                     Background="Transparent"
                     IsChecked="{Binding IsFiltered, Mode=TwoWay}">
@@ -21,12 +22,39 @@
       </ToggleButton>
 
       <ToggleButton Classes="line_path"
+                    Grid.Column="1"
                     Width="15" Height="26"
                     Margin="12,0,0,0"
                     Background="Transparent"
                     IsChecked="{Binding IsExcluded, Mode=TwoWay}">
         <Path Width="13" Height="13" Data="{StaticResource Icons.EyeClose}"/>
       </ToggleButton>
-    </StackPanel>
+
+      <ComboBox Grid.Column="2"
+                MinWidth="130"
+                Height="24"
+                Margin="12,0,0,0"
+                Padding="4,0"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Center"
+                ItemsSource="{Binding BranchColorOptions}"
+                SelectedItem="{Binding SelectedBranchColor, Mode=TwoWay}"
+                IsVisible="{Binding IsBranchTarget}">
+        <ComboBox.ItemTemplate>
+          <DataTemplate DataType="vm:PresetBranchColorOption">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Border Width="10"
+                      Height="10"
+                      CornerRadius="5"
+                      VerticalAlignment="Center"
+                      BorderThickness="1"
+                      BorderBrush="{DynamicResource Brush.Border1}"
+                      Background="{Binding Brush}"/>
+              <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+            </StackPanel>
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+    </Grid>
   </Grid>
 </UserControl>
