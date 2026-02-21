@@ -135,6 +135,11 @@ namespace SourceGit.Views
         public Histories()
         {
             InitializeComponent();
+            CommitListContainer.AddHandler(
+                InputElement.PointerWheelChangedEvent,
+                OnCommitListPointerWheelChanged,
+                RoutingStrategies.Tunnel | RoutingStrategies.Bubble,
+                true);
         }
 
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -251,6 +256,25 @@ namespace SourceGit.Views
         {
             if (DataContext is ViewModels.Histories histories)
                 CommitListContainer.ScrollIntoView(histories.Commits[0], null);
+        }
+
+        private void OnCommitListPointerWheelChanged(object sender, PointerWheelEventArgs e)
+        {
+            var zoomKey = OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control;
+            if (!e.KeyModifiers.HasFlag(zoomKey))
+                return;
+
+            // Some mice/touchpads report very small values on one axis.
+            // Use whichever axis has larger absolute value, and accept any non-zero delta.
+            var delta = Math.Abs(e.Delta.Y) >= Math.Abs(e.Delta.X) ? e.Delta.Y : e.Delta.X;
+            if (Math.Abs(delta) <= double.Epsilon)
+                return;
+
+            var pref = ViewModels.Preferences.Instance;
+            var step = delta > 0 ? 0.05 : -0.05;
+            var next = pref.HistoriesZoom + step;
+            pref.HistoriesZoom = Math.Clamp(next, 0.75, 2.50);
+            e.Handled = true;
         }
 
         private void OnCommitListSelectionChanged(object _, SelectionChangedEventArgs e)

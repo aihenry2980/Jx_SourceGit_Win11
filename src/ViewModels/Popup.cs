@@ -9,7 +9,11 @@ namespace SourceGit.ViewModels
         public bool InProgress
         {
             get => _inProgress;
-            set => SetProperty(ref _inProgress, value);
+            set
+            {
+                if (SetProperty(ref _inProgress, value))
+                    OnPropertyChanged(nameof(IsContentInteractive));
+            }
         }
 
         public string ProgressDescription
@@ -47,6 +51,8 @@ namespace SourceGit.ViewModels
         public virtual bool ShowOptions => true;
         public virtual double PopupWidth => 512;
         public virtual bool AllowCancelWhenRunning => false;
+        public virtual bool AllowContentInteractionWhenRunning => false;
+        public bool IsContentInteractive => !_inProgress || AllowContentInteractionWhenRunning;
 
         public virtual Task<bool> Sure()
         {

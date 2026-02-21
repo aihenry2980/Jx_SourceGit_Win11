@@ -54,10 +54,12 @@
       </Grid.IsVisible>
 
       <Border Background="Transparent"
+              ZIndex="0"
               PointerPressed="OnMaskClicked"
               IsVisible="{Binding Popup, Converter={x:Static ObjectConverters.IsNotNull}}"/>
 
       <Grid RowDefinitions="Auto,Auto,*"
+            ZIndex="1"
             Width="{Binding Popup.PopupWidth, FallbackValue=512, TargetNullValue=512}"
             HorizontalAlignment="Center">
         <!-- Popup -->
@@ -74,7 +76,7 @@
                   <!-- Popup Widget -->
                   <ContentControl Margin="8,16,8,8"
                                   Content="{Binding}"
-                                  IsHitTestVisible="{Binding InProgress, Converter={x:Static BoolConverters.Not}}">
+                                  IsHitTestVisible="True">
                     <ContentControl.DataTemplates>
                       <v:PopupDataTemplates/>
                     </ContentControl.DataTemplates>

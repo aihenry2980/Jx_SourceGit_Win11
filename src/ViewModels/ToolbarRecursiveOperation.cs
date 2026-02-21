@@ -1,4 +1,7 @@
+using System;
+using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 
 namespace SourceGit.ViewModels
 {
@@ -27,9 +30,16 @@ namespace SourceGit.ViewModels
             private set => SetProperty(ref _log, value);
         }
 
+        public bool CanStopCountdown
+        {
+            get => _canStopCountdown;
+            private set => SetProperty(ref _canStopCountdown, value);
+        }
+
         public override bool ShowOptions => false;
-        public override double PopupWidth => 820;
+        public override double PopupWidth => 980;
         public override bool AllowCancelWhenRunning => true;
+        public override bool AllowContentInteractionWhenRunning => true;
 
         public override bool CanStartDirectly()
         {
@@ -49,12 +59,23 @@ namespace SourceGit.ViewModels
                 _ => "Operation",
             };
 
-            Description = "Live git output. This popup auto-closes 2 seconds after success.";
+            Description = "Live git output. Auto-closes in 9 seconds after success unless you stop countdown.";
+        }
+
+        public void StopCountdown()
+        {
+            if (_countdownCts == null)
+                return;
+
+            _countdownCts?.Cancel();
+            CanStopCountdown = false;
+            ProgressDescription = "Done. Auto-close stopped.";
         }
 
         public override async Task<bool> Sure()
         {
             ProgressDescription = $"Running: {Title}";
+            CanStopCountdown = false;
 
             var log = _repo.CreateLog(Title);
             Log = log;
@@ -82,17 +103,42 @@ namespace SourceGit.ViewModels
                 return false;
             }
 
-            for (var deciseconds = 20; deciseconds > 0; deciseconds--)
+            _countdownCts?.Dispose();
+            _countdownCts = new CancellationTokenSource();
+            try
             {
-                ProgressDescription = $"Done. Closing in {deciseconds / 10.0:F1}s...";
-                await Task.Delay(100);
-            }
+                CanStopCountdown = true;
+                for (var seconds = 9; seconds > 0; seconds -= 3)
+                {
+                    var desc = $"Done. Closing in {seconds}s...";
+                    if (Dispatcher.UIThread.CheckAccess())
+                        ProgressDescription = desc;
+                    else
+                        await Dispatcher.UIThread.InvokeAsync(() => ProgressDescription = desc);
 
-            return true;
+                    await Task.Delay(3000, _countdownCts.Token).ConfigureAwait(false);
+                }
+                return true;
+            }
+            catch (OperationCanceledException)
+            {
+                return false;
+            }
+            finally
+            {
+                if (Dispatcher.UIThread.CheckAccess())
+                    CanStopCountdown = false;
+                else
+                    await Dispatcher.UIThread.InvokeAsync(() => CanStopCountdown = false);
+                _countdownCts?.Dispose();
+                _countdownCts = null;
+            }
         }
 
         private readonly Repository _repo = null;
         private readonly ToolbarRecursiveOperationKind _kind;
         private CommandLog _log = null;
+        private bool _canStopCountdown = false;
+        private CancellationTokenSource _countdownCts = null;
     }
 }

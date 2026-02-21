@@ -91,7 +91,14 @@ namespace SourceGit.ViewModels
         public double DefaultFontSize
         {
             get => _defaultFontSize;
-            set => SetProperty(ref _defaultFontSize, value);
+            set
+            {
+                if (SetProperty(ref _defaultFontSize, value))
+                {
+                    OnPropertyChanged(nameof(HistoriesFontSize));
+                    OnPropertyChanged(nameof(HistoriesRowHeight));
+                }
+            }
         }
 
         public double EditorFontSize
@@ -111,6 +118,22 @@ namespace SourceGit.ViewModels
             get => _zoom;
             set => SetProperty(ref _zoom, value);
         }
+
+        public double HistoriesZoom
+        {
+            get => _historiesZoom;
+            set
+            {
+                if (SetProperty(ref _historiesZoom, value))
+                {
+                    OnPropertyChanged(nameof(HistoriesFontSize));
+                    OnPropertyChanged(nameof(HistoriesRowHeight));
+                }
+            }
+        }
+
+        public double HistoriesFontSize => _defaultFontSize * _historiesZoom;
+        public double HistoriesRowHeight => Math.Max(16.0, HistoriesFontSize + 10.0);
 
         public LayoutInfo Layout
         {
@@ -919,6 +942,7 @@ namespace SourceGit.ViewModels
         private double _editorFontSize = 13;
         private int _editorTabWidth = 4;
         private double _zoom = 1.0;
+        private double _historiesZoom = 1.0;
         private LayoutInfo _layout = new();
 
         private int _maxHistoryCommits = 20000;
