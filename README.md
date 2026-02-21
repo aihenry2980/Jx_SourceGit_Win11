@@ -25,6 +25,9 @@
 
 ## Screenshots
 
+<img width="2081" height="1356" alt="image" src="https://github.com/user-attachments/assets/8def5313-e787-42c8-99aa-764beed89dd1" />
+
+
 * Dark Theme
 
   ![Theme Dark](./screenshots/theme_dark.png)
