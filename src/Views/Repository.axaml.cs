@@ -849,17 +849,8 @@ namespace SourceGit.Views
                 return;
             }
 
-            if (e.Key == Key.Tab && TryAutocompletePresetBranchInput(textBox, true))
-            {
-                e.Handled = true;
-                return;
-            }
-
             if (e.Key != Key.Enter && e.Key != Key.Tab && e.Key != Key.Space)
                 return;
-
-            if (e.Key != Key.Tab)
-                TryAutocompletePresetBranchInput(textBox);
 
             var changed = TryCommitPresetBranchContainsPatternInput(repo, textBox.Text);
             if (changed)
