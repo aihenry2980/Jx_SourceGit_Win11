@@ -1,4 +1,8 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 using Avalonia;
 using Avalonia.Controls;
@@ -6,6 +10,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Threading;
 
 namespace SourceGit.Views
 {
@@ -593,7 +598,33 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
-        private void OnOpenHistoryFiltersMenu(object sender, RoutedEventArgs e)
+        private void OnOpenIncludedHistoryFiltersMenu(object sender, RoutedEventArgs e)
+        {
+            OpenHistoryFiltersMenuByMode(sender, e, Models.FilterMode.Included, "Repository.FilterCommits.Visible");
+        }
+
+        private void OnOpenExcludedHistoryFiltersMenu(object sender, RoutedEventArgs e)
+        {
+            OpenHistoryFiltersMenuByMode(sender, e, Models.FilterMode.Excluded, "Repository.FilterCommits.Invisible");
+        }
+
+        private void OnFoldVisibleBranchesInGraph(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+                repo.FoldVisibleBranchesInGraph();
+
+            e.Handled = true;
+        }
+
+        private void OnUnfoldAllBranchesInGraph(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+                repo.UnfoldAllBranchesInGraph();
+
+            e.Handled = true;
+        }
+
+        private void OpenHistoryFiltersMenuByMode(object sender, RoutedEventArgs e, Models.FilterMode mode, string titleKey)
         {
             if (sender is not Button button || DataContext is not ViewModels.Repository repo)
             {
@@ -605,16 +636,20 @@ namespace SourceGit.Views
             menu.Placement = PlacementMode.BottomEdgeAlignedLeft;
 
             var title = new MenuItem();
-            title.Header = App.Text("Repository.FilterCommits");
+            title.Header = App.Text(titleKey);
             title.IsEnabled = false;
             menu.Items.Add(title);
 
             foreach (var filter in repo.UIStates.HistoryFilters)
             {
+                if (filter.Mode != mode)
+                    continue;
+
                 var dump = filter;
                 var item = new MenuItem();
                 item.Header = BuildRemovableHistoryFilterHeader(dump.Pattern, dump.Color);
-                item.Icon = App.CreateMenuIcon(dump.IsBranch ? "Icons.Branch" : "Icons.Tag");
+                item.Icon = App.CreateMenuIcon(
+                    dump.IsBranch ? (mode == Models.FilterMode.Included ? "Icons.Filter" : "Icons.EyeClose") : "Icons.Tag");
                 item.Click += (_, ev) =>
                 {
                     repo.RemoveHistoryFilter(dump);
@@ -636,6 +671,33 @@ namespace SourceGit.Views
             menu.Items.Add(clear);
 
             menu.Open(button);
+            e.Handled = true;
+        }
+
+        private async void OnOpenLocalIgnoreConfigure(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+            {
+                var dialog = new RepositoryConfigure()
+                {
+                    DataContext = new ViewModels.RepositoryConfigure(repo),
+                };
+
+                dialog.OpenLocalIgnoreTab();
+                await App.ShowDialog(dialog);
+            }
+
+            e.Handled = true;
+        }
+
+        private async void OnApplyLocalIgnoreRules(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+            {
+                var config = new ViewModels.RepositoryConfigure(repo);
+                await config.ApplyRepoLocalIgnoreRulesAsync();
+            }
+
             e.Handled = true;
         }
 
@@ -676,7 +738,12 @@ namespace SourceGit.Views
         private void OnApplyPresetBranchFilter(object sender, RoutedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo)
+            {
+                TryCommitPresetBranchExactNameInput(repo);
+                TryCommitPresetBranchContainsPatternInput(repo);
+                TryCommitPresetBranchExcludeNameInput(repo);
                 repo.ApplyPresetBranchFilter();
+            }
 
             e.Handled = true;
         }
@@ -684,7 +751,57 @@ namespace SourceGit.Views
         private void OnClearPresetBranchExactNames(object sender, RoutedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo)
+            {
                 repo.PresetBranchExactNames = string.Empty;
+                repo.ApplyPresetBranchFilter();
+            }
+
+            PresetBranchExactNameInputBox.Text = string.Empty;
+            e.Handled = true;
+        }
+
+        private void OnPresetBranchExactNameInputKeyDown(object sender, KeyEventArgs e)
+        {
+            if (sender is not TextBox textBox || DataContext is not ViewModels.Repository repo)
+                return;
+
+            if (HandlePresetBranchSuggestionSelectionKey(textBox, e))
+            {
+                e.Handled = true;
+                return;
+            }
+
+            if (e.Key == Key.Tab && TryAutocompletePresetBranchInput(textBox, true))
+            {
+                e.Handled = true;
+                return;
+            }
+
+            if (e.Key != Key.Enter && e.Key != Key.Tab && e.Key != Key.Space)
+                return;
+
+            if (e.Key != Key.Tab)
+                TryAutocompletePresetBranchInput(textBox);
+
+            var changed = TryCommitPresetBranchExactNameInput(repo, textBox.Text);
+            if (changed)
+                repo.ApplyPresetBranchFilter();
+
+            textBox.Text = string.Empty;
+            e.Handled = true;
+        }
+
+        private void OnRemovePresetBranchExactName(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button { Tag: string name } || DataContext is not ViewModels.Repository repo)
+                return;
+
+            var next = RemovePresetBranchRule(repo.PresetBranchExactNames, name);
+            if (!next.Equals(repo.PresetBranchExactNames, StringComparison.Ordinal))
+            {
+                repo.PresetBranchExactNames = next;
+                repo.ApplyPresetBranchFilter();
+            }
 
             e.Handled = true;
         }
@@ -692,7 +809,175 @@ namespace SourceGit.Views
         private void OnClearPresetBranchContainsPatterns(object sender, RoutedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo)
+            {
                 repo.PresetBranchContainsPatterns = string.Empty;
+                repo.ApplyPresetBranchFilter();
+            }
+
+            PresetBranchContainsPatternInputBox.Text = string.Empty;
+            e.Handled = true;
+        }
+
+        private void OnClearPresetBranchExcludeNames(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+            {
+                repo.PresetBranchExcludeNames = string.Empty;
+                repo.ApplyPresetBranchFilter();
+            }
+
+            PresetBranchExcludeNameInputBox.Text = string.Empty;
+            e.Handled = true;
+        }
+
+        private void OnPresetBranchInputTextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (sender is not TextBox textBox)
+                return;
+
+            QueuePresetBranchInputSuggestions(textBox);
+        }
+
+        private void OnPresetBranchContainsPatternInputKeyDown(object sender, KeyEventArgs e)
+        {
+            if (sender is not TextBox textBox || DataContext is not ViewModels.Repository repo)
+                return;
+
+            if (HandlePresetBranchSuggestionSelectionKey(textBox, e))
+            {
+                e.Handled = true;
+                return;
+            }
+
+            if (e.Key == Key.Tab && TryAutocompletePresetBranchInput(textBox, true))
+            {
+                e.Handled = true;
+                return;
+            }
+
+            if (e.Key != Key.Enter && e.Key != Key.Tab && e.Key != Key.Space)
+                return;
+
+            if (e.Key != Key.Tab)
+                TryAutocompletePresetBranchInput(textBox);
+
+            var changed = TryCommitPresetBranchContainsPatternInput(repo, textBox.Text);
+            if (changed)
+                repo.ApplyPresetBranchFilter();
+
+            textBox.Text = string.Empty;
+            e.Handled = true;
+        }
+
+        private void OnPresetBranchExcludeNameInputKeyDown(object sender, KeyEventArgs e)
+        {
+            if (sender is not TextBox textBox || DataContext is not ViewModels.Repository repo)
+                return;
+
+            if (HandlePresetBranchSuggestionSelectionKey(textBox, e))
+            {
+                e.Handled = true;
+                return;
+            }
+
+            if (e.Key == Key.Tab && TryAutocompletePresetBranchInput(textBox, true))
+            {
+                e.Handled = true;
+                return;
+            }
+
+            if (e.Key != Key.Enter && e.Key != Key.Tab && e.Key != Key.Space)
+                return;
+
+            if (e.Key != Key.Tab)
+                TryAutocompletePresetBranchInput(textBox);
+
+            var changed = TryCommitPresetBranchExcludeNameInput(repo, textBox.Text);
+            if (changed)
+                repo.ApplyPresetBranchFilter();
+
+            textBox.Text = string.Empty;
+            e.Handled = true;
+        }
+
+        private void OnPresetBranchFilterTextBoxDragOver(object sender, DragEventArgs e)
+        {
+            if (e.DataTransfer.Contains(_dndPresetBranchNameFormat))
+                e.DragEffects = DragDropEffects.Copy;
+            else
+                e.DragEffects = DragDropEffects.None;
+
+            e.Handled = true;
+        }
+
+        private void OnDropToPresetBranchExactNames(object sender, DragEventArgs e)
+        {
+            if (DataContext is not ViewModels.Repository repo)
+                return;
+
+            if (TryGetDroppedPresetBranchName(e, out var name))
+            {
+                repo.PresetBranchExactNames = AppendPresetBranchRule(repo.PresetBranchExactNames, name);
+                repo.ApplyPresetBranchFilter();
+            }
+
+            e.Handled = true;
+        }
+
+        private void OnDropToPresetBranchExcludeNames(object sender, DragEventArgs e)
+        {
+            if (DataContext is not ViewModels.Repository repo)
+                return;
+
+            if (TryGetDroppedPresetBranchName(e, out var name))
+            {
+                repo.PresetBranchExcludeNames = AppendPresetBranchRule(repo.PresetBranchExcludeNames, name);
+                repo.ApplyPresetBranchFilter();
+            }
+
+            e.Handled = true;
+        }
+
+        private void OnDropToPresetBranchContainsPatterns(object sender, DragEventArgs e)
+        {
+            if (DataContext is not ViewModels.Repository repo)
+                return;
+
+            if (TryGetDroppedPresetBranchName(e, out var name))
+            {
+                repo.PresetBranchContainsPatterns = AppendPresetBranchRule(repo.PresetBranchContainsPatterns, name);
+                repo.ApplyPresetBranchFilter();
+            }
+
+            e.Handled = true;
+        }
+
+        private void OnRemovePresetBranchContainsPattern(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button { Tag: string pattern } || DataContext is not ViewModels.Repository repo)
+                return;
+
+            var next = RemovePresetBranchRule(repo.PresetBranchContainsPatterns, pattern);
+            if (!next.Equals(repo.PresetBranchContainsPatterns, StringComparison.Ordinal))
+            {
+                repo.PresetBranchContainsPatterns = next;
+                repo.ApplyPresetBranchFilter();
+            }
+
+            e.Handled = true;
+        }
+
+        private void OnRemovePresetBranchExcludeName(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button { Tag: string name } || DataContext is not ViewModels.Repository repo)
+                return;
+
+            var next = RemovePresetBranchRule(repo.PresetBranchExcludeNames, name);
+            if (!next.Equals(repo.PresetBranchExcludeNames, StringComparison.Ordinal))
+            {
+                repo.PresetBranchExcludeNames = next;
+                repo.ApplyPresetBranchFilter();
+            }
 
             e.Handled = true;
         }
@@ -815,6 +1100,454 @@ namespace SourceGit.Views
 
             return panel;
         }
+
+        private bool TryGetDroppedPresetBranchName(DragEventArgs e, out string name)
+        {
+            name = string.Empty;
+            if (e.DataTransfer.TryGetValue(_dndPresetBranchNameFormat) is not { Length: > 0 } raw)
+                return false;
+
+            name = raw.Trim();
+            return !string.IsNullOrEmpty(name);
+        }
+
+        private static string AppendPresetBranchRule(string current, string branchName)
+        {
+            if (string.IsNullOrWhiteSpace(branchName))
+                return current ?? string.Empty;
+
+            var target = branchName.Trim();
+            if (string.IsNullOrWhiteSpace(current))
+                return target;
+
+            var normalized = current.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
+            foreach (var line in normalized.Split('\n'))
+            {
+                if (line.Trim().Equals(target, StringComparison.Ordinal))
+                    return current;
+            }
+
+            if (normalized.EndsWith('\n'))
+                return normalized + target;
+
+            return normalized + "\n" + target;
+        }
+
+        private static string AppendPresetBranchRules(string current, string rawInput)
+        {
+            var result = current ?? string.Empty;
+            foreach (var token in ParsePresetBranchInputTokens(rawInput))
+                result = AppendPresetBranchRule(result, token);
+            return result;
+        }
+
+        private static string RemovePresetBranchRule(string current, string branchName)
+        {
+            var target = branchName?.Trim();
+            if (string.IsNullOrEmpty(target) || string.IsNullOrEmpty(current))
+                return current ?? string.Empty;
+
+            var rules = ParsePresetBranchRules(current);
+            rules.RemoveAll(x => x.Equals(target, StringComparison.Ordinal));
+            return string.Join('\n', rules);
+        }
+
+        private static List<string> ParsePresetBranchRules(string raw)
+        {
+            var result = new List<string>();
+            if (string.IsNullOrWhiteSpace(raw))
+                return result;
+
+            foreach (var line in raw.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n'))
+            {
+                var trimmed = line.Trim();
+                if (trimmed.Length == 0)
+                    continue;
+
+                var exists = false;
+                foreach (var added in result)
+                {
+                    if (added.Equals(trimmed, StringComparison.Ordinal))
+                    {
+                        exists = true;
+                        break;
+                    }
+                }
+
+                if (!exists)
+                    result.Add(trimmed);
+            }
+
+            return result;
+        }
+
+        private static List<string> ParsePresetBranchInputTokens(string rawInput)
+        {
+            var result = new List<string>();
+            if (string.IsNullOrWhiteSpace(rawInput))
+                return result;
+
+            var normalized = rawInput
+                .Replace("\r\n", "\n", StringComparison.Ordinal)
+                .Replace('\r', '\n')
+                .Replace('\t', '\n')
+                .Replace(' ', '\n');
+            foreach (var part in normalized.Split('\n'))
+            {
+                var token = part.Trim();
+                if (!string.IsNullOrEmpty(token))
+                    result.Add(token);
+            }
+
+            return result;
+        }
+
+        private bool TryCommitPresetBranchExactNameInput(ViewModels.Repository repo, string rawInput = null)
+        {
+            rawInput ??= PresetBranchExactNameInputBox.Text;
+            var next = AppendPresetBranchRules(repo.PresetBranchExactNames, rawInput);
+            if (next.Equals(repo.PresetBranchExactNames, StringComparison.Ordinal))
+                return false;
+
+            repo.PresetBranchExactNames = next;
+            return true;
+        }
+
+        private bool TryCommitPresetBranchContainsPatternInput(ViewModels.Repository repo, string rawInput = null)
+        {
+            rawInput ??= PresetBranchContainsPatternInputBox.Text;
+            var next = AppendPresetBranchRules(repo.PresetBranchContainsPatterns, rawInput);
+            if (next.Equals(repo.PresetBranchContainsPatterns, StringComparison.Ordinal))
+                return false;
+
+            repo.PresetBranchContainsPatterns = next;
+            return true;
+        }
+
+        private bool TryCommitPresetBranchExcludeNameInput(ViewModels.Repository repo, string rawInput = null)
+        {
+            rawInput ??= PresetBranchExcludeNameInputBox.Text;
+            var next = AppendPresetBranchRules(repo.PresetBranchExcludeNames, rawInput);
+            if (next.Equals(repo.PresetBranchExcludeNames, StringComparison.Ordinal))
+                return false;
+
+            repo.PresetBranchExcludeNames = next;
+            return true;
+        }
+
+        private bool TryAutocompletePresetBranchInput(TextBox textBox, bool handledWhenAlreadyMatched = false)
+        {
+            if (DataContext is not ViewModels.Repository repo)
+                return false;
+
+            var suggestions = BuildPresetBranchInputSuggestions(repo, textBox);
+            _presetBranchInputSuggestions[textBox] = suggestions;
+            if (suggestions == null || suggestions.Count == 0)
+            {
+                _presetBranchInputSuggestionIndexes.Remove(textBox);
+                return false;
+            }
+
+            var selected = GetPresetBranchSuggestionSelectedIndex(textBox, suggestions.Count);
+            _presetBranchInputSuggestionIndexes[textBox] = selected;
+
+            var target = suggestions[selected];
+            if (string.IsNullOrEmpty(target))
+                return false;
+
+            var current = textBox.Text?.Trim() ?? string.Empty;
+            if (target.Equals(current, StringComparison.Ordinal))
+                return handledWhenAlreadyMatched;
+
+            textBox.Text = target;
+            textBox.CaretIndex = target.Length;
+            QueuePresetBranchInputSuggestions(textBox);
+            return true;
+        }
+
+        private bool HandlePresetBranchSuggestionSelectionKey(TextBox textBox, KeyEventArgs e)
+        {
+            if (e.Key == Key.Down)
+                return MovePresetBranchSuggestionSelection(textBox, +1, true, true);
+            if (e.Key == Key.Up)
+                return MovePresetBranchSuggestionSelection(textBox, -1, true, true);
+            if (e.Key == Key.Escape)
+            {
+                ClosePresetBranchSuggestionMenu(textBox);
+                _presetBranchInputSuggestionIndexes.Remove(textBox);
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool MovePresetBranchSuggestionSelection(TextBox textBox, int delta, bool ensureSuggestions, bool focusMenu = false)
+        {
+            if (ensureSuggestions)
+            {
+                if (!_presetBranchInputSuggestions.TryGetValue(textBox, out var existing) || existing == null || existing.Count == 0)
+                {
+                    var prepared = BuildAndShowPresetBranchInputSuggestions(textBox);
+                    if (prepared == null || prepared.Count == 0)
+                        return false;
+                }
+            }
+
+            if (!_presetBranchInputSuggestions.TryGetValue(textBox, out var suggestions) || suggestions == null || suggestions.Count == 0)
+                return false;
+
+            var selected = GetPresetBranchSuggestionSelectedIndex(textBox, suggestions.Count);
+            selected = (selected + delta + suggestions.Count) % suggestions.Count;
+            _presetBranchInputSuggestionIndexes[textBox] = selected;
+
+            // Avoid menu close/reopen on every arrow navigation to prevent flicker.
+            if (_presetBranchSuggestionMenus.TryGetValue(textBox, out var openedMenu) && openedMenu.IsOpen)
+            {
+                if (focusMenu)
+                    FocusPresetBranchSuggestionMenu(textBox);
+
+                return true;
+            }
+
+            if (focusMenu)
+                _presetBranchSuggestionMenuFocusRequested[textBox] = true;
+
+            OpenPresetBranchSuggestionMenu(textBox, suggestions);
+            if (focusMenu)
+                FocusPresetBranchSuggestionMenu(textBox);
+            return true;
+        }
+
+        private List<string> BuildAndShowPresetBranchInputSuggestions(TextBox textBox)
+        {
+            if (DataContext is not ViewModels.Repository repo)
+            {
+                ClosePresetBranchSuggestionMenu(textBox);
+                _presetBranchInputSuggestions[textBox] = [];
+                _presetBranchInputSuggestionIndexes.Remove(textBox);
+                return [];
+            }
+
+            var suggestions = BuildPresetBranchInputSuggestions(repo, textBox);
+            _presetBranchInputSuggestions[textBox] = suggestions;
+            if (suggestions.Count == 0)
+                _presetBranchInputSuggestionIndexes.Remove(textBox);
+            else
+                _presetBranchInputSuggestionIndexes[textBox] = GetPresetBranchSuggestionSelectedIndex(textBox, suggestions.Count);
+
+            OpenPresetBranchSuggestionMenu(textBox, suggestions);
+            return suggestions;
+        }
+
+        private int GetPresetBranchSuggestionSelectedIndex(TextBox textBox, int count)
+        {
+            if (count <= 0)
+                return -1;
+
+            if (_presetBranchInputSuggestionIndexes.TryGetValue(textBox, out var selected) && selected >= 0 && selected < count)
+                return selected;
+
+            return 0;
+        }
+
+        private HashSet<string> GetPresetBranchInputExistingRules(ViewModels.Repository repo, TextBox textBox)
+        {
+            var rules = textBox.Name switch
+            {
+                nameof(PresetBranchExactNameInputBox) => repo.PresetBranchExactNames,
+                nameof(PresetBranchContainsPatternInputBox) => repo.PresetBranchContainsPatterns,
+                nameof(PresetBranchExcludeNameInputBox) => repo.PresetBranchExcludeNames,
+                _ => string.Empty,
+            };
+            return new HashSet<string>(ParsePresetBranchRules(rules), StringComparer.Ordinal);
+        }
+
+        private void OpenPresetBranchSuggestionMenu(TextBox textBox, List<string> suggestions)
+        {
+            if (suggestions == null || suggestions.Count == 0)
+            {
+                ClosePresetBranchSuggestionMenu(textBox);
+                return;
+            }
+
+            var menu = new ContextMenu()
+            {
+                Placement = PlacementMode.BottomEdgeAlignedLeft,
+            };
+
+            var selected = GetPresetBranchSuggestionSelectedIndex(textBox, suggestions.Count);
+            for (var i = 0; i < suggestions.Count; i++)
+            {
+                var captured = suggestions[i];
+                var idx = i;
+                var item = new MenuItem()
+                {
+                    Header = captured,
+                    Icon = App.CreateMenuIcon(idx == selected ? "Icons.Check" : "Icons.Branch"),
+                };
+                item.Click += (_, e) =>
+                {
+                    textBox.Text = captured;
+                    textBox.CaretIndex = captured.Length;
+                    textBox.Focus();
+                    _presetBranchInputSuggestionIndexes[textBox] = idx;
+                    QueuePresetBranchInputSuggestions(textBox);
+                    e.Handled = true;
+                };
+                menu.Items.Add(item);
+            }
+
+            menu.Opened += (_, _) =>
+            {
+                if (_presetBranchSuggestionMenuFocusRequested.Remove(textBox))
+                    FocusPresetBranchSuggestionMenu(textBox);
+                else
+                    RestorePresetBranchInputFocus(textBox);
+            };
+            menu.Closed += (_, _) =>
+            {
+                if (_presetBranchSuggestionMenus.TryGetValue(textBox, out var opened) && ReferenceEquals(opened, menu))
+                    _presetBranchSuggestionMenus.Remove(textBox);
+
+                _presetBranchSuggestionMenuFocusRequested.Remove(textBox);
+            };
+
+            ClosePresetBranchSuggestionMenu(textBox);
+            _presetBranchSuggestionMenus[textBox] = menu;
+            menu.Open(textBox);
+        }
+
+        private void RestorePresetBranchInputFocus(TextBox textBox)
+        {
+            // Keep typing focus in the input even while suggestion popup is visible.
+            var caret = textBox.CaretIndex;
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (textBox.IsVisible)
+                {
+                    textBox.Focus();
+                    textBox.CaretIndex = Math.Min(caret, textBox.Text?.Length ?? 0);
+                }
+            }, DispatcherPriority.Background);
+        }
+
+        private void FocusPresetBranchSuggestionMenu(TextBox textBox)
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (!_presetBranchSuggestionMenus.TryGetValue(textBox, out var menu) || !menu.IsOpen)
+                    return;
+
+                if (menu.Items is not IEnumerable<object> allItems)
+                    return;
+
+                var items = allItems.OfType<MenuItem>().ToList();
+                if (items.Count == 0)
+                    return;
+
+                var selected = GetPresetBranchSuggestionSelectedIndex(textBox, items.Count);
+                if (selected < 0 || selected >= items.Count)
+                    selected = 0;
+
+                menu.Focus(NavigationMethod.Directional);
+                items[selected].Focus(NavigationMethod.Directional);
+            }, DispatcherPriority.Input);
+        }
+
+        private void ClosePresetBranchSuggestionMenu(TextBox textBox)
+        {
+            if (_presetBranchSuggestionMenus.TryGetValue(textBox, out var menu))
+                menu.Close();
+
+            _presetBranchSuggestionMenuFocusRequested.Remove(textBox);
+        }
+
+        private void QueuePresetBranchInputSuggestions(TextBox textBox)
+        {
+            if (_presetBranchSuggestionDebouncers.TryGetValue(textBox, out var previous))
+            {
+                _presetBranchSuggestionDebouncers.Remove(textBox);
+                try
+                {
+                    previous.Cancel();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Already disposed by a completed debounce task.
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(textBox.Text) || DataContext is not ViewModels.Repository)
+            {
+                ClosePresetBranchSuggestionMenu(textBox);
+                _presetBranchInputSuggestions[textBox] = [];
+                _presetBranchInputSuggestionIndexes.Remove(textBox);
+                return;
+            }
+
+            _presetBranchSuggestionMenuFocusRequested.Remove(textBox);
+            var cts = new CancellationTokenSource();
+            _presetBranchSuggestionDebouncers[textBox] = cts;
+            _ = DebouncedUpdatePresetBranchInputSuggestionsAsync(textBox, cts);
+        }
+
+        private async Task DebouncedUpdatePresetBranchInputSuggestionsAsync(TextBox textBox, CancellationTokenSource cts)
+        {
+            var token = cts.Token;
+            try
+            {
+                await Task.Delay(250, token);
+                if (token.IsCancellationRequested)
+                    return;
+
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    if (token.IsCancellationRequested || !textBox.IsFocused || DataContext is not ViewModels.Repository repo)
+                        return;
+
+                    BuildAndShowPresetBranchInputSuggestions(textBox);
+                }, DispatcherPriority.Background);
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when user keeps typing and previous debounce task gets canceled.
+            }
+            finally
+            {
+                if (_presetBranchSuggestionDebouncers.TryGetValue(textBox, out var current) && ReferenceEquals(current, cts))
+                    _presetBranchSuggestionDebouncers.Remove(textBox);
+
+                cts.Dispose();
+            }
+        }
+
+        private List<string> BuildPresetBranchInputSuggestions(ViewModels.Repository repo, TextBox textBox)
+        {
+            var query = textBox.Text?.Trim() ?? string.Empty;
+            if (string.IsNullOrEmpty(query))
+                return [];
+
+            var existing = GetPresetBranchInputExistingRules(repo, textBox);
+            var allBranchNames = repo.Branches
+                .Select(x => x.Name)
+                .Where(x => !string.IsNullOrEmpty(x))
+                .Distinct(StringComparer.Ordinal)
+                .Where(x => !existing.Contains(x))
+                .ToList();
+            var starts = allBranchNames
+                .Where(x => x.StartsWith(query, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(x => x, StringComparer.OrdinalIgnoreCase);
+            var contains = allBranchNames
+                .Where(x => !x.StartsWith(query, StringComparison.OrdinalIgnoreCase) && x.Contains(query, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(x => x, StringComparer.OrdinalIgnoreCase);
+            return starts.Concat(contains).Take(12).ToList();
+        }
+        private readonly DataFormat<string> _dndPresetBranchNameFormat = DataFormat.CreateStringApplicationFormat("sourcegit-dnd-branch-filter-name");
+        private readonly Dictionary<TextBox, ContextMenu> _presetBranchSuggestionMenus = [];
+        private readonly Dictionary<TextBox, List<string>> _presetBranchInputSuggestions = [];
+        private readonly Dictionary<TextBox, int> _presetBranchInputSuggestionIndexes = [];
+        private readonly Dictionary<TextBox, bool> _presetBranchSuggestionMenuFocusRequested = [];
+        private readonly Dictionary<TextBox, CancellationTokenSource> _presetBranchSuggestionDebouncers = [];
 
         private static StackPanel BuildColorOptionHeader(string name, IBrush brush)
         {

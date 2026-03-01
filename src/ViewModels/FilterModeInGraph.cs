@@ -36,10 +36,7 @@ namespace SourceGit.ViewModels
                     value != null &&
                     _target is Models.Branch branch)
                 {
-                    _repo.SetBranchFilterColor(branch, value.Color);
-                    _mode = Models.FilterMode.Included;
-                    OnPropertyChanged(nameof(IsFiltered));
-                    OnPropertyChanged(nameof(IsExcluded));
+                    _repo.SetBranchDisplayColor(branch, value.Color);
                 }
             }
         }

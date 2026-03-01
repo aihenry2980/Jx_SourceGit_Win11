@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Collections;
 using Avalonia.Threading;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace SourceGit.ViewModels
 {
@@ -14,6 +17,28 @@ namespace SourceGit.ViewModels
 
     public class ToolbarRecursiveOperation : Popup
     {
+        public class SubmoduleSelectionItem : ObservableObject
+        {
+            public string Path
+            {
+                get;
+            }
+
+            public bool IsSelected
+            {
+                get => _isSelected;
+                set => SetProperty(ref _isSelected, value);
+            }
+
+            public SubmoduleSelectionItem(string path, bool isSelected)
+            {
+                Path = path;
+                _isSelected = isSelected;
+            }
+
+            private bool _isSelected;
+        }
+
         public string Title
         {
             get;
@@ -36,14 +61,22 @@ namespace SourceGit.ViewModels
             private set => SetProperty(ref _canStopCountdown, value);
         }
 
-        public override bool ShowOptions => false;
+        public bool IsSubmoduleSelectionVisible => _kind == ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively;
+        public bool HasSubmodulesToSelect => SubmoduleSelections.Count > 0;
+
+        public AvaloniaList<SubmoduleSelectionItem> SubmoduleSelections
+        {
+            get;
+        } = [];
+
+        public override bool ShowOptions => _kind == ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively;
         public override double PopupWidth => 980;
         public override bool AllowCancelWhenRunning => true;
         public override bool AllowContentInteractionWhenRunning => true;
 
         public override bool CanStartDirectly()
         {
-            return true;
+            return _kind != ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively;
         }
 
         public ToolbarRecursiveOperation(Repository repo, ToolbarRecursiveOperationKind kind)
@@ -60,6 +93,28 @@ namespace SourceGit.ViewModels
             };
 
             Description = "Live git output. Auto-closes in 9 seconds after success unless you stop countdown.";
+
+            if (_kind == ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively)
+            {
+                var saved = _repo.Settings?.GetRecursiveSubmoduleUpdateTargets() ?? [];
+                var savedSet = new HashSet<string>(saved, StringComparer.Ordinal);
+                var defaultSelectAll = savedSet.Count == 0;
+
+                foreach (var submodule in _repo.Submodules)
+                    SubmoduleSelections.Add(new SubmoduleSelectionItem(submodule.Path, defaultSelectAll || savedSet.Contains(submodule.Path)));
+            }
+        }
+
+        public void SelectAllSubmodules()
+        {
+            foreach (var item in SubmoduleSelections)
+                item.IsSelected = true;
+        }
+
+        public void ClearSubmoduleSelection()
+        {
+            foreach (var item in SubmoduleSelections)
+                item.IsSelected = false;
         }
 
         public void StopCountdown()
@@ -84,11 +139,28 @@ namespace SourceGit.ViewModels
             bool succ;
             try
             {
+                List<string> selectedTargets = null;
+                if (_kind == ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively)
+                {
+                    selectedTargets = [];
+                    foreach (var item in SubmoduleSelections)
+                    {
+                        if (item.IsSelected)
+                            selectedTargets.Add(item.Path);
+                    }
+
+                    if (_repo.Settings != null)
+                    {
+                        _repo.Settings.SetRecursiveSubmoduleUpdateTargets(selectedTargets);
+                        await _repo.Settings.SaveAsync();
+                    }
+                }
+
                 succ = _kind switch
                 {
                     ToolbarRecursiveOperationKind.FetchAndPruneRecursively => await _repo.RunFetchRecursivelyAsync(true, log),
                     ToolbarRecursiveOperationKind.FetchRecursively => await _repo.RunFetchRecursivelyAsync(false, log),
-                    ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively => await _repo.RunUpdateSubmodulesRecursivelyAsync(log),
+                    ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively => await _repo.RunUpdateSubmodulesRecursivelyAsync(log, selectedTargets),
                     _ => false,
                 };
             }

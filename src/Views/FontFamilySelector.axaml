@@ -1,0 +1,99 @@
+<v:ChromelessWindow xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                    xmlns:v="using:SourceGit.Views"
+                    mc:Ignorable="d" d:DesignWidth="680" d:DesignHeight="560"
+                    x:Class="SourceGit.Views.FontFamilySelector"
+                    x:Name="ThisControl"
+                    Icon="/App.ico"
+                    Title="Select Font"
+                    Width="680" Height="560"
+                    CanResize="False"
+                    WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="Auto,Auto,*,Auto">
+    <!-- TitleBar -->
+    <Grid Grid.Row="0" Height="28" IsVisible="{Binding !#ThisControl.UseSystemWindowFrame}">
+      <Border Background="{DynamicResource Brush.TitleBar}"
+              BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Brush.Border0}"
+              PointerPressed="BeginMoveWindow"/>
+
+      <Path Width="14" Height="14"
+            Margin="10,0,0,0"
+            HorizontalAlignment="Left"
+            Data="{StaticResource Icons.Search}"
+            IsVisible="{OnPlatform True, macOS=False}"/>
+
+      <TextBlock Classes="bold"
+                 Text="{Binding #ThisControl.Title}"
+                 HorizontalAlignment="Center" VerticalAlignment="Center"
+                 IsHitTestVisible="False"/>
+
+      <v:CaptionButtons HorizontalAlignment="Right"
+                        IsCloseButtonOnly="True"
+                        IsVisible="{OnPlatform True, macOS=False}"/>
+    </Grid>
+
+    <TextBox Grid.Row="1"
+             x:Name="SearchBox"
+             Margin="8,8,8,0"
+             Height="30"
+             Watermark="Type to filter fonts"
+             TextChanged="OnSearchTextChanged"/>
+
+    <ListBox Grid.Row="2"
+             x:Name="FontList"
+             Margin="8"
+             Padding="4"
+             Focusable="True"
+             SelectionMode="AlwaysSelected"
+             BorderThickness="1"
+             BorderBrush="{DynamicResource Brush.Border1}"
+             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+             ScrollViewer.VerticalScrollBarVisibility="Auto"
+             DoubleTapped="OnListDoubleTapped"
+             KeyDown="OnListKeyDown">
+      <ListBox.Styles>
+        <Style Selector="ListBoxItem">
+          <Setter Property="Margin" Value="0"/>
+          <Setter Property="Padding" Value="0"/>
+          <Setter Property="Height" Value="32"/>
+          <Setter Property="CornerRadius" Value="4"/>
+        </Style>
+      </ListBox.Styles>
+
+      <ListBox.ItemsPanel>
+        <ItemsPanelTemplate>
+          <VirtualizingStackPanel Orientation="Vertical"/>
+        </ItemsPanelTemplate>
+      </ListBox.ItemsPanel>
+
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="x:String">
+          <Grid ColumnDefinitions="240,*" Background="Transparent">
+            <TextBlock Grid.Column="0"
+                       Margin="8,0,0,0"
+                       Text="{Binding}"
+                       VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"/>
+            <TextBlock Grid.Column="1"
+                       Margin="12,0,8,0"
+                       Text="AaBbYyZz 012345"
+                       FontFamily="{Binding}"
+                       VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"/>
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+
+    <Grid Grid.Row="3" Margin="8,0,8,8" ColumnDefinitions="*,Auto,8,Auto">
+      <Button Grid.Column="1" Width="100" Height="30" Classes="primary" Click="OnConfirm">
+        <TextBlock Text="OK"/>
+      </Button>
+      <Button Grid.Column="3" Width="100" Height="30" Click="OnCancel">
+        <TextBlock Text="CANCEL"/>
+      </Button>
+    </Grid>
+  </Grid>
+</v:ChromelessWindow>

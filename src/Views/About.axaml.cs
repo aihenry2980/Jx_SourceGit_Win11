@@ -1,6 +1,7 @@
 using System;
 using System.Reflection;
 
+using Avalonia.Input;
 using Avalonia.Interactivity;
 
 namespace SourceGit.Views
@@ -46,7 +47,19 @@ namespace SourceGit.Views
 
         private void OnVisitSourceCode(object _, RoutedEventArgs e)
         {
-            Native.OS.OpenBrowser("https://github.com/sourcegit-scm/sourcegit");
+            Native.OS.OpenBrowser("https://github.com/aihenry2980/Jx_SourceGit_Win11");
+            e.Handled = true;
+        }
+
+        private void OnVisitForkSourceCode(object _, PointerPressedEventArgs e)
+        {
+            Native.OS.OpenBrowser("https://github.com/aihenry2980/Jx_SourceGit_Win11");
+            e.Handled = true;
+        }
+
+        private void OnContactMaintainer(object _, PointerPressedEventArgs e)
+        {
+            Native.OS.OpenBrowser("mailto:jxin@outlook.com");
             e.Handled = true;
         }
     }

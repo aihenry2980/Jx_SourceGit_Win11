@@ -148,7 +148,13 @@ namespace SourceGit.Views
                 }
             }
 
-            var fill = this.FindResource("Brush.ToolBar") as IBrush;
+            IBrush fill = this.FindResource("Brush.ToolBar") as IBrush;
+            if (this.FindResource("SystemAccentColor") is Color accent)
+            {
+                var opacity = ActualThemeVariant == ThemeVariant.Dark ? 0.28 : 0.20;
+                fill = new SolidColorBrush(accent, opacity);
+            }
+
             var stroke = new Pen(this.FindResource("Brush.Border0") as IBrush);
             context.DrawGeometry(fill, stroke, geo);
         }
@@ -321,6 +327,8 @@ namespace SourceGit.Views
                         setter.Click += (_, ev) =>
                         {
                             page.Node.Bookmark = dupIdx;
+                            if (page.Data is ViewModels.Repository pageRepo)
+                                pageRepo.NotifyAccentColorChanged();
                             ev.Handled = true;
                         };
                         bookmark.Items.Add(setter);

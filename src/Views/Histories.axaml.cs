@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 
 using Avalonia;
 using Avalonia.Collections;
@@ -149,7 +150,7 @@ namespace SourceGit.Views
             if (change.Property == NavigationIdProperty)
             {
                 if (CommitListContainer is { SelectedItems.Count: 1, IsLoaded: true } dataGrid)
-                    dataGrid.ScrollIntoView(dataGrid.SelectedItem, null);
+                    CenterCommitInViewport(dataGrid, dataGrid.SelectedItem);
             }
         }
 
@@ -157,11 +158,21 @@ namespace SourceGit.Views
         {
             var dataGrid = CommitListContainer;
             var rowsPresenter = dataGrid.FindDescendantOfType<DataGridRowsPresenter>();
-            if (rowsPresenter is { Children: { Count: > 0 } rows })
-                CommitGraph.Layout = new(0, dataGrid.Columns[0].ActualWidth - 4, rows[0].Bounds.Height);
+            if (rowsPresenter is { Children: { Count: > 0 } rows } &&
+                TryGetGraphColumnLayout(dataGrid, out var graphOffsetX, out var graphClipWidth))
+            {
+                var rowHeight = dataGrid.RowHeight;
+                if (rowHeight <= 0 || double.IsNaN(rowHeight))
+                    rowHeight = rows[0].Bounds.Height;
+
+                CommitGraph.Layout = new(0, graphClipWidth, rowHeight, graphOffsetX);
+            }
 
             if (dataGrid.SelectedItems.Count == 1)
                 dataGrid.ScrollIntoView(dataGrid.SelectedItem, null);
+
+            _pendingEnsureHeadVisibleRetries = 6;
+            TryEnsureHeadVisibleInViewport();
         }
 
         private async void OnGotoParent(object sender, RoutedEventArgs e)
@@ -215,19 +226,28 @@ namespace SourceGit.Views
             if (!IsLoaded)
                 return;
 
+            if (DataContext is ViewModels.Histories histories)
+            {
+                if (_lastHistoriesIsLoading && !histories.IsLoading)
+                    _pendingEnsureHeadVisibleRetries = 6;
+
+                _lastHistoriesIsLoading = histories.IsLoading;
+            }
+
             var dataGrid = CommitListContainer;
             var rowsPresenter = dataGrid.FindDescendantOfType<DataGridRowsPresenter>();
             if (rowsPresenter == null)
                 return;
 
-            double rowHeight = dataGrid.RowHeight;
+            var rowHeight = dataGrid.RowHeight;
+            if (rowHeight <= 0 || double.IsNaN(rowHeight))
+                rowHeight = 24;
+
             double startY = 0;
             foreach (var child in rowsPresenter.Children)
             {
                 if (child is DataGridRow { IsVisible: true } row)
                 {
-                    rowHeight = row.Bounds.Height;
-
                     if (row.Bounds.Top <= 0 && row.Bounds.Top > -rowHeight)
                     {
                         var test = rowHeight * row.Index - row.Bounds.Top;
@@ -239,23 +259,181 @@ namespace SourceGit.Views
 
             SetCurrentValue(IsScrollToTopVisibleProperty, startY >= rowHeight);
 
-            var clipWidth = dataGrid.Columns[0].ActualWidth - 4;
+            if (!TryGetGraphColumnLayout(dataGrid, out var graphOffsetX, out var clipWidth))
+                return;
+
             if (Math.Abs(_lastGraphStartY - startY) > 0.01 ||
                 Math.Abs(_lastGraphClipWidth - clipWidth) > 0.01 ||
-                Math.Abs(_lastGraphRowHeight - rowHeight) > 0.01)
+                Math.Abs(_lastGraphRowHeight - rowHeight) > 0.01 ||
+                Math.Abs(_lastGraphOffsetX - graphOffsetX) > 0.01)
             {
                 _lastGraphStartY = startY;
                 _lastGraphClipWidth = clipWidth;
                 _lastGraphRowHeight = rowHeight;
+                _lastGraphOffsetX = graphOffsetX;
 
-                CommitGraph.Layout = new(startY, clipWidth, rowHeight);
+                CommitGraph.Layout = new(startY, clipWidth, rowHeight, graphOffsetX);
             }
+
+            if (_pendingEnsureHeadVisibleRetries > 0)
+            {
+                if (TryEnsureHeadVisibleInViewport())
+                    _pendingEnsureHeadVisibleRetries = 0;
+                else
+                    _pendingEnsureHeadVisibleRetries--;
+            }
+        }
+
+        private static bool TryGetGraphColumnLayout(DataGrid dataGrid, out double offsetX, out double clipWidth)
+        {
+            offsetX = 0;
+            clipWidth = 0;
+            if (dataGrid == null || dataGrid.Columns.Count == 0)
+                return false;
+
+            var graphColumnIndex = -1;
+            for (var i = 0; i < dataGrid.Columns.Count; i++)
+            {
+                var col = dataGrid.Columns[i];
+                if (!col.IsVisible)
+                    continue;
+
+                // Graph&Subject is the only visible star-sized column.
+                if (col.Width.UnitType == DataGridLengthUnitType.Star)
+                {
+                    graphColumnIndex = i;
+                    break;
+                }
+            }
+
+            if (graphColumnIndex < 0)
+                return false;
+
+            for (var i = 0; i < graphColumnIndex; i++)
+            {
+                var col = dataGrid.Columns[i];
+                if (col.IsVisible)
+                    offsetX += GetEffectiveColumnWidth(col);
+            }
+
+            clipWidth = Math.Max(0, GetEffectiveColumnWidth(dataGrid.Columns[graphColumnIndex]) - 4);
+            return clipWidth > 0;
+        }
+
+        private static double GetEffectiveColumnWidth(DataGridColumn col)
+        {
+            var width = col.ActualWidth;
+            if (width > 0.01)
+                return width;
+
+            width = col.Width.DisplayValue;
+            if (width > 0.01)
+                return width;
+
+            return Math.Max(0, col.MinWidth);
         }
 
         private void OnScrollToTopPointerPressed(object sender, PointerPressedEventArgs e)
         {
             if (DataContext is ViewModels.Histories histories)
-                CommitListContainer.ScrollIntoView(histories.Commits[0], null);
+                CenterCommitInViewport(CommitListContainer, histories.Commits[0]);
+        }
+
+        private bool CenterCommitInViewport(DataGrid dataGrid, object target)
+        {
+            if (dataGrid == null || target == null)
+                return false;
+
+            dataGrid.ScrollIntoView(target, null);
+
+            var scrollViewer = dataGrid.FindDescendantOfType<ScrollViewer>();
+            var rowsPresenter = dataGrid.FindDescendantOfType<DataGridRowsPresenter>();
+            if (scrollViewer == null || rowsPresenter == null)
+                return false;
+
+            DataGridRow row = null;
+            foreach (var child in rowsPresenter.Children)
+            {
+                if (child is DataGridRow c && ReferenceEquals(c.DataContext, target))
+                {
+                    row = c;
+                    break;
+                }
+            }
+
+            if (row == null || !row.IsVisible)
+                return false;
+
+            var rowHeight = dataGrid.RowHeight;
+            if (rowHeight <= 0 || double.IsNaN(rowHeight))
+                rowHeight = row.Bounds.Height;
+            if (rowHeight <= 0 || double.IsNaN(rowHeight))
+                return false;
+
+            var viewportHeight = rowsPresenter.Bounds.Height;
+            if (viewportHeight <= 0 || double.IsNaN(viewportHeight))
+                viewportHeight = scrollViewer.Viewport.Height;
+            var extentHeight = scrollViewer.Extent.Height;
+            if (viewportHeight <= 0 || extentHeight <= 0)
+                return false;
+
+            // Center inside the commit rows viewport (history graph area), not the whole window.
+            var centerY = row.Index * rowHeight + rowHeight * 0.5;
+            var targetOffsetY = centerY - viewportHeight * 0.5;
+            var maxOffsetY = Math.Max(0, extentHeight - viewportHeight);
+            var clampedOffsetY = Math.Clamp(targetOffsetY, 0, maxOffsetY);
+
+            if (Math.Abs(scrollViewer.Offset.Y - clampedOffsetY) > 0.5)
+                scrollViewer.Offset = new Vector(scrollViewer.Offset.X, clampedOffsetY);
+
+            return true;
+        }
+
+        private bool TryEnsureHeadVisibleInViewport()
+        {
+            if (_isCenteringHeadCommit || DataContext is not ViewModels.Histories histories || histories.IsLoading)
+                return false;
+
+            Models.Commit head = null;
+            foreach (var commit in histories.Commits)
+            {
+                if (commit.IsCurrentHead)
+                {
+                    head = commit;
+                    break;
+                }
+            }
+
+            if (head == null)
+            {
+                return true;
+            }
+
+            _isCenteringHeadCommit = true;
+            try
+            {
+                var dataGrid = CommitListContainer;
+                dataGrid.ScrollIntoView(head, null);
+
+                var rowsPresenter = dataGrid.FindDescendantOfType<DataGridRowsPresenter>();
+                if (rowsPresenter == null)
+                    return false;
+
+                foreach (var child in rowsPresenter.Children)
+                {
+                    if (child is DataGridRow row && ReferenceEquals(row.DataContext, head) && row.IsVisible)
+                    {
+                        var viewportHeight = rowsPresenter.Bounds.Height;
+                        return row.Bounds.Bottom > 0 && row.Bounds.Top < viewportHeight;
+                    }
+                }
+
+                return false;
+            }
+            finally
+            {
+                _isCenteringHeadCommit = false;
+            }
         }
 
         private void OnCommitListPointerWheelChanged(object sender, PointerWheelEventArgs e)
@@ -274,6 +452,154 @@ namespace SourceGit.Views
             var step = delta > 0 ? 0.05 : -0.05;
             var next = pref.HistoriesZoom + step;
             pref.HistoriesZoom = Math.Clamp(next, 0.75, 2.50);
+            e.Handled = true;
+        }
+
+        private void OnCommitRefsPointerPressed(object sender, PointerPressedEventArgs e)
+        {
+            if (sender is not CommitRefsPresenter presenter)
+                return;
+
+            var point = e.GetCurrentPoint(presenter);
+            if (point.Properties.IsLeftButtonPressed &&
+                presenter.TryGetFoldableDecoratorAt(e.GetPosition(presenter), out var foldDecorator) &&
+                TryGetBranchByDecorator(foldDecorator, out var foldRepo, out var foldBranch))
+            {
+                foldRepo.ToggleFoldBranch(foldBranch);
+                _pressedCommitRef = false;
+                _startDragCommitRef = false;
+                _pressedCommitRefBranchName = string.Empty;
+                e.Handled = true;
+                return;
+            }
+
+            if (!point.Properties.IsLeftButtonPressed || !TryGetBranchNameAtPoint(presenter, e.GetPosition(presenter), out var name))
+            {
+                _pressedCommitRef = false;
+                _startDragCommitRef = false;
+                _pressedCommitRefBranchName = string.Empty;
+                return;
+            }
+
+            _pressedCommitRef = true;
+            _startDragCommitRef = false;
+            _pressedCommitRefPosition = e.GetPosition(presenter);
+            _pressedCommitRefBranchName = name;
+        }
+
+        private async void OnCommitRefsPointerMoved(object sender, PointerEventArgs e)
+        {
+            if (!_pressedCommitRef || _startDragCommitRef || string.IsNullOrEmpty(_pressedCommitRefBranchName))
+                return;
+
+            if (sender is not CommitRefsPresenter presenter)
+                return;
+
+            var delta = e.GetPosition(presenter) - _pressedCommitRefPosition;
+            var sizeSquared = delta.X * delta.X + delta.Y * delta.Y;
+            if (sizeSquared < 64)
+                return;
+
+            _startDragCommitRef = true;
+
+            var data = new DataTransfer();
+            data.Add(DataTransferItem.Create(_dndPresetBranchNameFormat, _pressedCommitRefBranchName));
+            await DragDrop.DoDragDropAsync(e, data, DragDropEffects.Copy);
+
+            _pressedCommitRef = false;
+            _startDragCommitRef = false;
+            _pressedCommitRefBranchName = string.Empty;
+        }
+
+        private void OnCommitRefsPointerReleased(object sender, PointerReleasedEventArgs e)
+        {
+            _pressedCommitRef = false;
+            _startDragCommitRef = false;
+            _pressedCommitRefBranchName = string.Empty;
+        }
+
+        private void OnCommitRefsDragOver(object sender, DragEventArgs e)
+        {
+            if (sender is not CommitRefsPresenter presenter ||
+                !TryGetRebaseDragSource(e, out _, out _) ||
+                !TryGetBranchAtPoint(presenter, e.GetPosition(presenter), out _, out _))
+                e.DragEffects = DragDropEffects.None;
+            else
+                e.DragEffects = DragDropEffects.Copy;
+
+            e.Handled = true;
+        }
+
+        private async void OnCommitRefsDrop(object sender, DragEventArgs e)
+        {
+            if (sender is not CommitRefsPresenter presenter ||
+                !TryGetRebaseBranchDropTargets(presenter, e, out var repo, out var source, out var target))
+            {
+                e.Handled = true;
+                return;
+            }
+
+            if (repo.CanCreatePopup())
+            {
+                if (e.KeyModifiers.HasFlag(KeyModifiers.Control))
+                {
+                    var to = await new Commands.QuerySingleCommit(repo.FullPath, target.Head).GetResultAsync();
+                    if (to != null)
+                    {
+                        var reset = new ViewModels.Reset(repo, source, to)
+                        {
+                            SelectedMode = Models.ResetMode.Supported[^1], // hard
+                        };
+                        repo.ShowPopup(reset);
+                    }
+                }
+                else
+                {
+                    repo.ShowPopup(new ViewModels.Rebase(repo, source, target));
+                }
+            }
+
+            e.Handled = true;
+        }
+
+        private void OnCommitSubjectDragOver(object sender, DragEventArgs e)
+        {
+            if (sender is not Control { DataContext: Models.Commit commit } ||
+                string.IsNullOrWhiteSpace(commit.SHA) ||
+                !TryGetRebaseDragSource(e, out _, out _))
+                e.DragEffects = DragDropEffects.None;
+            else
+                e.DragEffects = DragDropEffects.Copy;
+
+            e.Handled = true;
+        }
+
+        private void OnCommitSubjectDrop(object sender, DragEventArgs e)
+        {
+            if (sender is not Control { DataContext: Models.Commit commit } ||
+                string.IsNullOrWhiteSpace(commit.SHA) ||
+                !TryGetRebaseDragSource(e, out var repo, out var source))
+            {
+                e.Handled = true;
+                return;
+            }
+
+            if (repo.CanCreatePopup())
+            {
+                if (e.KeyModifiers.HasFlag(KeyModifiers.Control))
+                {
+                    var reset = new ViewModels.Reset(repo, source, commit)
+                    {
+                        SelectedMode = Models.ResetMode.Supported[^1], // hard
+                    };
+                    repo.ShowPopup(reset);
+                }
+                else
+                {
+                    repo.ShowPopup(new ViewModels.Rebase(repo, source, commit));
+                }
+            }
+
             e.Handled = true;
         }
 
@@ -621,15 +947,15 @@ namespace SourceGit.Views
                     switch (d.Type)
                     {
                         case Models.DecoratorType.CurrentBranchHead:
-                            FillCurrentBranchMenu(menu, repo, current);
+                            FillCurrentBranchMenu(menu, repo, current, d.Color, commit.Color);
                             break;
                         case Models.DecoratorType.LocalBranchHead:
                             var lb = repo.Branches.Find(x => x.IsLocal && d.Name == x.Name);
-                            FillOtherLocalBranchMenu(menu, repo, lb, current, commit.IsMerged);
+                            FillOtherLocalBranchMenu(menu, repo, lb, current, commit.IsMerged, d.Color, commit.Color);
                             break;
                         case Models.DecoratorType.RemoteBranchHead:
                             var rb = repo.Branches.Find(x => !x.IsLocal && d.Name == x.FriendlyName);
-                            FillRemoteBranchMenu(menu, repo, rb, current, commit.IsMerged);
+                            FillRemoteBranchMenu(menu, repo, rb, current, commit.IsMerged, d.Color, commit.Color);
                             break;
                         case Models.DecoratorType.Tag:
                             var t = repo.Tags.Find(x => x.Name == d.Name);
@@ -683,6 +1009,16 @@ namespace SourceGit.Views
 
                 if (isHead)
                 {
+                    var undoLastRebase = new MenuItem();
+                    undoLastRebase.Header = "Undo Last Rebase (ORIG_HEAD)...";
+                    undoLastRebase.Icon = App.CreateMenuIcon("Icons.Undo");
+                    undoLastRebase.Click += async (_, e) =>
+                    {
+                        await TryOpenUndoLastRebasePopupAsync(repo, current);
+                        e.Handled = true;
+                    };
+                    menu.Items.Add(undoLastRebase);
+
                     var reword = new MenuItem();
                     reword.Header = App.Text("CommitCM.Reword");
                     reword.Icon = App.CreateMenuIcon("Icons.Edit");
@@ -1077,11 +1413,15 @@ namespace SourceGit.Views
             return menu;
         }
 
-        private void FillCurrentBranchMenu(ContextMenu menu, ViewModels.Repository repo, Models.Branch current)
+        private void FillCurrentBranchMenu(ContextMenu menu, ViewModels.Repository repo, Models.Branch current, uint decoratorColor, int commitColorIndex)
         {
             var submenu = new MenuItem();
             submenu.Icon = App.CreateMenuIcon("Icons.Branch");
             submenu.Header = current.Name;
+            var graphColor = GetCommitGraphColor(commitColorIndex);
+            var color = decoratorColor != 0 ? decoratorColor : (graphColor != 0 ? graphColor : repo.GetBranchFilterColor(current));
+            submenu.Background = CreateBranchNameBackground(color, true);
+            var actionBackground = CreateBranchActionBackground(color, true);
 
             var visibility = new MenuItem();
             visibility.Classes.Add("filter_mode_switcher");
@@ -1122,18 +1462,6 @@ namespace SourceGit.Views
                 submenu.Items.Add(pull);
             }
 
-            var push = new MenuItem();
-            push.Header = App.Text("BranchCM.Push", current.Name);
-            push.Icon = App.CreateMenuIcon("Icons.Push");
-            push.IsEnabled = repo.Remotes.Count > 0;
-            push.Click += (_, e) =>
-            {
-                if (repo.CanCreatePopup())
-                    repo.ShowPopup(new ViewModels.Push(repo, current));
-                e.Handled = true;
-            };
-            submenu.Items.Add(push);
-
             var rename = new MenuItem();
             rename.Header = App.Text("BranchCM.Rename", current.Name);
             rename.Icon = App.CreateMenuIcon("Icons.Rename");
@@ -1144,26 +1472,34 @@ namespace SourceGit.Views
                 e.Handled = true;
             };
             submenu.Items.Add(rename);
-            submenu.Items.Add(new MenuItem() { Header = "-" });
 
-            var copy = new MenuItem();
-            copy.Header = App.Text("BranchCM.CopyName");
-            copy.Icon = App.CreateMenuIcon("Icons.Copy");
-            copy.Click += async (_, e) =>
+            var undoLastRebase = new MenuItem();
+            undoLastRebase.Header = "Undo Last Rebase (ORIG_HEAD)...";
+            undoLastRebase.Icon = App.CreateMenuIcon("Icons.Undo");
+            undoLastRebase.Click += async (_, e) =>
             {
-                await App.CopyTextAsync(current.Name);
+                await TryOpenUndoLastRebasePopupAsync(repo, current);
                 e.Handled = true;
             };
-            submenu.Items.Add(copy);
-
+            submenu.Items.Add(undoLastRebase);
             menu.Items.Add(submenu);
+            AddLevel1ExcludeBranchMenuItem(menu, repo, current.Name, actionBackground);
+            AddLevel1PushBranchMenuItem(menu, repo, current, actionBackground);
+            AddLevel1CopyBranchNameMenuItem(menu, current.Name, actionBackground);
         }
 
-        private void FillOtherLocalBranchMenu(ContextMenu menu, ViewModels.Repository repo, Models.Branch branch, Models.Branch current, bool merged)
+        private void FillOtherLocalBranchMenu(ContextMenu menu, ViewModels.Repository repo, Models.Branch branch, Models.Branch current, bool merged, uint decoratorColor, int commitColorIndex)
         {
+            if (branch == null)
+                return;
+
             var submenu = new MenuItem();
             submenu.Icon = App.CreateMenuIcon("Icons.Branch");
             submenu.Header = branch.Name;
+            var graphColor = GetCommitGraphColor(commitColorIndex);
+            var color = decoratorColor != 0 ? decoratorColor : (graphColor != 0 ? graphColor : repo.GetBranchFilterColor(branch));
+            submenu.Background = CreateBranchNameBackground(color, true);
+            var actionBackground = CreateBranchActionBackground(color, true);
 
             var visibility = new MenuItem();
             visibility.Classes.Add("filter_mode_switcher");
@@ -1173,16 +1509,6 @@ namespace SourceGit.Views
 
             if (!repo.IsBare)
             {
-                var checkout = new MenuItem();
-                checkout.Header = App.Text("BranchCM.Checkout", branch.Name);
-                checkout.Icon = App.CreateMenuIcon("Icons.Check");
-                checkout.Click += async (_, e) =>
-                {
-                    await repo.CheckoutBranchAsync(branch);
-                    e.Handled = true;
-                };
-                submenu.Items.Add(checkout);
-
                 var merge = new MenuItem();
                 merge.Header = App.Text("BranchCM.Merge", branch.Name, current.Name);
                 merge.Icon = App.CreateMenuIcon("Icons.Merge");
@@ -1217,44 +1543,33 @@ namespace SourceGit.Views
                 e.Handled = true;
             };
             submenu.Items.Add(delete);
-            submenu.Items.Add(new MenuItem() { Header = "-" });
-
-            var copy = new MenuItem();
-            copy.Header = App.Text("BranchCM.CopyName");
-            copy.Icon = App.CreateMenuIcon("Icons.Copy");
-            copy.Click += async (_, e) =>
-            {
-                await App.CopyTextAsync(branch.Name);
-                e.Handled = true;
-            };
-            submenu.Items.Add(copy);
-
             menu.Items.Add(submenu);
+            AddLevel1CheckoutBranchMenuItem(menu, repo, branch, branch.Name, actionBackground);
+            AddLevel1ExcludeBranchMenuItem(menu, repo, branch.Name, actionBackground);
+            AddLevel1PushBranchMenuItem(menu, repo, branch, actionBackground);
+            AddLevel1CopyBranchNameMenuItem(menu, branch.Name, actionBackground);
         }
 
-        private void FillRemoteBranchMenu(ContextMenu menu, ViewModels.Repository repo, Models.Branch branch, Models.Branch current, bool merged)
+        private void FillRemoteBranchMenu(ContextMenu menu, ViewModels.Repository repo, Models.Branch branch, Models.Branch current, bool merged, uint decoratorColor, int commitColorIndex)
         {
+            if (branch == null)
+                return;
+
             var name = branch.FriendlyName;
 
             var submenu = new MenuItem();
             submenu.Icon = App.CreateMenuIcon("Icons.Branch");
             submenu.Header = name;
+            var graphColor = GetCommitGraphColor(commitColorIndex);
+            var color = decoratorColor != 0 ? decoratorColor : (graphColor != 0 ? graphColor : repo.GetBranchFilterColor(branch));
+            submenu.Background = CreateBranchNameBackground(color, false);
+            var actionBackground = CreateBranchActionBackground(color, false);
 
             var visibility = new MenuItem();
             visibility.Classes.Add("filter_mode_switcher");
             visibility.Header = new ViewModels.FilterModeInGraph(repo, branch);
             submenu.Items.Add(visibility);
             submenu.Items.Add(new MenuItem() { Header = "-" });
-
-            var checkout = new MenuItem();
-            checkout.Header = App.Text("BranchCM.Checkout", name);
-            checkout.Icon = App.CreateMenuIcon("Icons.Check");
-            checkout.Click += async (_, e) =>
-            {
-                await repo.CheckoutBranchAsync(branch);
-                e.Handled = true;
-            };
-            submenu.Items.Add(checkout);
 
             var merge = new MenuItem();
             merge.Header = App.Text("BranchCM.Merge", name, current.Name);
@@ -1279,19 +1594,314 @@ namespace SourceGit.Views
                 e.Handled = true;
             };
             submenu.Items.Add(delete);
-            submenu.Items.Add(new MenuItem() { Header = "-" });
+            menu.Items.Add(submenu);
+            AddLevel1CheckoutBranchMenuItem(menu, repo, branch, name, actionBackground);
+            AddLevel1ExcludeBranchMenuItem(menu, repo, branch.Name, actionBackground);
+            AddLevel1CopyBranchNameMenuItem(menu, name, actionBackground);
+        }
 
+        private static void AddLevel1CheckoutBranchMenuItem(ContextMenu menu, ViewModels.Repository repo, Models.Branch branch, string displayName, IBrush background)
+        {
+            var checkout = new MenuItem();
+            checkout.Header = App.Text("BranchCM.Checkout", displayName);
+            checkout.Icon = App.CreateMenuIcon("Icons.Check");
+            checkout.IsEnabled = !repo.IsBare;
+            checkout.Background = background;
+            checkout.Click += async (_, e) =>
+            {
+                await repo.CheckoutBranchAsync(branch);
+                e.Handled = true;
+            };
+            menu.Items.Add(checkout);
+        }
+
+        private static void AddLevel1ExcludeBranchMenuItem(ContextMenu menu, ViewModels.Repository repo, string branchName, IBrush background)
+        {
+            var exclude = new MenuItem();
+            exclude.Header = App.Text("Repository.BranchesVisibility.ExcludeThisBranch");
+            exclude.Icon = App.CreateMenuIcon("Icons.Filter");
+            exclude.Background = background;
+            exclude.Click += (_, e) =>
+            {
+                repo.ExcludeBranchInPresetFilter(branchName);
+                e.Handled = true;
+            };
+            menu.Items.Add(exclude);
+        }
+
+        private static void AddLevel1PushBranchMenuItem(ContextMenu menu, ViewModels.Repository repo, Models.Branch branch, IBrush background)
+        {
+            var push = new MenuItem();
+            push.Header = App.Text("BranchCM.Push", branch.Name);
+            push.Icon = App.CreateMenuIcon("Icons.Push");
+            push.IsEnabled = repo.Remotes.Count > 0;
+            push.Background = background;
+            push.Click += (_, e) =>
+            {
+                if (repo.CanCreatePopup())
+                    repo.ShowPopup(new ViewModels.Push(repo, branch));
+                e.Handled = true;
+            };
+            menu.Items.Add(push);
+        }
+
+        private static void AddLevel1CopyBranchNameMenuItem(ContextMenu menu, string branchName, IBrush background)
+        {
             var copy = new MenuItem();
             copy.Header = App.Text("BranchCM.CopyName");
             copy.Icon = App.CreateMenuIcon("Icons.Copy");
+            copy.Background = background;
             copy.Click += async (_, e) =>
             {
-                await App.CopyTextAsync(name);
+                await App.CopyTextAsync(branchName);
                 e.Handled = true;
             };
-            submenu.Items.Add(copy);
+            menu.Items.Add(copy);
+        }
 
-            menu.Items.Add(submenu);
+        private static IBrush CreateBranchActionBackground(uint branchColor, bool isLocal)
+        {
+            var color = Color.FromUInt32(branchColor == 0 ? Models.RepositorySettings.PRESET_BRANCH_EXACT_DEFAULT_COLOR : branchColor);
+            var alpha = isLocal ? (byte)0x80 : (byte)0x20;
+            return new SolidColorBrush(Color.FromArgb(alpha, color.R, color.G, color.B));
+        }
+
+        private static IBrush CreateBranchNameBackground(uint branchColor, bool isLocal)
+        {
+            var color = Color.FromUInt32(branchColor == 0 ? Models.RepositorySettings.PRESET_BRANCH_EXACT_DEFAULT_COLOR : branchColor);
+            var alpha = isLocal ? (byte)0xA0 : (byte)0x32;
+            return new SolidColorBrush(Color.FromArgb(alpha, color.R, color.G, color.B));
+        }
+
+        private static uint GetCommitGraphColor(int colorIndex)
+        {
+            if (colorIndex < 0 || colorIndex >= Models.CommitGraph.Pens.Count)
+                return 0;
+
+            if (Models.CommitGraph.Pens[colorIndex].Brush is ISolidColorBrush solid)
+                return solid.Color.ToUInt32();
+
+            return 0;
+        }
+
+        private bool TryGetBranchNameAtPoint(CommitRefsPresenter presenter, Point point, out string branchName)
+        {
+            branchName = string.Empty;
+            var decorator = presenter.DecoratorAt(point);
+            if (decorator == null)
+                return false;
+
+            switch (decorator.Type)
+            {
+                case Models.DecoratorType.CurrentCommitHead:
+                    branchName = ResolveCurrentLocalBranchName();
+                    break;
+                case Models.DecoratorType.CurrentBranchHead:
+                case Models.DecoratorType.LocalBranchHead:
+                    branchName = decorator.Name;
+                    break;
+                case Models.DecoratorType.RemoteBranchHead:
+                    branchName = ResolveRemoteDecoratorNameToBranchName(decorator.Name);
+                    break;
+                default:
+                    return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(branchName))
+                return false;
+
+            branchName = branchName.Trim();
+            return true;
+        }
+
+        private bool TryGetRebaseBranchDropTargets(CommitRefsPresenter presenter, DragEventArgs e, out ViewModels.Repository repo, out Models.Branch source, out Models.Branch target)
+        {
+            repo = null;
+            source = null;
+            target = null;
+
+            if (!TryGetRebaseDragSource(e, out repo, out source))
+                return false;
+
+            if (!TryGetBranchAtPoint(presenter, e.GetPosition(presenter), out _, out target))
+                return false;
+
+            if (IsSameBranch(source, target))
+                return false;
+
+            return true;
+        }
+
+        private bool TryGetRebaseDragSource(DragEventArgs e, out ViewModels.Repository repo, out Models.Branch source)
+        {
+            repo = null;
+            source = null;
+
+            var repoView = this.FindAncestorOfType<Repository>();
+            if (repoView?.DataContext is not ViewModels.Repository r || r.IsBare)
+                return false;
+
+            repo = r;
+
+            var hasPayload = e.DataTransfer.Contains(_dndPresetBranchNameFormat);
+            var raw = hasPayload ? e.DataTransfer.TryGetValue(_dndPresetBranchNameFormat) : null;
+            var sourceName = raw?.Trim();
+            if (string.IsNullOrEmpty(sourceName))
+            {
+                // Avalonia drag payload may be unavailable during DragOver.
+                // For history-originated drags, keep using the in-memory pressed ref.
+                if (_startDragCommitRef && !string.IsNullOrWhiteSpace(_pressedCommitRefBranchName))
+                    sourceName = _pressedCommitRefBranchName.Trim();
+            }
+            if (string.IsNullOrEmpty(sourceName) || sourceName.Equals("HEAD", StringComparison.Ordinal))
+                sourceName = ResolveCurrentLocalBranchName();
+            if (string.IsNullOrEmpty(sourceName))
+                return false;
+
+            if (repo.CurrentBranch is { IsLocal: true, IsCurrent: true } current &&
+                current.Name.Equals(sourceName, StringComparison.Ordinal))
+            {
+                source = current;
+                return true;
+            }
+
+            source = repo.Branches.Find(x => x.IsLocal && x.IsCurrent && x.Name.Equals(sourceName, StringComparison.Ordinal));
+            return source != null;
+        }
+
+        private bool TryGetBranchAtPoint(CommitRefsPresenter presenter, Point point, out ViewModels.Repository repo, out Models.Branch branch)
+        {
+            repo = null;
+            branch = null;
+
+            var repoView = this.FindAncestorOfType<Repository>();
+            if (repoView?.DataContext is not ViewModels.Repository r || r.IsBare)
+                return false;
+
+            repo = r;
+            var decorator = presenter.DecoratorAt(point);
+            return TryResolveBranchFromDecorator(repo, decorator, out branch);
+        }
+
+        private bool TryGetBranchByDecorator(Models.Decorator decorator, out ViewModels.Repository repo, out Models.Branch branch)
+        {
+            repo = null;
+            branch = null;
+
+            var repoView = this.FindAncestorOfType<Repository>();
+            if (repoView?.DataContext is not ViewModels.Repository r || r.IsBare)
+                return false;
+
+            repo = r;
+            return TryResolveBranchFromDecorator(repo, decorator, out branch);
+        }
+
+        private static bool TryResolveBranchFromDecorator(ViewModels.Repository repo, Models.Decorator decorator, out Models.Branch branch)
+        {
+            branch = null;
+            if (repo == null || decorator == null)
+                return false;
+
+            switch (decorator.Type)
+            {
+                case Models.DecoratorType.CurrentCommitHead:
+                    branch = repo.CurrentBranch?.IsLocal == true
+                        ? repo.CurrentBranch
+                        : repo.Branches.Find(x => x.IsLocal && x.IsCurrent);
+                    break;
+                case Models.DecoratorType.CurrentBranchHead:
+                case Models.DecoratorType.LocalBranchHead:
+                    branch = repo.Branches.Find(x => x.IsLocal && x.Name.Equals(decorator.Name, StringComparison.Ordinal));
+                    break;
+                case Models.DecoratorType.RemoteBranchHead:
+                    branch = repo.Branches.Find(x => !x.IsLocal && x.FriendlyName.Equals(decorator.Name, StringComparison.Ordinal));
+                    break;
+            }
+
+            return branch != null;
+        }
+
+        private static bool IsSameBranch(Models.Branch left, Models.Branch right)
+        {
+            if (left == null || right == null)
+                return false;
+
+            if (!string.IsNullOrWhiteSpace(left.FullName) && !string.IsNullOrWhiteSpace(right.FullName))
+                return left.FullName.Equals(right.FullName, StringComparison.Ordinal);
+
+            return left.IsLocal == right.IsLocal &&
+                   left.Name.Equals(right.Name, StringComparison.Ordinal) &&
+                   string.Equals(left.Remote, right.Remote, StringComparison.Ordinal);
+        }
+
+        private static Models.Branch FindBranchByName(ViewModels.Repository repo, string name)
+        {
+            if (repo == null || string.IsNullOrWhiteSpace(name))
+                return null;
+
+            foreach (var branch in repo.Branches)
+            {
+                if (branch.Name.Equals(name, StringComparison.Ordinal))
+                    return branch;
+            }
+
+            return null;
+        }
+
+        private string ResolveCurrentLocalBranchName()
+        {
+            var repoView = this.FindAncestorOfType<Repository>();
+            if (repoView?.DataContext is not ViewModels.Repository repo)
+                return string.Empty;
+
+            if (repo.CurrentBranch?.IsLocal == true && !string.IsNullOrWhiteSpace(repo.CurrentBranch.Name))
+                return repo.CurrentBranch.Name.Trim();
+
+            foreach (var branch in repo.Branches)
+            {
+                if (branch.IsLocal && branch.IsCurrent && !string.IsNullOrWhiteSpace(branch.Name))
+                    return branch.Name.Trim();
+            }
+
+            return string.Empty;
+        }
+
+        private string ResolveRemoteDecoratorNameToBranchName(string remoteFriendlyName)
+        {
+            if (string.IsNullOrEmpty(remoteFriendlyName))
+                return string.Empty;
+
+            var repoView = this.FindAncestorOfType<Repository>();
+            if (repoView?.DataContext is not ViewModels.Repository repo)
+                return remoteFriendlyName;
+
+            foreach (var branch in repo.Branches)
+            {
+                if (!branch.IsLocal && branch.FriendlyName.Equals(remoteFriendlyName, StringComparison.Ordinal))
+                    return branch.Name;
+            }
+
+            return remoteFriendlyName;
+        }
+
+        private async Task TryOpenUndoLastRebasePopupAsync(ViewModels.Repository repo, Models.Branch current)
+        {
+            if (repo == null || current == null || !repo.CanCreatePopup())
+                return;
+
+            var confirmed = await App.AskConfirmAsync(
+                $"Undo last rebase on '{current.Name}' by resetting to ORIG_HEAD?");
+            if (!confirmed)
+                return;
+
+            var target = await new Commands.QuerySingleCommit(repo.FullPath, "ORIG_HEAD").GetResultAsync();
+            if (target == null)
+            {
+                App.SendNotification("Undo Last Rebase", "ORIG_HEAD not found. Nothing to undo.");
+                return;
+            }
+
+            repo.ShowPopup(new ViewModels.Reset(repo, current, target));
         }
 
         private void FillTagMenu(ContextMenu menu, ViewModels.Repository repo, Models.Tag tag, Models.Branch current, bool merged)
@@ -1361,5 +1971,14 @@ namespace SourceGit.Views
         private double _lastGraphStartY = 0;
         private double _lastGraphClipWidth = 0;
         private double _lastGraphRowHeight = 0;
+        private double _lastGraphOffsetX = 0;
+        private int _pendingEnsureHeadVisibleRetries = 0;
+        private bool _lastHistoriesIsLoading = false;
+        private bool _isCenteringHeadCommit = false;
+        private bool _pressedCommitRef = false;
+        private bool _startDragCommitRef = false;
+        private Point _pressedCommitRefPosition = default;
+        private string _pressedCommitRefBranchName = string.Empty;
+        private readonly DataFormat<string> _dndPresetBranchNameFormat = DataFormat.CreateStringApplicationFormat("sourcegit-dnd-branch-filter-name");
     }
 }

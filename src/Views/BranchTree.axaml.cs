@@ -420,6 +420,24 @@ namespace SourceGit.Views
 
         private void OnNodePointerPressed(object sender, PointerPressedEventArgs e)
         {
+            if (sender is Border { DataContext: ViewModels.BranchTreeNode { Backend: Models.Branch pressedBranch } } border)
+            {
+                var pressPoint = e.GetCurrentPoint(border);
+                if (pressPoint.Properties.IsLeftButtonPressed)
+                {
+                    _pressedBranchNode = true;
+                    _startDragBranchNode = false;
+                    _pressedBranchNodePosition = e.GetPosition(border);
+                    _pressedBranchNodeName = pressedBranch.Name;
+                }
+                else
+                {
+                    _pressedBranchNode = false;
+                    _startDragBranchNode = false;
+                    _pressedBranchNodeName = string.Empty;
+                }
+            }
+
             var ctrl = OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control;
             if (e.KeyModifiers.HasFlag(ctrl) || e.KeyModifiers.HasFlag(KeyModifiers.Shift))
                 return;
@@ -438,6 +456,37 @@ namespace SourceGit.Views
                 return;
 
             repo.NavigateToCommit(branch.Head);
+        }
+
+        private async void OnNodePointerMoved(object sender, PointerEventArgs e)
+        {
+            if (!_pressedBranchNode || _startDragBranchNode || string.IsNullOrEmpty(_pressedBranchNodeName))
+                return;
+
+            if (sender is not Border border)
+                return;
+
+            var delta = e.GetPosition(border) - _pressedBranchNodePosition;
+            var sizeSquired = delta.X * delta.X + delta.Y * delta.Y;
+            if (sizeSquired < 64)
+                return;
+
+            _startDragBranchNode = true;
+
+            var data = new DataTransfer();
+            data.Add(DataTransferItem.Create(_dndPresetBranchNameFormat, _pressedBranchNodeName));
+            await DragDrop.DoDragDropAsync(e, data, DragDropEffects.Copy);
+
+            _pressedBranchNode = false;
+            _startDragBranchNode = false;
+            _pressedBranchNodeName = string.Empty;
+        }
+
+        private void OnNodePointerReleased(object sender, PointerReleasedEventArgs e)
+        {
+            _pressedBranchNode = false;
+            _startDragBranchNode = false;
+            _pressedBranchNodeName = string.Empty;
         }
 
         private void OnNodesSelectionChanged(object _, SelectionChangedEventArgs e)
@@ -664,6 +713,12 @@ namespace SourceGit.Views
                 }
             }
         }
+
+        private bool _pressedBranchNode = false;
+        private bool _startDragBranchNode = false;
+        private Point _pressedBranchNodePosition = default;
+        private string _pressedBranchNodeName = string.Empty;
+        private readonly DataFormat<string> _dndPresetBranchNameFormat = DataFormat.CreateStringApplicationFormat("sourcegit-dnd-branch-filter-name");
 
         private ContextMenu CreateContextMenuForLocalBranch(ViewModels.Repository repo, Models.Branch branch)
         {

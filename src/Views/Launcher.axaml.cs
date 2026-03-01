@@ -288,6 +288,15 @@ namespace SourceGit.Views
                     return;
                 }
             }
+            else if (e.Key == Key.F6)
+            {
+                if (vm.ActivePage.Data is ViewModels.Repository repo)
+                {
+                    Native.OS.OpenInFileManager(repo.FullPath);
+                    e.Handled = true;
+                    return;
+                }
+            }
 
             base.OnKeyDown(e);
         }

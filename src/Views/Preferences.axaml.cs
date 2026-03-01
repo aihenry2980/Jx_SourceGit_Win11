@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.Platform.Storage;
 
 namespace SourceGit.Views
@@ -367,6 +368,32 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
+        private async void OnPickDefaultFontFamily(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is not ViewModels.Preferences pref)
+                return;
+
+            var picker = new FontFamilySelector(GetFontFamilyNames(pref.DefaultFontFamily), pref.DefaultFontFamily, App.Text("Preferences.Appearance.DefaultFont"));
+            var selected = await picker.ShowDialog<string>(this);
+            if (!string.IsNullOrWhiteSpace(selected))
+                pref.DefaultFontFamily = selected;
+
+            e.Handled = true;
+        }
+
+        private async void OnPickMonospaceFontFamily(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is not ViewModels.Preferences pref)
+                return;
+
+            var picker = new FontFamilySelector(GetFontFamilyNames(pref.MonospaceFontFamily), pref.MonospaceFontFamily, App.Text("Preferences.Appearance.MonospaceFont"));
+            var selected = await picker.ShowDialog<string>(this);
+            if (!string.IsNullOrWhiteSpace(selected))
+                pref.MonospaceFontFamily = selected;
+
+            e.Handled = true;
+        }
+
         private static async Task SetIfChangedAsync(Dictionary<string, string> cached, string key, string value, string defValue)
         {
             bool changed = false;
@@ -498,5 +525,31 @@ namespace SourceGit.Views
             GitVersion = Native.OS.GitVersionString;
             ShowGitVersionWarning = !string.IsNullOrEmpty(GitVersion) && Native.OS.GitVersion < Models.GitVersions.MINIMAL;
         }
+
+        private static List<string> GetFontFamilyNames(string current)
+        {
+            if (s_cachedFontFamilyNames == null)
+            {
+                var list = new List<string>();
+                var dedupe = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var family in FontManager.Current.SystemFonts)
+                {
+                    var name = family?.Name?.Trim();
+                    if (!string.IsNullOrEmpty(name) && dedupe.Add(name))
+                        list.Add(name);
+                }
+
+                list.Sort(StringComparer.OrdinalIgnoreCase);
+                s_cachedFontFamilyNames = list;
+            }
+
+            var result = new List<string>(s_cachedFontFamilyNames);
+            if (!string.IsNullOrWhiteSpace(current) && !result.Exists(x => x.Equals(current, StringComparison.OrdinalIgnoreCase)))
+                result.Insert(0, current.Trim());
+
+            return result;
+        }
+
+        private static List<string> s_cachedFontFamilyNames;
     }
 }

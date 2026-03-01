@@ -6,7 +6,9 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Avalonia;
 using Avalonia.Collections;
+using Avalonia.Media;
 using Avalonia.Threading;
 
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -51,6 +53,46 @@ namespace SourceGit.ViewModels
             get => _historyFilterMode;
             private set => SetProperty(ref _historyFilterMode, value);
         }
+
+        public int IncludedHistoryFilterCount
+        {
+            get
+            {
+                if (_uiStates == null)
+                    return 0;
+
+                var count = 0;
+                foreach (var filter in _uiStates.HistoryFilters)
+                {
+                    if (filter.Mode == Models.FilterMode.Included)
+                        count++;
+                }
+
+                return count;
+            }
+        }
+
+        public int ExcludedHistoryFilterCount
+        {
+            get
+            {
+                if (_uiStates == null)
+                    return 0;
+
+                var count = 0;
+                foreach (var filter in _uiStates.HistoryFilters)
+                {
+                    if (filter.Mode == Models.FilterMode.Excluded)
+                        count++;
+                }
+
+                return count;
+            }
+        }
+
+        public bool CanFoldVisibleBranchesInGraph => _visibleFoldableBranchesCount > _visibleFoldedBranchesCount;
+
+        public bool CanUnfoldBranchesInGraph => _foldedBranchFullNames.Count > 0;
 
         public bool HasAllowedSignersFile
         {
@@ -151,11 +193,66 @@ namespace SourceGit.ViewModels
             private set
             {
                 var oldHead = _currentBranch?.Head;
-                if (SetProperty(ref _currentBranch, value) && value != null)
+                if (SetProperty(ref _currentBranch, value))
                 {
-                    if (oldHead != _currentBranch.Head && _workingCopy is { UseAmend: true })
+                    if (value != null && oldHead != _currentBranch.Head && _workingCopy is { UseAmend: true })
                         _workingCopy.UseAmend = false;
+
+                    NotifyCurrentBranchVisualChanged();
                 }
+            }
+        }
+
+        public string CurrentBranchDisplayName => CurrentBranch?.FriendlyName ?? "--";
+
+        public string CurrentBranchDisplayLabel => FormatCurrentBranchDisplayLabel(CurrentBranchDisplayName);
+
+        public bool HasSuperProjectPointer => !string.IsNullOrEmpty(_superProjectSubmoduleSHA);
+
+        public Color AccentColor => ResolvePageAccentColor();
+
+        public Color AccentHoveredColor
+        {
+            get
+            {
+                var c = AccentColor;
+                return Color.FromArgb(0x88, c.R, c.G, c.B);
+            }
+        }
+
+        public IBrush AccentToolbarBackground
+        {
+            get
+            {
+                var c = AccentColor;
+                byte Lighten(byte v) => (byte)(v + (255 - v) * 0.82);
+                return new SolidColorBrush(Color.FromArgb(0xFF, Lighten(c.R), Lighten(c.G), Lighten(c.B)));
+            }
+        }
+
+        public IBrush CurrentBranchDisplayBackground
+        {
+            get
+            {
+                if (CurrentBranch == null)
+                    return Brushes.Transparent;
+
+                var raw = Color.FromUInt32(ResolveCurrentBranchDisplayColor());
+                var alpha = CurrentBranch.IsLocal ? (byte)0xA0 : (byte)0x32;
+                return new SolidColorBrush(Color.FromArgb(alpha, raw.R, raw.G, raw.B));
+            }
+        }
+
+        public IBrush CurrentBranchDisplayForeground
+        {
+            get
+            {
+                if (CurrentBranch == null)
+                    return Brushes.Black;
+
+                var raw = Color.FromUInt32(ResolveCurrentBranchDisplayColor());
+                var luminance = 0.2126 * raw.R + 0.7152 * raw.G + 0.0722 * raw.B;
+                return luminance < 130 ? Brushes.White : Brushes.Black;
             }
         }
 
@@ -271,30 +368,59 @@ namespace SourceGit.ViewModels
 
         public string PresetBranchExactNames
         {
-            get => Preferences.Instance.PresetBranchExactNames;
+            get => _settings?.PresetBranchExactNames ?? string.Empty;
             set
             {
-                if (!string.Equals(Preferences.Instance.PresetBranchExactNames, value, StringComparison.Ordinal))
-                {
-                    Preferences.Instance.PresetBranchExactNames = value;
-                    OnPropertyChanged();
-                    OnPropertyChanged(nameof(PresetBranchFilterSummary));
-                    RebuildPresetBranchExactColorItems();
-                }
+                if (_settings == null)
+                    return;
+
+                value ??= string.Empty;
+                if (string.Equals(_settings.PresetBranchExactNames, value, StringComparison.Ordinal))
+                    return;
+
+                _settings.PresetBranchExactNames = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(PresetBranchFilterSummary));
+                RebuildPresetBranchExactColorItems();
+                SavePresetBranchFilterSettingsAsync();
             }
         }
 
         public string PresetBranchContainsPatterns
         {
-            get => Preferences.Instance.PresetBranchContainsPatterns;
+            get => _settings?.PresetBranchContainsPatterns ?? string.Empty;
             set
             {
-                if (!string.Equals(Preferences.Instance.PresetBranchContainsPatterns, value, StringComparison.Ordinal))
-                {
-                    Preferences.Instance.PresetBranchContainsPatterns = value;
-                    OnPropertyChanged();
-                    OnPropertyChanged(nameof(PresetBranchFilterSummary));
-                }
+                if (_settings == null)
+                    return;
+
+                value ??= string.Empty;
+                if (string.Equals(_settings.PresetBranchContainsPatterns, value, StringComparison.Ordinal))
+                    return;
+
+                _settings.PresetBranchContainsPatterns = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(PresetBranchFilterSummary));
+                SavePresetBranchFilterSettingsAsync();
+            }
+        }
+
+        public string PresetBranchExcludeNames
+        {
+            get => _settings?.PresetBranchExcludeNames ?? string.Empty;
+            set
+            {
+                if (_settings == null)
+                    return;
+
+                value ??= string.Empty;
+                if (string.Equals(_settings.PresetBranchExcludeNames, value, StringComparison.Ordinal))
+                    return;
+
+                _settings.PresetBranchExcludeNames = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(PresetBranchFilterSummary));
+                SavePresetBranchFilterSettingsAsync();
             }
         }
 
@@ -302,9 +428,10 @@ namespace SourceGit.ViewModels
         {
             get
             {
-                var exactCount = Preferences.Instance.GetPresetBranchExactNameSet().Count;
-                var containsCount = Preferences.Instance.GetPresetBranchContainsRuleList().Count;
-                return $"({exactCount}/{containsCount})";
+                var exactCount = _settings?.GetPresetBranchExactNameSet().Count ?? 0;
+                var containsCount = _settings?.GetPresetBranchContainsRuleList().Count ?? 0;
+                var excludeCount = _settings?.GetPresetBranchExcludeNameSet().Count ?? 0;
+                return $"({exactCount}/{containsCount}/{excludeCount})";
             }
         }
 
@@ -524,10 +651,17 @@ namespace SourceGit.ViewModels
         {
             _settings = Models.RepositorySettings.Get(_gitCommonDir);
             _uiStates = Models.RepositoryUIStates.Load(GitDir);
+            _foldedBranchFullNames.Clear();
+            _visibleFoldableBranchesCount = 0;
+            _visibleFoldedBranchesCount = 0;
+            NotifyFoldControlsChanged();
+            Preferences.Instance.PropertyChanged -= OnPreferencesPropertyChanged;
             Preferences.Instance.PropertyChanged += OnPreferencesPropertyChanged;
+            MigrateLegacyPresetBranchFiltersIfNeeded();
             IsShowingAllBranches = false;
             ShouldShowBranchPresetEmptyState = false;
-            IsPresetBranchFilterEditorExpanded = false;
+            IsPresetBranchFilterEditorExpanded = true;
+            _shouldApplyPresetBranchFilterOnInitialBranchLoad = true;
             RebuildPresetBranchExactColorItems();
 
             try
@@ -559,13 +693,13 @@ namespace SourceGit.ViewModels
             _lastFetchTime = DateTime.Now;
             EnsureAutoFetchTimerState();
             RefreshAll();
+            _ = ResolveSuperProjectSubmodulePointerOnOpenAsync();
         }
 
         public void Close()
         {
             SelectedView = null; // Do NOT modify. Used to remove exists widgets for GC.Collect
             Logs.Clear();
-            Preferences.Instance.PropertyChanged -= OnPreferencesPropertyChanged;
 
             _uiStates.Unload(_workingCopy.CommitMessage);
 
@@ -582,6 +716,7 @@ namespace SourceGit.ViewModels
 
             _autoFetchTimer?.Dispose();
             _autoFetchTimer = null;
+            Preferences.Instance.PropertyChanged -= OnPreferencesPropertyChanged;
 
             _settings = null;
             _uiStates = null;
@@ -590,6 +725,11 @@ namespace SourceGit.ViewModels
             _isShowingAllBranches = false;
             _shouldShowBranchPresetEmptyState = false;
             _isPresetBranchFilterEditorExpanded = false;
+            _shouldApplyPresetBranchFilterOnInitialBranchLoad = false;
+            _foldedBranchFullNames.Clear();
+            _visibleFoldableBranchesCount = 0;
+            _visibleFoldedBranchesCount = 0;
+            NotifyFoldControlsChanged();
 
             _watcher?.Dispose();
             _histories.Dispose();
@@ -748,6 +888,7 @@ namespace SourceGit.ViewModels
             RefreshWorktrees();
             RefreshWorkingCopyChanges();
             RefreshStashes();
+            NotifyAccentColorChanged();
 
             Task.Run(async () =>
             {
@@ -902,9 +1043,63 @@ namespace SourceGit.ViewModels
             IsPresetBranchFilterEditorExpanded = true;
         }
 
+        public void ToggleFoldBranch(Models.Branch branch)
+        {
+            if (branch == null || string.IsNullOrWhiteSpace(branch.FullName))
+                return;
+
+            if (!_foldedBranchFullNames.Add(branch.FullName))
+                _foldedBranchFullNames.Remove(branch.FullName);
+
+            NotifyFoldControlsChanged();
+            RefreshCommits();
+        }
+
+        public void FoldVisibleBranchesInGraph()
+        {
+            var visible = CollectVisibleFoldableBranchFullNamesInGraph();
+            if (visible.Count == 0)
+                return;
+
+            var changed = false;
+            foreach (var fullName in visible)
+                changed |= _foldedBranchFullNames.Add(fullName);
+
+            if (!changed)
+                return;
+
+            NotifyFoldControlsChanged();
+            RefreshCommits();
+        }
+
+        public void UnfoldAllBranchesInGraph()
+        {
+            if (_foldedBranchFullNames.Count == 0)
+                return;
+
+            _foldedBranchFullNames.Clear();
+            NotifyFoldControlsChanged();
+            RefreshCommits();
+        }
+
+        public void ExcludeBranchInPresetFilter(string name)
+        {
+            if (_settings == null || string.IsNullOrWhiteSpace(name))
+                return;
+
+            if (_settings.AddPresetBranchExcludeName(name))
+            {
+                OnPropertyChanged(nameof(PresetBranchExcludeNames));
+                OnPropertyChanged(nameof(PresetBranchFilterSummary));
+                SavePresetBranchFilterSettingsAsync();
+            }
+
+            ApplyPresetBranchFilter();
+        }
+
         public void UpdatePresetBranchExactNameColor(string name, uint color)
         {
-            if (!Preferences.Instance.SetPresetBranchExactNameColor(name, color))
+            if (_settings == null || !_settings.SetPresetBranchExactNameColor(name, color))
                 return;
 
             foreach (var item in _presetBranchExactColorItems)
@@ -916,7 +1111,7 @@ namespace SourceGit.ViewModels
                 }
             }
 
-            Preferences.Instance.Save();
+            SavePresetBranchFilterSettingsAsync();
         }
 
         public void ToggleShowAllBranchesAndApplyGraphFilter()
@@ -936,9 +1131,15 @@ namespace SourceGit.ViewModels
         {
             UsePresetBranchFilterForSession();
 
-            var exactNames = Preferences.Instance.GetPresetBranchExactNameSet();
-            var containsPatterns = Preferences.Instance.GetPresetBranchContainsRuleList();
-            var exactNameColors = Preferences.Instance.GetPresetBranchExactNameColorMap();
+            var exactNames = _settings?.GetPresetBranchExactNameSet() ?? [];
+            var containsPatterns = _settings?.GetPresetBranchContainsRuleList() ?? [];
+            var excludeNames = _settings?.GetPresetBranchExcludeNameSet() ?? [];
+            var exactNameColors = _settings?.GetPresetBranchExactNameColorMap() ?? [];
+            var hasIncludeRules = exactNames.Count > 0 || containsPatterns.Count > 0;
+            var hasExcludeRules = excludeNames.Count > 0;
+            var branchesByFullName = new Dictionary<string, Models.Branch>(StringComparer.Ordinal);
+            foreach (var branch in _branches)
+                branchesByFullName[branch.FullName] = branch;
 
             _uiStates.HistoryFilters.Clear();
             HistoryFilterMode = Models.FilterMode.None;
@@ -958,20 +1159,53 @@ namespace SourceGit.ViewModels
                 _uiStates.UpdateHistoryFilters(pattern, type, Models.FilterMode.Included, color);
             }
 
+            void AddExcludedHistoryFilter(string pattern, Models.FilterType type)
+            {
+                _uiStates.UpdateHistoryFilters(pattern, type, Models.FilterMode.Excluded, 0);
+            }
+
+            if (!hasIncludeRules)
+            {
+                if (hasExcludeRules)
+                {
+                    foreach (var branch in _branches)
+                    {
+                        if (!excludeNames.Contains(branch.Name))
+                            continue;
+
+                        if (branch.IsLocal)
+                            AddExcludedHistoryFilter(branch.FullName, Models.FilterType.LocalBranch);
+                        else
+                            AddExcludedHistoryFilter(branch.FullName, Models.FilterType.RemoteBranch);
+                    }
+                }
+
+                SavePresetBranchFilterSettingsAsync();
+                RefreshHistoryFilters(true);
+                RefreshBranchSidebarByCurrentFilters();
+                return;
+            }
+
             foreach (var branch in _branches)
             {
-                if (!IsPresetBranchMatched(branch.Name, exactNames, containsPatterns))
+                if (!ShouldShowByPresetBranchFilters(branch.Name, exactNames, containsPatterns, excludeNames))
                     continue;
 
                 var color = 0u;
                 if (exactNames.Contains(branch.Name))
-                    color = exactNameColors.GetValueOrDefault(branch.Name, Preferences.PRESET_BRANCH_EXACT_DEFAULT_COLOR);
+                    color = exactNameColors.GetValueOrDefault(branch.Name, Models.RepositorySettings.PRESET_BRANCH_EXACT_DEFAULT_COLOR);
 
                 if (branch.IsLocal)
                 {
                     AddIncludedHistoryFilter(branch.FullName, Models.FilterType.LocalBranch, color);
-                    if (!string.IsNullOrEmpty(branch.Upstream) && !branch.IsUpstreamGone)
+
+                    if (!string.IsNullOrEmpty(branch.Upstream) &&
+                        !branch.IsUpstreamGone &&
+                        branchesByFullName.TryGetValue(branch.Upstream, out var upstreamBranch) &&
+                        ShouldShowByPresetBranchFilters(upstreamBranch.Name, exactNames, containsPatterns, excludeNames))
+                    {
                         AddIncludedHistoryFilter(branch.Upstream, Models.FilterType.RemoteBranch, color);
+                    }
                 }
                 else
                 {
@@ -979,7 +1213,7 @@ namespace SourceGit.ViewModels
                 }
             }
 
-            Preferences.Instance.Save();
+            SavePresetBranchFilterSettingsAsync();
             RefreshHistoryFilters(true);
             RefreshBranchSidebarByCurrentFilters();
         }
@@ -1082,10 +1316,18 @@ namespace SourceGit.ViewModels
             return (_histories?.DetailContext as CommitDetail)?.Commit;
         }
 
+        public void NotifyAccentColorChanged()
+        {
+            OnPropertyChanged(nameof(AccentColor));
+            OnPropertyChanged(nameof(AccentHoveredColor));
+            OnPropertyChanged(nameof(AccentToolbarBackground));
+        }
+
         public void ClearHistoryFilters()
         {
             _uiStates.HistoryFilters.Clear();
             HistoryFilterMode = Models.FilterMode.None;
+            NotifyHistoryFilterIndicatorsChanged();
 
             ResetBranchTreeFilterMode(LocalBranchTrees);
             ResetBranchTreeFilterMode(RemoteBranchTrees);
@@ -1186,15 +1428,58 @@ namespace SourceGit.ViewModels
         public uint GetBranchFilterColor(Models.Branch branch)
         {
             if (branch == null)
-                return Preferences.PRESET_BRANCH_EXACT_DEFAULT_COLOR;
+                return Models.RepositorySettings.PRESET_BRANCH_EXACT_DEFAULT_COLOR;
 
             foreach (var filter in _uiStates.HistoryFilters)
             {
                 if (filter.Pattern.Equals(branch.FullName, StringComparison.Ordinal))
-                    return filter.Color == 0 ? Preferences.PRESET_BRANCH_EXACT_DEFAULT_COLOR : filter.Color;
+                    return filter.Color == 0 ? Models.RepositorySettings.PRESET_BRANCH_EXACT_DEFAULT_COLOR : filter.Color;
             }
 
-            return Preferences.PRESET_BRANCH_EXACT_DEFAULT_COLOR;
+            if (_settings != null)
+            {
+                var configured = _settings.GetPresetBranchConfiguredColorMap();
+                if (configured.TryGetValue(branch.Name, out var color) && color != 0)
+                    return color;
+            }
+
+            return Models.RepositorySettings.PRESET_BRANCH_EXACT_DEFAULT_COLOR;
+        }
+
+        public void SetBranchDisplayColor(Models.Branch branch, uint color)
+        {
+            if (branch == null)
+                return;
+
+            var changed = false;
+            if (_settings != null)
+            {
+                changed |= _settings.SetPresetBranchExactNameColor(branch.Name, color);
+                if (changed)
+                    SavePresetBranchFilterSettingsAsync();
+            }
+
+            if (_uiStates != null && _uiStates.GetHistoryFilterMode(branch.FullName) == Models.FilterMode.Included)
+            {
+                if (branch.IsLocal)
+                {
+                    changed |= _uiStates.UpdateHistoryFilters(branch.FullName, Models.FilterType.LocalBranch, Models.FilterMode.Included, color);
+                    if (!string.IsNullOrEmpty(branch.Upstream) && !branch.IsUpstreamGone)
+                        changed |= _uiStates.UpdateHistoryFilters(branch.Upstream, Models.FilterType.RemoteBranch, Models.FilterMode.Included, color);
+                }
+                else
+                {
+                    changed |= _uiStates.UpdateHistoryFilters(branch.FullName, Models.FilterType.RemoteBranch, Models.FilterMode.Included, color);
+                }
+            }
+
+            if (changed)
+                RefreshHistoryFilters(true);
+            else
+                RefreshCommits();
+
+            if (CurrentBranch != null && branch.FullName.Equals(CurrentBranch.FullName, StringComparison.Ordinal))
+                NotifyCurrentBranchVisualChanged();
         }
 
         public void SetBranchFilterColor(Models.Branch branch, uint color)
@@ -1219,6 +1504,9 @@ namespace SourceGit.ViewModels
 
             if (changed)
                 RefreshHistoryFilters(true);
+
+            if (CurrentBranch != null && branch.FullName.Equals(CurrentBranch.FullName, StringComparison.Ordinal))
+                NotifyCurrentBranchVisualChanged();
         }
 
         public async Task StashAllAsync(bool autoStart)
@@ -1314,6 +1602,7 @@ namespace SourceGit.ViewModels
                     Branches = branches;
                     CurrentBranch = branches.Find(x => x.IsCurrent);
                     RefreshBranchSidebarByCurrentFilters();
+                    ApplyPresetBranchFilterIfNeededOnInitialLoad();
 
                     if (_workingCopy != null)
                         _workingCopy.HasRemotes = remotes.Count > 0;
@@ -1391,6 +1680,12 @@ namespace SourceGit.ViewModels
                 var commits = await new Commands.QueryCommits(FullPath, builder.ToString()).GetResultAsync().ConfigureAwait(false);
                 AttachSuperProjectPointerDecorator(commits);
                 ApplyHistoryFilterColorsToDecorators(commits);
+                var foldableBranchFullNames = BuildFoldableBranchFullNameSet(commits);
+                var removed = _foldedBranchFullNames.RemoveWhere(name => !foldableBranchFullNames.Contains(name));
+                if (removed > 0)
+                    NotifyFoldControlsChanged();
+                ApplyFoldStateToDecorators(commits, foldableBranchFullNames);
+                ApplyFoldedBranchRuns(commits, foldableBranchFullNames);
                 var graph = Models.CommitGraph.Parse(commits, _uiStates.HistoryShowFlags.HasFlag(Models.HistoryShowFlags.FirstParentOnly));
 
                 Dispatcher.UIThread.Invoke(() =>
@@ -1403,6 +1698,8 @@ namespace SourceGit.ViewModels
                         _histories.IsLoading = false;
                         _histories.Commits = commits;
                         _histories.Graph = graph;
+                        UpdateVisibleFoldBranchStatesFromCurrentGraph();
+                        NotifyCurrentBranchVisualChanged();
 
                         BisectState = _histories.UpdateBisectInfo();
 
@@ -1473,6 +1770,11 @@ namespace SourceGit.ViewModels
 
         public void RefreshWorkingCopyChanges()
         {
+            RefreshWorkingCopyChanges(false);
+        }
+
+        public void RefreshWorkingCopyChanges(bool bypassUntrackedCache)
+        {
             if (IsBare)
                 return;
 
@@ -1485,7 +1787,11 @@ namespace SourceGit.ViewModels
 
             Task.Run(async () =>
             {
-                var changes = await new Commands.QueryLocalChanges(FullPath, _uiStates.IncludeUntrackedInLocalChanges, noOptionalLocks)
+                var changes = await new Commands.QueryLocalChanges(
+                    FullPath,
+                    _uiStates.IncludeUntrackedInLocalChanges,
+                    noOptionalLocks,
+                    !bypassUntrackedCache)
                     .GetResultAsync()
                     .ConfigureAwait(false);
 
@@ -1685,26 +1991,66 @@ namespace SourceGit.ViewModels
 
             using var lockWatcher = _watcher?.Lock();
 
-            var noTags = _uiStates.FetchWithoutTags;
+            // Fast recursive toolbar mode: always skip tags to reduce fetch time.
+            var noTags = true;
             var force = _uiStates.EnableForceOnFetch;
             var succ = true;
 
-            if (_uiStates.FetchAllRemotes)
+            // Split recursive fetch into independent units so one hung submodule fetch does not
+            // block the whole operation forever.
+            log?.AppendLine("=== Fetch root repository ===");
+            var rootRemoteNames = GetFetchRemoteNamesForCurrentRepository();
+            foreach (var remoteName in rootRemoteNames)
             {
-                foreach (var remote in _remotes)
+                var one = await RunSplitFetchUnitAsync(
+                    FullPath,
+                    remoteName,
+                    noTags,
+                    force,
+                    prune,
+                    false,
+                    log,
+                    "root");
+                if (!one)
+                    succ = false;
+            }
+
+            foreach (var submodule in _submodules)
+            {
+                var submodulePath = submodule.Path;
+                if (string.IsNullOrWhiteSpace(submodulePath))
+                    continue;
+
+                var submoduleRoot = Native.OS.GetAbsPath(FullPath, submodulePath).Replace('\\', '/');
+                var gitDir = Path.Combine(submoduleRoot, ".git");
+                if (!Directory.Exists(submoduleRoot) || (!Directory.Exists(gitDir) && !File.Exists(gitDir)))
                 {
-                    var one = await new Commands.Fetch(FullPath, remote.Name, noTags, force, prune, true)
-                        .Use(log)
-                        .RunAsync();
+                    log?.AppendLine($"Skip submodule `{submodulePath}` (not initialized).");
+                    continue;
+                }
+
+                var submoduleRemotes = await GetFetchRemoteNamesForRepositoryAsync(submoduleRoot);
+                if (submoduleRemotes.Count == 0)
+                {
+                    log?.AppendLine($"Skip submodule `{submodulePath}` (no remotes).");
+                    continue;
+                }
+
+                log?.AppendLine($"=== Fetch submodule `{submodulePath}` ===");
+                foreach (var remoteName in submoduleRemotes)
+                {
+                    var one = await RunSplitFetchUnitAsync(
+                        submoduleRoot,
+                        remoteName,
+                        noTags,
+                        force,
+                        prune,
+                        true,
+                        log,
+                        $"submodule:{submodulePath}");
                     if (!one)
                         succ = false;
                 }
-            }
-            else
-            {
-                succ = await new Commands.Fetch(FullPath, GetPreferredRemoteName(), noTags, force, prune, true)
-                    .Use(log)
-                    .RunAsync();
             }
 
             if (succ)
@@ -1713,24 +2059,123 @@ namespace SourceGit.ViewModels
             return succ;
         }
 
-        public async Task<bool> RunUpdateSubmodulesRecursivelyAsync(Models.ICommandLog log)
+        private List<string> GetFetchRemoteNamesForCurrentRepository()
+        {
+            var names = new List<string>();
+            var preferred = GetPreferredRemoteName();
+            if (!string.IsNullOrEmpty(preferred))
+                names.Add(preferred);
+
+            return names;
+        }
+
+        private async Task<List<string>> GetFetchRemoteNamesForRepositoryAsync(string repoPath)
+        {
+            var remotes = await new Commands.QueryRemotes(repoPath).GetResultAsync().ConfigureAwait(false);
+            if (remotes.Count == 0)
+                return [];
+
+            var preferred = remotes.Find(x => x.Name.Equals("origin", StringComparison.Ordinal))?.Name ?? remotes[0].Name;
+            return [preferred];
+        }
+
+        private async Task<bool> RunSplitFetchUnitAsync(
+            string repoPath,
+            string remoteName,
+            bool noTags,
+            bool force,
+            bool prune,
+            bool recurseSubmodules,
+            Models.ICommandLog log,
+            string scope)
+        {
+            if (string.IsNullOrEmpty(remoteName))
+                return false;
+
+            using var timeout = new CancellationTokenSource(SPLIT_FETCH_TIMEOUT);
+            var cmd = new Commands.Fetch(repoPath, remoteName, noTags, force, prune, recurseSubmodules)
+            {
+                RaiseError = false,
+                CancellationToken = timeout.Token,
+            };
+
+            var ok = await cmd.Use(log).RunAsync().ConfigureAwait(false);
+            if (timeout.IsCancellationRequested)
+            {
+                log?.AppendLine($"[timeout] Fetch `{remoteName}` in `{scope}` exceeded {SPLIT_FETCH_TIMEOUT.TotalMinutes:0} min and was terminated.");
+                return false;
+            }
+
+            if (!ok)
+                log?.AppendLine($"[failed] Fetch `{remoteName}` in `{scope}` failed.");
+
+            return ok;
+        }
+
+        public async Task<bool> RunUpdateSubmodulesRecursivelyAsync(Models.ICommandLog log, List<string> selectedTargets = null)
         {
             var targets = new List<string>();
-            foreach (var submodule in _submodules)
-                targets.Add(submodule.Path);
+            if (selectedTargets == null)
+            {
+                foreach (var submodule in _submodules)
+                    targets.Add(submodule.Path);
+            }
+            else
+            {
+                var available = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var submodule in _submodules)
+                    available.Add(submodule.Path);
+
+                foreach (var target in selectedTargets)
+                {
+                    if (!string.IsNullOrWhiteSpace(target) && available.Contains(target))
+                        targets.Add(target);
+                }
+            }
 
             if (targets.Count == 0)
             {
-                log?.AppendLine("No submodules found.");
+                log?.AppendLine(selectedTargets == null ? "No submodules found." : "No submodules selected.");
                 return true;
             }
 
             using var lockWatcher = _watcher?.Lock();
-            var succ = await new Commands.Submodule(FullPath)
-                .Use(log)
-                .UpdateAsync(targets, true, false);
+            var succ = true;
+            var anyUpdated = false;
 
-            if (succ)
+            foreach (var target in targets)
+            {
+                if (string.IsNullOrWhiteSpace(target))
+                    continue;
+
+                using var timeout = new CancellationTokenSource(SPLIT_SUBMODULE_UPDATE_TIMEOUT);
+                var cmd = new Commands.Submodule(FullPath)
+                {
+                    RaiseError = false,
+                    CancellationToken = timeout.Token,
+                };
+
+                log?.AppendLine($"=== Update submodule `{target}` ===");
+                var one = await cmd.Use(log).UpdateAsync([target], true, false).ConfigureAwait(false);
+                if (timeout.IsCancellationRequested)
+                {
+                    log?.AppendLine($"[timeout] Update `{target}` exceeded {SPLIT_SUBMODULE_UPDATE_TIMEOUT.TotalMinutes:0} min and was terminated.");
+                    succ = false;
+                    continue;
+                }
+
+                if (one)
+                {
+                    anyUpdated = true;
+                }
+                else
+                {
+                    log?.AppendLine($"[failed] Update `{target}` failed.");
+                    succ = false;
+                }
+            }
+
+            if (anyUpdated)
                 MarkSubmodulesDirtyManually();
 
             return succ;
@@ -1772,15 +2217,19 @@ namespace SourceGit.ViewModels
 
             var root = Path.GetFullPath(Path.Combine(FullPath, submodule));
             var normalizedPath = root.Replace('\\', '/').TrimEnd('/');
+            var prefs = Preferences.Instance;
+            var node = prefs.FindNode(normalizedPath);
+            var isNew = node == null;
+            if (isNew)
+                node = prefs.FindOrAddNodeByRepositoryPath(normalizedPath, null, false, false);
 
-            var node = Preferences.Instance.FindNode(normalizedPath) ??
-                new RepositoryNode
-                {
-                    Id = normalizedPath,
-                    Name = Path.GetFileName(normalizedPath),
-                    Bookmark = selfPage.Node.Bookmark,
-                    IsRepository = true,
-                };
+            var desiredBookmark = selfPage.Node.Bookmark;
+            var bookmarkChanged = node.Bookmark != desiredBookmark;
+            if (bookmarkChanged)
+                node.Bookmark = desiredBookmark;
+
+            if (isNew || bookmarkChanged)
+                prefs.Save();
 
             var superProjectSubmoduleSHA = _submodules.Find(x => x.Path.Equals(submodule, StringComparison.Ordinal))?.SHA;
             App.GetLauncher().OpenRepositoryInTab(node, null, superProjectSubmoduleSHA);
@@ -1793,7 +2242,16 @@ namespace SourceGit.ViewModels
                 return;
 
             _superProjectSubmoduleSHA = normalized;
+            OnPropertyChanged(nameof(HasSuperProjectPointer));
             RefreshCommits();
+        }
+
+        public void NavigateToSuperProjectPointerCommit()
+        {
+            if (string.IsNullOrEmpty(_superProjectSubmoduleSHA))
+                return;
+
+            NavigateToCommit(_superProjectSubmoduleSHA);
         }
 
         public void AddWorktree()
@@ -1815,7 +2273,7 @@ namespace SourceGit.ViewModels
                 {
                     Id = worktree.FullPath,
                     Name = Path.GetFileName(worktree.FullPath),
-                    Bookmark = 0,
+                    Bookmark = Preferences.Instance.FindUnusedBookmarkColor(),
                     IsRepository = true,
                 };
 
@@ -1926,13 +2384,15 @@ namespace SourceGit.ViewModels
 
         private List<Models.Branch> GetVisibleBranchesByCurrentFilter()
         {
-            var exactNames = Preferences.Instance.GetPresetBranchExactNameSet();
-            var containsPatterns = Preferences.Instance.GetPresetBranchContainsRuleList();
+            var exactNames = _settings?.GetPresetBranchExactNameSet() ?? [];
+            var containsPatterns = _settings?.GetPresetBranchContainsRuleList() ?? [];
+            var excludeNames = _settings?.GetPresetBranchExcludeNameSet() ?? [];
 
             var visibles = new List<Models.Branch>();
             foreach (var branch in _branches)
             {
-                if (!IsShowingAllBranches && !IsPresetBranchMatched(branch.Name, exactNames, containsPatterns))
+                if (!IsShowingAllBranches &&
+                    !ShouldShowByPresetBranchFilters(branch.Name, exactNames, containsPatterns, excludeNames))
                     continue;
 
                 if (!string.IsNullOrEmpty(_filter) && !branch.FullName.Contains(_filter, StringComparison.OrdinalIgnoreCase))
@@ -2039,6 +2499,8 @@ namespace SourceGit.ViewModels
         private void RefreshHistoryFilters(bool refresh)
         {
             HistoryFilterMode = _uiStates.GetHistoryFilterMode();
+            NotifyHistoryFilterIndicatorsChanged();
+            NotifyCurrentBranchVisualChanged();
             if (!refresh)
                 return;
 
@@ -2047,6 +2509,140 @@ namespace SourceGit.ViewModels
             UpdateBranchTreeFilterMode(RemoteBranchTrees, map);
             UpdateTagFilterMode(map);
             RefreshCommits();
+        }
+
+        private void NotifyHistoryFilterIndicatorsChanged()
+        {
+            OnPropertyChanged(nameof(IncludedHistoryFilterCount));
+            OnPropertyChanged(nameof(ExcludedHistoryFilterCount));
+        }
+
+        private HashSet<string> CollectVisibleFoldableBranchFullNamesInGraph()
+        {
+            var visible = new HashSet<string>(StringComparer.Ordinal);
+            var commits = _histories?.Commits;
+            if (commits is not { Count: > 0 })
+                return visible;
+
+            foreach (var commit in commits)
+            {
+                foreach (var decorator in commit.Decorators)
+                {
+                    if (!decorator.IsBranchFoldable)
+                        continue;
+
+                    if (TryGetDecoratorBranchFullName(decorator, out var fullName))
+                        visible.Add(fullName);
+                }
+            }
+
+            return visible;
+        }
+
+        private void UpdateVisibleFoldBranchStatesFromCurrentGraph()
+        {
+            var visible = CollectVisibleFoldableBranchFullNamesInGraph();
+            _visibleFoldableBranchesCount = visible.Count;
+
+            var foldedVisible = 0;
+            foreach (var fullName in visible)
+            {
+                if (_foldedBranchFullNames.Contains(fullName))
+                    foldedVisible++;
+            }
+
+            _visibleFoldedBranchesCount = foldedVisible;
+            NotifyFoldControlsChanged();
+        }
+
+        private void NotifyFoldControlsChanged()
+        {
+            OnPropertyChanged(nameof(CanFoldVisibleBranchesInGraph));
+            OnPropertyChanged(nameof(CanUnfoldBranchesInGraph));
+        }
+
+        private void NotifyCurrentBranchVisualChanged()
+        {
+            OnPropertyChanged(nameof(CurrentBranchDisplayName));
+            OnPropertyChanged(nameof(CurrentBranchDisplayLabel));
+            OnPropertyChanged(nameof(CurrentBranchDisplayBackground));
+            OnPropertyChanged(nameof(CurrentBranchDisplayForeground));
+        }
+
+        private uint ResolveCurrentBranchDisplayColor()
+        {
+            if (CurrentBranch == null)
+                return Models.RepositorySettings.PRESET_BRANCH_EXACT_DEFAULT_COLOR;
+
+            var fallback = GetBranchFilterColor(CurrentBranch);
+            var commits = _histories?.Commits;
+            if (commits is not { Count: > 0 })
+                return fallback;
+
+            var head = commits.Find(x => x.IsCurrentHead);
+            if (head == null)
+                return fallback;
+
+            foreach (var decorator in head.Decorators)
+            {
+                if (decorator.Color == 0)
+                    continue;
+
+                if (decorator.Type is Models.DecoratorType.CurrentBranchHead or Models.DecoratorType.LocalBranchHead)
+                {
+                    if (CurrentBranch.IsLocal && decorator.Name.Equals(CurrentBranch.Name, StringComparison.Ordinal))
+                        return decorator.Color;
+                }
+                else if (decorator.Type == Models.DecoratorType.RemoteBranchHead)
+                {
+                    if (!CurrentBranch.IsLocal && decorator.Name.Equals(CurrentBranch.FriendlyName, StringComparison.Ordinal))
+                        return decorator.Color;
+                }
+            }
+
+            if (head.Color >= 0 &&
+                head.Color < Models.CommitGraph.Pens.Count &&
+                Models.CommitGraph.Pens[head.Color].Brush is ISolidColorBrush solid)
+                return solid.Color.ToUInt32();
+
+            return fallback;
+        }
+
+        private static string FormatCurrentBranchDisplayLabel(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+                return "--";
+
+            const int minChunk = 6;
+            const int fallbackSplit = 24;
+            if (name.Length <= fallbackSplit)
+                return name;
+
+            var mid = name.Length / 2;
+            var best = -1;
+            var bestDistance = int.MaxValue;
+            for (var i = minChunk; i < name.Length - minChunk; i++)
+            {
+                var ch = name[i];
+                if (ch != '-' && ch != '_')
+                    continue;
+
+                var distance = Math.Abs(i - mid);
+                if (distance < bestDistance)
+                {
+                    best = i;
+                    bestDistance = distance;
+                }
+            }
+
+            if (best >= 0)
+                return name.Insert(best + 1, "\n");
+
+            var split = Math.Min(fallbackSplit, name.Length - 1);
+            if (split <= 0)
+                return name;
+
+            return name.Insert(split, "\n");
         }
 
         private void UpdateBranchTreeFilterMode(List<BranchTreeNode> nodes, Dictionary<string, Models.FilterMode> map)
@@ -2120,6 +2716,21 @@ namespace SourceGit.ViewModels
             return null;
         }
 
+        private Color ResolvePageAccentColor()
+        {
+            var bookmark = GetOwnerPage()?.Node?.Bookmark ?? 0;
+            if (Models.Bookmarks.Get(bookmark) is ISolidColorBrush solid)
+                return solid.Color;
+
+            return Color.FromUInt32(Preferences.Instance.MainAccentColor);
+        }
+
+        private void OnPreferencesPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(Preferences.MainAccentColor))
+                NotifyAccentColorChanged();
+        }
+
         private string GetPreferredRemoteName()
         {
             if (_remotes.Count == 0)
@@ -2137,22 +2748,31 @@ namespace SourceGit.ViewModels
 
         private void RebuildPresetBranchExactColorItems()
         {
-            var names = Preferences.Instance.GetPresetBranchExactNameList();
-            var colors = Preferences.Instance.GetPresetBranchExactNameColorMap();
+            var names = _settings?.GetPresetBranchExactNameList() ?? [];
+            var colors = _settings?.GetPresetBranchExactNameColorMap() ?? [];
 
             _presetBranchExactColorItems.Clear();
             foreach (var name in names)
             {
-                var color = colors.GetValueOrDefault(name, Preferences.PRESET_BRANCH_EXACT_DEFAULT_COLOR);
+                var color = colors.GetValueOrDefault(name, Models.RepositorySettings.PRESET_BRANCH_EXACT_DEFAULT_COLOR);
                 _presetBranchExactColorItems.Add(new PresetBranchExactColorItem(name, color));
             }
 
             OnPropertyChanged(nameof(HasPresetBranchExactColorItems));
         }
 
-        private static bool IsPresetBranchMatched(string name, HashSet<string> exactNames, List<string> containsPatterns)
+        private static bool ShouldShowByPresetBranchFilters(string name, HashSet<string> exactNames, List<string> containsPatterns, HashSet<string> excludeNames)
         {
             if (string.IsNullOrEmpty(name))
+                return false;
+
+            var hasIncludeRules = exactNames.Count > 0 || containsPatterns.Count > 0;
+            var isExcluded = excludeNames.Contains(name);
+
+            if (!hasIncludeRules)
+                return !isExcluded;
+
+            if (isExcluded)
                 return false;
 
             if (exactNames.Contains(name))
@@ -2183,6 +2803,42 @@ namespace SourceGit.ViewModels
             }
 
             return normalized.ToLowerInvariant();
+        }
+
+        private async Task ResolveSuperProjectSubmodulePointerOnOpenAsync()
+        {
+            try
+            {
+                var superProjectRoot = await new Commands.QuerySuperProjectRootPath(FullPath).GetResultAsync().ConfigureAwait(false);
+                if (string.IsNullOrWhiteSpace(superProjectRoot))
+                    return;
+
+                var normalizedSuperProjectRoot = superProjectRoot.Replace('\\', '/').TrimEnd('/');
+                var pathComparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+                if (normalizedSuperProjectRoot.Equals(FullPath, pathComparison))
+                    return;
+
+                var submodules = await new Commands.QuerySubmodules(normalizedSuperProjectRoot).GetResultAsync().ConfigureAwait(false);
+                foreach (var submodule in submodules)
+                {
+                    if (string.IsNullOrWhiteSpace(submodule.Path))
+                        continue;
+
+                    var submoduleRoot = Path.GetFullPath(Path.Combine(normalizedSuperProjectRoot, submodule.Path)).Replace('\\', '/').TrimEnd('/');
+                    if (!submoduleRoot.Equals(FullPath, pathComparison))
+                        continue;
+
+                    var normalized = NormalizeSubmodulePointerSHA(submodule.SHA);
+                    if (!string.IsNullOrEmpty(normalized))
+                        await Dispatcher.UIThread.InvokeAsync(() => UpdateSuperProjectSubmoduleSHA(normalized));
+
+                    return;
+                }
+            }
+            catch
+            {
+                // Best-effort: keep existing behavior if auto-detection fails.
+            }
         }
 
         private void AttachSuperProjectPointerDecorator(List<Models.Commit> commits)
@@ -2221,6 +2877,19 @@ namespace SourceGit.ViewModels
                 return;
 
             var branchColors = new Dictionary<string, uint>(StringComparer.Ordinal);
+            if (_settings != null)
+            {
+                var configured = _settings.GetPresetBranchConfiguredColorMap();
+                if (configured.Count > 0)
+                {
+                    foreach (var branch in _branches)
+                    {
+                        if (configured.TryGetValue(branch.Name, out var color) && color != 0)
+                            branchColors[branch.FullName] = color;
+                    }
+                }
+            }
+
             foreach (var filter in _uiStates.HistoryFilters)
             {
                 if (filter.Mode != Models.FilterMode.Included || filter.Color == 0)
@@ -2251,31 +2920,222 @@ namespace SourceGit.ViewModels
             }
         }
 
-        private void OnPreferencesPropertyChanged(object sender, PropertyChangedEventArgs e)
+        private HashSet<string> BuildFoldableBranchFullNameSet(List<Models.Commit> commits)
         {
-            if (e.PropertyName != nameof(Preferences.PresetBranchExactNames) &&
-                e.PropertyName != nameof(Preferences.PresetBranchContainsPatterns) &&
-                e.PropertyName != nameof(Preferences.PresetBranchExactNameColors))
-                return;
+            var res = new HashSet<string>(StringComparer.Ordinal);
+            if (commits == null || commits.Count == 0 || _branches.Count == 0)
+                return res;
 
-            if (!Dispatcher.UIThread.CheckAccess())
+            var indexBySHA = new Dictionary<string, int>(commits.Count, StringComparer.Ordinal);
+            var childCounts = new Dictionary<string, int>(commits.Count, StringComparer.Ordinal);
+            for (var i = 0; i < commits.Count; i++)
             {
-                Dispatcher.UIThread.Post(() =>
-                {
-                    OnPropertyChanged(nameof(PresetBranchExactNames));
-                    OnPropertyChanged(nameof(PresetBranchContainsPatterns));
-                    OnPropertyChanged(nameof(PresetBranchFilterSummary));
-                    RebuildPresetBranchExactColorItems();
-                    RefreshBranchSidebarByCurrentFilters();
-                });
-                return;
+                var c = commits[i];
+                indexBySHA[c.SHA] = i;
+                childCounts.TryAdd(c.SHA, 0);
             }
 
-            OnPropertyChanged(nameof(PresetBranchExactNames));
-            OnPropertyChanged(nameof(PresetBranchContainsPatterns));
-            OnPropertyChanged(nameof(PresetBranchFilterSummary));
-            RebuildPresetBranchExactColorItems();
-            RefreshBranchSidebarByCurrentFilters();
+            foreach (var commit in commits)
+            {
+                foreach (var parent in commit.Parents)
+                {
+                    if (childCounts.TryGetValue(parent, out var children))
+                        childCounts[parent] = children + 1;
+                }
+            }
+
+            foreach (var branch in _branches)
+            {
+                if (string.IsNullOrWhiteSpace(branch.FullName) || string.IsNullOrWhiteSpace(branch.Head))
+                    continue;
+
+                if (!indexBySHA.TryGetValue(branch.Head, out var headIndex))
+                    continue;
+
+                var cur = commits[headIndex];
+                while (cur.Parents.Count > 0)
+                {
+                    var firstParent = cur.Parents[0];
+                    if (!indexBySHA.TryGetValue(firstParent, out var parentIndex))
+                        break;
+
+                    var parentCommit = commits[parentIndex];
+                    if (!CanFoldAwayCommit(parentCommit, childCounts))
+                        break;
+
+                    res.Add(branch.FullName);
+                    break;
+                }
+            }
+
+            return res;
+        }
+
+        private void ApplyFoldStateToDecorators(List<Models.Commit> commits, HashSet<string> foldableBranchFullNames)
+        {
+            if (commits == null || commits.Count == 0)
+                return;
+
+            foreach (var commit in commits)
+            {
+                foreach (var decorator in commit.Decorators)
+                {
+                    decorator.IsBranchFoldable = false;
+                    decorator.IsBranchFolded = false;
+
+                    if (!TryGetDecoratorBranchFullName(decorator, out var fullName))
+                        continue;
+
+                    decorator.IsBranchFoldable = foldableBranchFullNames.Contains(fullName);
+                    decorator.IsBranchFolded = decorator.IsBranchFoldable && _foldedBranchFullNames.Contains(fullName);
+                }
+            }
+        }
+
+        private void ApplyFoldedBranchRuns(List<Models.Commit> commits, HashSet<string> foldableBranchFullNames)
+        {
+            if (commits == null || commits.Count == 0 || _foldedBranchFullNames.Count == 0)
+                return;
+
+            foreach (var commit in commits)
+                commit.FoldedCommitsBelow = 0;
+
+            var indexBySHA = new Dictionary<string, int>(commits.Count, StringComparer.Ordinal);
+            var childCounts = new Dictionary<string, int>(commits.Count, StringComparer.Ordinal);
+            for (var i = 0; i < commits.Count; i++)
+            {
+                var c = commits[i];
+                indexBySHA[c.SHA] = i;
+                childCounts.TryAdd(c.SHA, 0);
+            }
+
+            foreach (var commit in commits)
+            {
+                foreach (var parent in commit.Parents)
+                {
+                    if (childCounts.TryGetValue(parent, out var children))
+                        childCounts[parent] = children + 1;
+                }
+            }
+
+            var hiddenSHAs = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var fullName in _foldedBranchFullNames)
+            {
+                if (!foldableBranchFullNames.Contains(fullName))
+                    continue;
+
+                var branch = _branches.Find(x => x.FullName.Equals(fullName, StringComparison.Ordinal));
+                if (branch == null || string.IsNullOrWhiteSpace(branch.Head))
+                    continue;
+
+                if (!indexBySHA.TryGetValue(branch.Head, out var headIndex))
+                    continue;
+
+                var cur = commits[headIndex];
+                var collapsedCount = 0;
+                while (cur.Parents.Count > 0)
+                {
+                    var firstParent = cur.Parents[0];
+                    if (!indexBySHA.TryGetValue(firstParent, out var parentIndex))
+                        break;
+
+                    var parentCommit = commits[parentIndex];
+                    if (!CanFoldAwayCommit(parentCommit, childCounts))
+                        break;
+
+                    hiddenSHAs.Add(parentCommit.SHA);
+                    collapsedCount++;
+                    cur = parentCommit;
+                }
+
+                if (collapsedCount > 0 && headIndex >= 0 && headIndex < commits.Count)
+                    commits[headIndex].FoldedCommitsBelow = Math.Max(commits[headIndex].FoldedCommitsBelow, collapsedCount);
+            }
+
+            if (hiddenSHAs.Count > 0)
+                commits.RemoveAll(x => hiddenSHAs.Contains(x.SHA));
+        }
+
+        private static bool TryGetDecoratorBranchFullName(Models.Decorator decorator, out string fullName)
+        {
+            fullName = string.Empty;
+            if (decorator == null)
+                return false;
+
+            switch (decorator.Type)
+            {
+                case Models.DecoratorType.CurrentBranchHead:
+                case Models.DecoratorType.LocalBranchHead:
+                    fullName = $"refs/heads/{decorator.Name}";
+                    return true;
+                case Models.DecoratorType.RemoteBranchHead:
+                    fullName = $"refs/remotes/{decorator.Name}";
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        private static bool CanFoldAwayCommit(Models.Commit commit, Dictionary<string, int> childCounts)
+        {
+            if (commit == null)
+                return false;
+
+            if (commit.Decorators.Count > 0)
+                return false;
+
+            if (commit.Parents.Count != 1)
+                return false;
+
+            return !childCounts.TryGetValue(commit.SHA, out var children) || children <= 1;
+        }
+
+        private void MigrateLegacyPresetBranchFiltersIfNeeded()
+        {
+            if (_settings == null)
+                return;
+
+            if (!string.IsNullOrWhiteSpace(_settings.PresetBranchExactNames) ||
+                !string.IsNullOrWhiteSpace(_settings.PresetBranchContainsPatterns) ||
+                !string.IsNullOrWhiteSpace(_settings.PresetBranchExcludeNames) ||
+                !string.IsNullOrWhiteSpace(_settings.PresetBranchExactNameColors))
+                return;
+
+            var prefs = Preferences.Instance;
+            if (string.IsNullOrWhiteSpace(prefs.PresetBranchExactNames) &&
+                string.IsNullOrWhiteSpace(prefs.PresetBranchContainsPatterns) &&
+                string.IsNullOrWhiteSpace(prefs.PresetBranchExactNameColors))
+                return;
+
+            _settings.PresetBranchExactNames = prefs.PresetBranchExactNames ?? string.Empty;
+            _settings.PresetBranchContainsPatterns = prefs.PresetBranchContainsPatterns ?? string.Empty;
+            _settings.PresetBranchExactNameColors = prefs.PresetBranchExactNameColors ?? string.Empty;
+            _ = _settings.SaveAsync();
+        }
+
+        private void ApplyPresetBranchFilterIfNeededOnInitialLoad()
+        {
+            if (!_shouldApplyPresetBranchFilterOnInitialBranchLoad || _uiStates == null)
+                return;
+
+            _shouldApplyPresetBranchFilterOnInitialBranchLoad = false;
+
+            if (_uiStates.HistoryFilters.Count > 0)
+                return;
+
+            var exactNames = _settings?.GetPresetBranchExactNameSet() ?? [];
+            var containsPatterns = _settings?.GetPresetBranchContainsRuleList() ?? [];
+            var excludeNames = _settings?.GetPresetBranchExcludeNameSet() ?? [];
+            if (exactNames.Count == 0 && containsPatterns.Count == 0 && excludeNames.Count == 0)
+                return;
+
+            ApplyPresetBranchFilter();
+        }
+
+        private void SavePresetBranchFilterSettingsAsync()
+        {
+            if (_settings != null)
+                _ = _settings.SaveAsync();
         }
 
         private void UpdateShouldShowBranchPresetEmptyState()
@@ -2416,6 +3276,10 @@ namespace SourceGit.ViewModels
         private bool _isAutoFetching = false;
         private Timer _autoFetchTimer = null;
         private DateTime _lastFetchTime = DateTime.MinValue;
+        private bool _shouldApplyPresetBranchFilterOnInitialBranchLoad = false;
+        private readonly HashSet<string> _foldedBranchFullNames = new(StringComparer.Ordinal);
+        private int _visibleFoldableBranchesCount = 0;
+        private int _visibleFoldedBranchesCount = 0;
 
         private Models.BisectState _bisectState = Models.BisectState.None;
         private bool _isBisectCommandRunning = false;
@@ -2437,6 +3301,24 @@ namespace SourceGit.ViewModels
             new PresetBranchColorOption("Gold", 0xFFFFB900),
             new PresetBranchColorOption("Red", 0xFFD13438),
             new PresetBranchColorOption("Gray", 0xFF5D5A58),
+            new PresetBranchColorOption("Teal", 0xFF008272),
+            new PresetBranchColorOption("Indigo", 0xFF4F6BED),
+            new PresetBranchColorOption("Pink", 0xFFE3008C),
+            new PresetBranchColorOption("Crimson", 0xFFA80000),
+            new PresetBranchColorOption("Coral", 0xFFFF6F61),
+            new PresetBranchColorOption("Amber", 0xFFFF8C00),
+            new PresetBranchColorOption("Lime", 0xFF7FBA00),
+            new PresetBranchColorOption("Olive", 0xFF6B8E23),
+            new PresetBranchColorOption("Mint", 0xFF00B294),
+            new PresetBranchColorOption("Sky", 0xFF00B7C3),
+            new PresetBranchColorOption("Navy", 0xFF003B6F),
+            new PresetBranchColorOption("Violet", 0xFF8764B8),
+            new PresetBranchColorOption("Brown", 0xFF8E562E),
+            new PresetBranchColorOption("Slate", 0xFF607D8B),
+            new PresetBranchColorOption("Charcoal", 0xFF2D2D30),
         ];
+
+        private static readonly TimeSpan SPLIT_FETCH_TIMEOUT = TimeSpan.FromMinutes(5);
+        private static readonly TimeSpan SPLIT_SUBMODULE_UPDATE_TIMEOUT = TimeSpan.FromMinutes(5);
     }
 }

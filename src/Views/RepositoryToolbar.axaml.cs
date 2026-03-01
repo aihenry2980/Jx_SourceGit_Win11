@@ -134,6 +134,11 @@ namespace SourceGit.Views
             }
         }
 
+        private void OpenWithExternalToolsByHotKey(object sender, RoutedEventArgs e)
+        {
+            OpenWithExternalTools(OpenWithExternalToolsButton, e);
+        }
+
         private async void OpenStatistics(object _, RoutedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo)
@@ -179,6 +184,16 @@ namespace SourceGit.Views
             }
         }
 
+        private void RefreshHistoryGraph(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+            {
+                repo.RefreshBranches();
+                repo.RefreshCommits();
+                e.Handled = true;
+            }
+        }
+
         private async void FetchRecursively(object sender, RoutedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo && repo.CanCreatePopup())
@@ -186,6 +201,39 @@ namespace SourceGit.Views
                 await repo.ShowAndStartPopupAsync(new ViewModels.ToolbarRecursiveOperation(repo, ViewModels.ToolbarRecursiveOperationKind.FetchRecursively));
                 e.Handled = true;
             }
+        }
+
+        private async void UndoLastRebase(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is not ViewModels.Repository repo || !repo.CanCreatePopup())
+                return;
+
+            var current = repo.CurrentBranch;
+            if (current == null || !current.IsLocal)
+            {
+                App.SendNotification("Undo Last Rebase", "Current local branch is not available.");
+                e.Handled = true;
+                return;
+            }
+
+            var confirmed = await App.AskConfirmAsync(
+                $"Undo last rebase on '{current.Name}' by resetting to ORIG_HEAD?");
+            if (!confirmed)
+            {
+                e.Handled = true;
+                return;
+            }
+
+            var target = await new Commands.QuerySingleCommit(repo.FullPath, "ORIG_HEAD").GetResultAsync();
+            if (target == null)
+            {
+                App.SendNotification("Undo Last Rebase", "ORIG_HEAD not found. Nothing to undo.");
+                e.Handled = true;
+                return;
+            }
+
+            repo.ShowPopup(new ViewModels.Reset(repo, current, target));
+            e.Handled = true;
         }
 
         private async void UpdateSubmodulesRecursively(object sender, RoutedEventArgs e)
@@ -238,6 +286,15 @@ namespace SourceGit.Views
             if (DataContext is ViewModels.Repository repo)
             {
                 await repo.StashAllAsync(e.KeyModifiers is KeyModifiers.Control);
+                e.Handled = true;
+            }
+        }
+
+        private async void StashAllByHotKey(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+            {
+                await repo.StashAllAsync(false);
                 e.Handled = true;
             }
         }
@@ -508,6 +565,11 @@ namespace SourceGit.Views
             ev.Handled = true;
         }
 
+        private void OpenCustomActionMenuByHotKey(object sender, RoutedEventArgs e)
+        {
+            OpenCustomActionMenu(OpenCustomActionMenuButton, e);
+        }
+
         private async void OpenGitLogs(object sender, RoutedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo)
@@ -517,16 +579,46 @@ namespace SourceGit.Views
             }
         }
 
-        private void NavigateToHead(object sender, RoutedEventArgs e)
+        private void CreateNewBranchByHotKey(object sender, RoutedEventArgs e)
         {
-            if (DataContext is ViewModels.Repository { CurrentBranch: not null } repo)
+            if (DataContext is ViewModels.Repository repo)
             {
-                var repoView = TopLevel.GetTopLevel(this)?.FindDescendantOfType<Repository>();
-                repoView?.LocalBranchTree?.Select(repo.CurrentBranch);
-
-                repo.NavigateToCommit(repo.CurrentBranch.Head);
+                repo.CreateNewBranch();
                 e.Handled = true;
             }
+        }
+
+        private void NavigateToHead(object sender, RoutedEventArgs e)
+        {
+            TryNavigateToCurrentHead();
+            e.Handled = true;
+        }
+
+        private void NavigateToSuperProjectPointer(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+                repo.NavigateToSuperProjectPointerCommit();
+
+            e.Handled = true;
+        }
+
+        private void OnCurrentBranchNamePointerPressed(object sender, PointerPressedEventArgs e)
+        {
+            if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            {
+                TryNavigateToCurrentHead();
+                e.Handled = true;
+            }
+        }
+
+        private void TryNavigateToCurrentHead()
+        {
+            if (DataContext is not ViewModels.Repository { CurrentBranch: not null } repo)
+                return;
+
+            var repoView = TopLevel.GetTopLevel(this)?.FindDescendantOfType<Repository>();
+            repoView?.LocalBranchTree?.Select(repo.CurrentBranch);
+            repo.NavigateToCommit(repo.CurrentBranch.Head);
         }
     }
 }

@@ -48,7 +48,10 @@ namespace SourceGit.ViewModels
             set
             {
                 if (SetProperty(ref _theme, value) && !_isLoading)
+                {
                     App.SetTheme(_theme, _themeOverrides);
+                    App.SetAccentColor(_mainAccentColor);
+                }
             }
         }
 
@@ -58,7 +61,10 @@ namespace SourceGit.ViewModels
             set
             {
                 if (SetProperty(ref _themeOverrides, value) && !_isLoading)
+                {
                     App.SetTheme(_theme, value);
+                    App.SetAccentColor(_mainAccentColor);
+                }
             }
         }
 
@@ -134,6 +140,23 @@ namespace SourceGit.ViewModels
 
         public double HistoriesFontSize => _defaultFontSize * _historiesZoom;
         public double HistoriesRowHeight => Math.Max(16.0, HistoriesFontSize + 10.0);
+
+        public uint MainAccentColor
+        {
+            get => _mainAccentColor;
+            set
+            {
+                if (SetProperty(ref _mainAccentColor, value))
+                {
+                    OnPropertyChanged(nameof(MainAccentBrush));
+                    if (!_isLoading)
+                        App.SetAccentColor(value);
+                }
+            }
+        }
+
+        [JsonIgnore]
+        public Avalonia.Media.IBrush MainAccentBrush => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromUInt32(_mainAccentColor));
 
         public LayoutInfo Layout
         {
@@ -598,7 +621,7 @@ namespace SourceGit.ViewModels
                 {
                     Id = normalized,
                     Name = Path.GetFileName(normalized),
-                    Bookmark = 0,
+                    Bookmark = FindUnusedBookmarkColor(),
                     IsRepository = true,
                 };
 
@@ -610,6 +633,20 @@ namespace SourceGit.ViewModels
             }
 
             return node;
+        }
+
+        public int FindUnusedBookmarkColor()
+        {
+            var used = new HashSet<int>();
+            CollectUsedBookmarkColors(RepositoryNodes, used);
+
+            for (var i = 1; i < Models.Bookmarks.Brushes.Length; i++)
+            {
+                if (!used.Contains(i))
+                    return i;
+            }
+
+            return Models.Bookmarks.Brushes.Length > 1 ? 1 : 0;
         }
 
         public void MoveNode(RepositoryNode node, RepositoryNode to, bool save)
@@ -891,6 +928,24 @@ namespace SourceGit.ViewModels
             return null;
         }
 
+        private void CollectUsedBookmarkColors(List<RepositoryNode> nodes, HashSet<int> used)
+        {
+            if (nodes == null || used == null)
+                return;
+
+            foreach (var node in nodes)
+            {
+                if (node.IsRepository &&
+                    node.Bookmark > 0 &&
+                    node.Bookmark < Models.Bookmarks.Brushes.Length)
+                {
+                    used.Add(node.Bookmark);
+                }
+
+                CollectUsedBookmarkColors(node.SubNodes, used);
+            }
+        }
+
         private bool RemoveNodeRecursive(RepositoryNode node, List<RepositoryNode> collection)
         {
             if (collection.Contains(node))
@@ -943,6 +998,7 @@ namespace SourceGit.ViewModels
         private int _editorTabWidth = 4;
         private double _zoom = 1.0;
         private double _historiesZoom = 1.0;
+        private uint _mainAccentColor = 0xFF0078D7;
         private LayoutInfo _layout = new();
 
         private int _maxHistoryCommits = 20000;

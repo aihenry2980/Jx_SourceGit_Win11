@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
 
 using Avalonia.Collections;
@@ -160,6 +161,12 @@ namespace SourceGit.ViewModels
             get => _repo.Settings.CustomActions;
         }
 
+        public string RepoLocalIgnoreRules
+        {
+            get => _repoLocalIgnoreRules;
+            set => SetProperty(ref _repoLocalIgnoreRules, value);
+        }
+
         public Models.CustomAction SelectedCustomAction
         {
             get => _selectedCustomAction;
@@ -206,6 +213,21 @@ namespace SourceGit.ViewModels
                     RegexString = rule.RegexString,
                     URLTemplate = rule.URLTemplate,
                 });
+            }
+
+            _repoLocalIgnoreFile = Path.Combine(_repo.GitDir, "info", "exclude");
+            if (File.Exists(_repoLocalIgnoreFile))
+            {
+                try
+                {
+                    _repoLocalIgnoreRules = File.ReadAllText(_repoLocalIgnoreFile).ReplaceLineEndings("\n");
+                    _repoLocalIgnoreRulesOrg = _repoLocalIgnoreRules;
+                }
+                catch
+                {
+                    _repoLocalIgnoreRules = string.Empty;
+                    _repoLocalIgnoreRulesOrg = string.Empty;
+                }
             }
         }
 
@@ -295,8 +317,16 @@ namespace SourceGit.ViewModels
             await SetIfChangedAsync("fetch.prune", EnablePruneOnFetch ? "true" : "false", "false");
 
             await ApplyIssueTrackerChangesAsync();
+            await ApplyRepoLocalIgnoreRulesAsync();
             await _repo.Settings.SaveAsync();
             _repo.EnsureAutoFetchTimerState();
+        }
+
+        public async Task ApplyRepoLocalIgnoreRulesAsync()
+        {
+            await SaveRepoLocalIgnoreRulesAsync();
+            await ApplyAssumeUnchangedForTrackedLocalIgnoreRulesAsync();
+            _repo.RefreshWorkingCopyChanges(true);
         }
 
         private async Task SetIfChangedAsync(string key, string value, string defValue)
@@ -361,9 +391,104 @@ namespace SourceGit.ViewModels
             }
         }
 
+        private async Task<bool> SaveRepoLocalIgnoreRulesAsync()
+        {
+            var next = (_repoLocalIgnoreRules ?? string.Empty).ReplaceLineEndings("\n");
+            if (next.Equals(_repoLocalIgnoreRulesOrg, StringComparison.Ordinal))
+                return false;
+
+            try
+            {
+                var dir = Path.GetDirectoryName(_repoLocalIgnoreFile);
+                if (!string.IsNullOrEmpty(dir))
+                    Directory.CreateDirectory(dir);
+
+                await File.WriteAllTextAsync(_repoLocalIgnoreFile, next);
+                _repoLocalIgnoreRulesOrg = next;
+                return true;
+            }
+            catch
+            {
+                // Ignore save errors
+                return false;
+            }
+        }
+
+        private async Task ApplyAssumeUnchangedForTrackedLocalIgnoreRulesAsync()
+        {
+            var rules = new List<string>();
+            var dedupeRules = new HashSet<string>(StringComparer.Ordinal);
+
+            var lines = (_repoLocalIgnoreRules ?? string.Empty).ReplaceLineEndings("\n").Split('\n');
+            foreach (var raw in lines)
+            {
+                var rule = raw.Trim();
+                if (!IsLocalIgnoreRuleApplicableToTrackedFiles(rule))
+                    continue;
+
+                rule = rule.Replace('\\', '/');
+                if (!dedupeRules.Add(rule))
+                    continue;
+
+                rules.Add(rule);
+            }
+
+            if (rules.Count == 0)
+                return;
+
+            var trackedTargets = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var rule in rules)
+            {
+                var found = await new Commands.QueryTrackedFiles(_repo.FullPath, rule).GetResultAsync();
+                foreach (var one in found)
+                    trackedTargets.Add(one);
+            }
+
+            if (trackedTargets.Count == 0)
+                return;
+
+            using var lockWatcher = _repo.LockWatcher();
+            var log = _repo.CreateLog("Apply Local Ignore Rules");
+            var failed = new List<string>();
+
+            foreach (var file in trackedTargets)
+            {
+                var success = false;
+                for (var i = 0; i < 5; i++)
+                {
+                    success = await new Commands.AssumeUnchanged(_repo.FullPath, file, true) { RaiseError = false }.Use(log).ExecAsync();
+                    if (success)
+                        break;
+
+                    await Task.Delay(120);
+                }
+
+                if (!success)
+                    failed.Add(file);
+            }
+
+            log.Complete();
+
+            if (failed.Count > 0)
+                App.RaiseException(_repo.FullPath, $"Failed to mark ignore rules as assume-unchanged:\n{string.Join("\n", failed)}");
+        }
+
+        private static bool IsLocalIgnoreRuleApplicableToTrackedFiles(string rule)
+        {
+            if (string.IsNullOrWhiteSpace(rule))
+                return false;
+
+            if (rule.StartsWith('#') || rule.StartsWith('!'))
+                return false;
+            return true;
+        }
+
         private readonly Repository _repo;
         private readonly Dictionary<string, string> _cached;
+        private readonly string _repoLocalIgnoreFile;
         private string _httpProxy;
+        private string _repoLocalIgnoreRules = string.Empty;
+        private string _repoLocalIgnoreRulesOrg = string.Empty;
         private Models.CommitTemplate _selectedCommitTemplate = null;
         private Models.IssueTracker _selectedIssueTracker = null;
         private Models.CustomAction _selectedCustomAction = null;

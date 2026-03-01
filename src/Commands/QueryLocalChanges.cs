@@ -11,7 +11,7 @@ namespace SourceGit.Commands
         [GeneratedRegex(@"^(\s?[\w\?]{1,4})\s+(.+)$")]
         private static partial Regex REG_FORMAT();
 
-        public QueryLocalChanges(string repo, bool includeUntracked = true, bool noOptionalLocks = true)
+        public QueryLocalChanges(string repo, bool includeUntracked = true, bool noOptionalLocks = true, bool useUntrackedCache = true)
         {
             WorkingDirectory = repo;
             Context = repo;
@@ -20,7 +20,12 @@ namespace SourceGit.Commands
             if (noOptionalLocks)
                 builder.Append("--no-optional-locks ");
             if (includeUntracked)
-                builder.Append("-c core.untrackedCache=true -c status.showUntrackedFiles=all status -uall --ignore-submodules=dirty --porcelain");
+            {
+                if (useUntrackedCache)
+                    builder.Append("-c core.untrackedCache=true ");
+
+                builder.Append("-c status.showUntrackedFiles=all status -uall --ignore-submodules=dirty --porcelain");
+            }
             else
                 builder.Append("status -uno --ignore-submodules=dirty --porcelain");
 

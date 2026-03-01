@@ -445,6 +445,16 @@ namespace SourceGit.Views
 
                     var extension = Path.GetExtension(change.Path);
                     var hasExtra = false;
+                    if (!hasSelectedFolder)
+                    {
+                        var addToLocalIgnore = CreateLocalGitIgnoreMenu(repo, change.Path, extension);
+                        if (addToLocalIgnore != null)
+                        {
+                            menu.Items.Add(addToLocalIgnore);
+                            hasExtra = true;
+                        }
+                    }
+
                     if (change.WorkTree == Models.ChangeState.Untracked)
                     {
                         var addToIgnore = new MenuItem();
@@ -1280,6 +1290,141 @@ namespace SourceGit.Views
             }
 
             return menu;
+        }
+
+        private MenuItem CreateLocalGitIgnoreMenu(ViewModels.Repository repo, string path, string extension)
+        {
+            if (repo == null || string.IsNullOrWhiteSpace(path))
+                return null;
+
+            var addToLocalIgnore = new MenuItem();
+            addToLocalIgnore.Header = "Add to Local Git Ignore";
+            addToLocalIgnore.Icon = App.CreateMenuIcon("Icons.GitIgnore");
+
+            var singleFile = new MenuItem();
+            singleFile.Header = App.Text("WorkingCopy.AddToGitIgnore.SingleFile");
+            singleFile.Click += async (_, e) =>
+            {
+                await AddPatternToLocalGitIgnoreAsync(repo, path, true);
+                e.Handled = true;
+            };
+            addToLocalIgnore.Items.Add(singleFile);
+
+            if (!string.IsNullOrEmpty(extension))
+            {
+                var byExtension = new MenuItem();
+                byExtension.Header = App.Text("WorkingCopy.AddToGitIgnore.Extension", extension);
+                byExtension.Click += async (_, e) =>
+                {
+                    await AddPatternToLocalGitIgnoreAsync(repo, $"*{extension}", true);
+                    e.Handled = true;
+                };
+                addToLocalIgnore.Items.Add(byExtension);
+
+                var dir = Path.GetDirectoryName(path)?.Replace('\\', '/').TrimEnd('/');
+                if (!string.IsNullOrEmpty(dir))
+                {
+                    var byExtensionInSameFolder = new MenuItem();
+                    byExtensionInSameFolder.Header = App.Text("WorkingCopy.AddToGitIgnore.ExtensionInSameFolder", extension);
+                    byExtensionInSameFolder.Click += async (_, e) =>
+                    {
+                        await AddPatternToLocalGitIgnoreAsync(repo, $"{dir}/*{extension}", true);
+                        e.Handled = true;
+                    };
+                    addToLocalIgnore.Items.Add(byExtensionInSameFolder);
+                }
+
+                var byExtensionRecursively = new MenuItem();
+                byExtensionRecursively.Header = App.Text("WorkingCopy.AddToGitIgnore.ExtensionRecursively", extension);
+                byExtensionRecursively.Click += async (_, e) =>
+                {
+                    await AddPatternToLocalGitIgnoreAsync(repo, $"**/*{extension}", true);
+                    e.Handled = true;
+                };
+                addToLocalIgnore.Items.Add(byExtensionRecursively);
+            }
+
+            return addToLocalIgnore;
+        }
+
+        private async System.Threading.Tasks.Task AddPatternToLocalGitIgnoreAsync(ViewModels.Repository repo, string pattern, bool assumeUnchangedIfTracked)
+        {
+            if (repo == null || string.IsNullOrWhiteSpace(pattern))
+                return;
+
+            var trimmed = pattern.Trim().Replace('\\', '/');
+            try
+            {
+                using var lockWatcher = repo.LockWatcher();
+
+                var file = Path.Combine(repo.GitDir, "info", "exclude");
+                var parent = Path.GetDirectoryName(file);
+                if (!string.IsNullOrEmpty(parent) && !Directory.Exists(parent))
+                    Directory.CreateDirectory(parent);
+
+                if (!File.Exists(file))
+                {
+                    await File.WriteAllLinesAsync(file, [trimmed]);
+                }
+                else
+                {
+                    var exists = false;
+                    var lines = await File.ReadAllLinesAsync(file);
+                    foreach (var line in lines)
+                    {
+                        if (line.Trim().Equals(trimmed, StringComparison.Ordinal))
+                        {
+                            exists = true;
+                            break;
+                        }
+                    }
+
+                    if (!exists)
+                    {
+                        var org = await File.ReadAllTextAsync(file);
+                        if (!org.EndsWith('\n'))
+                            await File.AppendAllLinesAsync(file, ["", trimmed]);
+                        else
+                            await File.AppendAllLinesAsync(file, [trimmed]);
+                    }
+                }
+
+                if (assumeUnchangedIfTracked)
+                {
+                    var trackedTargets = await new Commands.QueryTrackedFiles(repo.FullPath, trimmed).GetResultAsync();
+                    if (trackedTargets.Count > 0)
+                    {
+                        var log = repo.CreateLog("Assume File Unchanged");
+                        var failed = 0;
+                        foreach (var target in trackedTargets)
+                        {
+                            var success = false;
+                            for (var i = 0; i < 5; i++)
+                            {
+                                success = await new Commands.AssumeUnchanged(repo.FullPath, target, true) { RaiseError = false }.Use(log).ExecAsync();
+                                if (success)
+                                    break;
+
+                                await System.Threading.Tasks.Task.Delay(120);
+                            }
+
+                            if (!success)
+                                failed++;
+                        }
+
+                        log.Complete();
+
+                        if (failed > 0)
+                            App.RaiseException(repo.FullPath, $"Failed to mark {failed} tracked file(s) as assume-unchanged for rule '{trimmed}'.");
+                    }
+                }
+
+                repo.RefreshWorkingCopyChanges(true);
+            }
+            catch (Exception ex)
+            {
+                App.RaiseException(repo.FullPath, $"Failed to add local ignore rule '{trimmed}': {ex.Message}");
+            }
         }
 
         private void TryAddOpenFileToContextMenu(ContextMenu menu, string fullpath)

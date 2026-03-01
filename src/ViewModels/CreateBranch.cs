@@ -73,6 +73,7 @@ namespace SourceGit.ViewModels
 
             BasedOn = commit;
             DiscardLocalChanges = false;
+            Name = GuessLocalBranchNameFromCommitRemoteDecorators(commit);
         }
 
         public CreateBranch(Repository repo, Models.Tag tag)
@@ -206,5 +207,72 @@ namespace SourceGit.ViewModels
         private string _name = null;
         private readonly string _baseOnRevision = null;
         private bool _allowOverwrite = false;
+
+        private string GuessLocalBranchNameFromCommitRemoteDecorators(Models.Commit commit)
+        {
+            if (commit == null)
+                return null;
+
+            if (commit.Decorators != null)
+            {
+                foreach (var decorator in commit.Decorators)
+                {
+                    if (decorator.Type != Models.DecoratorType.RemoteBranchHead || string.IsNullOrWhiteSpace(decorator.Name))
+                        continue;
+
+                    var remoteFriendlyName = decorator.Name.Trim();
+                    foreach (var branch in _repo.Branches)
+                    {
+                        if (!branch.IsLocal &&
+                            branch.FriendlyName.Equals(remoteFriendlyName, StringComparison.Ordinal) &&
+                            !string.IsNullOrWhiteSpace(branch.Name))
+                        {
+                            return branch.Name;
+                        }
+                    }
+
+                    var split = remoteFriendlyName.IndexOf('/');
+                    if (split >= 0 && split < remoteFriendlyName.Length - 1)
+                        return remoteFriendlyName.Substring(split + 1);
+
+                    return remoteFriendlyName;
+                }
+            }
+
+            // No remote branch points to this commit: fallback to short SHA.
+            var baseName = commit.SHA;
+            if (string.IsNullOrWhiteSpace(baseName))
+                return null;
+
+            baseName = baseName.Trim();
+            if (baseName.Length > 10)
+                baseName = baseName.Substring(0, 10);
+
+            if (!IsBranchNameUsed(baseName))
+                return baseName;
+
+            for (var i = 2; i <= 1000; i++)
+            {
+                var candidate = $"{baseName}-{i}";
+                if (!IsBranchNameUsed(candidate))
+                    return candidate;
+            }
+
+            return baseName;
+        }
+
+        private bool IsBranchNameUsed(string name)
+        {
+            foreach (var branch in _repo.Branches)
+            {
+                if (branch.IsLocal)
+                {
+                    if (branch.Name.Equals(name, StringComparison.Ordinal))
+                        return true;
+                }
+            }
+
+            return false;
+        }
     }
 }

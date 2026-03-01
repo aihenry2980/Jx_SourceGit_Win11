@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 
 using Avalonia.Data.Converters;
@@ -68,6 +69,9 @@ namespace SourceGit.Converters
         public static readonly FuncValueConverter<string, string> ToShortSHA =
             new FuncValueConverter<string, string>(v => v == null ? string.Empty : (v.Length > 10 ? v.Substring(0, 10) : v));
 
+        public static readonly FuncValueConverter<string, string> ToShortSHA5 =
+            new FuncValueConverter<string, string>(v => v == null ? string.Empty : (v.Length > 5 ? v.Substring(0, 5) : v));
+
         public static readonly FuncValueConverter<string, string> TrimRefsPrefix =
             new FuncValueConverter<string, string>(v =>
             {
@@ -91,5 +95,25 @@ namespace SourceGit.Converters
 
         public static readonly FuncValueConverter<KeyGesture, string> FromKeyGesture =
             new FuncValueConverter<KeyGesture, string>(v => v?.ToString("p", null) ?? string.Empty);
+
+        public static readonly FuncValueConverter<string, List<string>> ToPresetBranchRuleTokens =
+            new FuncValueConverter<string, List<string>>(v =>
+            {
+                var result = new List<string>();
+                if (string.IsNullOrWhiteSpace(v))
+                    return result;
+
+                var exists = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var line in v.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n'))
+                {
+                    var token = line.Trim();
+                    if (token.Length == 0 || !exists.Add(token))
+                        continue;
+
+                    result.Add(token);
+                }
+
+                return result;
+            });
     }
 }

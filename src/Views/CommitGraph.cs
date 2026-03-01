@@ -1,4 +1,5 @@
-﻿using Avalonia;
+using System;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 
@@ -60,12 +61,13 @@ namespace SourceGit.Views
 
             var startY = layout.StartY;
             var clipWidth = layout.ClipWidth;
+            var offsetX = layout.OffsetX;
             var clipHeight = Bounds.Height;
             var rowHeight = layout.RowHeight;
             var endY = startY + clipHeight + 28;
 
-            using (context.PushClip(new Rect(0, 0, clipWidth, clipHeight)))
-            using (context.PushTransform(Matrix.CreateTranslation(0, -startY)))
+            using (context.PushClip(new Rect(offsetX, 0, clipWidth, clipHeight)))
+            using (context.PushTransform(Matrix.CreateTranslation(offsetX, -startY)))
             {
                 DrawCurves(context, graph, startY, endY, rowHeight);
                 DrawAnchors(context, graph, startY, endY, rowHeight);
@@ -234,7 +236,28 @@ namespace SourceGit.Views
                         context.DrawEllipse(dotFill, pen, center, 3, 3);
                         break;
                 }
+
+                if (dot.FoldedCommitsBelow > 0)
+                {
+                    // Render a high-contrast horizontal ellipsis between rows.
+                    var dots = Math.Clamp(dot.FoldedCommitsBelow, 3, 5);
+                    var radius = 2.2;
+                    var startX = center.X + 3.8;
+                    var y = center.Y + rowHeight * 0.38;
+                    var spacing = 4.4;
+                    var fill = new SolidColorBrush(Color.FromArgb(0xFF, 54, 54, 54));
+                    var outline = new Pen(Brushes.White, 1);
+                    for (var i = 0; i < dots; i++)
+                    {
+                        var x = startX + i * spacing;
+                        if (y >= bottom)
+                            break;
+
+                        context.DrawEllipse(fill, outline, new Point(x, y), radius, radius);
+                    }
+                }
             }
         }
     }
 }
+

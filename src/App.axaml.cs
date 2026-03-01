@@ -299,6 +299,16 @@ namespace SourceGit
             }
         }
 
+        public static void SetAccentColor(uint colorValue)
+        {
+            if (Current is not App app)
+                return;
+
+            var color = Color.FromUInt32(colorValue);
+            app.Resources["SystemAccentColor"] = color;
+            app.Resources["SystemListLowColor"] = Color.FromArgb(0x66, color.R, color.G, color.B);
+        }
+
         public static void SetFonts(string defaultFont, string monospaceFont)
         {
             if (Current is not App app)
@@ -407,6 +417,7 @@ namespace SourceGit
 
             SetLocale(pref.Locale);
             SetTheme(pref.Theme, pref.ThemeOverrides);
+            SetAccentColor(pref.MainAccentColor);
             SetFonts(pref.DefaultFontFamily, pref.MonospaceFontFamily);
         }
 

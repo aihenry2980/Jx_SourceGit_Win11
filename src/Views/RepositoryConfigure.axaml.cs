@@ -1,16 +1,102 @@
 using System;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Data;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.Platform.Storage;
+using AvaloniaEdit;
+using AvaloniaEdit.Document;
+using AvaloniaEdit.Editing;
+using AvaloniaEdit.Rendering;
 
 namespace SourceGit.Views
 {
+    public class GitIgnoreRulesEditor : TextEditor
+    {
+        private class CommentLineTransformer : DocumentColorizingTransformer
+        {
+            protected override void ColorizeLine(DocumentLine line)
+            {
+                var content = CurrentContext.Document.GetText(line);
+                if (string.IsNullOrEmpty(content) || !content.TrimStart().StartsWith("#", StringComparison.Ordinal))
+                    return;
+
+                ChangeLinePart(line.Offset, line.EndOffset, v =>
+                {
+                    v.TextRunProperties.SetForegroundBrush(Brushes.Gray);
+                });
+            }
+        }
+
+        public static readonly StyledProperty<string> RulesProperty =
+            AvaloniaProperty.Register<GitIgnoreRulesEditor, string>(nameof(Rules), string.Empty, defaultBindingMode: BindingMode.TwoWay);
+
+        public string Rules
+        {
+            get => GetValue(RulesProperty);
+            set => SetValue(RulesProperty, value);
+        }
+
+        protected override Type StyleKeyOverride => typeof(TextEditor);
+
+        public GitIgnoreRulesEditor() : base(new TextArea(), new TextDocument())
+        {
+            ShowLineNumbers = false;
+            WordWrap = false;
+            Background = Brushes.Transparent;
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto;
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
+
+            TextArea.TextView.Margin = new Thickness(4, 0);
+            TextArea.TextView.Options.EnableHyperlinks = false;
+            TextArea.TextView.Options.EnableEmailHyperlinks = false;
+            TextArea.TextView.Options.AllowScrollBelowDocument = false;
+            TextArea.TextView.LineTransformers.Add(new CommentLineTransformer());
+            TextChanged += OnTextChanged;
+        }
+
+        protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+        {
+            base.OnPropertyChanged(change);
+
+            if (change.Property != RulesProperty || _isUpdating)
+                return;
+
+            var next = change.GetNewValue<string>() ?? string.Empty;
+            if (string.Equals(Text, next, StringComparison.Ordinal))
+                return;
+
+            _isUpdating = true;
+            Text = next;
+            _isUpdating = false;
+        }
+
+        private void OnTextChanged(object sender, EventArgs e)
+        {
+            if (_isUpdating)
+                return;
+
+            _isUpdating = true;
+            SetCurrentValue(RulesProperty, Text);
+            _isUpdating = false;
+        }
+
+        private bool _isUpdating = false;
+    }
+
     public partial class RepositoryConfigure : ChromelessWindow
     {
         public RepositoryConfigure()
         {
             CloseOnESC = true;
             InitializeComponent();
+        }
+
+        public void OpenLocalIgnoreTab()
+        {
+            Tabs.SelectedIndex = 1;
         }
 
         protected override async void OnClosing(WindowClosingEventArgs e)
@@ -62,6 +148,14 @@ namespace SourceGit.Views
             };
 
             await dialog.ShowDialog(this);
+            e.Handled = true;
+        }
+
+        private async void ApplyLocalIgnoreRules(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.RepositoryConfigure vm)
+                await vm.ApplyRepoLocalIgnoreRulesAsync();
+
             e.Handled = true;
         }
 

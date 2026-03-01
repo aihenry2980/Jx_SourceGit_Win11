@@ -62,10 +62,13 @@ namespace SourceGit.ViewModels
             }
             else
             {
+                if (IsComplete || _builder == null)
+                    return;
+
                 var newline = line ?? string.Empty;
                 _builder.AppendLine(newline);
 
-                foreach (var receiver in _receivers)
+                foreach (var receiver in _receivers.ToArray())
                     receiver.OnReceiveCommandLog(newline);
             }
         }

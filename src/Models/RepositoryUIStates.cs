@@ -283,27 +283,7 @@ namespace SourceGit.Models
 
         public bool UpdateHistoryFilters(string pattern, FilterType type, FilterMode mode, uint color)
         {
-            // Clear all filters when there's a filter that has different mode.
-            if (mode != FilterMode.None)
-            {
-                var clear = false;
-                foreach (var filter in HistoryFilters)
-                {
-                    if (filter.Mode != mode)
-                    {
-                        clear = true;
-                        break;
-                    }
-                }
-
-                if (clear)
-                {
-                    HistoryFilters.Clear();
-                    HistoryFilters.Add(new HistoryFilter(pattern, type, mode, color));
-                    return true;
-                }
-            }
-            else
+            if (mode == FilterMode.None)
             {
                 for (int i = 0; i < HistoryFilters.Count; i++)
                 {
@@ -325,9 +305,10 @@ namespace SourceGit.Models
 
                 if (filter.Pattern.Equals(pattern, StringComparison.Ordinal))
                 {
-                    if (filter.Color == color)
+                    if (filter.Mode == mode && filter.Color == color)
                         return false;
 
+                    filter.Mode = mode;
                     filter.Color = color;
                     return true;
                 }

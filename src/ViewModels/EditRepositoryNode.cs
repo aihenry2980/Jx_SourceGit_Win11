@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 
@@ -54,6 +55,16 @@ namespace SourceGit.ViewModels
             bool needSort = _node.Name != _name;
             _node.Name = _name;
             _node.Bookmark = _bookmark;
+
+            var launcher = App.GetLauncher();
+            if (launcher != null)
+            {
+                foreach (var page in launcher.Pages)
+                {
+                    if (page.Data is Repository repo && page.Node.Id.Equals(_node.Id, StringComparison.Ordinal))
+                        repo.NotifyAccentColorChanged();
+                }
+            }
 
             if (needSort)
             {

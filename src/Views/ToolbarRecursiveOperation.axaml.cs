@@ -20,14 +20,6 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
-        private void OnStopCountdown(object sender, RoutedEventArgs e)
-        {
-            if (DataContext is ViewModels.ToolbarRecursiveOperation vm)
-                vm.StopCountdown();
-
-            e.Handled = true;
-        }
-
         private async void OnCopyMessage(object sender, RoutedEventArgs e)
         {
             if (DataContext is ViewModels.ToolbarRecursiveOperation vm)
@@ -41,6 +33,22 @@ namespace SourceGit.Views
             var launcherPage = this.FindAncestorOfType<LauncherPage>();
             if (launcherPage?.DataContext is ViewModels.LauncherPage page)
                 page.CancelPopup();
+
+            e.Handled = true;
+        }
+
+        private void OnSelectAllSubmodules(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.ToolbarRecursiveOperation vm)
+                vm.SelectAllSubmodules();
+
+            e.Handled = true;
+        }
+
+        private void OnClearSubmoduleSelection(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.ToolbarRecursiveOperation vm)
+                vm.ClearSubmoduleSelection();
 
             e.Handled = true;
         }

@@ -6,7 +6,7 @@ using Avalonia.Media;
 
 namespace SourceGit.Models
 {
-    public record CommitGraphLayout(double StartY, double ClipWidth, double RowHeight);
+    public record CommitGraphLayout(double StartY, double ClipWidth, double RowHeight, double OffsetX = 0);
 
     public class CommitGraph
     {
@@ -56,6 +56,7 @@ namespace SourceGit.Models
             public Point Center;
             public int Color;
             public bool IsMerged;
+            public int FoldedCommitsBelow;
         }
 
         public List<Path> Paths { get; } = [];
@@ -151,6 +152,7 @@ namespace SourceGit.Models
                 // Calculate link position of this commit.
                 var position = new Point(major?.LastX ?? offsetX, offsetY);
                 var dotColor = major?.Path.Color ?? 0;
+
                 var anchor = new Dot() { Center = position, Color = dotColor, IsMerged = isMerged };
                 if (commit.IsCurrentHead)
                     anchor.Type = DotType.Head;
@@ -158,6 +160,7 @@ namespace SourceGit.Models
                     anchor.Type = DotType.Merge;
                 else
                     anchor.Type = DotType.Default;
+                anchor.FoldedCommitsBelow = commit.FoldedCommitsBelow;
                 temp.Dots.Add(anchor);
 
                 // Deal with other parents (the first parent has been processed)
