@@ -78,6 +78,28 @@ namespace SourceGit.ViewModels
             private set;
         }
 
+        public string OriginRemoteURL
+        {
+            get
+            {
+                if (_repo?.Remotes is not { Count: > 0 } remotes)
+                    return string.Empty;
+
+                var origin = remotes.Find(x => x.Name.Equals("origin", StringComparison.Ordinal));
+                if (origin != null && !string.IsNullOrWhiteSpace(origin.URL))
+                    return origin.URL;
+
+                if (!string.IsNullOrWhiteSpace(_repo.Settings?.DefaultRemote))
+                {
+                    var preferred = remotes.Find(x => x.Name.Equals(_repo.Settings.DefaultRemote, StringComparison.Ordinal));
+                    if (preferred != null && !string.IsNullOrWhiteSpace(preferred.URL))
+                        return preferred.URL;
+                }
+
+                return remotes[0]?.URL ?? string.Empty;
+            }
+        }
+
         public List<string> Children
         {
             get => _children;

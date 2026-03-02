@@ -2232,7 +2232,7 @@ namespace SourceGit.ViewModels
                 prefs.Save();
 
             var superProjectSubmoduleSHA = _submodules.Find(x => x.Path.Equals(submodule, StringComparison.Ordinal))?.SHA;
-            App.GetLauncher().OpenRepositoryInTab(node, null, superProjectSubmoduleSHA);
+            App.GetLauncher().OpenRepositoryInTab(node, null, superProjectSubmoduleSHA, selfPage);
         }
 
         public void UpdateSuperProjectSubmoduleSHA(string sha)

@@ -272,7 +272,11 @@ namespace SourceGit.ViewModels
             GC.Collect();
         }
 
-        public void OpenRepositoryInTab(RepositoryNode node, LauncherPage page, string superProjectSubmoduleSHA = null)
+        public void OpenRepositoryInTab(
+            RepositoryNode node,
+            LauncherPage page,
+            string superProjectSubmoduleSHA = null,
+            LauncherPage insertAfter = null)
         {
             foreach (var one in Pages)
             {
@@ -308,7 +312,14 @@ namespace SourceGit.ViewModels
                 if (_activePage == null || _activePage.Node.IsRepository)
                 {
                     page = new LauncherPage(node, repo);
-                    Pages.Add(page);
+                    var insertIdx = -1;
+                    if (insertAfter != null)
+                        insertIdx = Pages.IndexOf(insertAfter);
+
+                    if (insertIdx >= 0 && insertIdx < Pages.Count)
+                        Pages.Insert(insertIdx + 1, page);
+                    else
+                        Pages.Add(page);
                 }
                 else
                 {

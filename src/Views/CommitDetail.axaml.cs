@@ -17,6 +17,21 @@ namespace SourceGit.Views
             InitializeComponent();
         }
 
+        private void OnOpenOriginRemoteURL(object sender, PointerPressedEventArgs e)
+        {
+            var point = e.GetCurrentPoint(this);
+            if (!point.Properties.IsLeftButtonPressed)
+                return;
+
+            if (DataContext is ViewModels.CommitDetail detail &&
+                !string.IsNullOrWhiteSpace(detail.OriginRemoteURL))
+            {
+                Native.OS.OpenBrowser(detail.OriginRemoteURL);
+            }
+
+            e.Handled = true;
+        }
+
         public ContextMenu CreateChangeContextMenuByFolder(ViewModels.ChangeTreeNode node, List<Models.Change> changes)
         {
             if (DataContext is not ViewModels.CommitDetail { Repository: { } repo, Commit: { } commit } vm)

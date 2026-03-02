@@ -611,6 +611,18 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
+        private void OnOpenOriginRemoteURL(object sender, PointerPressedEventArgs e)
+        {
+            var point = e.GetCurrentPoint(this);
+            if (!point.Properties.IsLeftButtonPressed)
+                return;
+
+            if (DataContext is ViewModels.Histories histories)
+                histories.OpenOriginRemoteURL();
+
+            e.Handled = true;
+        }
+
         private void OnCommitListContextRequested(object sender, ContextRequestedEventArgs e)
         {
             if (e.Source is Control { DataContext: Models.Commit })
