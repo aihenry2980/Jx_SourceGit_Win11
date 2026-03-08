@@ -37,7 +37,18 @@ namespace SourceGit.Models
 
         public static User FindOrAdd(string data)
         {
-            return _caches.GetOrAdd(data, key => new User(key));
+            if (_caches.TryGetValue(data, out var existed))
+                return existed;
+
+            var created = _caches.GetOrAdd(data, key =>
+            {
+                var user = new User(key);
+                _insertOrders.Enqueue(key);
+                TrimCacheIfNeeded();
+                return user;
+            });
+
+            return created;
         }
 
         public override string ToString()
@@ -45,7 +56,15 @@ namespace SourceGit.Models
             return $"{Name} <{Email}>";
         }
 
+        private static void TrimCacheIfNeeded()
+        {
+            while (_caches.Count > MAX_USER_CACHE_SIZE && _insertOrders.TryDequeue(out var oldest))
+                _caches.TryRemove(oldest, out _);
+        }
+
         private static ConcurrentDictionary<string, User> _caches = new ConcurrentDictionary<string, User>();
+        private static ConcurrentQueue<string> _insertOrders = new ConcurrentQueue<string>();
+        private const int MAX_USER_CACHE_SIZE = 20000;
         private readonly int _hash;
     }
 }

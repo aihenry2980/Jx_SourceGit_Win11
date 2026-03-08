@@ -203,36 +203,60 @@ namespace SourceGit.ViewModels
 
                     if (imgDecoder != Models.ImageDecoder.None)
                     {
-                        var imgDiff = new Models.ImageDiff();
+                        var oldSize = 0L;
+                        var newSize = 0L;
 
                         if (_option.Revisions.Count == 2)
                         {
-                            var oldImage = await ImageSource.FromRevisionAsync(_repo, _option.Revisions[0], oldPath, imgDecoder).ConfigureAwait(false);
-                            var newImage = await ImageSource.FromRevisionAsync(_repo, _option.Revisions[1], _option.Path, imgDecoder).ConfigureAwait(false);
-                            imgDiff.Old = oldImage.Bitmap;
-                            imgDiff.OldFileSize = oldImage.Size;
-                            imgDiff.New = newImage.Bitmap;
-                            imgDiff.NewFileSize = newImage.Size;
+                            oldSize = await new Commands.QueryFileSize(_repo, oldPath, _option.Revisions[0]).GetResultAsync().ConfigureAwait(false);
+                            newSize = await new Commands.QueryFileSize(_repo, _option.Path, _option.Revisions[1]).GetResultAsync().ConfigureAwait(false);
                         }
                         else
                         {
                             if (!oldPath.Equals("/dev/null", StringComparison.Ordinal))
-                            {
-                                var oldImage = await ImageSource.FromRevisionAsync(_repo, "HEAD", oldPath, imgDecoder).ConfigureAwait(false);
-                                imgDiff.Old = oldImage.Bitmap;
-                                imgDiff.OldFileSize = oldImage.Size;
-                            }
+                                oldSize = await new Commands.QueryFileSize(_repo, oldPath, "HEAD").GetResultAsync().ConfigureAwait(false);
 
                             var fullPath = Path.Combine(_repo, _option.Path);
-                            if (File.Exists(fullPath))
-                            {
-                                var newImage = await ImageSource.FromFileAsync(fullPath, imgDecoder).ConfigureAwait(false);
-                                imgDiff.New = newImage.Bitmap;
-                                imgDiff.NewFileSize = newImage.Size;
-                            }
+                            newSize = File.Exists(fullPath) ? new FileInfo(fullPath).Length : 0;
                         }
 
-                        rs = imgDiff;
+                        if (oldSize > MAX_IMAGE_DIFF_FILE_SIZE || newSize > MAX_IMAGE_DIFF_FILE_SIZE)
+                        {
+                            rs = new Models.BinaryDiff() { OldSize = oldSize, NewSize = newSize };
+                        }
+                        else
+                        {
+                            var imgDiff = new Models.ImageDiff() { OldFileSize = oldSize, NewFileSize = newSize };
+
+                            if (_option.Revisions.Count == 2)
+                            {
+                                var oldImage = await ImageSource.FromRevisionAsync(_repo, _option.Revisions[0], oldPath, imgDecoder).ConfigureAwait(false);
+                                var newImage = await ImageSource.FromRevisionAsync(_repo, _option.Revisions[1], _option.Path, imgDecoder).ConfigureAwait(false);
+                                imgDiff.Old = oldImage.Bitmap;
+                                imgDiff.OldFileSize = oldImage.Size == 0 ? oldSize : oldImage.Size;
+                                imgDiff.New = newImage.Bitmap;
+                                imgDiff.NewFileSize = newImage.Size == 0 ? newSize : newImage.Size;
+                            }
+                            else
+                            {
+                                if (!oldPath.Equals("/dev/null", StringComparison.Ordinal))
+                                {
+                                    var oldImage = await ImageSource.FromRevisionAsync(_repo, "HEAD", oldPath, imgDecoder).ConfigureAwait(false);
+                                    imgDiff.Old = oldImage.Bitmap;
+                                    imgDiff.OldFileSize = oldImage.Size == 0 ? oldSize : oldImage.Size;
+                                }
+
+                                var fullPath = Path.Combine(_repo, _option.Path);
+                                if (File.Exists(fullPath))
+                                {
+                                    var newImage = await ImageSource.FromFileAsync(fullPath, imgDecoder).ConfigureAwait(false);
+                                    imgDiff.New = newImage.Bitmap;
+                                    imgDiff.NewFileSize = newImage.Size == 0 ? newSize : newImage.Size;
+                                }
+                            }
+
+                            rs = imgDiff;
+                        }
                     }
                     else
                     {
@@ -254,7 +278,12 @@ namespace SourceGit.ViewModels
                 else if (latest.IsLFS)
                 {
                     var imgDecoder = ImageSource.GetDecoder(_option.Path);
-                    if (imgDecoder != Models.ImageDecoder.None)
+                    if (imgDecoder != Models.ImageDecoder.None &&
+                        latest.LFSDiff is
+                        {
+                            Old.Size: <= MAX_IMAGE_DIFF_FILE_SIZE,
+                            New.Size: <= MAX_IMAGE_DIFF_FILE_SIZE
+                        })
                         rs = new LFSImageDiff(_repo, latest.LFSDiff, imgDecoder);
                     else
                         rs = latest.LFSDiff;
@@ -327,7 +356,7 @@ namespace SourceGit.ViewModels
             }
         }
 
-        private readonly int _entireFileLine = 999999999;
+        private readonly int _entireFileLine = MAX_TEXT_DIFF_LINES;
         private readonly string _repo;
         private readonly Models.DiffOption _option = null;
         private string _fileModeChange = string.Empty;
@@ -335,5 +364,8 @@ namespace SourceGit.ViewModels
         private bool _isTextDiff = false;
         private object _content = null;
         private Info _info = null;
+
+        private const int MAX_TEXT_DIFF_LINES = 20000;
+        private const long MAX_IMAGE_DIFF_FILE_SIZE = 32L * 1024 * 1024;
     }
 }

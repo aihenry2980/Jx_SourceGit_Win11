@@ -1001,7 +1001,7 @@ namespace SourceGit.ViewModels
         private uint _mainAccentColor = 0xFF0078D7;
         private LayoutInfo _layout = new();
 
-        private int _maxHistoryCommits = 20000;
+        private int _maxHistoryCommits = 5000;
         private int _subjectGuideLength = 50;
         private bool _useFixedTabWidth = true;
         private bool _useAutoHideScrollBars = true;

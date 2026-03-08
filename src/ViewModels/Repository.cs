@@ -876,6 +876,10 @@ namespace SourceGit.ViewModels
         {
             var log = new CommandLog(name);
             Logs.Insert(0, log);
+
+            while (Logs.Count > MAX_LOGS_IN_MEMORY)
+                Logs.RemoveAt(Logs.Count - 1);
+
             return log;
         }
 
@@ -2246,6 +2250,11 @@ namespace SourceGit.ViewModels
             RefreshCommits();
         }
 
+        public void RefreshSuperProjectSubmodulePointer()
+        {
+            _ = ResolveSuperProjectSubmodulePointerOnOpenAsync();
+        }
+
         public void NavigateToSuperProjectPointerCommit()
         {
             if (string.IsNullOrEmpty(_superProjectSubmoduleSHA))
@@ -2807,16 +2816,23 @@ namespace SourceGit.ViewModels
 
         private async Task ResolveSuperProjectSubmodulePointerOnOpenAsync()
         {
+            var resolved = string.Empty;
             try
             {
                 var superProjectRoot = await new Commands.QuerySuperProjectRootPath(FullPath).GetResultAsync().ConfigureAwait(false);
                 if (string.IsNullOrWhiteSpace(superProjectRoot))
+                {
+                    await Dispatcher.UIThread.InvokeAsync(() => UpdateSuperProjectSubmoduleSHA(string.Empty));
                     return;
+                }
 
                 var normalizedSuperProjectRoot = superProjectRoot.Replace('\\', '/').TrimEnd('/');
                 var pathComparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
                 if (normalizedSuperProjectRoot.Equals(FullPath, pathComparison))
+                {
+                    await Dispatcher.UIThread.InvokeAsync(() => UpdateSuperProjectSubmoduleSHA(string.Empty));
                     return;
+                }
 
                 var submodules = await new Commands.QuerySubmodules(normalizedSuperProjectRoot).GetResultAsync().ConfigureAwait(false);
                 foreach (var submodule in submodules)
@@ -2828,17 +2844,17 @@ namespace SourceGit.ViewModels
                     if (!submoduleRoot.Equals(FullPath, pathComparison))
                         continue;
 
-                    var normalized = NormalizeSubmodulePointerSHA(submodule.SHA);
-                    if (!string.IsNullOrEmpty(normalized))
-                        await Dispatcher.UIThread.InvokeAsync(() => UpdateSuperProjectSubmoduleSHA(normalized));
-
-                    return;
+                    resolved = NormalizeSubmodulePointerSHA(submodule.SHA);
+                    break;
                 }
             }
             catch
             {
                 // Best-effort: keep existing behavior if auto-detection fails.
+                return;
             }
+
+            await Dispatcher.UIThread.InvokeAsync(() => UpdateSuperProjectSubmoduleSHA(resolved));
         }
 
         private void AttachSuperProjectPointerDecorator(List<Models.Commit> commits)
@@ -3320,5 +3336,6 @@ namespace SourceGit.ViewModels
 
         private static readonly TimeSpan SPLIT_FETCH_TIMEOUT = TimeSpan.FromMinutes(5);
         private static readonly TimeSpan SPLIT_SUBMODULE_UPDATE_TIMEOUT = TimeSpan.FromMinutes(5);
+        private const int MAX_LOGS_IN_MEMORY = 100;
     }
 }

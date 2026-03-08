@@ -39,6 +39,8 @@ namespace SourceGit.Models
         private string _storePath;
         private List<IAvatarHost> _avatars = new List<IAvatarHost>();
         private Dictionary<string, Bitmap> _resources = new Dictionary<string, Bitmap>();
+        private LinkedList<string> _resourceLru = new LinkedList<string>();
+        private Dictionary<string, LinkedListNode<string>> _resourceLruNodes = new Dictionary<string, LinkedListNode<string>>();
         private HashSet<string> _requesting = new HashSet<string>();
         private HashSet<string> _defaultAvatars = new HashSet<string>();
 
@@ -103,7 +105,7 @@ namespace SourceGit.Models
 
                             using (var reader = File.OpenRead(localFile))
                             {
-                                img = Bitmap.DecodeToWidth(reader, 128);
+                                img = Bitmap.DecodeToWidth(reader, 64);
                             }
                         }
                     }
@@ -119,7 +121,7 @@ namespace SourceGit.Models
 
                     Dispatcher.UIThread.Post(() =>
                     {
-                        _resources[email] = img;
+                        SetResource(email, img);
                         NotifyResourceChanged(email, img);
                     });
                 }
@@ -145,7 +147,7 @@ namespace SourceGit.Models
                 if (_defaultAvatars.Contains(email))
                     return null;
 
-                _resources.Remove(email);
+                RemoveResource(email);
 
                 var localFile = Path.Combine(_storePath, GetEmailHash(email));
                 if (File.Exists(localFile))
@@ -155,7 +157,7 @@ namespace SourceGit.Models
             }
             else
             {
-                if (_resources.TryGetValue(email, out var value))
+                if (TryGetResource(email, out var value))
                     return value;
 
                 var localFile = Path.Combine(_storePath, GetEmailHash(email));
@@ -165,8 +167,8 @@ namespace SourceGit.Models
                     {
                         using (var stream = File.OpenRead(localFile))
                         {
-                            var img = Bitmap.DecodeToWidth(stream, 128);
-                            _resources.Add(email, img);
+                            var img = Bitmap.DecodeToWidth(stream, 64);
+                            SetResource(email, img);
                             return img;
                         }
                     }
@@ -193,10 +195,10 @@ namespace SourceGit.Models
 
                 using (var stream = File.OpenRead(file))
                 {
-                    image = Bitmap.DecodeToWidth(stream, 128);
+                    image = Bitmap.DecodeToWidth(stream, 64);
                 }
 
-                _resources[email] = image;
+                SetResource(email, image);
 
                 lock (_synclock)
                 {
@@ -210,6 +212,64 @@ namespace SourceGit.Models
             catch
             {
                 // ignore
+            }
+        }
+
+        private bool TryGetResource(string key, out Bitmap value)
+        {
+            if (_resources.TryGetValue(key, out value))
+            {
+                TouchResource(key);
+                return true;
+            }
+
+            return false;
+        }
+
+        private void SetResource(string key, Bitmap image)
+        {
+            _resources[key] = image;
+            TouchResource(key);
+            TrimResourceCache();
+        }
+
+        private void RemoveResource(string key)
+        {
+            _resources.Remove(key);
+
+            if (_resourceLruNodes.TryGetValue(key, out var node))
+            {
+                _resourceLruNodes.Remove(key);
+                _resourceLru.Remove(node);
+            }
+        }
+
+        private void TouchResource(string key)
+        {
+            if (_defaultAvatars.Contains(key))
+                return;
+
+            if (_resourceLruNodes.TryGetValue(key, out var node))
+            {
+                _resourceLru.Remove(node);
+                _resourceLru.AddFirst(node);
+            }
+            else
+            {
+                var added = new LinkedListNode<string>(key);
+                _resourceLruNodes[key] = added;
+                _resourceLru.AddFirst(added);
+            }
+        }
+
+        private void TrimResourceCache()
+        {
+            while (_resourceLruNodes.Count > MAX_AVATAR_CACHE_SIZE && _resourceLru.Last != null)
+            {
+                var key = _resourceLru.Last.Value;
+                _resourceLru.RemoveLast();
+                _resourceLruNodes.Remove(key);
+                _resources.Remove(key);
             }
         }
 
@@ -235,5 +295,7 @@ namespace SourceGit.Models
             foreach (var avatar in _avatars)
                 avatar.OnAvatarResourceChanged(email, image);
         }
+
+        private const int MAX_AVATAR_CACHE_SIZE = 512;
     }
 }
