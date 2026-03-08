@@ -22,6 +22,9 @@ namespace SourceGit.Models
 
     public partial class AvatarManager
     {
+        private const int AVATAR_WIDTH = 64;
+        private const int MAX_CACHE_SIZE = 256;
+
         public static AvatarManager Instance
         {
             get
@@ -36,9 +39,11 @@ namespace SourceGit.Models
         private static partial Regex REG_GITHUB_USER_EMAIL();
 
         private readonly Lock _synclock = new();
+        private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(2) };
         private string _storePath;
         private List<IAvatarHost> _avatars = new List<IAvatarHost>();
-        private Dictionary<string, Bitmap> _resources = new Dictionary<string, Bitmap>();
+        private Dictionary<string, CacheEntry> _resources = new Dictionary<string, CacheEntry>();
+        private LinkedList<string> _resourceLru = new LinkedList<string>();
         private HashSet<string> _requesting = new HashSet<string>();
         private HashSet<string> _defaultAvatars = new HashSet<string>();
 
@@ -55,17 +60,7 @@ namespace SourceGit.Models
             {
                 while (true)
                 {
-                    string email = null;
-
-                    lock (_synclock)
-                    {
-                        foreach (var one in _requesting)
-                        {
-                            email = one;
-                            break;
-                        }
-                    }
-
+                    var email = GetNextRequestingEmail();
                     if (email == null)
                     {
                         Thread.Sleep(100);
@@ -73,38 +68,20 @@ namespace SourceGit.Models
                     }
 
                     var md5 = GetEmailHash(email);
-                    var matchGitHubUser = REG_GITHUB_USER_EMAIL().Match(email);
-                    var url = $"https://www.gravatar.com/avatar/{md5}?d=404";
-                    if (matchGitHubUser.Success)
-                    {
-                        var githubUser = matchGitHubUser.Groups[2].Value;
-                        if (githubUser.EndsWith("[bot]", StringComparison.OrdinalIgnoreCase))
-                            githubUser = githubUser.Substring(0, githubUser.Length - 5);
-
-                        url = $"https://avatars.githubusercontent.com/{githubUser}";
-                    }
-
+                    var url = GetAvatarUrl(email, md5);
                     var localFile = Path.Combine(_storePath, md5);
                     Bitmap img = null;
+
                     try
                     {
-                        using var client = new HttpClient();
-                        client.Timeout = TimeSpan.FromSeconds(2);
-                        var rsp = await client.GetAsync(url);
+                        var rsp = await _httpClient.GetAsync(url).ConfigureAwait(false);
                         if (rsp.IsSuccessStatusCode)
                         {
-                            using (var stream = rsp.Content.ReadAsStream())
-                            {
-                                using (var writer = File.Create(localFile))
-                                {
-                                    stream.CopyTo(writer);
-                                }
-                            }
+                            await using (var stream = await rsp.Content.ReadAsStreamAsync().ConfigureAwait(false))
+                            await using (var writer = File.Create(localFile))
+                                await stream.CopyToAsync(writer).ConfigureAwait(false);
 
-                            using (var reader = File.OpenRead(localFile))
-                            {
-                                img = Bitmap.DecodeToWidth(reader, 128);
-                            }
+                            img = LoadBitmap(localFile);
                         }
                     }
                     catch
@@ -119,7 +96,7 @@ namespace SourceGit.Models
 
                     Dispatcher.UIThread.Post(() =>
                     {
-                        _resources[email] = img;
+                        SetResource(email, img);
                         NotifyResourceChanged(email, img);
                     });
                 }
@@ -140,40 +117,28 @@ namespace SourceGit.Models
 
         public Bitmap Request(string email, bool forceRefetch)
         {
+            if (string.IsNullOrWhiteSpace(email))
+                return null;
+
             if (forceRefetch)
             {
                 if (_defaultAvatars.Contains(email))
                     return null;
 
-                _resources.Remove(email);
-
-                var localFile = Path.Combine(_storePath, GetEmailHash(email));
-                if (File.Exists(localFile))
-                    File.Delete(localFile);
-
+                RemoveResource(email);
+                DeleteLocalAvatarFile(email);
                 NotifyResourceChanged(email, null);
             }
             else
             {
-                if (_resources.TryGetValue(email, out var value))
-                    return value;
+                if (TryGetResource(email, out var cached))
+                    return cached;
 
-                var localFile = Path.Combine(_storePath, GetEmailHash(email));
-                if (File.Exists(localFile))
+                var stored = LoadFromStore(email);
+                if (stored != null)
                 {
-                    try
-                    {
-                        using (var stream = File.OpenRead(localFile))
-                        {
-                            var img = Bitmap.DecodeToWidth(stream, 128);
-                            _resources.Add(email, img);
-                            return img;
-                        }
-                    }
-                    catch
-                    {
-                        // ignore
-                    }
+                    SetResource(email, stored);
+                    return stored;
                 }
             }
 
@@ -189,22 +154,18 @@ namespace SourceGit.Models
         {
             try
             {
-                Bitmap image;
+                var image = LoadBitmap(file);
+                if (image == null)
+                    return;
 
-                using (var stream = File.OpenRead(file))
-                {
-                    image = Bitmap.DecodeToWidth(stream, 128);
-                }
-
-                _resources[email] = image;
+                SetResource(email, image);
 
                 lock (_synclock)
                 {
                     _requesting.Remove(email);
                 }
 
-                var store = Path.Combine(_storePath, GetEmailHash(email));
-                File.Copy(file, store, true);
+                File.Copy(file, GetLocalAvatarFile(email), true);
                 NotifyResourceChanged(email, image);
             }
             catch
@@ -215,8 +176,8 @@ namespace SourceGit.Models
 
         private void LoadDefaultAvatar(string key, string img)
         {
-            var icon = AssetLoader.Open(new Uri($"avares://SourceGit/Resources/Images/{img}", UriKind.RelativeOrAbsolute));
-            _resources.Add(key, new Bitmap(icon));
+            using var icon = AssetLoader.Open(new Uri($"avares://SourceGit/Resources/Images/{img}", UriKind.RelativeOrAbsolute));
+            SetResource(key, new Bitmap(icon), true);
             _defaultAvatars.Add(key);
         }
 
@@ -230,10 +191,151 @@ namespace SourceGit.Models
             return builder.ToString();
         }
 
+        private string GetAvatarUrl(string email, string md5)
+        {
+            var matchGitHubUser = REG_GITHUB_USER_EMAIL().Match(email);
+            if (!matchGitHubUser.Success)
+                return $"https://www.gravatar.com/avatar/{md5}?d=404";
+
+            var githubUser = matchGitHubUser.Groups[2].Value;
+            if (githubUser.EndsWith("[bot]", StringComparison.OrdinalIgnoreCase))
+                githubUser = githubUser.Substring(0, githubUser.Length - 5);
+
+            return $"https://avatars.githubusercontent.com/{githubUser}";
+        }
+
         private void NotifyResourceChanged(string email, Bitmap image)
         {
             foreach (var avatar in _avatars)
                 avatar.OnAvatarResourceChanged(email, image);
+        }
+
+        private string GetNextRequestingEmail()
+        {
+            lock (_synclock)
+            {
+                foreach (var email in _requesting)
+                    return email;
+            }
+
+            return null;
+        }
+
+        private string GetLocalAvatarFile(string email)
+        {
+            return Path.Combine(_storePath, GetEmailHash(email));
+        }
+
+        private Bitmap LoadFromStore(string email)
+        {
+            var localFile = GetLocalAvatarFile(email);
+            if (!File.Exists(localFile))
+                return null;
+
+            try
+            {
+                return LoadBitmap(localFile);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private Bitmap LoadBitmap(string file)
+        {
+            using var stream = File.OpenRead(file);
+            return Bitmap.DecodeToWidth(stream, AVATAR_WIDTH);
+        }
+
+        private bool TryGetResource(string email, out Bitmap value)
+        {
+            if (_resources.TryGetValue(email, out var entry))
+            {
+                TouchResource(entry);
+                value = entry.Image;
+                return true;
+            }
+
+            value = null;
+            return false;
+        }
+
+        private void SetResource(string email, Bitmap image, bool isDefault = false)
+        {
+            if (_resources.TryGetValue(email, out var existing))
+            {
+                if (!ReferenceEquals(existing.Image, image) && !existing.IsDefault)
+                    existing.Image?.Dispose();
+
+                existing.Image = image;
+                existing.IsDefault = isDefault;
+                TouchResource(existing);
+            }
+            else
+            {
+                var entry = new CacheEntry
+                {
+                    Image = image,
+                    IsDefault = isDefault,
+                    LruNode = _resourceLru.AddFirst(email),
+                };
+                _resources[email] = entry;
+            }
+
+            TrimResources();
+        }
+
+        private void RemoveResource(string email)
+        {
+            if (!_resources.Remove(email, out var entry))
+                return;
+
+            if (entry.LruNode != null)
+                _resourceLru.Remove(entry.LruNode);
+
+            if (!entry.IsDefault)
+                entry.Image?.Dispose();
+        }
+
+        private void TouchResource(CacheEntry entry)
+        {
+            if (entry?.LruNode == null || ReferenceEquals(_resourceLru.First, entry.LruNode))
+                return;
+
+            _resourceLru.Remove(entry.LruNode);
+            _resourceLru.AddFirst(entry.LruNode);
+        }
+
+        private void TrimResources()
+        {
+            while (_resources.Count > MAX_CACHE_SIZE && _resourceLru.Last != null)
+            {
+                var key = _resourceLru.Last.Value;
+                if (_defaultAvatars.Contains(key))
+                {
+                    _resourceLru.RemoveLast();
+                    if (_resources.TryGetValue(key, out var pinned))
+                        pinned.LruNode = _resourceLru.AddFirst(key);
+                    continue;
+                }
+
+                RemoveResource(key);
+            }
+        }
+
+        private void DeleteLocalAvatarFile(string email)
+        {
+            var localFile = GetLocalAvatarFile(email);
+            if (File.Exists(localFile))
+                File.Delete(localFile);
+        }
+
+        private class CacheEntry
+        {
+            public Bitmap Image { get; set; }
+            public bool IsDefault { get; set; }
+            public LinkedListNode<string> LruNode { get; set; }
         }
     }
 }

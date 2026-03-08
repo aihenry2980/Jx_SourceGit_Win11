@@ -3,6 +3,7 @@
     public interface ICommandLogReceiver
     {
         void OnReceiveCommandLog(string line);
+        void OnResetCommandLog(string content);
     }
 
     public interface ICommandLog

@@ -8,6 +8,10 @@ namespace SourceGit.ViewModels
 {
     public class CommandLog : ObservableObject, Models.ICommandLog
     {
+        private const int MAX_CONTENT_LENGTH = 256 * 1024;
+        private const int TRIMMED_CONTENT_LENGTH = 192 * 1024;
+        private const string TRUNCATED_NOTICE = "[... older log output truncated ...]";
+
         public string Name
         {
             get;
@@ -67,9 +71,15 @@ namespace SourceGit.ViewModels
 
                 var newline = line ?? string.Empty;
                 _builder.AppendLine(newline);
+                var wasTruncated = TrimContentIfNeeded();
 
                 foreach (var receiver in _receivers.ToArray())
-                    receiver.OnReceiveCommandLog(newline);
+                {
+                    if (wasTruncated)
+                        receiver.OnResetCommandLog(_builder.ToString());
+                    else
+                        receiver.OnReceiveCommandLog(newline);
+                }
             }
         }
 
@@ -95,5 +105,25 @@ namespace SourceGit.ViewModels
         private string _content = string.Empty;
         private StringBuilder _builder = new StringBuilder();
         private List<Models.ICommandLogReceiver> _receivers = new List<Models.ICommandLogReceiver>();
+
+        private bool TrimContentIfNeeded()
+        {
+            if (_builder.Length <= MAX_CONTENT_LENGTH)
+                return false;
+
+            var content = _builder.ToString();
+            var keepFrom = Math.Max(0, content.Length - TRIMMED_CONTENT_LENGTH);
+            if (keepFrom > 0)
+            {
+                var nextLine = content.IndexOf('\n', keepFrom);
+                keepFrom = nextLine >= 0 ? nextLine + 1 : keepFrom;
+            }
+
+            var trimmed = keepFrom > 0 ? content.Substring(keepFrom) : content;
+            _builder.Clear();
+            _builder.AppendLine(TRUNCATED_NOTICE);
+            _builder.Append(trimmed.TrimStart('\r', '\n'));
+            return true;
+        }
     }
 }

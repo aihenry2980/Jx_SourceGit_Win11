@@ -17,14 +17,14 @@ namespace SourceGit.ViewModels
             private set => SetProperty(ref _image, value);
         }
 
-        public LFSImageDiff(string repo, Models.LFSDiff lfs, Models.ImageDecoder decoder)
+        public LFSImageDiff(string repo, Models.LFSDiff lfs, Models.ImageDecoder decoder, long maxAllowedSize = 0)
         {
             LFS = lfs;
 
             Task.Run(async () =>
             {
-                var oldImage = await ImageSource.FromLFSObjectAsync(repo, lfs.Old, decoder).ConfigureAwait(false);
-                var newImage = await ImageSource.FromLFSObjectAsync(repo, lfs.New, decoder).ConfigureAwait(false);
+                var oldImage = await ImageSource.FromLFSObjectAsync(repo, lfs.Old, decoder, maxAllowedSize).ConfigureAwait(false);
+                var newImage = await ImageSource.FromLFSObjectAsync(repo, lfs.New, decoder, maxAllowedSize).ConfigureAwait(false);
 
                 var img = new Models.ImageDiff()
                 {

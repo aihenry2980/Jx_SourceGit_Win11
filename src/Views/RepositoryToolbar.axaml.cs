@@ -188,6 +188,7 @@ namespace SourceGit.Views
         {
             if (DataContext is ViewModels.Repository repo)
             {
+                repo.RefreshSuperProjectSubmodulePointer();
                 repo.RefreshBranches();
                 repo.RefreshCommits();
                 e.Handled = true;

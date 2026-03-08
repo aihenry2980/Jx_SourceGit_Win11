@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Threading.Tasks;
 using Avalonia.Threading;
@@ -8,6 +8,8 @@ namespace SourceGit.ViewModels
 {
     public class DiffContext : ObservableObject
     {
+        private const long MAX_DIFF_IMAGE_SIZE = ImageSource.DEFAULT_DIFF_IMAGE_SIZE_LIMIT;
+
         public string Title
         {
             get;
@@ -37,7 +39,7 @@ namespace SourceGit.ViewModels
                     Preferences.Instance.UseFullTextDiff = value;
                     OnPropertyChanged();
 
-                    if (Content is TextDiffContext ctx)
+                    if (Content is TextDiffContext)
                         LoadContent();
                 }
             }
@@ -100,7 +102,7 @@ namespace SourceGit.ViewModels
             if (string.IsNullOrEmpty(_option.OrgPath) || _option.OrgPath == "/dev/null")
                 Title = _option.Path;
             else
-                Title = $"{_option.OrgPath} → {_option.Path}";
+                Title = $"{_option.OrgPath} -> {_option.Path}";
 
             LoadContent();
         }
@@ -163,107 +165,7 @@ namespace SourceGit.ViewModels
 
                 _info = info;
 
-                object rs = null;
-                if (latest.TextDiff != null)
-                {
-                    var count = latest.TextDiff.Lines.Count;
-                    var isSubmodule = false;
-                    if (count <= 3)
-                    {
-                        var submoduleDiff = new Models.SubmoduleDiff();
-                        var submoduleRoot = $"{_repo}/{_option.Path}".Replace('\\', '/').TrimEnd('/');
-                        isSubmodule = true;
-                        for (int i = 1; i < count; i++)
-                        {
-                            var line = latest.TextDiff.Lines[i];
-                            if (!line.Content.StartsWith("Subproject commit ", StringComparison.Ordinal))
-                            {
-                                isSubmodule = false;
-                                break;
-                            }
-
-                            var sha = line.Content.Substring(18);
-                            if (line.Type == Models.TextDiffLineType.Added)
-                                submoduleDiff.New = await QuerySubmoduleRevisionAsync(submoduleRoot, sha).ConfigureAwait(false);
-                            else if (line.Type == Models.TextDiffLineType.Deleted)
-                                submoduleDiff.Old = await QuerySubmoduleRevisionAsync(submoduleRoot, sha).ConfigureAwait(false);
-                        }
-
-                        if (isSubmodule)
-                            rs = submoduleDiff;
-                    }
-
-                    if (!isSubmodule)
-                        rs = latest.TextDiff;
-                }
-                else if (latest.IsBinary)
-                {
-                    var oldPath = string.IsNullOrEmpty(_option.OrgPath) ? _option.Path : _option.OrgPath;
-                    var imgDecoder = ImageSource.GetDecoder(_option.Path);
-
-                    if (imgDecoder != Models.ImageDecoder.None)
-                    {
-                        var imgDiff = new Models.ImageDiff();
-
-                        if (_option.Revisions.Count == 2)
-                        {
-                            var oldImage = await ImageSource.FromRevisionAsync(_repo, _option.Revisions[0], oldPath, imgDecoder).ConfigureAwait(false);
-                            var newImage = await ImageSource.FromRevisionAsync(_repo, _option.Revisions[1], _option.Path, imgDecoder).ConfigureAwait(false);
-                            imgDiff.Old = oldImage.Bitmap;
-                            imgDiff.OldFileSize = oldImage.Size;
-                            imgDiff.New = newImage.Bitmap;
-                            imgDiff.NewFileSize = newImage.Size;
-                        }
-                        else
-                        {
-                            if (!oldPath.Equals("/dev/null", StringComparison.Ordinal))
-                            {
-                                var oldImage = await ImageSource.FromRevisionAsync(_repo, "HEAD", oldPath, imgDecoder).ConfigureAwait(false);
-                                imgDiff.Old = oldImage.Bitmap;
-                                imgDiff.OldFileSize = oldImage.Size;
-                            }
-
-                            var fullPath = Path.Combine(_repo, _option.Path);
-                            if (File.Exists(fullPath))
-                            {
-                                var newImage = await ImageSource.FromFileAsync(fullPath, imgDecoder).ConfigureAwait(false);
-                                imgDiff.New = newImage.Bitmap;
-                                imgDiff.NewFileSize = newImage.Size;
-                            }
-                        }
-
-                        rs = imgDiff;
-                    }
-                    else
-                    {
-                        var binaryDiff = new Models.BinaryDiff();
-                        if (_option.Revisions.Count == 2)
-                        {
-                            binaryDiff.OldSize = await new Commands.QueryFileSize(_repo, oldPath, _option.Revisions[0]).GetResultAsync().ConfigureAwait(false);
-                            binaryDiff.NewSize = await new Commands.QueryFileSize(_repo, _option.Path, _option.Revisions[1]).GetResultAsync().ConfigureAwait(false);
-                        }
-                        else
-                        {
-                            var fullPath = Path.Combine(_repo, _option.Path);
-                            binaryDiff.OldSize = await new Commands.QueryFileSize(_repo, oldPath, "HEAD").GetResultAsync().ConfigureAwait(false);
-                            binaryDiff.NewSize = File.Exists(fullPath) ? new FileInfo(fullPath).Length : 0;
-                        }
-                        rs = binaryDiff;
-                    }
-                }
-                else if (latest.IsLFS)
-                {
-                    var imgDecoder = ImageSource.GetDecoder(_option.Path);
-                    if (imgDecoder != Models.ImageDecoder.None)
-                        rs = new LFSImageDiff(_repo, latest.LFSDiff, imgDecoder);
-                    else
-                        rs = latest.LFSDiff;
-                }
-                else
-                {
-                    rs = new Models.NoOrEOLChange();
-                }
-
+                var rs = await BuildContentAsync(latest).ConfigureAwait(false);
                 Dispatcher.UIThread.Post(() =>
                 {
                     FileModeChange = latest.FileModeChange;
@@ -298,6 +200,119 @@ namespace SourceGit.ViewModels
                 Commit = commit,
                 FullMessage = new Models.CommitFullMessage { Message = body }
             };
+        }
+
+        private async Task<object> BuildContentAsync(Models.DiffResult latest)
+        {
+            if (latest.TextDiff != null)
+                return await BuildTextOrSubmoduleDiffAsync(latest.TextDiff).ConfigureAwait(false);
+
+            if (latest.IsBinary)
+                return await BuildBinaryOrImageDiffAsync().ConfigureAwait(false);
+
+            if (latest.IsLFS)
+                return BuildLFSContent(latest.LFSDiff);
+
+            return new Models.NoOrEOLChange();
+        }
+
+        private async Task<object> BuildTextOrSubmoduleDiffAsync(Models.TextDiff textDiff)
+        {
+            var count = textDiff.Lines.Count;
+            if (count < 2 || count > 3)
+                return textDiff;
+
+            var submoduleDiff = new Models.SubmoduleDiff();
+            var submoduleRoot = $"{_repo}/{_option.Path}".Replace('\\', '/').TrimEnd('/');
+            for (int i = 1; i < count; i++)
+            {
+                var line = textDiff.Lines[i];
+                if (!line.Content.StartsWith("Subproject commit ", StringComparison.Ordinal))
+                    return textDiff;
+
+                var sha = line.Content.Substring(18);
+                if (line.Type == Models.TextDiffLineType.Added)
+                    submoduleDiff.New = await QuerySubmoduleRevisionAsync(submoduleRoot, sha).ConfigureAwait(false);
+                else if (line.Type == Models.TextDiffLineType.Deleted)
+                    submoduleDiff.Old = await QuerySubmoduleRevisionAsync(submoduleRoot, sha).ConfigureAwait(false);
+            }
+
+            return submoduleDiff;
+        }
+
+        private async Task<object> BuildBinaryOrImageDiffAsync()
+        {
+            var oldPath = string.IsNullOrEmpty(_option.OrgPath) ? _option.Path : _option.OrgPath;
+            var imgDecoder = ImageSource.GetDecoder(_option.Path);
+            var sizes = await QueryBinaryDiffSizesAsync(oldPath).ConfigureAwait(false);
+            if (imgDecoder == Models.ImageDecoder.None ||
+                sizes.OldSize > MAX_DIFF_IMAGE_SIZE ||
+                sizes.NewSize > MAX_DIFF_IMAGE_SIZE)
+            {
+                return sizes;
+            }
+
+            var imgDiff = new Models.ImageDiff
+            {
+                OldFileSize = sizes.OldSize,
+                NewFileSize = sizes.NewSize,
+            };
+
+            if (_option.Revisions.Count == 2)
+            {
+                if (!oldPath.Equals("/dev/null", StringComparison.Ordinal))
+                    imgDiff.Old = (await ImageSource.FromRevisionAsync(_repo, _option.Revisions[0], oldPath, imgDecoder, MAX_DIFF_IMAGE_SIZE).ConfigureAwait(false)).Bitmap;
+
+                if (!_option.Path.Equals("/dev/null", StringComparison.Ordinal))
+                    imgDiff.New = (await ImageSource.FromRevisionAsync(_repo, _option.Revisions[1], _option.Path, imgDecoder, MAX_DIFF_IMAGE_SIZE).ConfigureAwait(false)).Bitmap;
+            }
+            else
+            {
+                if (!oldPath.Equals("/dev/null", StringComparison.Ordinal))
+                    imgDiff.Old = (await ImageSource.FromRevisionAsync(_repo, "HEAD", oldPath, imgDecoder, MAX_DIFF_IMAGE_SIZE).ConfigureAwait(false)).Bitmap;
+
+                var fullPath = Path.Combine(_repo, _option.Path);
+                if (File.Exists(fullPath))
+                    imgDiff.New = (await ImageSource.FromFileAsync(fullPath, imgDecoder, MAX_DIFF_IMAGE_SIZE).ConfigureAwait(false)).Bitmap;
+            }
+
+            return imgDiff;
+        }
+
+        private object BuildLFSContent(Models.LFSDiff lfsDiff)
+        {
+            var imgDecoder = ImageSource.GetDecoder(_option.Path);
+            if (imgDecoder == Models.ImageDecoder.None ||
+                lfsDiff.Old.Size > MAX_DIFF_IMAGE_SIZE ||
+                lfsDiff.New.Size > MAX_DIFF_IMAGE_SIZE)
+            {
+                return lfsDiff;
+            }
+
+            return new LFSImageDiff(_repo, lfsDiff, imgDecoder, MAX_DIFF_IMAGE_SIZE);
+        }
+
+        private async Task<Models.BinaryDiff> QueryBinaryDiffSizesAsync(string oldPath)
+        {
+            var binaryDiff = new Models.BinaryDiff();
+            if (_option.Revisions.Count == 2)
+            {
+                if (!oldPath.Equals("/dev/null", StringComparison.Ordinal))
+                    binaryDiff.OldSize = await new Commands.QueryFileSize(_repo, oldPath, _option.Revisions[0]).GetResultAsync().ConfigureAwait(false);
+
+                if (!_option.Path.Equals("/dev/null", StringComparison.Ordinal))
+                    binaryDiff.NewSize = await new Commands.QueryFileSize(_repo, _option.Path, _option.Revisions[1]).GetResultAsync().ConfigureAwait(false);
+            }
+            else
+            {
+                if (!oldPath.Equals("/dev/null", StringComparison.Ordinal))
+                    binaryDiff.OldSize = await new Commands.QueryFileSize(_repo, oldPath, "HEAD").GetResultAsync().ConfigureAwait(false);
+
+                var fullPath = Path.Combine(_repo, _option.Path);
+                binaryDiff.NewSize = File.Exists(fullPath) ? new FileInfo(fullPath).Length : 0;
+            }
+
+            return binaryDiff;
         }
 
         private class Info

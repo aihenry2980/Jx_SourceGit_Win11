@@ -12,6 +12,10 @@ namespace SourceGit.ViewModels
 {
     public class Preferences : ObservableObject
     {
+        public const int MIN_HISTORY_COMMITS = 1000;
+        public const int MAX_HISTORY_COMMITS = 50000;
+        public const int DEFAULT_HISTORY_COMMITS = 10000;
+
         [JsonIgnore]
         public static Preferences Instance
         {
@@ -197,7 +201,7 @@ namespace SourceGit.ViewModels
         public int MaxHistoryCommits
         {
             get => _maxHistoryCommits;
-            set => SetProperty(ref _maxHistoryCommits, value);
+            set => SetProperty(ref _maxHistoryCommits, Math.Clamp(value, MIN_HISTORY_COMMITS, MAX_HISTORY_COMMITS));
         }
 
         public int SubjectGuideLength
@@ -763,7 +767,9 @@ namespace SourceGit.ViewModels
             try
             {
                 using var stream = File.OpenRead(path);
-                return JsonSerializer.Deserialize(stream, JsonCodeGen.Default.Preferences);
+                var loaded = JsonSerializer.Deserialize(stream, JsonCodeGen.Default.Preferences) ?? new Preferences();
+                loaded.Normalize();
+                return loaded;
             }
             catch
             {
@@ -823,6 +829,11 @@ namespace SourceGit.ViewModels
                     workspace.ActiveIdx = 0;
                 }
             }
+        }
+
+        private void Normalize()
+        {
+            _maxHistoryCommits = Math.Clamp(_maxHistoryCommits, MIN_HISTORY_COMMITS, MAX_HISTORY_COMMITS);
         }
 
         private static List<string> ParsePresetBranchRules(string raw)
@@ -1001,7 +1012,7 @@ namespace SourceGit.ViewModels
         private uint _mainAccentColor = 0xFF0078D7;
         private LayoutInfo _layout = new();
 
-        private int _maxHistoryCommits = 20000;
+        private int _maxHistoryCommits = DEFAULT_HISTORY_COMMITS;
         private int _subjectGuideLength = 50;
         private bool _useFixedTabWidth = true;
         private bool _useAutoHideScrollBars = true;

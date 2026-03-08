@@ -1,9 +1,13 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
+using System.Threading;
 
 namespace SourceGit.Models
 {
     public class User
     {
+        private const int MAX_CACHE_SIZE = 4096;
+        private const int TRIMMED_CACHE_SIZE = 3072;
+
         public static readonly User Invalid = new User();
 
         public string Name { get; set; } = string.Empty;
@@ -16,7 +20,7 @@ namespace SourceGit.Models
 
         public User(string data)
         {
-            var parts = data.Split('±', 2);
+            var parts = data.Split('\u00B1', 2);
             if (parts.Length < 2)
                 parts = [string.Empty, data];
 
@@ -37,7 +41,20 @@ namespace SourceGit.Models
 
         public static User FindOrAdd(string data)
         {
-            return _caches.GetOrAdd(data, key => new User(key));
+            var created = false;
+            var user = _caches.GetOrAdd(data, key =>
+            {
+                created = true;
+                return new User(key);
+            });
+
+            if (created)
+            {
+                _cacheKeys.Enqueue(data);
+                TryTrimCaches();
+            }
+
+            return user;
         }
 
         public override string ToString()
@@ -46,6 +63,24 @@ namespace SourceGit.Models
         }
 
         private static ConcurrentDictionary<string, User> _caches = new ConcurrentDictionary<string, User>();
+        private static ConcurrentQueue<string> _cacheKeys = new ConcurrentQueue<string>();
+        private static int _isTrimming = 0;
         private readonly int _hash;
+
+        private static void TryTrimCaches()
+        {
+            if (_caches.Count <= MAX_CACHE_SIZE || Interlocked.CompareExchange(ref _isTrimming, 1, 0) != 0)
+                return;
+
+            try
+            {
+                while (_caches.Count > TRIMMED_CACHE_SIZE && _cacheKeys.TryDequeue(out var oldest))
+                    _caches.TryRemove(oldest, out _);
+            }
+            finally
+            {
+                Volatile.Write(ref _isTrimming, 0);
+            }
+        }
     }
 }

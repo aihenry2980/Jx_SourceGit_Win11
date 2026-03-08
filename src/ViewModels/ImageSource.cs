@@ -14,6 +14,8 @@ namespace SourceGit.ViewModels
 {
     public class ImageSource
     {
+        public const long DEFAULT_DIFF_IMAGE_SIZE_LIMIT = 32 * 1024 * 1024;
+
         public Bitmap Bitmap { get; }
         public long Size { get; }
 
@@ -36,36 +38,36 @@ namespace SourceGit.ViewModels
             };
         }
 
-        public static async Task<ImageSource> FromFileAsync(string fullpath, Models.ImageDecoder decoder)
+        public static async Task<ImageSource> FromFileAsync(string fullpath, Models.ImageDecoder decoder, long maxAllowedSize = 0)
         {
             await using var stream = File.OpenRead(fullpath);
-            return await Task.Run(() => LoadFromStream(stream, decoder)).ConfigureAwait(false);
+            return await Task.Run(() => LoadFromStream(stream, decoder, maxAllowedSize)).ConfigureAwait(false);
         }
 
-        public static async Task<ImageSource> FromRevisionAsync(string repo, string revision, string file, Models.ImageDecoder decoder)
+        public static async Task<ImageSource> FromRevisionAsync(string repo, string revision, string file, Models.ImageDecoder decoder, long maxAllowedSize = 0)
         {
             await using var stream = await Commands.QueryFileContent.RunAsync(repo, revision, file).ConfigureAwait(false);
-            return await Task.Run(() => LoadFromStream(stream, decoder)).ConfigureAwait(false);
+            return await Task.Run(() => LoadFromStream(stream, decoder, maxAllowedSize)).ConfigureAwait(false);
         }
 
-        public static async Task<ImageSource> FromLFSObjectAsync(string repo, Models.LFSObject lfs, Models.ImageDecoder decoder)
+        public static async Task<ImageSource> FromLFSObjectAsync(string repo, Models.LFSObject lfs, Models.ImageDecoder decoder, long maxAllowedSize = 0)
         {
-            if (string.IsNullOrEmpty(lfs.Oid) || lfs.Size == 0)
+            if (string.IsNullOrEmpty(lfs.Oid) || lfs.Size == 0 || IsOverSizeLimit(lfs.Size, maxAllowedSize))
                 return new ImageSource(null, 0);
 
             var commonDir = await new Commands.QueryGitCommonDir(repo).GetResultAsync().ConfigureAwait(false);
             var localFile = Path.Combine(commonDir, "lfs", "objects", lfs.Oid.Substring(0, 2), lfs.Oid.Substring(2, 2), lfs.Oid);
             if (File.Exists(localFile))
-                return await FromFileAsync(localFile, decoder).ConfigureAwait(false);
+                return await FromFileAsync(localFile, decoder, maxAllowedSize).ConfigureAwait(false);
 
             await using var stream = await Commands.QueryFileContent.FromLFSAsync(repo, lfs.Oid, lfs.Size).ConfigureAwait(false);
-            return await Task.Run(() => LoadFromStream(stream, decoder)).ConfigureAwait(false);
+            return await Task.Run(() => LoadFromStream(stream, decoder, maxAllowedSize)).ConfigureAwait(false);
         }
 
-        private static ImageSource LoadFromStream(Stream stream, Models.ImageDecoder decoder)
+        private static ImageSource LoadFromStream(Stream stream, Models.ImageDecoder decoder, long maxAllowedSize)
         {
             var size = stream.Length;
-            if (size > 0)
+            if (size > 0 && !IsOverSizeLimit(size, maxAllowedSize))
             {
                 try
                 {
@@ -86,6 +88,11 @@ namespace SourceGit.ViewModels
             }
 
             return new ImageSource(null, 0);
+        }
+
+        private static bool IsOverSizeLimit(long size, long maxAllowedSize)
+        {
+            return maxAllowedSize > 0 && size > maxAllowedSize;
         }
 
         private static ImageSource DecodeWithAvalonia(Stream stream, long size)

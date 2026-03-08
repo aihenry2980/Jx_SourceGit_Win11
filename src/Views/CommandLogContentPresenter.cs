@@ -103,6 +103,12 @@ namespace SourceGit.Views
             ScrollToEnd();
         }
 
+        public void OnResetCommandLog(string content)
+        {
+            Text = content ?? string.Empty;
+            ScrollToEnd();
+        }
+
         protected override void OnLoaded(RoutedEventArgs e)
         {
             base.OnLoaded(e);

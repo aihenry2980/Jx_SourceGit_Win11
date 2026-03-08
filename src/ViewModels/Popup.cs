@@ -38,6 +38,13 @@ namespace SourceGit.ViewModels
                 ProgressDescription = desc;
         }
 
+        public void OnResetCommandLog(string content)
+        {
+            var lines = content?.Split(['\r', '\n'], System.StringSplitOptions.RemoveEmptyEntries);
+            if (lines is { Length: > 0 })
+                ProgressDescription = lines[^1];
+        }
+
         public void Cleanup()
         {
             _log?.Unsubscribe(this);

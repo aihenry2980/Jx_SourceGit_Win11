@@ -17,6 +17,8 @@ namespace SourceGit.ViewModels
 {
     public class Repository : ObservableObject, Models.IRepository
     {
+        private const int MAX_LOGS = 100;
+
         public bool IsBare
         {
             get;
@@ -693,7 +695,7 @@ namespace SourceGit.ViewModels
             _lastFetchTime = DateTime.Now;
             EnsureAutoFetchTimerState();
             RefreshAll();
-            _ = ResolveSuperProjectSubmodulePointerOnOpenAsync();
+            RefreshSuperProjectSubmodulePointer();
         }
 
         public void Close()
@@ -876,6 +878,8 @@ namespace SourceGit.ViewModels
         {
             var log = new CommandLog(name);
             Logs.Insert(0, log);
+            while (Logs.Count > MAX_LOGS)
+                Logs.RemoveAt(Logs.Count - 1);
             return log;
         }
 
@@ -2254,6 +2258,11 @@ namespace SourceGit.ViewModels
             NavigateToCommit(_superProjectSubmoduleSHA);
         }
 
+        public void RefreshSuperProjectSubmodulePointer()
+        {
+            _ = ResolveSuperProjectSubmodulePointerAsync();
+        }
+
         public void AddWorktree()
         {
             if (CanCreatePopup())
@@ -2805,40 +2814,41 @@ namespace SourceGit.ViewModels
             return normalized.ToLowerInvariant();
         }
 
-        private async Task ResolveSuperProjectSubmodulePointerOnOpenAsync()
+        private async Task ResolveSuperProjectSubmodulePointerAsync()
         {
+            var resolved = string.Empty;
+
             try
             {
                 var superProjectRoot = await new Commands.QuerySuperProjectRootPath(FullPath).GetResultAsync().ConfigureAwait(false);
-                if (string.IsNullOrWhiteSpace(superProjectRoot))
-                    return;
-
-                var normalizedSuperProjectRoot = superProjectRoot.Replace('\\', '/').TrimEnd('/');
-                var pathComparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-                if (normalizedSuperProjectRoot.Equals(FullPath, pathComparison))
-                    return;
-
-                var submodules = await new Commands.QuerySubmodules(normalizedSuperProjectRoot).GetResultAsync().ConfigureAwait(false);
-                foreach (var submodule in submodules)
+                if (!string.IsNullOrWhiteSpace(superProjectRoot))
                 {
-                    if (string.IsNullOrWhiteSpace(submodule.Path))
-                        continue;
+                    var normalizedSuperProjectRoot = superProjectRoot.Replace('\\', '/').TrimEnd('/');
+                    var pathComparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+                    if (!normalizedSuperProjectRoot.Equals(FullPath, pathComparison))
+                    {
+                        var submodules = await new Commands.QuerySubmodules(normalizedSuperProjectRoot).GetResultAsync().ConfigureAwait(false);
+                        foreach (var submodule in submodules)
+                        {
+                            if (string.IsNullOrWhiteSpace(submodule.Path))
+                                continue;
 
-                    var submoduleRoot = Path.GetFullPath(Path.Combine(normalizedSuperProjectRoot, submodule.Path)).Replace('\\', '/').TrimEnd('/');
-                    if (!submoduleRoot.Equals(FullPath, pathComparison))
-                        continue;
+                            var submoduleRoot = Path.GetFullPath(Path.Combine(normalizedSuperProjectRoot, submodule.Path)).Replace('\\', '/').TrimEnd('/');
+                            if (!submoduleRoot.Equals(FullPath, pathComparison))
+                                continue;
 
-                    var normalized = NormalizeSubmodulePointerSHA(submodule.SHA);
-                    if (!string.IsNullOrEmpty(normalized))
-                        await Dispatcher.UIThread.InvokeAsync(() => UpdateSuperProjectSubmoduleSHA(normalized));
-
-                    return;
+                            resolved = NormalizeSubmodulePointerSHA(submodule.SHA);
+                            break;
+                        }
+                    }
                 }
             }
             catch
             {
                 // Best-effort: keep existing behavior if auto-detection fails.
             }
+
+            await Dispatcher.UIThread.InvokeAsync(() => UpdateSuperProjectSubmoduleSHA(resolved));
         }
 
         private void AttachSuperProjectPointerDecorator(List<Models.Commit> commits)
