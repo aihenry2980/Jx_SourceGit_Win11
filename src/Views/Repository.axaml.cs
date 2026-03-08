@@ -608,6 +608,15 @@ namespace SourceGit.Views
             OpenHistoryFiltersMenuByMode(sender, e, Models.FilterMode.Excluded, "Repository.FilterCommits.Invisible");
         }
 
+        // Backward-compatible handler for XAML that still uses a single menu trigger.
+        private void OnOpenHistoryFiltersMenu(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo && repo.HistoryFilterMode == Models.FilterMode.Excluded)
+                OpenHistoryFiltersMenuByMode(sender, e, Models.FilterMode.Excluded, "Repository.FilterCommits.Invisible");
+            else
+                OpenHistoryFiltersMenuByMode(sender, e, Models.FilterMode.Included, "Repository.FilterCommits.Visible");
+        }
+
         private void OnFoldVisibleBranchesInGraph(object sender, RoutedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo)

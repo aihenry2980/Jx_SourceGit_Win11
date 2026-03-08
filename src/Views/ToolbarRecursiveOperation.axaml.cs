@@ -28,6 +28,14 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
+        private void OnStopCountdown(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.ToolbarRecursiveOperation vm)
+                vm.StopCountdown();
+
+            e.Handled = true;
+        }
+
         private void OnManualClose(object sender, RoutedEventArgs e)
         {
             var launcherPage = this.FindAncestorOfType<LauncherPage>();

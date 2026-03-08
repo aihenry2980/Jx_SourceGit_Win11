@@ -38,7 +38,7 @@
     </Grid>
 
     <!-- Body -->
-    <TabControl Grid.Row="1">
+    <TabControl x:Name="Tabs" Grid.Row="1">
       <TabItem>
         <TabItem.Header>
           <TextBlock Classes="tab_header" Text="{DynamicResource Text.Configure.Git}"/>

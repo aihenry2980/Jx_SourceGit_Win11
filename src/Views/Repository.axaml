@@ -261,7 +261,8 @@
                 <TextBlock Classes="small" Text="Clear"/>
               </Button>
             </Grid>
-            <TextBox Height="56"
+            <TextBox x:Name="PresetBranchExactNameInputBox"
+                     Height="56"
                      Margin="0,4,0,0"
                      CornerRadius="3"
                      VerticalContentAlignment="Top"
@@ -316,7 +317,8 @@
                 <TextBlock Classes="small" Text="Clear"/>
               </Button>
             </Grid>
-            <TextBox Height="56"
+            <TextBox x:Name="PresetBranchContainsPatternInputBox"
+                     Height="56"
                      Margin="0,4,0,0"
                      CornerRadius="3"
                      VerticalContentAlignment="Top"
@@ -325,6 +327,10 @@
                      AcceptsReturn="True"
                      AcceptsTab="False"
                      TextWrapping="Wrap"/>
+
+            <TextBox x:Name="PresetBranchExcludeNameInputBox"
+                     IsVisible="False"
+                     Text="{Binding PresetBranchExcludeNames, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
             <TextBlock Margin="0,6,0,0"
                        Classes="small"
