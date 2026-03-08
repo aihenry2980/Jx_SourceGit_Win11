@@ -11,6 +11,8 @@ namespace SourceGit.Views
     public class ChangeStatusIcon : Control
     {
         private static readonly string[] INDICATOR = ["?", "±", "T", "+", "−", "➜", "❏", "★", "!"];
+        private const string SUBMODULE_POINTER_INDICATOR = "S";
+        private static readonly Color SUBMODULE_POINTER_COLOR = Color.Parse("#0F8CFF");
         private static readonly Color[] COLOR =
         [
             Colors.Transparent,
@@ -50,8 +52,8 @@ namespace SourceGit.Views
             var typeface = new Typeface("fonts:SourceGit#JetBrains Mono");
 
             var idx = (int)(IsUnstagedChange ? Change.WorkTree : Change.Index);
-            var indicator = INDICATOR[idx];
-            var color = COLOR[idx];
+            var indicator = Change.IsSubmodulePointerChange ? SUBMODULE_POINTER_INDICATOR : INDICATOR[idx];
+            var color = Change.IsSubmodulePointerChange ? SUBMODULE_POINTER_COLOR : COLOR[idx];
             var hsl = color.ToHsl();
             var color2 = ActualThemeVariant == ThemeVariant.Dark
                 ? new HslColor(hsl.A, hsl.H, hsl.S, hsl.L - 0.1).ToRgb()

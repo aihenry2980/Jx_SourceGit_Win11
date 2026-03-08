@@ -47,10 +47,17 @@
         public string OriginalPath { get; set; } = "";
         public ChangeDataForAmend DataForAmend { get; set; } = null;
         public ConflictReason ConflictReason { get; set; } = ConflictReason.None;
+        public bool IsSubmodulePointerChange { get; set; } = false;
+        public string IndexSubmodulePointerOldSHA { get; set; } = string.Empty;
+        public string IndexSubmodulePointerNewSHA { get; set; } = string.Empty;
+        public string WorkTreeSubmodulePointerOldSHA { get; set; } = string.Empty;
+        public string WorkTreeSubmodulePointerNewSHA { get; set; } = string.Empty;
 
         public bool IsConflicted => WorkTree == ChangeState.Conflicted;
         public string ConflictMarker => CONFLICT_MARKERS[(int)ConflictReason];
         public string ConflictDesc => CONFLICT_DESCS[(int)ConflictReason];
+        public string IndexSubmodulePointerText => BuildSubmodulePointerText(IndexSubmodulePointerOldSHA, IndexSubmodulePointerNewSHA);
+        public string WorkTreeSubmodulePointerText => BuildSubmodulePointerText(WorkTreeSubmodulePointerOldSHA, WorkTreeSubmodulePointerNewSHA);
 
         public string WorkTreeDesc => TYPE_DESCS[(int)WorkTree];
         public string IndexDesc => TYPE_DESCS[(int)Index];
@@ -113,5 +120,15 @@
             "Both added",
             "Both modified"
         ];
+
+        private static string BuildSubmodulePointerText(string oldSHA, string newSHA)
+        {
+            if (string.IsNullOrEmpty(oldSHA) || string.IsNullOrEmpty(newSHA))
+                return string.Empty;
+
+            var oldDisplay = oldSHA.Length > 10 ? oldSHA.Substring(0, 10) : oldSHA;
+            var newDisplay = newSHA.Length > 10 ? newSHA.Substring(0, 10) : newSHA;
+            return $"SHA {oldDisplay} -> {newDisplay}";
+        }
     }
 }

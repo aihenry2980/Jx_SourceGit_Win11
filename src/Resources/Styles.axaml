@@ -1408,6 +1408,25 @@
     <Style Selector="^ /template/ ButtonSpinner#PART_Spinner">
       <Setter Property="MinHeight" Value="0"/>
       <Setter Property="Height" Value="28"/>
+      <Setter Property="Background" Value="{DynamicResource Brush.Contents}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border1}"/>
+      <Setter Property="BorderThickness" Value="1,0,0,0"/>
+    </Style>
+    <Style Selector="^ /template/ ButtonSpinner#PART_Spinner Button">
+      <Setter Property="MinWidth" Value="30"/>
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="Background" Value="{DynamicResource Brush.Contents}"/>
+      <Setter Property="Foreground" Value="{DynamicResource Brush.FG1}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border1}"/>
+      <Setter Property="BorderThickness" Value="1,0,0,0"/>
+    </Style>
+    <Style Selector="^ /template/ ButtonSpinner#PART_Spinner Button:pointerover">
+      <Setter Property="Background" Value="{DynamicResource Brush.AccentHovered}"/>
+      <Setter Property="Foreground" Value="White"/>
+    </Style>
+    <Style Selector="^ /template/ ButtonSpinner#PART_Spinner Button:pressed">
+      <Setter Property="Background" Value="{DynamicResource Brush.Accent}"/>
+      <Setter Property="Foreground" Value="White"/>
     </Style>
     <Style Selector="^ /template/ TextBox#PART_TextBox">
       <Setter Property="MinHeight" Value="0"/>

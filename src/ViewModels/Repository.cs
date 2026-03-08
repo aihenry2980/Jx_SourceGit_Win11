@@ -1584,6 +1584,47 @@ namespace SourceGit.ViewModels
             return info.Exists && info.Length > 20;
         }
 
+        private async Task MarkSubmodulePointerChangesAsync(List<Models.Change> changes)
+        {
+            if (changes == null || changes.Count == 0)
+                return;
+
+            if (_submodules.Count == 0)
+                return;
+
+            var submodulePaths = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var submodule in _submodules)
+            {
+                if (!string.IsNullOrEmpty(submodule.Path))
+                    submodulePaths.Add(submodule.Path);
+            }
+
+            if (submodulePaths.Count == 0)
+                return;
+
+            var indexChanges = await new Commands.QuerySubmodulePointerChanges(FullPath, true, submodulePaths).GetResultAsync().ConfigureAwait(false);
+            var workTreeChanges = await new Commands.QuerySubmodulePointerChanges(FullPath, false, submodulePaths).GetResultAsync().ConfigureAwait(false);
+
+            foreach (var change in changes)
+            {
+                change.IsSubmodulePointerChange = submodulePaths.Contains(change.Path);
+                if (!change.IsSubmodulePointerChange)
+                    continue;
+
+                if (indexChanges.TryGetValue(change.Path, out var index))
+                {
+                    change.IndexSubmodulePointerOldSHA = index.OldSHA;
+                    change.IndexSubmodulePointerNewSHA = index.NewSHA;
+                }
+
+                if (workTreeChanges.TryGetValue(change.Path, out var worktree))
+                {
+                    change.WorkTreeSubmodulePointerOldSHA = worktree.OldSHA;
+                    change.WorkTreeSubmodulePointerNewSHA = worktree.NewSHA;
+                }
+            }
+        }
+
         public void RefreshBranches()
         {
             if (_cancellationRefreshBranches is { IsCancellationRequested: false })
@@ -1802,6 +1843,7 @@ namespace SourceGit.ViewModels
                 if (_workingCopy == null || token.IsCancellationRequested)
                     return;
 
+                await MarkSubmodulePointerChangesAsync(changes).ConfigureAwait(false);
                 changes.Sort((l, r) => Models.NumericSort.Compare(l.Path, r.Path));
                 _workingCopy.SetData(changes, token);
 

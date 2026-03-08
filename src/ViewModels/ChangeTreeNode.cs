@@ -27,6 +27,11 @@ namespace SourceGit.ViewModels
             get => Change?.ConflictMarker ?? string.Empty;
         }
 
+        public bool IsSubmodulePointerChange
+        {
+            get => Change?.IsSubmodulePointerChange ?? false;
+        }
+
         public bool IsExpanded
         {
             get => _isExpanded;

@@ -129,7 +129,7 @@
 
         <Button Classes="icon_button"
                 Width="16" Height="16"
-                Margin="8,2,8,0"
+                Margin="8,2,4,0"
                 Command="{Binding AddNewTab}"
                 IsVisible="{Binding !#ThisControl.IsScrollerVisible}">
           <ToolTip.Tip>
@@ -144,6 +144,21 @@
           </ToolTip.Tip>
 
           <Path Width="12" Height="12" Data="{StaticResource Icons.Plus}"/>
+        </Button>
+
+        <Button Classes="flat"
+                Height="24"
+                Margin="4,3,8,0"
+                Padding="10,0"
+                CornerRadius="6"
+                Click="OpenLocalRepository"
+                IsVisible="{Binding !#ThisControl.IsScrollerVisible}">
+          <Button.Content>
+            <TextBlock Text="+Folder"/>
+          </Button.Content>
+          <ToolTip.Tip>
+            <TextBlock Text="{DynamicResource Text.Welcome.OpenOrInit}"/>
+          </ToolTip.Tip>
         </Button>
       </StackPanel>
     </ScrollViewer>
@@ -166,6 +181,20 @@
         </ToolTip.Tip>
 
         <Path Width="12" Height="12" Data="{StaticResource Icons.Plus}"/>
+      </Button>
+
+      <Button Classes="flat"
+              Height="24"
+              Margin="6,3,0,0"
+              Padding="10,0"
+              CornerRadius="6"
+              Click="OpenLocalRepository">
+        <Button.Content>
+          <TextBlock Text="+Folder"/>
+        </Button.Content>
+        <ToolTip.Tip>
+          <TextBlock Text="{DynamicResource Text.Welcome.OpenOrInit}"/>
+        </ToolTip.Tip>
       </Button>
     </StackPanel>
   </Grid>
