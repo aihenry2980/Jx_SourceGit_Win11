@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:v="using:SourceGit.Views"
              xmlns:vm="using:SourceGit.ViewModels"
+             xmlns:c="using:SourceGit.Converters"
              mc:Ignorable="d" d:DesignWidth="980" d:DesignHeight="520"
              x:Class="SourceGit.Views.ToolbarRecursiveOperation"
              x:DataType="vm:ToolbarRecursiveOperation">
@@ -29,6 +30,59 @@
                FontStyle="Italic"
                Text="{Binding Description}"/>
 
+    <Border Margin="0,10,0,0"
+            Padding="10,8"
+            BorderThickness="1"
+            BorderBrush="{DynamicResource Brush.Border2}"
+            Background="{DynamicResource Brush.Contents}"
+            IsVisible="{Binding IsSubmoduleSelectionVisible}">
+      <StackPanel Orientation="Vertical">
+        <Grid ColumnDefinitions="*,Auto,Auto">
+          <TextBlock Grid.Column="0"
+                     VerticalAlignment="Center"
+                     FontWeight="Bold"
+                     Text="Select submodules to update recursively"/>
+          <Button Grid.Column="1"
+                  Classes="flat"
+                  Padding="8,2"
+                  Click="OnSelectAllSubmodules">
+            <TextBlock Text="Select all"/>
+          </Button>
+          <Button Grid.Column="2"
+                  Classes="flat"
+                  Margin="8,0,0,0"
+                  Padding="8,2"
+                  Click="OnClearSubmoduleSelection">
+            <TextBlock Text="Clear all"/>
+          </Button>
+        </Grid>
+
+        <TextBlock Margin="0,6,0,0"
+                   Foreground="{DynamicResource Brush.FG2}"
+                   Text="Selection is remembered for this repository."/>
+
+        <ScrollViewer Margin="0,8,0,0"
+                      MaxHeight="160"
+                      VerticalScrollBarVisibility="Auto"
+                      IsVisible="{Binding HasSubmodulesToSelect}">
+          <ItemsControl ItemsSource="{Binding SubmoduleSelections}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <CheckBox Margin="0,2,0,2"
+                          Content="{Binding Path}"
+                          IsChecked="{Binding IsSelected, Mode=TwoWay}"/>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+
+        <TextBlock Margin="0,8,0,0"
+                   Foreground="{DynamicResource Brush.FG2}"
+                   IsVisible="{Binding HasSubmodulesToSelect, Converter={x:Static BoolConverters.Not}}"
+                   Text="No submodules found in this repository."/>
+      </StackPanel>
+    </Border>
+
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
       <Button Classes="flat primary"
               Height="28"
@@ -36,14 +90,6 @@
               Cursor="Hand"
               Content="Close immediately"
               Click="OnCloseImmediately"/>
-
-      <Button Classes="flat primary"
-              Height="28"
-              Margin="8,0,0,0"
-              Padding="10,0"
-              Cursor="Hand"
-              Content="Stop countdown"
-              Click="OnStopCountdown"/>
 
       <Button Classes="flat"
               Height="28"

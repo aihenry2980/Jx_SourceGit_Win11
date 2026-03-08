@@ -9,6 +9,11 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="SourceGit.Views.Repository"
              x:DataType="vm:Repository">
+  <UserControl.Resources>
+    <SolidColorBrush x:Key="Brush.Accent" Color="{Binding AccentColor}"/>
+    <SolidColorBrush x:Key="Brush.AccentHovered" Color="{Binding AccentHoveredColor}"/>
+  </UserControl.Resources>
+
   <Grid>
     <Grid.ColumnDefinitions>
       <ColumnDefinition Width="{Binding Source={x:Static vm:Preferences.Instance}, Path=Layout.RepositorySidebarWidth, Mode=TwoWay}" MinWidth="200" MaxWidth="500"/>
@@ -128,7 +133,7 @@
               </ListBoxItem>
 
               <ListBoxItem IsVisible="{Binding !IsBare}">
-                <Grid Classes="view_mode" ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+                <Grid Classes="view_mode" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto">
                   <Path Grid.Column="0" Classes="icon" Data="{StaticResource Icons.Changes}"/>
                   <TextBlock Grid.Column="1" Classes="header" Text="{DynamicResource Text.WorkingCopy}"/>
                   <Border Grid.Column="2"
@@ -150,6 +155,20 @@
                         Fill="DarkOrange"
                         IsVisible="{Binding InProgressContext, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                   <Button Grid.Column="4"
+                          Classes="icon_button"
+                          Width="26" Height="26"
+                          Click="OnOpenLocalIgnoreConfigure"
+                          ToolTip.Tip="Local Git Ignore">
+                    <Path Width="12" Height="12" Data="{StaticResource Icons.GitIgnore}"/>
+                  </Button>
+                  <Button Grid.Column="5"
+                          Classes="icon_button"
+                          Width="26" Height="26"
+                          Click="OnApplyLocalIgnoreRules"
+                          ToolTip.Tip="Refresh Local Ignore">
+                    <Path Width="12" Height="12" Data="{StaticResource Icons.Refresh}"/>
+                  </Button>
+                  <Button Grid.Column="6"
                           Classes="icon_button"
                           Width="26" Height="26"
                           Command="{Binding DiscardAllChanges}"
@@ -253,6 +272,8 @@
             <Grid ColumnDefinitions="*,Auto">
               <TextBlock Grid.Column="0"
                          Classes="small"
+                         FontWeight="Bold"
+                         Foreground="#FF10893E"
                          Text="{DynamicResource Text.Repository.BranchesVisibility.ExactNames}"/>
               <Button Grid.Column="1"
                       Classes="flat"
@@ -261,53 +282,70 @@
                 <TextBlock Classes="small" Text="Clear"/>
               </Button>
             </Grid>
-            <TextBox Height="56"
-                     Margin="0,4,0,0"
-                     CornerRadius="3"
-                     VerticalContentAlignment="Top"
-                     Watermark="{DynamicResource Text.Repository.BranchesVisibility.ExactNames.Placeholder}"
-                     Text="{Binding PresetBranchExactNames, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                     AcceptsReturn="True"
-                     AcceptsTab="False"
-                     TextWrapping="Wrap"/>
-
-            <TextBlock Classes="small"
-                       Margin="0,8,0,0"
-                       Text="Exact branch tag colors"/>
-            <ItemsControl Margin="0,4,0,0"
-                          ItemsSource="{Binding PresetBranchExactColorItems}"
-                          IsVisible="{Binding HasPresetBranchExactColorItems}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate DataType="vm:PresetBranchExactColorItem">
-                  <Grid Margin="0,0,0,4" ColumnDefinitions="*,Auto">
-                    <TextBlock Grid.Column="0"
-                               VerticalAlignment="Center"
-                               Text="{Binding Name}"
-                               TextTrimming="CharacterEllipsis"/>
-
-                    <Button Grid.Column="1"
-                            Classes="flat"
-                            Padding="8,2"
-                            Click="OnOpenPresetBranchExactColorMenu">
-                      <StackPanel Orientation="Horizontal" Spacing="6">
-                        <Border Width="12"
-                                Height="12"
-                                CornerRadius="6"
-                                VerticalAlignment="Center"
+            <Border Margin="0,4,0,0"
+                    Padding="6"
+                    CornerRadius="3"
+                    BorderThickness="1"
+                    BorderBrush="{DynamicResource Brush.Border1}"
+                    DragDrop.AllowDrop="True"
+                    DragDrop.DragOver="OnPresetBranchFilterTextBoxDragOver"
+                    DragDrop.Drop="OnDropToPresetBranchExactNames">
+              <StackPanel Orientation="Vertical">
+                <ScrollViewer MaxHeight="56"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                  <ItemsControl ItemsSource="{Binding PresetBranchExactNames, Converter={x:Static c:StringConverters.ToPresetBranchRuleTokens}}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal"/>
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Border Margin="0,0,4,4"
+                                Padding="8,2,4,2"
+                                CornerRadius="10"
                                 BorderThickness="1"
-                                BorderBrush="{DynamicResource Brush.Border1}"
-                                Background="{Binding ColorBrush}"/>
-                        <TextBlock Text="Color"/>
-                      </StackPanel>
-                    </Button>
-                  </Grid>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                                BorderBrush="#FF10893E"
+                                Background="#1A10893E">
+                          <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock VerticalAlignment="Center"
+                                       Text="{Binding .}"
+                                       TextTrimming="CharacterEllipsis"/>
+                            <Button Classes="flat"
+                                    Width="12"
+                                    Height="12"
+                                    MinWidth="12"
+                                    Padding="0"
+                                    VerticalAlignment="Center"
+                                    Tag="{Binding .}"
+                                    Click="OnRemovePresetBranchExactName">
+                              <Path Width="7"
+                                    Height="7"
+                                    Data="{StaticResource Icons.Close}"
+                                    Fill="{DynamicResource Brush.FG2}"/>
+                            </Button>
+                          </StackPanel>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
+
+                <TextBox x:Name="PresetBranchExactNameInputBox"
+                         Margin="0,4,0,0"
+                         CornerRadius="3"
+                         Watermark="{DynamicResource Text.Repository.BranchesVisibility.ExactNames.Placeholder}"
+                         TextChanged="OnPresetBranchInputTextChanged"
+                         KeyDown="OnPresetBranchExactNameInputKeyDown"/>
+              </StackPanel>
+            </Border>
 
             <Grid Margin="0,8,0,0" ColumnDefinitions="*,Auto">
               <TextBlock Grid.Column="0"
                          Classes="small"
+                         FontWeight="Bold"
+                         Foreground="#FF0078D7"
                          Text="{DynamicResource Text.Repository.BranchesVisibility.ContainsPatterns}"/>
               <Button Grid.Column="1"
                       Classes="flat"
@@ -316,15 +354,136 @@
                 <TextBlock Classes="small" Text="Clear"/>
               </Button>
             </Grid>
-            <TextBox Height="56"
-                     Margin="0,4,0,0"
-                     CornerRadius="3"
-                     VerticalContentAlignment="Top"
-                     Watermark="{DynamicResource Text.Repository.BranchesVisibility.ContainsPatterns.Placeholder}"
-                     Text="{Binding PresetBranchContainsPatterns, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                     AcceptsReturn="True"
-                     AcceptsTab="False"
-                     TextWrapping="Wrap"/>
+            <Border Margin="0,4,0,0"
+                    Padding="6"
+                    CornerRadius="3"
+                    BorderThickness="1"
+                    BorderBrush="{DynamicResource Brush.Border1}"
+                    DragDrop.AllowDrop="True"
+                    DragDrop.DragOver="OnPresetBranchFilterTextBoxDragOver"
+                    DragDrop.Drop="OnDropToPresetBranchContainsPatterns">
+              <StackPanel Orientation="Vertical">
+                <ScrollViewer MaxHeight="56"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                  <ItemsControl ItemsSource="{Binding PresetBranchContainsPatterns, Converter={x:Static c:StringConverters.ToPresetBranchRuleTokens}}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal"/>
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Border Margin="0,0,4,4"
+                                Padding="8,2,4,2"
+                                CornerRadius="10"
+                                BorderThickness="1"
+                                BorderBrush="#FF0078D7"
+                                Background="#1A0078D7">
+                          <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock VerticalAlignment="Center"
+                                       Text="{Binding .}"
+                                       TextTrimming="CharacterEllipsis"/>
+                            <Button Classes="flat"
+                                    Width="12"
+                                    Height="12"
+                                    MinWidth="12"
+                                    Padding="0"
+                                    VerticalAlignment="Center"
+                                    Tag="{Binding .}"
+                                    Click="OnRemovePresetBranchContainsPattern">
+                              <Path Width="7"
+                                    Height="7"
+                                    Data="{StaticResource Icons.Close}"
+                                    Fill="{DynamicResource Brush.FG2}"/>
+                            </Button>
+                          </StackPanel>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
+
+                <TextBox x:Name="PresetBranchContainsPatternInputBox"
+                         Margin="0,4,0,0"
+                         CornerRadius="3"
+                         Watermark="{DynamicResource Text.Repository.BranchesVisibility.ContainsPatterns.Placeholder}"
+                         TextChanged="OnPresetBranchInputTextChanged"
+                         KeyDown="OnPresetBranchContainsPatternInputKeyDown"/>
+              </StackPanel>
+            </Border>
+
+            <Grid Margin="0,8,0,0" ColumnDefinitions="*,Auto">
+              <TextBlock Grid.Column="0"
+                         Classes="small"
+                         FontWeight="Bold"
+                         Foreground="#FFD13438"
+                         Text="{DynamicResource Text.Repository.BranchesVisibility.ExcludeNames}"/>
+              <Button Grid.Column="1"
+                      Classes="flat"
+                      Padding="8,2"
+                      Click="OnClearPresetBranchExcludeNames">
+                <TextBlock Classes="small" Text="Clear"/>
+              </Button>
+            </Grid>
+            <Border Margin="0,4,0,0"
+                    Padding="6"
+                    CornerRadius="3"
+                    BorderThickness="1"
+                    BorderBrush="{DynamicResource Brush.Border1}"
+                    DragDrop.AllowDrop="True"
+                    DragDrop.DragOver="OnPresetBranchFilterTextBoxDragOver"
+                    DragDrop.Drop="OnDropToPresetBranchExcludeNames">
+              <StackPanel Orientation="Vertical">
+                <ScrollViewer MaxHeight="56"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                  <ItemsControl ItemsSource="{Binding PresetBranchExcludeNames, Converter={x:Static c:StringConverters.ToPresetBranchRuleTokens}}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal"/>
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Border Margin="0,0,4,4"
+                                Padding="8,2,4,2"
+                                CornerRadius="10"
+                                BorderThickness="1"
+                                BorderBrush="#FFD13438"
+                                Background="#1AD13438">
+                          <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock VerticalAlignment="Center"
+                                       Text="{Binding .}"
+                                       TextTrimming="CharacterEllipsis"/>
+                            <Button Classes="flat"
+                                    Width="12"
+                                    Height="12"
+                                    MinWidth="12"
+                                    Padding="0"
+                                    VerticalAlignment="Center"
+                                    Tag="{Binding .}"
+                                    Click="OnRemovePresetBranchExcludeName">
+                              <Path Width="7"
+                                    Height="7"
+                                    Data="{StaticResource Icons.Close}"
+                                    Fill="{DynamicResource Brush.FG2}"/>
+                            </Button>
+                          </StackPanel>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
+
+                <TextBox x:Name="PresetBranchExcludeNameInputBox"
+                         Margin="0,4,0,0"
+                         CornerRadius="3"
+                         Watermark="{DynamicResource Text.Repository.BranchesVisibility.ExcludeNames.Placeholder}"
+                         TextChanged="OnPresetBranchInputTextChanged"
+                         KeyDown="OnPresetBranchExcludeNameInputKeyDown"/>
+              </StackPanel>
+            </Border>
 
             <TextBlock Margin="0,6,0,0"
                        Classes="small"
@@ -952,41 +1111,79 @@
         <Border.IsVisible>
           <MultiBinding Converter="{x:Static BoolConverters.And}">
             <Binding Path="SelectedViewIndex" Converter="{x:Static c:IntConverters.IsZero}"/>
-            <Binding Path="UIStates.HistoryFilters.Count" Converter="{x:Static c:IntConverters.IsGreaterThanZero}"/>
+            <MultiBinding Converter="{x:Static BoolConverters.Or}">
+              <Binding Path="IncludedHistoryFilterCount" Converter="{x:Static c:IntConverters.IsGreaterThanZero}"/>
+              <Binding Path="ExcludedHistoryFilterCount" Converter="{x:Static c:IntConverters.IsGreaterThanZero}"/>
+              <Binding Path="CanFoldVisibleBranchesInGraph"/>
+              <Binding Path="CanUnfoldBranchesInGraph"/>
+            </MultiBinding>
           </MultiBinding>
         </Border.IsVisible>
 
-        <Grid ColumnDefinitions="Auto,Auto,Auto">
-          <Path Grid.Column="0"
-                Margin="8,0,0,0"
-                Width="12" Height="12"
-                Data="{StaticResource Icons.Filter}"
-                Fill="{DynamicResource Brush.FG2}"
-                IsVisible="{Binding HistoryFilterMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:FilterMode.Included}}"/>
-          <Path Grid.Column="0"
-                Margin="8,0,0,0"
-                Width="12" Height="12"
-                Data="{StaticResource Icons.EyeClose}"
-                Fill="{DynamicResource Brush.FG2}"
-                IsVisible="{Binding HistoryFilterMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:FilterMode.Excluded}}"/>
+        <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto">
+          <Button Grid.Column="0"
+                  Classes="flat"
+                  Margin="8,0,0,0"
+                  Padding="8,2"
+                  Click="OnOpenIncludedHistoryFiltersMenu"
+                  ToolTip.Tip="{DynamicResource Text.Repository.FilterCommits.Visible}"
+                  IsVisible="{Binding IncludedHistoryFilterCount, Converter={x:Static c:IntConverters.IsGreaterThanZero}}">
+            <StackPanel Orientation="Horizontal">
+              <Path Width="12" Height="12" Margin="0,0,6,0" Data="{StaticResource Icons.Filter}" Fill="{DynamicResource Brush.FG2}"/>
+              <TextBlock Text="{DynamicResource Text.Repository.FilterCommits.Visible}"/>
+              <TextBlock Margin="4,0,0,0"
+                         Foreground="{DynamicResource Brush.FG2}"
+                         Text="{Binding IncludedHistoryFilterCount, StringFormat='({0})'}"/>
+              <Path Width="12" Height="12" Margin="6,0,0,0" Data="{StaticResource Icons.More}"/>
+            </StackPanel>
+          </Button>
 
           <Button Grid.Column="1"
                   Classes="flat"
-                  Margin="8,0"
+                  Margin="8,0,0,0"
                   Padding="8,2"
-                  Click="OnOpenHistoryFiltersMenu"
-                  ToolTip.Tip="{DynamicResource Text.Repository.FilterCommits}">
+                  Click="OnOpenExcludedHistoryFiltersMenu"
+                  ToolTip.Tip="{DynamicResource Text.Repository.FilterCommits.Invisible}"
+                  IsVisible="{Binding ExcludedHistoryFilterCount, Converter={x:Static c:IntConverters.IsGreaterThanZero}}">
             <StackPanel Orientation="Horizontal">
-              <TextBlock Text="{DynamicResource Text.Repository.FilterCommits}"/>
+              <Path Width="12" Height="12" Margin="0,0,6,0" Data="{StaticResource Icons.EyeClose}" Fill="{DynamicResource Brush.FG2}"/>
+              <TextBlock Text="{DynamicResource Text.Repository.FilterCommits.Invisible}"/>
               <TextBlock Margin="4,0,0,0"
                          Foreground="{DynamicResource Brush.FG2}"
-                         Text="{Binding UIStates.HistoryFilters.Count, StringFormat='({0})'}"/>
+                         Text="{Binding ExcludedHistoryFilterCount, StringFormat='({0})'}"/>
               <Path Width="12" Height="12" Margin="6,0,0,0" Data="{StaticResource Icons.More}"/>
             </StackPanel>
           </Button>
 
           <Button Grid.Column="2"
+                  Classes="flat"
+                  Margin="8,0,0,0"
+                  Padding="8,2"
+                  Click="OnFoldVisibleBranchesInGraph"
+                  IsEnabled="{Binding CanFoldVisibleBranchesInGraph}"
+                  ToolTip.Tip="Fold all visible branches in graph">
+            <StackPanel Orientation="Horizontal">
+              <Path Width="12" Height="12" Margin="0,0,6,0" Data="{StaticResource Icons.Minus}" Fill="{DynamicResource Brush.FG2}"/>
+              <TextBlock Text="Fold Visible"/>
+            </StackPanel>
+          </Button>
+
+          <Button Grid.Column="3"
+                  Classes="flat"
+                  Margin="8,0,0,0"
+                  Padding="8,2"
+                  Click="OnUnfoldAllBranchesInGraph"
+                  IsEnabled="{Binding CanUnfoldBranchesInGraph}"
+                  ToolTip.Tip="Unfold all folded branches in graph">
+            <StackPanel Orientation="Horizontal">
+              <Path Width="12" Height="12" Margin="0,0,6,0" Data="{StaticResource Icons.Plus}" Fill="{DynamicResource Brush.FG2}"/>
+              <TextBlock Text="Unfold All"/>
+            </StackPanel>
+          </Button>
+
+          <Button Grid.Column="4"
                   Classes="icon_button"
+                  Margin="8,0,0,0"
                   Command="{Binding ClearHistoryFilters}"
                   ToolTip.Tip="{DynamicResource Text.Repository.ClearAllCommitsFilter}">
             <Path Width="14" Height="14" Margin="8,0,8,0" Data="{StaticResource Icons.RemoveAll}"/>

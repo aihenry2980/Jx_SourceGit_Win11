@@ -748,6 +748,8 @@
   <x:String x:Key="Text.Repository.Explore" xml:space="preserve">在文件浏览器中打开</x:String>
   <x:String x:Key="Text.Repository.Filter" xml:space="preserve">快速查找分支/标签/子模块</x:String>
   <x:String x:Key="Text.Repository.FilterCommits" xml:space="preserve">设置在列表中的可见性</x:String>
+  <x:String x:Key="Text.Repository.FilterCommits.Visible" xml:space="preserve">Visible in Graph</x:String>
+  <x:String x:Key="Text.Repository.FilterCommits.Invisible" xml:space="preserve">Invisible in Graph</x:String>
   <x:String x:Key="Text.Repository.FilterCommits.Default" xml:space="preserve">不指定</x:String>
   <x:String x:Key="Text.Repository.FilterCommits.Exclude" xml:space="preserve">在提交列表中隐藏</x:String>
   <x:String x:Key="Text.Repository.FilterCommits.Include" xml:space="preserve">使用其对提交列表过滤</x:String>
@@ -934,6 +936,7 @@
   <x:String x:Key="Text.WorkingCopy.AddToGitIgnore" xml:space="preserve">添加至 .gitignore 忽略列表</x:String>
   <x:String x:Key="Text.WorkingCopy.AddToGitIgnore.Extension" xml:space="preserve">忽略所有 *{0} 文件</x:String>
   <x:String x:Key="Text.WorkingCopy.AddToGitIgnore.ExtensionInSameFolder" xml:space="preserve">忽略同目录下所有 *{0} 文件</x:String>
+  <x:String x:Key="Text.WorkingCopy.AddToGitIgnore.ExtensionRecursively" xml:space="preserve">Ignore *{0} files recursively in this repo</x:String>
   <x:String x:Key="Text.WorkingCopy.AddToGitIgnore.InFolder" xml:space="preserve">忽略该目录下的新文件</x:String>
   <x:String x:Key="Text.WorkingCopy.AddToGitIgnore.SingleFile" xml:space="preserve">忽略本文件</x:String>
   <x:String x:Key="Text.WorkingCopy.Amend" xml:space="preserve">修补</x:String>
@@ -987,10 +990,14 @@
   <x:String x:Key="Text.Repository.BranchesVisibility.UsePresetFilter" xml:space="preserve">Use preset filter</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.PresetHeader" xml:space="preserve">PRESET BRANCH FILTER</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ExactNames" xml:space="preserve">Exact names</x:String>
-  <x:String x:Key="Text.Repository.BranchesVisibility.ExactNames.Placeholder" xml:space="preserve">One branch name per line</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.ExactNames.Placeholder" xml:space="preserve">Type branch name</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ContainsPatterns" xml:space="preserve">Contains patterns</x:String>
-  <x:String x:Key="Text.Repository.BranchesVisibility.ContainsPatterns.Placeholder" xml:space="preserve">One pattern per line</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.ContainsPatterns.Placeholder" xml:space="preserve">Type contains pattern</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.ExcludeNames" xml:space="preserve">Exclude names</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.ExcludeNames.Placeholder" xml:space="preserve">Type branch name</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.ExcludeThisBranch" xml:space="preserve">Exclude this branch</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.EditorHint" xml:space="preserve">Case-sensitive matching: exact OR contains.</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ApplyFilter" xml:space="preserve">Apply filter</x:String>
 </ResourceDictionary>
+
 

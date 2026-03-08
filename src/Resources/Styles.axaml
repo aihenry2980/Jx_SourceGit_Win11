@@ -745,15 +745,22 @@
   </Style>
   <Style Selector="ListBox.launcher_page_tabbar ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="Transparent"/>
-    <Setter Property="Opacity" Value=".5"/>
+    <Setter Property="Opacity" Value=".62"/>
   </Style>
   <Style Selector="ListBox.launcher_page_tabbar ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="Background" Value="Transparent"/>
-    <Setter Property="Opacity" Value=".85"/>
+    <Setter Property="Background" Value="{DynamicResource Brush.AccentHovered}"/>
+    <Setter Property="Opacity" Value=".78"/>
   </Style>
   <Style Selector="ListBox.launcher_page_tabbar ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="Background" Value="{DynamicResource Brush.AccentHovered}"/>
     <Setter Property="Opacity" Value="1"/>
+  </Style>
+  <Style Selector="ListBox.launcher_page_tabbar ListBoxItem TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource Brush.FG2}"/>
+  </Style>
+  <Style Selector="ListBox.launcher_page_tabbar ListBoxItem:selected TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource Brush.FG1}"/>
+    <Setter Property="FontWeight" Value="Bold"/>
   </Style>
 
   <Style Selector="ListBox.repo_left_content_list">

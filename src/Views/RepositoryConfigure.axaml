@@ -38,7 +38,7 @@
     </Grid>
 
     <!-- Body -->
-    <TabControl Grid.Row="1">
+    <TabControl Grid.Row="1" x:Name="Tabs">
       <TabItem>
         <TabItem.Header>
           <TextBlock Classes="tab_header" Text="{DynamicResource Text.Configure.Git}"/>
@@ -200,6 +200,45 @@
                        Margin="5,0,0,0"
                        Text="{DynamicResource Text.Configure.Git.AutoFetchIntervalSuffix}" />
           </StackPanel>
+        </Grid>
+      </TabItem>
+
+      <TabItem>
+        <TabItem.Header>
+          <TextBlock Classes="tab_header" Text="LOCAL IGNORE"/>
+        </TabItem.Header>
+
+        <Grid Margin="16,8,16,12" RowDefinitions="Auto,*,Auto,Auto">
+          <TextBlock Grid.Row="0"
+                     Text="Repository-only ignore rules. Saved to .git/info/exclude."
+                     TextWrapping="Wrap"
+                     Foreground="{DynamicResource Brush.FG2}"/>
+
+          <Border Grid.Row="1"
+                  Margin="0,8,0,0"
+                  MinHeight="240"
+                  CornerRadius="3"
+                  BorderThickness="1"
+                  BorderBrush="{DynamicResource Brush.Border1}"
+                  Background="{DynamicResource Brush.Popup}">
+            <v:GitIgnoreRulesEditor Margin="1"
+                                    Rules="{Binding RepoLocalIgnoreRules, Mode=TwoWay}"/>
+          </Border>
+
+          <TextBlock Grid.Row="2"
+                     Margin="0,6,0,0"
+                     Text=".gitignore in this repository is not modified by this tab."
+                     Foreground="{DynamicResource Brush.FG2}"/>
+
+          <Button Grid.Row="3"
+                  Margin="0,10,0,0"
+                  Height="28"
+                  MinWidth="88"
+                  HorizontalAlignment="Right"
+                  Classes="flat primary"
+                  Click="ApplyLocalIgnoreRules">
+            <TextBlock Text="Apply"/>
+          </Button>
         </Grid>
       </TabItem>
 

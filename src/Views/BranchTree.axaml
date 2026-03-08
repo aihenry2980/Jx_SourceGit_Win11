@@ -37,6 +37,8 @@
       <DataTemplate DataType="vm:BranchTreeNode">
         <Border Background="Transparent"
                 PointerPressed="OnNodePointerPressed"
+                PointerMoved="OnNodePointerMoved"
+                PointerReleased="OnNodePointerReleased"
                 ToolTip.Tip="{Binding Backend}"
                 ToolTip.Placement="Right">
           <Border.DataTemplates>

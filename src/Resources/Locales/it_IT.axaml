@@ -743,6 +743,8 @@ ${pure_files:N} Come ${files:N}, ma senza cartelle</x:String>
   <x:String x:Key="Text.Repository.Explore" xml:space="preserve">Apri nell'Esplora File</x:String>
   <x:String x:Key="Text.Repository.Filter" xml:space="preserve">Cerca Branch/Tag/Sottomodulo</x:String>
   <x:String x:Key="Text.Repository.FilterCommits" xml:space="preserve">Visibilità nel grafico</x:String>
+  <x:String x:Key="Text.Repository.FilterCommits.Visible" xml:space="preserve">Visible in Graph</x:String>
+  <x:String x:Key="Text.Repository.FilterCommits.Invisible" xml:space="preserve">Invisible in Graph</x:String>
   <x:String x:Key="Text.Repository.FilterCommits.Default" xml:space="preserve">Non impostato</x:String>
   <x:String x:Key="Text.Repository.FilterCommits.Exclude" xml:space="preserve">Nascondi nel grafico dei commit</x:String>
   <x:String x:Key="Text.Repository.FilterCommits.Include" xml:space="preserve">Filtra nel grafico dei commit</x:String>
@@ -927,6 +929,7 @@ ${pure_files:N} Come ${files:N}, ma senza cartelle</x:String>
   <x:String x:Key="Text.WorkingCopy.AddToGitIgnore" xml:space="preserve">Git Ignore</x:String>
   <x:String x:Key="Text.WorkingCopy.AddToGitIgnore.Extension" xml:space="preserve">Ignora tutti i file *{0}</x:String>
   <x:String x:Key="Text.WorkingCopy.AddToGitIgnore.ExtensionInSameFolder" xml:space="preserve">Ignora i file *{0} nella stessa cartella</x:String>
+  <x:String x:Key="Text.WorkingCopy.AddToGitIgnore.ExtensionRecursively" xml:space="preserve">Ignore *{0} files recursively in this repo</x:String>
   <x:String x:Key="Text.WorkingCopy.AddToGitIgnore.InFolder" xml:space="preserve">Ignora file non tracciati in questa cartella</x:String>
   <x:String x:Key="Text.WorkingCopy.AddToGitIgnore.SingleFile" xml:space="preserve">Ignora solo questo file</x:String>
   <x:String x:Key="Text.WorkingCopy.Amend" xml:space="preserve">Modifica</x:String>
@@ -980,10 +983,14 @@ ${pure_files:N} Come ${files:N}, ma senza cartelle</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.UsePresetFilter" xml:space="preserve">Use preset filter</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.PresetHeader" xml:space="preserve">PRESET BRANCH FILTER</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ExactNames" xml:space="preserve">Exact names</x:String>
-  <x:String x:Key="Text.Repository.BranchesVisibility.ExactNames.Placeholder" xml:space="preserve">One branch name per line</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.ExactNames.Placeholder" xml:space="preserve">Type branch name</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ContainsPatterns" xml:space="preserve">Contains patterns</x:String>
-  <x:String x:Key="Text.Repository.BranchesVisibility.ContainsPatterns.Placeholder" xml:space="preserve">One pattern per line</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.ContainsPatterns.Placeholder" xml:space="preserve">Type contains pattern</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.ExcludeNames" xml:space="preserve">Exclude names</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.ExcludeNames.Placeholder" xml:space="preserve">Type branch name</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.ExcludeThisBranch" xml:space="preserve">Exclude this branch</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.EditorHint" xml:space="preserve">Case-sensitive matching: exact OR contains.</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ApplyFilter" xml:space="preserve">Apply filter</x:String>
 </ResourceDictionary>
+
 

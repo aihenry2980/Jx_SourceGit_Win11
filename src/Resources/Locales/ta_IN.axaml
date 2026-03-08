@@ -537,6 +537,8 @@
   <x:String x:Key="Text.Repository.Explore" xml:space="preserve">கோப்பு உலாவியில் திற</x:String>
   <x:String x:Key="Text.Repository.Filter" xml:space="preserve">கிளைகள்/குறிச்சொற்கள்/துணைத் தொகுதிகளைத் தேடு</x:String>
   <x:String x:Key="Text.Repository.FilterCommits" xml:space="preserve">வரைபடத்தில் தெரிவுநிலை</x:String>
+  <x:String x:Key="Text.Repository.FilterCommits.Visible" xml:space="preserve">Visible in Graph</x:String>
+  <x:String x:Key="Text.Repository.FilterCommits.Invisible" xml:space="preserve">Invisible in Graph</x:String>
   <x:String x:Key="Text.Repository.FilterCommits.Default" xml:space="preserve">அமைவை நீக்கு</x:String>
   <x:String x:Key="Text.Repository.FilterCommits.Exclude" xml:space="preserve">உறுதிமொழி வரைபடத்தில் மறை</x:String>
   <x:String x:Key="Text.Repository.FilterCommits.Include" xml:space="preserve">உறுதிமொழி வரைபடத்தில் வடிகட்டு</x:String>
@@ -662,6 +664,7 @@
   <x:String x:Key="Text.WorkingCopy.AddToGitIgnore" xml:space="preserve">அறிவிலி புறக்கணி</x:String>
   <x:String x:Key="Text.WorkingCopy.AddToGitIgnore.Extension" xml:space="preserve">எல்லா *{0} கோப்புகளையும் புறக்கணி</x:String>
   <x:String x:Key="Text.WorkingCopy.AddToGitIgnore.ExtensionInSameFolder" xml:space="preserve">ஒரே கோப்புறையில் *{0} கோப்புகளைப் புறக்கணி</x:String>
+  <x:String x:Key="Text.WorkingCopy.AddToGitIgnore.ExtensionRecursively" xml:space="preserve">Ignore *{0} files recursively in this repo</x:String>
   <x:String x:Key="Text.WorkingCopy.AddToGitIgnore.SingleFile" xml:space="preserve">இந்த கோப்பை மட்டும் புறக்கணி</x:String>
   <x:String x:Key="Text.WorkingCopy.Amend" xml:space="preserve">பின்னொட்டு</x:String>
   <x:String x:Key="Text.WorkingCopy.CanStageTip" xml:space="preserve">இந்த கோப்பை இப்போது நீங்கள் நிலைப்படுத்தலாம்.</x:String>
@@ -702,10 +705,14 @@
   <x:String x:Key="Text.Repository.BranchesVisibility.UsePresetFilter" xml:space="preserve">Use preset filter</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.PresetHeader" xml:space="preserve">PRESET BRANCH FILTER</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ExactNames" xml:space="preserve">Exact names</x:String>
-  <x:String x:Key="Text.Repository.BranchesVisibility.ExactNames.Placeholder" xml:space="preserve">One branch name per line</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.ExactNames.Placeholder" xml:space="preserve">Type branch name</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ContainsPatterns" xml:space="preserve">Contains patterns</x:String>
-  <x:String x:Key="Text.Repository.BranchesVisibility.ContainsPatterns.Placeholder" xml:space="preserve">One pattern per line</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.ContainsPatterns.Placeholder" xml:space="preserve">Type contains pattern</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.ExcludeNames" xml:space="preserve">Exclude names</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.ExcludeNames.Placeholder" xml:space="preserve">Type branch name</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.ExcludeThisBranch" xml:space="preserve">Exclude this branch</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.EditorHint" xml:space="preserve">Case-sensitive matching: exact OR contains.</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ApplyFilter" xml:space="preserve">Apply filter</x:String>
 </ResourceDictionary>
+
 

@@ -3,12 +3,12 @@
                     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                     xmlns:v="using:SourceGit.Views"
-                    mc:Ignorable="d" d:DesignWidth="520" d:DesignHeight="230"
+                    mc:Ignorable="d" d:DesignWidth="760" d:DesignHeight="430"
                     x:Class="SourceGit.Views.About"
                     x:Name="ThisControl"
                     Icon="/App.ico"
                     Title="{DynamicResource Text.About}"
-                    Width="520" Height="230"
+                    Width="760" Height="430"
                     CanResize="False"
                     WindowStartupLocation="CenterOwner">
   <Grid RowDefinitions="Auto,*">
@@ -34,15 +34,15 @@
                         IsVisible="{OnPlatform True, macOS=False}"/>
     </Grid>
 
-    <Grid Grid.Row="1" Height="200" ColumnDefinitions="Auto,*">
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
       <Image Grid.Column="0"
              Width="200" Height="200"
              Margin="8,0"
              Source="/App.ico"
              HorizontalAlignment="Center"
-             VerticalAlignment="Center"/>
+             VerticalAlignment="Top"/>
 
-      <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto,Auto,Auto" VerticalAlignment="Center">
+      <Grid Grid.Column="1" Margin="0,8,8,8" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" VerticalAlignment="Top">
         <StackPanel Grid.Row="0" Height="40" Orientation="Horizontal">
           <TextBlock Classes="bold" Text="SourceGit" FontSize="32" />
           <Border Margin="12,0,0,0" Height="20"
@@ -65,13 +65,25 @@
             <Path Width="16" Height="16" Data="{StaticResource Icons.Remotes}"/>
           </Button>
 
-          <Button Width="18" Height="18" Margin="8,0,0,0" Classes="icon_button" Click="OnVisitSourceCode" ToolTip.Tip="https://github.com/sourcegit-scm/sourcegit">
+          <Button Width="18" Height="18" Margin="8,0,0,0" Classes="icon_button" Click="OnVisitSourceCode" ToolTip.Tip="https://github.com/aihenry2980/Jx_SourceGit_Win11">
             <Path Width="16" Height="16" Data="{StaticResource Icons.GitHub}"/>
           </Button>
         </StackPanel>
 
-        <TextBlock Grid.Row="3" x:Name="TxtReleaseDate" Margin="0,28,0,0" Foreground="{DynamicResource Brush.FG2}"/>
+        <TextBlock Grid.Row="3" x:Name="TxtReleaseDate" Margin="0,12,0,0" Foreground="{DynamicResource Brush.FG2}"/>
         <TextBlock Grid.Row="4" x:Name="TxtCopyright" Margin="0,2,0,0" Foreground="{DynamicResource Brush.FG2}"/>
+
+        <TextBlock Grid.Row="5" Margin="0,10,0,0" Foreground="{DynamicResource Brush.FG2}" Text="Fork of https://github.com/sourcegit-scm/sourcegit" TextWrapping="Wrap"/>
+
+        <TextBlock Grid.Row="6" Margin="0,2,0,0" Foreground="{DynamicResource Brush.FG2}" Cursor="Hand" PointerPressed="OnVisitForkSourceCode" TextWrapping="Wrap">
+          Fork Repo: https://github.com/aihenry2980/Jx_SourceGit_Win11
+        </TextBlock>
+
+        <StackPanel Grid.Row="7" Margin="0,2,0,0" Orientation="Horizontal">
+          <TextBlock Foreground="{DynamicResource Brush.FG2}" Text="Contact: "/>
+          <TextBlock Foreground="{DynamicResource Brush.FG2}" Cursor="Hand" PointerPressed="OnContactMaintainer" Text="jxin@outlook.com"/>
+          <TextBlock Margin="10,0,0,0" Foreground="{DynamicResource Brush.FG2}" Text="Target: Windows 11 x64 only"/>
+        </StackPanel>
       </Grid>
     </Grid>
   </Grid>

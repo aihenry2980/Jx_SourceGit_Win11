@@ -9,9 +9,10 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="SourceGit.Views.CommitDetail"
              x:DataType="vm:CommitDetail">
-  <TabControl SelectedIndex="{Binding ActiveTabIndex, Mode=TwoWay}" Padding="0,4">
-    <!-- Information Page -->
-    <TabItem>
+  <Grid>
+    <TabControl SelectedIndex="{Binding ActiveTabIndex, Mode=TwoWay}" Padding="0,4">
+      <!-- Information Page -->
+      <TabItem>
       <TabItem.Header>
         <TextBlock Classes="tab_header" Text="{DynamicResource Text.CommitDetail.Info}"/>
       </TabItem.Header>
@@ -79,20 +80,35 @@
                      IsVisible="{Binding Changes, Converter={x:Static c:ListConverters.IsOnlyTop100Shows}}"/>
         </StackPanel>
       </ScrollViewer>
-    </TabItem>
+      </TabItem>
 
-    <TabItem>
+      <TabItem>
       <TabItem.Header>
         <TextBlock Classes="tab_header" Text="{DynamicResource Text.CommitDetail.Changes}"/>
       </TabItem.Header>
       <v:CommitChanges Margin="4,0"/>
-    </TabItem>
+      </TabItem>
 
-    <TabItem>
+      <TabItem>
       <TabItem.Header>
         <TextBlock Classes="tab_header" Text="{DynamicResource Text.CommitDetail.Files}"/>
       </TabItem.Header>
       <v:RevisionFiles Margin="4,0"/>
-    </TabItem>
-  </TabControl>
+      </TabItem>
+    </TabControl>
+
+    <Border HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            Margin="280,8,12,0"
+            IsVisible="{Binding OriginRemoteURL, Converter={x:Static c:StringConverters.IsNotNullOrWhitespace}}">
+      <TextBlock FontSize="16"
+                 Foreground="{DynamicResource Brush.FG2}"
+                 Text="{Binding OriginRemoteURL}"
+                 TextTrimming="CharacterEllipsis"
+                 ToolTip.Tip="{Binding OriginRemoteURL}"
+                 TextDecorations="Underline"
+                 Cursor="Hand"
+                 PointerPressed="OnOpenOriginRemoteURL"/>
+    </Border>
+  </Grid>
 </UserControl>

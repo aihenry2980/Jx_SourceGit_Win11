@@ -83,7 +83,7 @@
                    FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=DefaultFontSize, Converter={x:Static c:DoubleConverters.Increase}}"
                    Margin="0,8"/>
 
-        <Grid RowDefinitions="20,20,20,20,20,20,20,20,20,20,20,20,20,20,20" ColumnDefinitions="150,*">
+        <Grid RowDefinitions="20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20" ColumnDefinitions="150,*">
           <TextBlock Grid.Row="0" Grid.Column="0" Classes="bold" Text="{OnPlatform Ctrl+Shift+H, macOS=⌘+⇧+H}"/>
           <TextBlock Grid.Row="0" Grid.Column="1" Margin="16,0,0,0" Text="{DynamicResource Text.Hotkeys.Repo.GoHome}" />
 
@@ -128,6 +128,9 @@
 
           <TextBlock Grid.Row="14" Grid.Column="0" Classes="bold" Text="F5"/>
           <TextBlock Grid.Row="14" Grid.Column="1" Margin="16,0,0,0" Text="{DynamicResource Text.Hotkeys.Repo.Refresh}" />
+
+          <TextBlock Grid.Row="15" Grid.Column="0" Classes="bold" Text="F6"/>
+          <TextBlock Grid.Row="15" Grid.Column="1" Margin="16,0,0,0" Text="{DynamicResource Text.Repository.Explore}" />
         </Grid>
 
         <TextBlock Text="{DynamicResource Text.Hotkeys.TextEditor}"
