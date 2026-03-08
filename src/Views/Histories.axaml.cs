@@ -466,97 +466,85 @@ namespace SourceGit.Views
                 TryGetBranchByDecorator(foldDecorator, out var foldRepo, out var foldBranch))
             {
                 foldRepo.ToggleFoldBranch(foldBranch);
-                _pressedCommitRef = false;
-                _startDragCommitRef = false;
-                _pressedCommitRefBranchName = string.Empty;
+                ClearCommitBranchDragState();
                 e.Handled = true;
                 return;
             }
 
             if (!point.Properties.IsLeftButtonPressed || !TryGetBranchNameAtPoint(presenter, e.GetPosition(presenter), out var name))
             {
-                _pressedCommitRef = false;
-                _startDragCommitRef = false;
-                _pressedCommitRefBranchName = string.Empty;
+                ClearCommitBranchDragState();
                 return;
             }
 
-            _pressedCommitRef = true;
-            _startDragCommitRef = false;
-            _pressedCommitRefPosition = e.GetPosition(presenter);
-            _pressedCommitRefBranchName = name;
+            BeginCommitBranchDrag(e.GetPosition(presenter), name);
         }
 
         private async void OnCommitRefsPointerMoved(object sender, PointerEventArgs e)
         {
-            if (!_pressedCommitRef || _startDragCommitRef || string.IsNullOrEmpty(_pressedCommitRefBranchName))
-                return;
-
             if (sender is not CommitRefsPresenter presenter)
                 return;
 
-            var delta = e.GetPosition(presenter) - _pressedCommitRefPosition;
-            var sizeSquared = delta.X * delta.X + delta.Y * delta.Y;
-            if (sizeSquared < 64)
-                return;
-
-            _startDragCommitRef = true;
-
-            var data = new DataTransfer();
-            data.Add(DataTransferItem.Create(_dndPresetBranchNameFormat, _pressedCommitRefBranchName));
-            await DragDrop.DoDragDropAsync(e, data, DragDropEffects.Copy);
-
-            _pressedCommitRef = false;
-            _startDragCommitRef = false;
-            _pressedCommitRefBranchName = string.Empty;
+            await TryStartCommitBranchDragAsync(presenter, e);
         }
 
         private void OnCommitRefsPointerReleased(object sender, PointerReleasedEventArgs e)
         {
-            _pressedCommitRef = false;
-            _startDragCommitRef = false;
-            _pressedCommitRefBranchName = string.Empty;
+            ClearCommitBranchDragState();
+        }
+
+        private void OnCommitSubjectPointerPressed(object sender, PointerPressedEventArgs e)
+        {
+            if (sender is not Control { DataContext: Models.Commit commit } control)
+                return;
+
+            var point = e.GetCurrentPoint(control);
+            if (!point.Properties.IsLeftButtonPressed || !TryGetCurrentBranchDragName(commit, out var name))
+            {
+                ClearCommitBranchDragState();
+                return;
+            }
+
+            BeginCommitBranchDrag(e.GetPosition(control), name);
+        }
+
+        private async void OnCommitSubjectPointerMoved(object sender, PointerEventArgs e)
+        {
+            if (sender is not Control control)
+                return;
+
+            await TryStartCommitBranchDragAsync(control, e);
+        }
+
+        private void OnCommitSubjectPointerReleased(object sender, PointerReleasedEventArgs e)
+        {
+            ClearCommitBranchDragState();
         }
 
         private void OnCommitRefsDragOver(object sender, DragEventArgs e)
         {
-            if (sender is not CommitRefsPresenter presenter ||
-                !TryGetRebaseDragSource(e, out _, out _) ||
-                !TryGetBranchAtPoint(presenter, e.GetPosition(presenter), out _, out _))
-                e.DragEffects = DragDropEffects.None;
-            else
-                e.DragEffects = DragDropEffects.Copy;
+            var isValid = sender is CommitRefsPresenter presenter &&
+                TryGetRebaseDragSource(e, out _, out _) &&
+                TryGetBranchAtPoint(presenter, e.GetPosition(presenter), out _, out _);
+
+            UpdateCommitDragTargetFeedback(sender as Control, e, isValid);
 
             e.Handled = true;
         }
 
         private async void OnCommitRefsDrop(object sender, DragEventArgs e)
         {
-            if (sender is not CommitRefsPresenter presenter ||
-                !TryGetRebaseBranchDropTargets(presenter, e, out var repo, out var source, out var target))
+            try
             {
-                e.Handled = true;
-                return;
+                if (sender is CommitRefsPresenter presenter &&
+                    TryGetRebaseBranchDropTargets(presenter, e, out var repo, out var source, out var target))
+                {
+                    await ExecuteCommitBranchDropActionAsync(repo, source, target, e.KeyModifiers);
+                }
             }
-
-            if (repo.CanCreatePopup())
+            finally
             {
-                if (e.KeyModifiers.HasFlag(KeyModifiers.Control))
-                {
-                    var to = await new Commands.QuerySingleCommit(repo.FullPath, target.Head).GetResultAsync();
-                    if (to != null)
-                    {
-                        var reset = new ViewModels.Reset(repo, source, to)
-                        {
-                            SelectedMode = Models.ResetMode.Supported[^1], // hard
-                        };
-                        repo.ShowPopup(reset);
-                    }
-                }
-                else
-                {
-                    repo.ShowPopup(new ViewModels.Rebase(repo, source, target));
-                }
+                HideCommitDragTargetToolTip();
             }
 
             e.Handled = true;
@@ -564,41 +552,38 @@ namespace SourceGit.Views
 
         private void OnCommitSubjectDragOver(object sender, DragEventArgs e)
         {
-            if (sender is not Control { DataContext: Models.Commit commit } ||
-                string.IsNullOrWhiteSpace(commit.SHA) ||
-                !TryGetRebaseDragSource(e, out _, out _))
-                e.DragEffects = DragDropEffects.None;
-            else
-                e.DragEffects = DragDropEffects.Copy;
+            var isValid = sender is Control { DataContext: Models.Commit commit } &&
+                !string.IsNullOrWhiteSpace(commit.SHA) &&
+                TryGetRebaseDragSource(e, out _, out _);
+
+            UpdateCommitDragTargetFeedback(sender as Control, e, isValid);
 
             e.Handled = true;
         }
 
-        private void OnCommitSubjectDrop(object sender, DragEventArgs e)
+        private async void OnCommitSubjectDrop(object sender, DragEventArgs e)
         {
-            if (sender is not Control { DataContext: Models.Commit commit } ||
-                string.IsNullOrWhiteSpace(commit.SHA) ||
-                !TryGetRebaseDragSource(e, out var repo, out var source))
+            try
             {
-                e.Handled = true;
-                return;
+                if (sender is Control { DataContext: Models.Commit commit } &&
+                    !string.IsNullOrWhiteSpace(commit.SHA) &&
+                    TryGetRebaseDragSource(e, out var repo, out var source))
+                {
+                    await ExecuteCommitBranchDropActionAsync(repo, source, commit, e.KeyModifiers);
+                }
+            }
+            finally
+            {
+                HideCommitDragTargetToolTip();
             }
 
-            if (repo.CanCreatePopup())
-            {
-                if (e.KeyModifiers.HasFlag(KeyModifiers.Control))
-                {
-                    var reset = new ViewModels.Reset(repo, source, commit)
-                    {
-                        SelectedMode = Models.ResetMode.Supported[^1], // hard
-                    };
-                    repo.ShowPopup(reset);
-                }
-                else
-                {
-                    repo.ShowPopup(new ViewModels.Rebase(repo, source, commit));
-                }
-            }
+            e.Handled = true;
+        }
+
+        private void OnCommitDragLeave(object sender, DragEventArgs e)
+        {
+            if (sender is Control control)
+                HideCommitDragTargetToolTip(control);
 
             e.Handled = true;
         }
@@ -1696,6 +1681,173 @@ namespace SourceGit.Views
             return 0;
         }
 
+        private void BeginCommitBranchDrag(Point position, string branchName)
+        {
+            _pressedCommitRef = true;
+            _startDragCommitRef = false;
+            _pressedCommitRefPosition = position;
+            _pressedCommitRefBranchName = branchName;
+        }
+
+        private async Task TryStartCommitBranchDragAsync(Control control, PointerEventArgs e)
+        {
+            if (!_pressedCommitRef || _startDragCommitRef || string.IsNullOrEmpty(_pressedCommitRefBranchName))
+                return;
+
+            var delta = e.GetPosition(control) - _pressedCommitRefPosition;
+            var sizeSquared = delta.X * delta.X + delta.Y * delta.Y;
+            if (sizeSquared < 64)
+                return;
+
+            _startDragCommitRef = true;
+
+            var data = new DataTransfer();
+            data.Add(DataTransferItem.Create(_dndPresetBranchNameFormat, _pressedCommitRefBranchName));
+
+            try
+            {
+                await DragDrop.DoDragDropAsync(e, data, DragDropEffects.Copy);
+            }
+            finally
+            {
+                HideCommitDragTargetToolTip();
+                ClearCommitBranchDragState();
+            }
+        }
+
+        private void ClearCommitBranchDragState()
+        {
+            _pressedCommitRef = false;
+            _startDragCommitRef = false;
+            _pressedCommitRefBranchName = string.Empty;
+        }
+
+        private static bool IsHardResetModifierActive(KeyModifiers modifiers)
+        {
+            return modifiers.HasFlag(KeyModifiers.Control);
+        }
+
+        private void UpdateCommitDragTargetFeedback(Control control, DragEventArgs e, bool isValid)
+        {
+            if (!isValid || control == null)
+            {
+                e.DragEffects = DragDropEffects.None;
+                HideCommitDragTargetToolTip();
+                return;
+            }
+
+            e.DragEffects = DragDropEffects.Copy;
+            ShowCommitDragTargetToolTip(control, IsHardResetModifierActive(e.KeyModifiers));
+        }
+
+        private void ShowCommitDragTargetToolTip(Control control, bool isHardReset)
+        {
+            if (control == null)
+                return;
+
+            if (_commitDragToolTipOwner != null && !ReferenceEquals(_commitDragToolTipOwner, control))
+                RestoreCommitDragTargetToolTip(_commitDragToolTipOwner);
+
+            if (!ReferenceEquals(_commitDragToolTipOwner, control))
+            {
+                _commitDragToolTipOwner = control;
+                _commitDragToolTipPreviousTip = ToolTip.GetTip(control);
+                ToolTip.SetPlacement(control, PlacementMode.Pointer);
+                ToolTip.SetHorizontalOffset(control, 18);
+                ToolTip.SetVerticalOffset(control, 18);
+            }
+
+            ToolTip.SetTip(control, CreateCommitDragToolTipContent(isHardReset));
+            ToolTip.SetIsOpen(control, true);
+        }
+
+        private void HideCommitDragTargetToolTip(Control control = null)
+        {
+            var owner = control ?? _commitDragToolTipOwner;
+            if (owner == null || !ReferenceEquals(owner, _commitDragToolTipOwner))
+                return;
+
+            RestoreCommitDragTargetToolTip(owner);
+        }
+
+        private void RestoreCommitDragTargetToolTip(Control control)
+        {
+            ToolTip.SetIsOpen(control, false);
+            ToolTip.SetTip(control, _commitDragToolTipPreviousTip);
+            _commitDragToolTipOwner = null;
+            _commitDragToolTipPreviousTip = null;
+        }
+
+        private static Border CreateCommitDragToolTipContent(bool isHardReset)
+        {
+            var background = isHardReset
+                ? new SolidColorBrush(Color.Parse("#C62828"))
+                : new SolidColorBrush(Color.Parse("#FDD835"));
+            var foreground = isHardReset ? Brushes.White : Brushes.Black;
+
+            return new Border
+            {
+                Background = background,
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(8, 4),
+                Child = new TextBlock
+                {
+                    Text = isHardReset ? "Hard Reset" : "Rebase",
+                    FontWeight = FontWeight.Bold,
+                    Foreground = foreground,
+                }
+            };
+        }
+
+        private async Task ExecuteCommitBranchDropActionAsync(ViewModels.Repository repo, Models.Branch source, Models.Branch target, KeyModifiers modifiers)
+        {
+            if (repo == null || source == null || target == null || !repo.CanCreatePopup())
+                return;
+
+            if (IsHardResetModifierActive(modifiers))
+            {
+                var to = await new Commands.QuerySingleCommit(repo.FullPath, target.Head).GetResultAsync();
+                if (to != null)
+                    ShowHardResetPopup(repo, source, to);
+
+                return;
+            }
+
+            repo.ShowPopup(new ViewModels.Rebase(repo, source, target));
+        }
+
+        private Task ExecuteCommitBranchDropActionAsync(ViewModels.Repository repo, Models.Branch source, Models.Commit target, KeyModifiers modifiers)
+        {
+            if (repo == null || source == null || target == null || !repo.CanCreatePopup())
+                return Task.CompletedTask;
+
+            if (IsHardResetModifierActive(modifiers))
+                ShowHardResetPopup(repo, source, target);
+            else
+                repo.ShowPopup(new ViewModels.Rebase(repo, source, target));
+
+            return Task.CompletedTask;
+        }
+
+        private static void ShowHardResetPopup(ViewModels.Repository repo, Models.Branch source, Models.Commit target)
+        {
+            var reset = new ViewModels.Reset(repo, source, target)
+            {
+                SelectedMode = Models.ResetMode.Supported[^1], // hard
+            };
+            repo.ShowPopup(reset);
+        }
+
+        private bool TryGetCurrentBranchDragName(Models.Commit commit, out string branchName)
+        {
+            branchName = string.Empty;
+            if (commit == null || !commit.IsCurrentHead)
+                return false;
+
+            branchName = ResolveCurrentLocalBranchName();
+            return !string.IsNullOrWhiteSpace(branchName);
+        }
+
         private bool TryGetBranchNameAtPoint(CommitRefsPresenter presenter, Point point, out string branchName)
         {
             branchName = string.Empty;
@@ -1991,6 +2143,8 @@ namespace SourceGit.Views
         private bool _startDragCommitRef = false;
         private Point _pressedCommitRefPosition = default;
         private string _pressedCommitRefBranchName = string.Empty;
+        private Control _commitDragToolTipOwner = null;
+        private object _commitDragToolTipPreviousTip = null;
         private readonly DataFormat<string> _dndPresetBranchNameFormat = DataFormat.CreateStringApplicationFormat("sourcegit-dnd-branch-filter-name");
     }
 }

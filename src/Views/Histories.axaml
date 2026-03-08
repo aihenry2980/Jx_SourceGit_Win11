@@ -212,6 +212,7 @@
                                            PointerMoved="OnCommitRefsPointerMoved"
                                            PointerReleased="OnCommitRefsPointerReleased"
                                            DragDrop.DragOver="OnCommitRefsDragOver"
+                                           DragDrop.DragLeave="OnCommitDragLeave"
                                            DragDrop.Drop="OnCommitRefsDrop">
                       <v:CommitRefsPresenter.UseGraphColor>
                         <MultiBinding Converter="{x:Static BoolConverters.Or}">
@@ -232,8 +233,12 @@
                                               IssueTrackers="{Binding $parent[v:Histories].IssueTrackers}"
                                               FontWeight="{Binding IsCurrentHead, Converter={x:Static c:BoolConverters.IsBoldToFontWeight}}"
                                               Opacity="{Binding IsMerged, Converter={x:Static c:BoolConverters.IsMergedToOpacity}}"
+                                              PointerPressed="OnCommitSubjectPointerPressed"
+                                              PointerMoved="OnCommitSubjectPointerMoved"
+                                              PointerReleased="OnCommitSubjectPointerReleased"
                                               DragDrop.AllowDrop="True"
                                               DragDrop.DragOver="OnCommitSubjectDragOver"
+                                              DragDrop.DragLeave="OnCommitDragLeave"
                                               DragDrop.Drop="OnCommitSubjectDrop"/>
                   </Grid>
                 </Border>
