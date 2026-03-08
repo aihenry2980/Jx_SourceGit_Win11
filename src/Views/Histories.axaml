@@ -144,6 +144,13 @@
                                            Foreground="{DynamicResource Brush.FG1}"
                                            ShowTags="{Binding Source={x:Static vm:Preferences.Instance}, Path=ShowTagsInGraph}"
                                            FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Converter={x:Static c:DoubleConverters.Decrease}}"
+                                           PointerPressed="OnCommitRefsPointerPressed"
+                                           PointerMoved="OnCommitRefsPointerMoved"
+                                           PointerReleased="OnCommitRefsPointerReleased"
+                                           DragDrop.AllowDrop="True"
+                                           DragDrop.DragOver="OnCommitRefsDragOver"
+                                           DragDrop.Drop="OnCommitRefsDrop"
+                                           DragDrop.DragLeave="OnBranchDropTargetDragLeave"
                                            VerticalAlignment="Center">
                       <v:CommitRefsPresenter.UseGraphColor>
                         <MultiBinding Converter="{x:Static BoolConverters.Or}">
@@ -162,6 +169,10 @@
                                               FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Mode=OneWay}"
                                               Subject="{Binding Subject}"
                                               IssueTrackers="{Binding $parent[v:Histories].IssueTrackers}"
+                                              DragDrop.AllowDrop="True"
+                                              DragDrop.DragOver="OnCommitSubjectDragOver"
+                                              DragDrop.Drop="OnCommitSubjectDrop"
+                                              DragDrop.DragLeave="OnBranchDropTargetDragLeave"
                                               FontWeight="{Binding IsCurrentHead, Converter={x:Static c:BoolConverters.IsBoldToFontWeight}}"
                                               Opacity="{Binding IsMerged, Converter={x:Static c:BoolConverters.IsMergedToOpacity}}"/>
                   </Grid>

@@ -505,6 +505,7 @@ namespace SourceGit.Views
             var data = new DataTransfer();
             data.Add(DataTransferItem.Create(_dndPresetBranchNameFormat, _pressedCommitRefBranchName));
             await DragDrop.DoDragDropAsync(e, data, DragDropEffects.Copy);
+            HideBranchDropActionTip();
 
             _pressedCommitRef = false;
             _startDragCommitRef = false;
@@ -523,15 +524,23 @@ namespace SourceGit.Views
             if (sender is not CommitRefsPresenter presenter ||
                 !TryGetRebaseDragSource(e, out _, out _) ||
                 !TryGetBranchAtPoint(presenter, e.GetPosition(presenter), out _, out _))
+            {
                 e.DragEffects = DragDropEffects.None;
+                HideBranchDropActionTip();
+            }
             else
+            {
                 e.DragEffects = DragDropEffects.Copy;
+                ShowBranchDropActionTip(presenter, e);
+            }
 
             e.Handled = true;
         }
 
         private async void OnCommitRefsDrop(object sender, DragEventArgs e)
         {
+            HideBranchDropActionTip();
+
             if (sender is not CommitRefsPresenter presenter ||
                 !TryGetRebaseBranchDropTargets(presenter, e, out var repo, out var source, out var target))
             {
@@ -541,7 +550,7 @@ namespace SourceGit.Views
 
             if (repo.CanCreatePopup())
             {
-                if (e.KeyModifiers.HasFlag(KeyModifiers.Control))
+                if (ShouldUseHardReset(e))
                 {
                     var to = await new Commands.QuerySingleCommit(repo.FullPath, target.Head).GetResultAsync();
                     if (to != null)
@@ -567,15 +576,23 @@ namespace SourceGit.Views
             if (sender is not Control { DataContext: Models.Commit commit } ||
                 string.IsNullOrWhiteSpace(commit.SHA) ||
                 !TryGetRebaseDragSource(e, out _, out _))
+            {
                 e.DragEffects = DragDropEffects.None;
+                HideBranchDropActionTip();
+            }
             else
+            {
                 e.DragEffects = DragDropEffects.Copy;
+                ShowBranchDropActionTip((Control)sender, e);
+            }
 
             e.Handled = true;
         }
 
         private void OnCommitSubjectDrop(object sender, DragEventArgs e)
         {
+            HideBranchDropActionTip();
+
             if (sender is not Control { DataContext: Models.Commit commit } ||
                 string.IsNullOrWhiteSpace(commit.SHA) ||
                 !TryGetRebaseDragSource(e, out var repo, out var source))
@@ -586,7 +603,7 @@ namespace SourceGit.Views
 
             if (repo.CanCreatePopup())
             {
-                if (e.KeyModifiers.HasFlag(KeyModifiers.Control))
+                if (ShouldUseHardReset(e))
                 {
                     var reset = new ViewModels.Reset(repo, source, commit)
                     {
@@ -600,6 +617,12 @@ namespace SourceGit.Views
                 }
             }
 
+            e.Handled = true;
+        }
+
+        private void OnBranchDropTargetDragLeave(object sender, DragEventArgs e)
+        {
+            HideBranchDropActionTip();
             e.Handled = true;
         }
 
@@ -1846,6 +1869,70 @@ namespace SourceGit.Views
                    string.Equals(left.Remote, right.Remote, StringComparison.Ordinal);
         }
 
+        private static bool ShouldUseHardReset(DragEventArgs e)
+        {
+            return e.KeyModifiers.HasFlag(KeyModifiers.Control);
+        }
+
+        private void ShowBranchDropActionTip(Control target, DragEventArgs e)
+        {
+            var isHardReset = ShouldUseHardReset(e);
+            var text = isHardReset ? "Hard Reset" : "Rebase";
+            if (!ReferenceEquals(_branchDropActionTipTarget, target))
+            {
+                HideBranchDropActionTip();
+                _branchDropActionTipTarget = target;
+            }
+
+            if (!_branchDropActionTipText.Equals(text, StringComparison.Ordinal))
+            {
+                _branchDropActionTipText = text;
+                ToolTip.SetTip(target, CreateBranchDropActionTipContent(text, isHardReset));
+            }
+
+            ToolTip.SetPlacement(target, PlacementMode.Pointer);
+            ToolTip.SetHorizontalOffset(target, 10);
+            ToolTip.SetVerticalOffset(target, 20);
+            ToolTip.SetIsOpen(target, true);
+        }
+
+        private void HideBranchDropActionTip()
+        {
+            if (_branchDropActionTipTarget == null)
+                return;
+
+            ToolTip.SetIsOpen(_branchDropActionTipTarget, false);
+            ToolTip.SetTip(_branchDropActionTipTarget, null);
+            _branchDropActionTipTarget = null;
+            _branchDropActionTipText = string.Empty;
+        }
+
+        private static Control CreateBranchDropActionTipContent(string text, bool isHardReset)
+        {
+            var foreground = isHardReset ? Brushes.White : Brushes.Black;
+            var background = isHardReset
+                ? new SolidColorBrush(Color.Parse("#D93A2F"))   // red
+                : new SolidColorBrush(Color.Parse("#FFD54F"));  // yellow
+            var borderBrush = isHardReset
+                ? new SolidColorBrush(Color.Parse("#FF7D73"))
+                : new SolidColorBrush(Color.Parse("#E6B800"));
+
+            return new Border()
+            {
+                Background = background,
+                BorderBrush = borderBrush,
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(8, 4),
+                Child = new TextBlock()
+                {
+                    Text = text,
+                    FontWeight = FontWeight.Bold,
+                    Foreground = foreground,
+                },
+            };
+        }
+
         private static Models.Branch FindBranchByName(ViewModels.Repository repo, string name)
         {
             if (repo == null || string.IsNullOrWhiteSpace(name))
@@ -1991,6 +2078,8 @@ namespace SourceGit.Views
         private bool _startDragCommitRef = false;
         private Point _pressedCommitRefPosition = default;
         private string _pressedCommitRefBranchName = string.Empty;
+        private Control _branchDropActionTipTarget = null;
+        private string _branchDropActionTipText = string.Empty;
         private readonly DataFormat<string> _dndPresetBranchNameFormat = DataFormat.CreateStringApplicationFormat("sourcegit-dnd-branch-filter-name");
     }
 }

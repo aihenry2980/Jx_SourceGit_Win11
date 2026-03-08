@@ -46,6 +46,7 @@ namespace SourceGit.ViewModels
         public Fetch(Repository repo, Models.Remote preferredRemote = null)
         {
             _repo = repo;
+            _repo.UIStates.FetchWithoutTags = true;
             IsFetchAllRemoteVisible = repo.Remotes.Count > 1 && preferredRemote == null;
             _fetchAllRemotes = IsFetchAllRemoteVisible && _repo.UIStates.FetchAllRemotes;
 
