@@ -1722,8 +1722,26 @@ namespace SourceGit.ViewModels
                     .Append('-').Append(Preferences.Instance.MaxHistoryCommits).Append(' ')
                     .Append(_uiStates.BuildHistoryParams());
 
+                var hasIncludedHistoryFilters = false;
+                foreach (var filter in _uiStates.HistoryFilters)
+                {
+                    if (filter.Mode == Models.FilterMode.Included)
+                    {
+                        hasIncludedHistoryFilters = true;
+                        break;
+                    }
+                }
+
+                if (hasIncludedHistoryFilters)
+                {
+                    builder.Append(" HEAD");
+                    if (!string.IsNullOrWhiteSpace(_superProjectSubmoduleSHA))
+                        builder.Append(' ').Append(_superProjectSubmoduleSHA);
+                }
+
                 var commits = await new Commands.QueryCommits(FullPath, builder.ToString()).GetResultAsync().ConfigureAwait(false);
                 AttachSuperProjectPointerDecorator(commits);
+                AttachParentRepositoryDecorator(commits);
                 ApplyHistoryFilterColorsToDecorators(commits);
                 var foldableBranchFullNames = BuildFoldableBranchFullNameSet(commits);
                 var removed = _foldedBranchFullNames.RemoveWhere(name => !foldableBranchFullNames.Contains(name));
@@ -1765,8 +1783,11 @@ namespace SourceGit.ViewModels
                 {
                     Dispatcher.UIThread.Invoke(() =>
                     {
+                        var hadParentDecorator = ShouldAttachParentRepositoryDecorator();
                         Submodules = [];
                         VisibleSubmodules = BuildVisibleSubmodules();
+                        if (hadParentDecorator != ShouldAttachParentRepositoryDecorator())
+                            RefreshCommits();
                     });
                 }
 
@@ -1779,6 +1800,7 @@ namespace SourceGit.ViewModels
 
                 Dispatcher.UIThread.Invoke(() =>
                 {
+                    var hadParentDecorator = ShouldAttachParentRepositoryDecorator();
                     bool hasChanged = _submodules.Count != submodules.Count;
                     if (!hasChanged)
                     {
@@ -1808,6 +1830,8 @@ namespace SourceGit.ViewModels
                     {
                         Submodules = submodules;
                         VisibleSubmodules = BuildVisibleSubmodules();
+                        if (hadParentDecorator != ShouldAttachParentRepositoryDecorator())
+                            RefreshCommits();
                     }
                 });
             });
@@ -2856,6 +2880,11 @@ namespace SourceGit.ViewModels
             return normalized.ToLowerInvariant();
         }
 
+        private bool ShouldAttachParentRepositoryDecorator()
+        {
+            return string.IsNullOrEmpty(_superProjectSubmoduleSHA) && _submodules.Count > 0;
+        }
+
         private async Task ResolveSuperProjectSubmodulePointerAsync()
         {
             var resolved = string.Empty;
@@ -2923,12 +2952,43 @@ namespace SourceGit.ViewModels
             });
         }
 
+        private void AttachParentRepositoryDecorator(List<Models.Commit> commits)
+        {
+            if (commits == null || commits.Count == 0)
+                return;
+
+            foreach (var commit in commits)
+                commit.Decorators.RemoveAll(x => x.Type == Models.DecoratorType.ParentRepository);
+
+            if (!ShouldAttachParentRepositoryDecorator())
+                return;
+
+            var target = commits.Find(x => x.IsCurrentHead);
+            if (target == null)
+                return;
+
+            target.Decorators.Add(new Models.Decorator()
+            {
+                Type = Models.DecoratorType.ParentRepository,
+                Name = "PARENT",
+            });
+
+            target.Decorators.Sort((l, r) =>
+            {
+                var delta = (int)l.Type - (int)r.Type;
+                if (delta != 0)
+                    return delta;
+                return Models.NumericSort.Compare(l.Name, r.Name);
+            });
+        }
+
         private void ApplyHistoryFilterColorsToDecorators(List<Models.Commit> commits)
         {
             if (commits == null || commits.Count == 0)
                 return;
 
             var branchColors = new Dictionary<string, uint>(StringComparer.Ordinal);
+            var includedBranches = new HashSet<string>(StringComparer.Ordinal);
             if (_settings != null)
             {
                 var configured = _settings.GetPresetBranchConfiguredColorMap();
@@ -2945,11 +3005,25 @@ namespace SourceGit.ViewModels
             foreach (var filter in _uiStates.HistoryFilters)
             {
                 if (filter.Mode != Models.FilterMode.Included || filter.Color == 0)
+                {
+                    if (filter.Mode == Models.FilterMode.Included &&
+                        filter.Type is Models.FilterType.LocalBranch or Models.FilterType.RemoteBranch)
+                    {
+                        includedBranches.Add(filter.Pattern);
+                    }
+
                     continue;
+                }
 
                 if (filter.Type is Models.FilterType.LocalBranch or Models.FilterType.RemoteBranch)
+                {
                     branchColors[filter.Pattern] = filter.Color;
+                    includedBranches.Add(filter.Pattern);
+                }
             }
+
+            var hasIncludedBranches = includedBranches.Count > 0;
+            const uint incidentalBranchColor = 0xFF808080;
 
             foreach (var commit in commits)
             {
@@ -2960,12 +3034,18 @@ namespace SourceGit.ViewModels
                     {
                         case Models.DecoratorType.CurrentBranchHead:
                         case Models.DecoratorType.LocalBranchHead:
-                            if (branchColors.TryGetValue($"refs/heads/{decorator.Name}", out var localColor))
+                            var localRefName = $"refs/heads/{decorator.Name}";
+                            if (branchColors.TryGetValue(localRefName, out var localColor))
                                 decorator.Color = localColor;
+                            else if (hasIncludedBranches && !includedBranches.Contains(localRefName))
+                                decorator.Color = incidentalBranchColor;
                             break;
                         case Models.DecoratorType.RemoteBranchHead:
-                            if (branchColors.TryGetValue($"refs/remotes/{decorator.Name}", out var remoteColor))
+                            var remoteRefName = $"refs/remotes/{decorator.Name}";
+                            if (branchColors.TryGetValue(remoteRefName, out var remoteColor))
                                 decorator.Color = remoteColor;
+                            else if (hasIncludedBranches && !includedBranches.Contains(remoteRefName))
+                                decorator.Color = incidentalBranchColor;
                             break;
                     }
                 }

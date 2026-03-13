@@ -22,6 +22,7 @@ namespace SourceGit.Views
             public IBrush FoldButtonForeground { get; set; } = null;
             public bool IsHead { get; set; } = false;
             public bool IsCurrentCommitHead { get; set; } = false;
+            public bool UseSolidBackground { get; set; } = false;
             public bool CanFold { get; set; } = false;
             public bool IsFolded { get; set; } = false;
             public double Width { get; set; } = 0.0;
@@ -161,14 +162,22 @@ namespace SourceGit.Views
                 }
                 else
                 {
-                    if (bg != null)
-                        context.DrawRectangle(bg, null, entireRect);
+                    if (item.UseSolidBackground)
+                    {
+                        context.DrawRectangle(item.Brush, null, entireRect);
+                    }
+                    else
+                    {
+                        if (bg != null)
+                            context.DrawRectangle(bg, null, entireRect);
 
-                    var labelRect = new RoundedRect(new Rect(x + 16, y, item.Label.Width + 8, 16), new CornerRadius(0, 4, 4, 0));
-                    using (context.PushOpacity(.2))
-                        context.DrawRectangle(item.Brush, null, labelRect);
+                        var labelRect = new RoundedRect(new Rect(x + 16, y, item.Label.Width + 8, 16), new CornerRadius(0, 4, 4, 0));
+                        using (context.PushOpacity(.2))
+                            context.DrawRectangle(item.Brush, null, labelRect);
 
-                    context.DrawLine(new Pen(item.Brush), new Point(x + 16, y), new Point(x + 16, y + 16));
+                        context.DrawLine(new Pen(item.Brush), new Point(x + 16, y), new Point(x + 16, y + 16));
+                    }
+
                     context.DrawText(item.Label, new Point(x + 20, y + 8.0 - item.Label.Height * 0.5));
                 }
 
@@ -234,14 +243,24 @@ namespace SourceGit.Views
 
                     var isHead = decorator.Type is Models.DecoratorType.CurrentBranchHead or Models.DecoratorType.CurrentCommitHead;
                     var isCurrentCommitHead = decorator.Type == Models.DecoratorType.CurrentCommitHead;
-                    var labelBrush = isCurrentCommitHead ? s_headTagForegroundBrush : fg;
+                    var isSuperProjectPointer = decorator.Type == Models.DecoratorType.SuperProjectPointer;
+                    var isParentRepository = decorator.Type == Models.DecoratorType.ParentRepository;
+                    var labelBrush = isCurrentCommitHead
+                        ? s_headTagForegroundBrush
+                        : isSuperProjectPointer
+                            ? s_superProjectPointerForegroundBrush
+                            : isParentRepository
+                                ? s_parentRepositoryForegroundBrush
+                            : fg;
 
+                    var labelTypeface = isHead || isSuperProjectPointer || isParentRepository ? typefaceBold : typeface;
+                    var labelSizeForItem = isHead ? labelSize + 1 : labelSize;
                     var label = new FormattedText(
                         decorator.Name,
                         CultureInfo.CurrentCulture,
                         FlowDirection.LeftToRight,
-                        isHead ? typefaceBold : typeface,
-                        isHead ? labelSize + 1 : labelSize,
+                        labelTypeface,
+                        labelSizeForItem,
                         labelBrush);
 
                     var item = new RenderItem()
@@ -249,7 +268,14 @@ namespace SourceGit.Views
                         Label = label,
                         Brush = normalBG,
                         BorderBrush = normalBG,
-                        IconBrush = isCurrentCommitHead ? s_headTagForegroundBrush : fg,
+                        IconBrush = isCurrentCommitHead
+                            ? s_headTagForegroundBrush
+                            : isSuperProjectPointer
+                                ? s_superProjectPointerForegroundBrush
+                                : isParentRepository
+                                    ? s_parentRepositoryForegroundBrush
+                                : fg,
+                        UseSolidBackground = isSuperProjectPointer || isParentRepository,
                         IsHead = isHead,
                         IsCurrentCommitHead = isCurrentCommitHead,
                         Decorator = decorator,
@@ -283,11 +309,17 @@ namespace SourceGit.Views
                         case Models.DecoratorType.CurrentCommitHead:
                             geo = this.FindResource("Icons.Head") as StreamGeometry;
                             break;
+                        case Models.DecoratorType.ParentRepository:
+                            item.Brush = s_parentRepositoryBackgroundBrush;
+                            item.BorderBrush = s_parentRepositoryBorderBrush;
+                            geo = this.FindResource("Icons.Submodule") as StreamGeometry;
+                            break;
                         case Models.DecoratorType.RemoteBranchHead:
                             geo = this.FindResource("Icons.Remote") as StreamGeometry;
                             break;
                         case Models.DecoratorType.SuperProjectPointer:
-                            item.Brush = Brushes.DodgerBlue;
+                            item.Brush = s_superProjectPointerBackgroundBrush;
+                            item.BorderBrush = s_superProjectPointerBorderBrush;
                             geo = this.FindResource("Icons.Submodule") as StreamGeometry;
                             break;
                         case Models.DecoratorType.Tag:
@@ -398,5 +430,11 @@ namespace SourceGit.Views
         private static readonly IBrush s_headTagBackgroundBrush = new SolidColorBrush(Color.Parse("#C62828"));
         private static readonly IBrush s_headTagBorderBrush = new SolidColorBrush(Color.Parse("#7F0000"));
         private static readonly IBrush s_headTagForegroundBrush = new SolidColorBrush(Color.Parse("#FFEB3B"));
+        private static readonly IBrush s_superProjectPointerBackgroundBrush = new SolidColorBrush(Color.Parse("#005BBB"));
+        private static readonly IBrush s_superProjectPointerBorderBrush = new SolidColorBrush(Color.Parse("#003A75"));
+        private static readonly IBrush s_superProjectPointerForegroundBrush = new SolidColorBrush(Color.Parse("#FFEB3B"));
+        private static readonly IBrush s_parentRepositoryBackgroundBrush = new SolidColorBrush(Color.Parse("#1B5E20"));
+        private static readonly IBrush s_parentRepositoryBorderBrush = new SolidColorBrush(Color.Parse("#0F3A12"));
+        private static readonly IBrush s_parentRepositoryForegroundBrush = new SolidColorBrush(Color.Parse("#FFEB3B"));
     }
 }

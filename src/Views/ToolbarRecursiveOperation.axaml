@@ -5,7 +5,7 @@
              xmlns:v="using:SourceGit.Views"
              xmlns:vm="using:SourceGit.ViewModels"
              xmlns:c="using:SourceGit.Converters"
-             mc:Ignorable="d" d:DesignWidth="980" d:DesignHeight="520"
+             mc:Ignorable="d" d:DesignWidth="1040" d:DesignHeight="420"
              x:Class="SourceGit.Views.ToolbarRecursiveOperation"
              x:DataType="vm:ToolbarRecursiveOperation">
   <StackPanel Orientation="Vertical" Margin="8,0">
@@ -62,13 +62,24 @@
                    Text="Selection is remembered for this repository."/>
 
         <ScrollViewer Margin="0,8,0,0"
-                      MaxHeight="160"
+                      Height="250"
+                      MaxHeight="250"
                       VerticalScrollBarVisibility="Auto"
                       IsVisible="{Binding HasSubmodulesToSelect}">
           <ItemsControl ItemsSource="{Binding SubmoduleSelections}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <UniformGrid Columns="2"/>
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate>
-                <CheckBox Margin="0,2,0,2"
+                <CheckBox Margin="0,0,16,0"
+                          MinHeight="24"
+                          Height="24"
+                          Padding="0"
+                          VerticalAlignment="Center"
+                          VerticalContentAlignment="Center"
                           Content="{Binding Path}"
                           IsChecked="{Binding IsSelected, Mode=TwoWay}"/>
               </DataTemplate>
@@ -101,7 +112,7 @@
     </StackPanel>
 
     <Border Margin="0,12,0,0"
-            Height="380"
+            Height="180"
             BorderThickness="1"
             BorderBrush="{DynamicResource Brush.Border2}"
             Background="{DynamicResource Brush.Contents}">

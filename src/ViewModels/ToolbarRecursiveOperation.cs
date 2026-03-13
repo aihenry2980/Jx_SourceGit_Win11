@@ -70,7 +70,7 @@ namespace SourceGit.ViewModels
         } = [];
 
         public override bool ShowOptions => _kind == ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively;
-        public override double PopupWidth => 980;
+        public override double PopupWidth => 1040;
         public override bool AllowCancelWhenRunning => true;
         public override bool AllowContentInteractionWhenRunning => true;
 

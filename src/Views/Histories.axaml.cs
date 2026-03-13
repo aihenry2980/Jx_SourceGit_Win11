@@ -767,8 +767,10 @@ namespace SourceGit.Views
 
         private ContextMenu CreateContextMenuForMultipleCommits(ViewModels.Repository repo, List<Models.Commit> selected)
         {
+            var vm = DataContext as ViewModels.Histories;
             var canCherryPick = true;
             var canMerge = true;
+            var canMergeToOneCommit = vm?.CanMergeSelectedCommitsToOne(selected) == true;
 
             foreach (var c in selected)
             {
@@ -815,7 +817,21 @@ namespace SourceGit.Views
                     menu.Items.Add(merge);
                 }
 
-                if (canCherryPick || canMerge)
+                if (canMergeToOneCommit)
+                {
+                    var mergeToOneCommit = new MenuItem();
+                    mergeToOneCommit.Header = "Merge to One Commit...";
+                    mergeToOneCommit.Icon = App.CreateMenuIcon("Icons.SquashIntoParent");
+                    mergeToOneCommit.Click += async (_, e) =>
+                    {
+                        if (vm != null)
+                            await vm.MergeSelectedCommitsToOneAsync(selected);
+                        e.Handled = true;
+                    };
+                    menu.Items.Add(mergeToOneCommit);
+                }
+
+                if (canCherryPick || canMerge || canMergeToOneCommit)
                     menu.Items.Add(new MenuItem() { Header = "-" });
             }
 

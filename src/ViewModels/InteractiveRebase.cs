@@ -165,6 +165,11 @@ namespace SourceGit.ViewModels
         }
 
         public InteractiveRebase(Repository repo, Models.Commit on, InteractiveRebasePrefill prefill = null)
+            : this(repo, on, prefill == null ? null : [prefill], prefill?.SHA)
+        {
+        }
+
+        public InteractiveRebase(Repository repo, Models.Commit on, List<InteractiveRebasePrefill> prefills, string preSelectedSHA = null)
         {
             _repo = repo;
             _commitDetail = new CommitDetail(repo, null);
@@ -186,14 +191,17 @@ namespace SourceGit.ViewModels
                 }
 
                 var selected = list.Count > 0 ? list[0] : null;
-                if (prefill != null)
+                if (prefills is { Count: > 0 })
                 {
-                    var item = list.Find(x => x.Commit.SHA.Equals(prefill.SHA, StringComparison.Ordinal));
-                    if (item != null)
+                    foreach (var prefill in prefills)
                     {
-                        item.Action = prefill.Action;
-                        selected = item;
+                        var item = list.Find(x => x.Commit.SHA.Equals(prefill.SHA, StringComparison.Ordinal));
+                        if (item != null)
+                            item.Action = prefill.Action;
                     }
+
+                    if (!string.IsNullOrWhiteSpace(preSelectedSHA))
+                        selected = list.Find(x => x.Commit.SHA.Equals(preSelectedSHA, StringComparison.Ordinal)) ?? selected;
                 }
 
                 Dispatcher.UIThread.Post(() =>

@@ -43,7 +43,7 @@
 
           <ListBox.ItemTemplate>
             <DataTemplate DataType="vm:LauncherPage">
-              <v:LauncherTabSizeBox UseFixedWidth="{Binding Source={x:Static vm:Preferences.Instance}, Path=UseFixedTabWidth}" Height="30"
+              <v:LauncherTabSizeBox UseFixedWidth="False" Height="30"
                                     Padding="0,2,0,0"
                                     Background="Transparent"
                                     PointerPressed="OnPointerPressedTab"
@@ -65,13 +65,13 @@
 
                 <Grid ColumnDefinitions="Auto,*,Auto">
                   <Path Grid.Column="0"
-                        Width="12" Height="12" Margin="12,0"
+                        Width="12" Height="12" Margin="8,0"
                         Fill="{Binding Node.Bookmark, Converter={x:Static c:IntConverters.ToBookmarkBrush}}"
                         Data="{StaticResource Icons.Bookmark}"
                         IsVisible="{Binding Node.IsRepository}"
                         IsHitTestVisible="False"/>
                   <Path Grid.Column="0"
-                        Width="12" Height="12" Margin="12,0"
+                        Width="12" Height="12" Margin="8,0"
                         Fill="{DynamicResource Brush.FG1}"
                         Data="{StaticResource Icons.Repositories}"
                         IsVisible="{Binding !Node.IsRepository}"
@@ -107,7 +107,7 @@
 
                   <Button Grid.Column="2"
                           Classes="icon_button"
-                          Width="14" Height="12" Margin="12,0"
+                          Width="14" Height="12" Margin="8,0"
                           Click="OnCloseTab">
                     <ToolTip.Tip>
                       <StackPanel Orientation="Horizontal" VerticalAlignment="Center">

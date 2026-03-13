@@ -13,7 +13,7 @@ namespace SourceGit.Views
     public class LauncherTabSizeBox : Border
     {
         public static readonly StyledProperty<bool> UseFixedWidthProperty =
-            AvaloniaProperty.Register<LauncherTabSizeBox, bool>(nameof(UseFixedWidth), true);
+            AvaloniaProperty.Register<LauncherTabSizeBox, bool>(nameof(UseFixedWidth), false);
 
         public bool UseFixedWidth
         {
@@ -23,7 +23,7 @@ namespace SourceGit.Views
 
         public LauncherTabSizeBox()
         {
-            Width = 200;
+            Width = double.NaN;
         }
 
         protected override Type StyleKeyOverride => typeof(Border);

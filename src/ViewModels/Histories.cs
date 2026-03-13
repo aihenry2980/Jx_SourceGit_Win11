@@ -462,6 +462,22 @@ namespace SourceGit.ViewModels
                 await App.ShowDialog(new InteractiveRebase(_repo, on, prefill));
         }
 
+        public bool CanMergeSelectedCommitsToOne(IReadOnlyList<Models.Commit> selected)
+        {
+            return TryBuildMergeSelectedCommitsToOnePlan(selected, out _, out _);
+        }
+
+        public async Task MergeSelectedCommitsToOneAsync(IReadOnlyList<Models.Commit> selected)
+        {
+            if (!TryBuildMergeSelectedCommitsToOnePlan(selected, out var on, out var prefills))
+            {
+                App.RaiseException(_repo.FullPath, "Can not merge selected commits into one commit.");
+                return;
+            }
+
+            await App.ShowDialog(new InteractiveRebase(_repo, on, prefills, prefills[^1].SHA));
+        }
+
         public async Task<string> GetCommitFullMessageAsync(Models.Commit commit)
         {
             return await new Commands.QueryCommitFullMessage(_repo.FullPath, commit.SHA)
@@ -488,6 +504,48 @@ namespace SourceGit.ViewModels
         public void CompareWithWorktree(Models.Commit commit)
         {
             DetailContext = new RevisionCompare(_repo, commit, null);
+        }
+
+        private bool TryBuildMergeSelectedCommitsToOnePlan(IReadOnlyList<Models.Commit> selected, out Models.Commit on, out List<InteractiveRebasePrefill> prefills)
+        {
+            on = null;
+            prefills = null;
+
+            if (_repo?.CurrentBranch == null || selected == null || selected.Count < 2 || _commits.Count == 0)
+                return false;
+
+            var indexBySHA = new Dictionary<string, int>(StringComparer.Ordinal);
+            for (var i = 0; i < _commits.Count; i++)
+                indexBySHA[_commits[i].SHA] = i;
+
+            var ordered = new List<Models.Commit>(selected.Count);
+            foreach (var commit in selected)
+            {
+                if (commit == null || !commit.IsMerged || commit.Parents.Count != 1 || !indexBySHA.ContainsKey(commit.SHA))
+                    return false;
+
+                ordered.Add(commit);
+            }
+
+            ordered.Sort((l, r) => indexBySHA[l.SHA].CompareTo(indexBySHA[r.SHA]));
+
+            for (var i = 0; i < ordered.Count - 1; i++)
+            {
+                if (!ordered[i].Parents[0].Equals(ordered[i + 1].SHA, StringComparison.Ordinal))
+                    return false;
+            }
+
+            var target = ordered[^1];
+            on = _commits.Find(x => x.SHA.Equals(target.Parents[0], StringComparison.Ordinal));
+            if (on == null)
+                return false;
+
+            prefills = new List<InteractiveRebasePrefill>(ordered.Count);
+            for (var i = 0; i < ordered.Count - 1; i++)
+                prefills.Add(new InteractiveRebasePrefill(ordered[i].SHA, Models.InteractiveRebaseAction.Squash));
+
+            prefills.Add(new InteractiveRebasePrefill(target.SHA, Models.InteractiveRebaseAction.Reword));
+            return true;
         }
 
         private Repository _repo = null;
