@@ -2093,7 +2093,7 @@ namespace SourceGit.ViewModels
             Action<int> onPhaseChanged = null,
             List<string> selectedTargets = null,
             CancellationToken cancellationToken = default,
-            Action<int, int, string> onSubmoduleProgressChanged = null)
+            Action<Models.RecursiveOperationProgress> onSubmoduleProgressChanged = null)
         {
             if (cancellationToken.IsCancellationRequested)
                 return false;
@@ -2124,7 +2124,7 @@ namespace SourceGit.ViewModels
 
             onPhaseChanged?.Invoke(2);
             log?.AppendLine("=== Step 3/3: Fetch and prune recursively ===");
-            var fetched = await RunFetchRecursivelyAsync(true, log, true, cancellationToken);
+            var fetched = await RunFetchRecursivelyAsync(true, log, true, cancellationToken, onSubmoduleProgressChanged);
             if (!fetched)
             {
                 log?.AppendLine("[failed] Recursive fetch and prune failed.");
@@ -2139,7 +2139,7 @@ namespace SourceGit.ViewModels
             Models.ICommandLog log,
             bool stopOnError = false,
             CancellationToken cancellationToken = default,
-            Action<int, int, string> onProgressChanged = null)
+            Action<Models.RecursiveOperationProgress> onProgressChanged = null)
         {
             if (cancellationToken.IsCancellationRequested)
                 return false;
@@ -2157,6 +2157,9 @@ namespace SourceGit.ViewModels
             var noTags = true;
             var force = _uiStates.EnableForceOnFetch;
             var succ = true;
+            var succeededTargets = 0;
+            var skippedTargets = 0;
+            var failedTargets = 0;
             var totalTargets = 0;
             foreach (var submodule in _submodules)
             {
@@ -2199,15 +2202,32 @@ namespace SourceGit.ViewModels
                 if (cancellationToken.IsCancellationRequested)
                     return false;
 
-                onProgressChanged?.Invoke(completedTargets, totalTargets, submodulePath);
+                onProgressChanged?.Invoke(new Models.RecursiveOperationProgress
+                {
+                    Total = totalTargets,
+                    Succeeded = succeededTargets,
+                    Skipped = skippedTargets,
+                    Failed = failedTargets,
+                    CurrentTarget = submodulePath,
+                    CurrentState = Models.RecursiveOperationTargetState.Running,
+                });
 
                 var submoduleRoot = Native.OS.GetAbsPath(FullPath, submodulePath).Replace('\\', '/');
                 var gitDir = Path.Combine(submoduleRoot, ".git");
                 if (!Directory.Exists(submoduleRoot) || (!Directory.Exists(gitDir) && !File.Exists(gitDir)))
                 {
                     log?.AppendLine($"Skip submodule `{submodulePath}` (not initialized).");
+                    skippedTargets++;
                     completedTargets++;
-                    onProgressChanged?.Invoke(completedTargets, totalTargets, submodulePath);
+                    onProgressChanged?.Invoke(new Models.RecursiveOperationProgress
+                    {
+                        Total = totalTargets,
+                        Succeeded = succeededTargets,
+                        Skipped = skippedTargets,
+                        Failed = failedTargets,
+                        CurrentTarget = submodulePath,
+                        CurrentState = Models.RecursiveOperationTargetState.Skipped,
+                    });
                     continue;
                 }
 
@@ -2215,12 +2235,22 @@ namespace SourceGit.ViewModels
                 if (submoduleRemotes.Count == 0)
                 {
                     log?.AppendLine($"Skip submodule `{submodulePath}` (no remotes).");
+                    skippedTargets++;
                     completedTargets++;
-                    onProgressChanged?.Invoke(completedTargets, totalTargets, submodulePath);
+                    onProgressChanged?.Invoke(new Models.RecursiveOperationProgress
+                    {
+                        Total = totalTargets,
+                        Succeeded = succeededTargets,
+                        Skipped = skippedTargets,
+                        Failed = failedTargets,
+                        CurrentTarget = submodulePath,
+                        CurrentState = Models.RecursiveOperationTargetState.Skipped,
+                    });
                     continue;
                 }
 
                 log?.AppendLine($"=== Fetch submodule `{submodulePath}` ===");
+                var submoduleSucceeded = true;
                 foreach (var remoteName in submoduleRemotes)
                 {
                     var one = await RunSplitFetchUnitAsync(
@@ -2236,14 +2266,40 @@ namespace SourceGit.ViewModels
                         cancellationToken);
                     if (!one)
                     {
+                        submoduleSucceeded = false;
                         succ = false;
                         if (stopOnError)
+                        {
+                            failedTargets++;
+                            onProgressChanged?.Invoke(new Models.RecursiveOperationProgress
+                            {
+                                Total = totalTargets,
+                                Succeeded = succeededTargets,
+                                Skipped = skippedTargets,
+                                Failed = failedTargets,
+                                CurrentTarget = submodulePath,
+                                CurrentState = Models.RecursiveOperationTargetState.Failed,
+                            });
                             return false;
+                        }
                     }
                 }
 
+                if (submoduleSucceeded)
+                    succeededTargets++;
+                else
+                    failedTargets++;
+
                 completedTargets++;
-                onProgressChanged?.Invoke(completedTargets, totalTargets, submodulePath);
+                onProgressChanged?.Invoke(new Models.RecursiveOperationProgress
+                {
+                    Total = totalTargets,
+                    Succeeded = succeededTargets,
+                    Skipped = skippedTargets,
+                    Failed = failedTargets,
+                    CurrentTarget = submodulePath,
+                    CurrentState = submoduleSucceeded ? Models.RecursiveOperationTargetState.Succeeded : Models.RecursiveOperationTargetState.Failed,
+                });
             }
 
             if (succ)
@@ -2321,7 +2377,7 @@ namespace SourceGit.ViewModels
             List<string> selectedTargets = null,
             bool stopOnError = false,
             CancellationToken cancellationToken = default,
-            Action<int, int, string> onProgressChanged = null)
+            Action<Models.RecursiveOperationProgress> onProgressChanged = null)
         {
             if (cancellationToken.IsCancellationRequested)
                 return false;
@@ -2356,6 +2412,8 @@ namespace SourceGit.ViewModels
             var anyUpdated = false;
             var totalTargets = targets.Count;
             var completedTargets = 0;
+            var succeededTargets = 0;
+            var failedTargets = 0;
 
             foreach (var target in targets)
             {
@@ -2373,7 +2431,14 @@ namespace SourceGit.ViewModels
                     CancellationToken = linked.Token,
                 };
 
-                onProgressChanged?.Invoke(completedTargets, totalTargets, target);
+                onProgressChanged?.Invoke(new Models.RecursiveOperationProgress
+                {
+                    Total = totalTargets,
+                    Succeeded = succeededTargets,
+                    Failed = failedTargets,
+                    CurrentTarget = target,
+                    CurrentState = Models.RecursiveOperationTargetState.Running,
+                });
                 log?.AppendLine($"=== Update submodule `{target}` ===");
                 var one = await cmd.Use(log).UpdateAsync([target], true, false).ConfigureAwait(false);
                 if (cancellationToken.IsCancellationRequested)
@@ -2386,6 +2451,16 @@ namespace SourceGit.ViewModels
                 {
                     log?.AppendLine($"[timeout] Update `{target}` exceeded {SPLIT_SUBMODULE_UPDATE_TIMEOUT.TotalMinutes:0} min and was terminated.");
                     succ = false;
+                    failedTargets++;
+                    completedTargets++;
+                    onProgressChanged?.Invoke(new Models.RecursiveOperationProgress
+                    {
+                        Total = totalTargets,
+                        Succeeded = succeededTargets,
+                        Failed = failedTargets,
+                        CurrentTarget = target,
+                        CurrentState = Models.RecursiveOperationTargetState.Failed,
+                    });
                     if (stopOnError)
                     {
                         App.RaiseException(FullPath, $"Update `{target}` timed out.");
@@ -2397,17 +2472,37 @@ namespace SourceGit.ViewModels
                 if (one)
                 {
                     anyUpdated = true;
+                    succeededTargets++;
                 }
                 else
                 {
                     log?.AppendLine($"[failed] Update `{target}` failed.");
                     succ = false;
+                    failedTargets++;
                     if (stopOnError)
+                    {
+                        completedTargets++;
+                        onProgressChanged?.Invoke(new Models.RecursiveOperationProgress
+                        {
+                            Total = totalTargets,
+                            Succeeded = succeededTargets,
+                            Failed = failedTargets,
+                            CurrentTarget = target,
+                            CurrentState = Models.RecursiveOperationTargetState.Failed,
+                        });
                         return false;
+                    }
                 }
 
                 completedTargets++;
-                onProgressChanged?.Invoke(completedTargets, totalTargets, target);
+                onProgressChanged?.Invoke(new Models.RecursiveOperationProgress
+                {
+                    Total = totalTargets,
+                    Succeeded = succeededTargets,
+                    Failed = failedTargets,
+                    CurrentTarget = target,
+                    CurrentState = one ? Models.RecursiveOperationTargetState.Succeeded : Models.RecursiveOperationTargetState.Failed,
+                });
             }
 
             if (anyUpdated)

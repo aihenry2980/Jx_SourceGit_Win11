@@ -254,15 +254,7 @@ namespace SourceGit.ViewModels
                     submoduleDiff.NewPointerURL = string.IsNullOrWhiteSpace(newSHA) ? string.Empty : $"{links[0].URLPrefix}{newSHA}";
                 }
                 submoduleDiff.Changes = await new Commands.CompareRevisions(submoduleRoot, start, end).ReadAsync().ConfigureAwait(false);
-                var stats = await new Commands.QueryRevisionLineStats(submoduleRoot, start, end).GetResultAsync().ConfigureAwait(false);
-                foreach (var change in submoduleDiff.Changes)
-                {
-                    if (!stats.TryGetValue(change.Path, out var stat))
-                        continue;
-
-                    change.AddedLines = stat.Added;
-                    change.DeletedLines = stat.Deleted;
-                }
+                await Commands.QueryRevisionLineStats.ApplyAsync(submoduleRoot, start, end, submoduleDiff.Changes).ConfigureAwait(false);
             }
 
             return submoduleDiff;

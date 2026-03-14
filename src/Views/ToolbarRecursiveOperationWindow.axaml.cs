@@ -1,6 +1,8 @@
 using System;
 using System.Threading.Tasks;
 
+using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Interactivity;
 
 namespace SourceGit.Views
@@ -11,6 +13,10 @@ namespace SourceGit.Views
         {
             CloseOnESC = true;
             InitializeComponent();
+
+            var layout = ViewModels.Preferences.Instance.Layout;
+            Width = Math.Max(MinWidth, layout.ToolbarRecursiveOperationWindowWidth);
+            Height = Math.Max(MinHeight, layout.ToolbarRecursiveOperationWindowHeight);
         }
 
         protected override async void OnOpened(EventArgs e)
@@ -28,10 +34,19 @@ namespace SourceGit.Views
 
         protected override void OnClosed(EventArgs e)
         {
+            PersistWindowSize();
+            ViewModels.Preferences.Instance.Save();
+
             if (DataContext is ViewModels.ToolbarRecursiveOperation vm)
                 vm.Cleanup();
 
             base.OnClosed(e);
+        }
+
+        protected override void OnSizeChanged(SizeChangedEventArgs e)
+        {
+            base.OnSizeChanged(e);
+            PersistWindowSize();
         }
 
         private async void OnSureByHotKey(object sender, RoutedEventArgs e)
@@ -85,6 +100,15 @@ namespace SourceGit.Views
             {
                 vm.InProgress = false;
             }
+        }
+
+        private void PersistWindowSize()
+        {
+            var layout = ViewModels.Preferences.Instance.Layout;
+            if (Width >= MinWidth)
+                layout.ToolbarRecursiveOperationWindowWidth = Width;
+            if (Height >= MinHeight)
+                layout.ToolbarRecursiveOperationWindowHeight = Height;
         }
 
         private bool _initialized = false;

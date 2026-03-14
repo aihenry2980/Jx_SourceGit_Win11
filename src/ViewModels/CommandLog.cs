@@ -35,6 +35,12 @@ namespace SourceGit.ViewModels
             private set;
         } = false;
 
+        public string LatestCommand
+        {
+            get;
+            private set;
+        } = string.Empty;
+
         public string Content
         {
             get
@@ -72,6 +78,12 @@ namespace SourceGit.ViewModels
                 var newline = line ?? string.Empty;
                 _builder.AppendLine(newline);
                 var wasTruncated = TrimContentIfNeeded();
+                var latestCommand = ExtractCommandLine(newline);
+                if (!string.IsNullOrEmpty(latestCommand))
+                {
+                    LatestCommand = latestCommand;
+                    OnPropertyChanged(nameof(LatestCommand));
+                }
 
                 foreach (var receiver in _receivers.ToArray())
                 {
@@ -124,6 +136,15 @@ namespace SourceGit.ViewModels
             _builder.AppendLine(TRUNCATED_NOTICE);
             _builder.Append(trimmed.TrimStart('\r', '\n'));
             return true;
+        }
+
+        private static string ExtractCommandLine(string line)
+        {
+            if (string.IsNullOrWhiteSpace(line))
+                return string.Empty;
+
+            var trimmed = line.Trim();
+            return trimmed.StartsWith("$ ", StringComparison.Ordinal) ? trimmed.Substring(2) : string.Empty;
         }
     }
 }

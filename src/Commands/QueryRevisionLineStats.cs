@@ -47,5 +47,28 @@ namespace SourceGit.Commands
 
             return outs;
         }
+
+        public static async Task ApplyAsync(string repo, string based, string target, IReadOnlyList<Models.Change> changes)
+        {
+            if (string.IsNullOrWhiteSpace(repo) ||
+                string.IsNullOrWhiteSpace(based) ||
+                string.IsNullOrWhiteSpace(target) ||
+                changes == null ||
+                changes.Count == 0)
+                return;
+
+            var stats = await new QueryRevisionLineStats(repo, based, target).GetResultAsync().ConfigureAwait(false);
+            foreach (var change in changes)
+            {
+                if (change == null || string.IsNullOrWhiteSpace(change.Path))
+                    continue;
+
+                if (!stats.TryGetValue(change.Path, out var stat))
+                    continue;
+
+                change.AddedLines = stat.Added;
+                change.DeletedLines = stat.Deleted;
+            }
+        }
     }
 }

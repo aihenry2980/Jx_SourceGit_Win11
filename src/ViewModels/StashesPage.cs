@@ -58,12 +58,14 @@ namespace SourceGit.ViewModels
                             var changes = await new Commands.CompareRevisions(_repo.FullPath, $"{value.SHA}^", value.SHA)
                                 .ReadAsync()
                                 .ConfigureAwait(false);
+                            await Commands.QueryRevisionLineStats.ApplyAsync(_repo.FullPath, $"{value.SHA}^", value.SHA, changes).ConfigureAwait(false);
                             var untracked = new List<Models.Change>();
                             if (value.Parents.Count == 3)
                             {
                                 untracked = await new Commands.CompareRevisions(_repo.FullPath, Models.Commit.EmptyTreeSHA1, value.Parents[2])
                                     .ReadAsync()
                                     .ConfigureAwait(false);
+                                await Commands.QueryRevisionLineStats.ApplyAsync(_repo.FullPath, Models.Commit.EmptyTreeSHA1, value.Parents[2], untracked).ConfigureAwait(false);
 
                                 var needSort = changes.Count > 0 && untracked.Count > 0;
                                 changes.AddRange(untracked);

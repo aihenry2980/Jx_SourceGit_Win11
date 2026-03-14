@@ -35,6 +35,18 @@ namespace SourceGit.ViewModels
             set;
         } = WindowState.Normal;
 
+        public double ToolbarRecursiveOperationWindowWidth
+        {
+            get;
+            set;
+        } = 1040;
+
+        public double ToolbarRecursiveOperationWindowHeight
+        {
+            get;
+            set;
+        } = 520;
+
         public GridLength RepositorySidebarWidth
         {
             get => _repositorySidebarWidth;

@@ -556,6 +556,7 @@ namespace SourceGit.ViewModels
                 var parent = _commit.Parents.Count == 0 ? Models.Commit.EmptyTreeSHA1 : $"{_commit.SHA}^";
                 var cmd = new Commands.CompareRevisions(_repo.FullPath, parent, _commit.SHA) { CancellationToken = token };
                 var changes = await cmd.ReadAsync().ConfigureAwait(false);
+                await Commands.QueryRevisionLineStats.ApplyAsync(_repo.FullPath, parent, _commit.SHA, changes).ConfigureAwait(false);
                 var visible = changes;
                 if (!string.IsNullOrWhiteSpace(_searchChangeFilter))
                 {

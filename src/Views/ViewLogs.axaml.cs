@@ -1,3 +1,5 @@
+using System;
+
 using Avalonia.Controls;
 using Avalonia.Input;
 
@@ -15,6 +17,16 @@ namespace SourceGit.Views
         {
             if (sender is not Grid { DataContext: ViewModels.CommandLog log } grid || DataContext is not ViewModels.ViewLogs vm)
                 return;
+
+            var copyCommand = new MenuItem();
+            copyCommand.Header = "Copy current command";
+            copyCommand.Icon = App.CreateMenuIcon("Icons.Copy");
+            copyCommand.IsEnabled = !string.IsNullOrWhiteSpace(log.LatestCommand);
+            copyCommand.Click += async (_, ev) =>
+            {
+                await App.CopyTextAsync(log.LatestCommand ?? string.Empty);
+                ev.Handled = true;
+            };
 
             var copy = new MenuItem();
             copy.Header = App.Text("ViewLogs.CopyLog");
@@ -35,9 +47,19 @@ namespace SourceGit.Views
             };
 
             var menu = new ContextMenu();
+            menu.Items.Add(copyCommand);
             menu.Items.Add(copy);
             menu.Items.Add(rm);
             menu.Open(grid);
+
+            e.Handled = true;
+        }
+
+        private async void OnCopyCurrentCommand(object _, Avalonia.Interactivity.RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.ViewLogs { SelectedLog: { } log } &&
+                !string.IsNullOrWhiteSpace(log.LatestCommand))
+                await App.CopyTextAsync(log.LatestCommand);
 
             e.Handled = true;
         }

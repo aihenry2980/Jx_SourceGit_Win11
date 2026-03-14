@@ -11,9 +11,10 @@
                     x:Name="ThisControl"
                     Title="{Binding Title}"
                     Icon="/App.ico"
-                    Width="{Binding PopupWidth, FallbackValue=1040, TargetNullValue=1040}"
+                    Width="1040"
                     Height="520"
                     MinWidth="820"
+                    MinHeight="420"
                     CanResize="True"
                     WindowStartupLocation="CenterOwner">
   <Grid RowDefinitions="Auto,*,Auto,Auto">

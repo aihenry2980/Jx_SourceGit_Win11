@@ -1,3 +1,5 @@
+using System;
+
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
@@ -34,6 +36,15 @@ namespace SourceGit.Views
         {
             if (DataContext is ViewModels.ToolbarRecursiveOperation vm)
                 await App.CopyTextAsync(vm.Log?.Content ?? string.Empty);
+
+            e.Handled = true;
+        }
+
+        private async void OnCopyCurrentCommand(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.ToolbarRecursiveOperation vm &&
+                !string.IsNullOrWhiteSpace(vm.Log?.LatestCommand))
+                await App.CopyTextAsync(vm.Log.LatestCommand);
 
             e.Handled = true;
         }

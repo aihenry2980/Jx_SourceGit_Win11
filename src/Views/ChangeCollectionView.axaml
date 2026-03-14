@@ -37,7 +37,7 @@
                                    SelectionChanged="OnRowSelectionChanged">
         <ListBox.ItemTemplate>
           <DataTemplate DataType="vm:ChangeTreeNode">
-            <Grid ColumnDefinitions="16,16,Auto,*"
+            <Grid ColumnDefinitions="16,16,Auto,*,Auto"
                   Margin="{Binding Depth, Converter={x:Static c:IntConverters.ToTreeMargin}}"
                   Background="Transparent"
                   DoubleTapped="OnRowDoubleTapped"
@@ -109,6 +109,20 @@
                   </MultiBinding>
                 </TextBlock.IsVisible>
               </TextBlock>
+
+              <TextBlock Grid.Column="4"
+                         Margin="12,0,8,0"
+                         VerticalAlignment="Center"
+                         HorizontalAlignment="Right"
+                         FontFamily="{DynamicResource Fonts.Monospace}"
+                         FontSize="11"
+                         FontWeight="SemiBold"
+                         IsVisible="{Binding Change.HasLineStats}">
+                <Run Text="-"/>
+                <Run Text="{Binding Change.DeletedLines}" Foreground="Tomato"/>
+                <Run Text="  +"/>
+                <Run Text="{Binding Change.AddedLines}" Foreground="LimeGreen"/>
+              </TextBlock>
             </Grid>
           </DataTemplate>
         </ListBox.ItemTemplate>
@@ -123,7 +137,7 @@
                                    SelectionChanged="OnRowSelectionChanged">
         <ListBox.ItemTemplate>
           <DataTemplate DataType="m:Change">
-            <Grid ColumnDefinitions="Auto,Auto,Auto,*"
+            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto"
                   Background="Transparent"
                   DoubleTapped="OnRowDoubleTapped"
                   DataContextChanged="OnRowDataContextChanged">
@@ -182,6 +196,20 @@
                   </MultiBinding>
                 </TextBlock.IsVisible>
               </TextBlock>
+
+              <TextBlock Grid.Column="4"
+                         Margin="12,0,8,0"
+                         VerticalAlignment="Center"
+                         HorizontalAlignment="Right"
+                         FontFamily="{DynamicResource Fonts.Monospace}"
+                         FontSize="11"
+                         FontWeight="SemiBold"
+                         IsVisible="{Binding HasLineStats}">
+                <Run Text="-"/>
+                <Run Text="{Binding DeletedLines}" Foreground="Tomato"/>
+                <Run Text="  +"/>
+                <Run Text="{Binding AddedLines}" Foreground="LimeGreen"/>
+              </TextBlock>
             </Grid>
           </DataTemplate>
         </ListBox.ItemTemplate>
@@ -196,7 +224,7 @@
                                    SelectionChanged="OnRowSelectionChanged">
         <ListBox.ItemTemplate>
           <DataTemplate DataType="m:Change">
-            <Grid ColumnDefinitions="Auto,Auto,*"
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto"
                   Background="Transparent"
                   DoubleTapped="OnRowDoubleTapped"
                   DataContextChanged="OnRowDataContextChanged">
@@ -250,6 +278,20 @@
                     <Binding Path="IndexSubmodulePointerText" Converter="{x:Static c:StringConverters.IsNotNullOrWhitespace}"/>
                   </MultiBinding>
                 </TextBlock.IsVisible>
+              </TextBlock>
+
+              <TextBlock Grid.Column="3"
+                         Margin="12,0,8,0"
+                         VerticalAlignment="Center"
+                         HorizontalAlignment="Right"
+                         FontFamily="{DynamicResource Fonts.Monospace}"
+                         FontSize="11"
+                         FontWeight="SemiBold"
+                         IsVisible="{Binding HasLineStats}">
+                <Run Text="-"/>
+                <Run Text="{Binding DeletedLines}" Foreground="Tomato"/>
+                <Run Text="  +"/>
+                <Run Text="{Binding AddedLines}" Foreground="LimeGreen"/>
               </TextBlock>
             </Grid>
           </DataTemplate>
