@@ -601,6 +601,37 @@ namespace SourceGit.Models
     {
         public RevisionSubmodule Old { get; set; } = null;
         public RevisionSubmodule New { get; set; } = null;
+        public List<Change> Changes { get; set; } = [];
+        public string RepositoryPath { get; set; } = string.Empty;
+        public string BaseRevision { get; set; } = string.Empty;
+        public string TargetRevision { get; set; } = string.Empty;
+        public string OldPointerURL { get; set; } = string.Empty;
+        public string NewPointerURL { get; set; } = string.Empty;
+
+        public string OldPointerSHA => FormatSHA(Old?.Commit?.SHA);
+        public string NewPointerSHA => FormatSHA(New?.Commit?.SHA);
+        public string OldPointerAuthor => FormatAuthor(Old?.Commit?.Author?.Name);
+        public string NewPointerAuthor => FormatAuthor(New?.Commit?.Author?.Name);
+        public string OldPointerSubject => FormatSubject(Old?.Commit?.Subject);
+        public string NewPointerSubject => FormatSubject(New?.Commit?.Subject);
+
+        private static string FormatSHA(string sha)
+        {
+            if (string.IsNullOrWhiteSpace(sha))
+                return "none";
+
+            return sha.Length > 10 ? sha.Substring(0, 10) : sha;
+        }
+
+        private static string FormatSubject(string subject)
+        {
+            return string.IsNullOrWhiteSpace(subject) ? "(no message)" : subject;
+        }
+
+        private static string FormatAuthor(string author)
+        {
+            return string.IsNullOrWhiteSpace(author) ? "unknown" : author;
+        }
     }
 
     public class DiffResult

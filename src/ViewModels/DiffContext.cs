@@ -237,6 +237,34 @@ namespace SourceGit.ViewModels
                     submoduleDiff.Old = await QuerySubmoduleRevisionAsync(submoduleRoot, sha).ConfigureAwait(false);
             }
 
+            var oldSHA = submoduleDiff.Old?.Commit?.SHA;
+            var newSHA = submoduleDiff.New?.Commit?.SHA;
+            if (!string.IsNullOrWhiteSpace(oldSHA) || !string.IsNullOrWhiteSpace(newSHA))
+            {
+                var start = string.IsNullOrWhiteSpace(oldSHA) ? Models.Commit.EmptyTreeSHA1 : oldSHA;
+                var end = string.IsNullOrWhiteSpace(newSHA) ? Models.Commit.EmptyTreeSHA1 : newSHA;
+                submoduleDiff.RepositoryPath = submoduleRoot;
+                submoduleDiff.BaseRevision = start;
+                submoduleDiff.TargetRevision = end;
+                var remotes = await new Commands.QueryRemotes(submoduleRoot).GetResultAsync().ConfigureAwait(false);
+                var links = Models.CommitLink.Get(remotes);
+                if (links.Count > 0)
+                {
+                    submoduleDiff.OldPointerURL = string.IsNullOrWhiteSpace(oldSHA) ? string.Empty : $"{links[0].URLPrefix}{oldSHA}";
+                    submoduleDiff.NewPointerURL = string.IsNullOrWhiteSpace(newSHA) ? string.Empty : $"{links[0].URLPrefix}{newSHA}";
+                }
+                submoduleDiff.Changes = await new Commands.CompareRevisions(submoduleRoot, start, end).ReadAsync().ConfigureAwait(false);
+                var stats = await new Commands.QueryRevisionLineStats(submoduleRoot, start, end).GetResultAsync().ConfigureAwait(false);
+                foreach (var change in submoduleDiff.Changes)
+                {
+                    if (!stats.TryGetValue(change.Path, out var stat))
+                        continue;
+
+                    change.AddedLines = stat.Added;
+                    change.DeletedLines = stat.Deleted;
+                }
+            }
+
             return submoduleDiff;
         }
 

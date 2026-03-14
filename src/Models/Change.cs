@@ -52,8 +52,11 @@
         public string IndexSubmodulePointerNewSHA { get; set; } = string.Empty;
         public string WorkTreeSubmodulePointerOldSHA { get; set; } = string.Empty;
         public string WorkTreeSubmodulePointerNewSHA { get; set; } = string.Empty;
+        public string AddedLines { get; set; } = string.Empty;
+        public string DeletedLines { get; set; } = string.Empty;
 
         public bool IsConflicted => WorkTree == ChangeState.Conflicted;
+        public bool HasLineStats => !string.IsNullOrEmpty(AddedLines) || !string.IsNullOrEmpty(DeletedLines);
         public string ConflictMarker => CONFLICT_MARKERS[(int)ConflictReason];
         public string ConflictDesc => CONFLICT_DESCS[(int)ConflictReason];
         public string IndexSubmodulePointerText => BuildSubmodulePointerText(IndexSubmodulePointerOldSHA, IndexSubmodulePointerNewSHA);

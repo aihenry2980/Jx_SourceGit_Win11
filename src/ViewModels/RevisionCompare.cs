@@ -343,7 +343,6 @@ namespace SourceGit.ViewModels
                 _changes = await new Commands.CompareRevisions(_repo.FullPath, GetSHA(_startPoint), GetSHA(_endPoint))
                     .ReadAsync()
                     .ConfigureAwait(false);
-
                 var visible = _changes;
                 if (!string.IsNullOrWhiteSpace(_searchFilter))
                 {

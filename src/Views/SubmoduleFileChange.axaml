@@ -1,0 +1,54 @@
+<v:ChromelessWindow xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                    xmlns:vm="using:SourceGit.ViewModels"
+                    xmlns:v="using:SourceGit.Views"
+                    mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="760"
+                    x:Class="SourceGit.Views.SubmoduleFileChange"
+                    x:DataType="vm:SubmoduleFileChange"
+                    x:Name="ThisControl"
+                    Icon="/App.ico"
+                    Title="{Binding Title}"
+                    Width="1200"
+                    Height="760"
+                    MinWidth="960"
+                    MinHeight="600">
+  <Grid RowDefinitions="Auto,*">
+    <Grid Grid.Row="0"
+          Height="28"
+          IsVisible="{Binding !#ThisControl.UseSystemWindowFrame}">
+      <Border Background="{DynamicResource Brush.TitleBar}"
+              BorderThickness="0,0,0,1"
+              BorderBrush="{DynamicResource Brush.Border2}"
+              DoubleTapped="MaximizeOrRestoreWindow"
+              PointerPressed="BeginMoveWindow"/>
+
+      <Path Width="12"
+            Height="12"
+            Margin="10,0,0,0"
+            HorizontalAlignment="Left"
+            Data="{StaticResource Icons.Diff}"
+            IsVisible="{OnPlatform True, macOS=False}"/>
+
+      <TextBlock Classes="bold"
+                 Text="{Binding Title}"
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Center"
+                 IsHitTestVisible="False"/>
+
+      <v:CaptionButtons HorizontalAlignment="Right"
+                        IsVisible="{OnPlatform True, macOS=False}"/>
+    </Grid>
+
+    <ContentControl Grid.Row="1"
+                    Margin="8"
+                    Content="{Binding DiffContext}">
+      <ContentControl.DataTemplates>
+        <DataTemplate DataType="vm:DiffContext">
+          <v:DiffView/>
+        </DataTemplate>
+      </ContentControl.DataTemplates>
+    </ContentControl>
+  </Grid>
+</v:ChromelessWindow>

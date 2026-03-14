@@ -58,7 +58,6 @@ namespace SourceGit.ViewModels
                             var changes = await new Commands.CompareRevisions(_repo.FullPath, $"{value.SHA}^", value.SHA)
                                 .ReadAsync()
                                 .ConfigureAwait(false);
-
                             var untracked = new List<Models.Change>();
                             if (value.Parents.Count == 3)
                             {

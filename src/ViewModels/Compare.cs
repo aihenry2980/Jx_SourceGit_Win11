@@ -291,7 +291,6 @@ namespace SourceGit.ViewModels
                 _changes = await new Commands.CompareRevisions(_repo, _based, _to)
                     .ReadAsync()
                     .ConfigureAwait(false);
-
                 var visible = _changes;
                 if (!string.IsNullOrWhiteSpace(_searchFilter))
                 {
