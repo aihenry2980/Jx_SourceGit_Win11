@@ -16,6 +16,16 @@ namespace SourceGit.Views
             var launcherPage = this.FindAncestorOfType<LauncherPage>();
             if (launcherPage?.DataContext is ViewModels.LauncherPage page)
                 page.CancelPopup();
+            else
+                this.FindAncestorOfType<Window>()?.Close();
+
+            e.Handled = true;
+        }
+
+        private void OnCancelOperation(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.ToolbarRecursiveOperation vm)
+                vm.CancelOperation();
 
             e.Handled = true;
         }
@@ -33,6 +43,8 @@ namespace SourceGit.Views
             var launcherPage = this.FindAncestorOfType<LauncherPage>();
             if (launcherPage?.DataContext is ViewModels.LauncherPage page)
                 page.CancelPopup();
+            else
+                this.FindAncestorOfType<Window>()?.Close();
 
             e.Handled = true;
         }

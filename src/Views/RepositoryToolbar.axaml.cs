@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 
 namespace SourceGit.Views
@@ -179,7 +180,9 @@ namespace SourceGit.Views
         {
             if (DataContext is ViewModels.Repository repo && repo.CanCreatePopup())
             {
-                await repo.ShowAndStartPopupAsync(new ViewModels.ToolbarRecursiveOperation(repo, ViewModels.ToolbarRecursiveOperationKind.FetchAndPruneRecursively));
+                OpenToolbarRecursiveOperationWindow(new ViewModels.ToolbarRecursiveOperation(
+                    repo,
+                    ViewModels.ToolbarRecursiveOperationKind.FetchAndPruneRecursively));
                 e.Handled = true;
             }
         }
@@ -199,7 +202,9 @@ namespace SourceGit.Views
         {
             if (DataContext is ViewModels.Repository repo && repo.CanCreatePopup())
             {
-                await repo.ShowAndStartPopupAsync(new ViewModels.ToolbarRecursiveOperation(repo, ViewModels.ToolbarRecursiveOperationKind.FetchRecursively));
+                OpenToolbarRecursiveOperationWindow(new ViewModels.ToolbarRecursiveOperation(
+                    repo,
+                    ViewModels.ToolbarRecursiveOperationKind.FetchRecursively));
                 e.Handled = true;
             }
         }
@@ -241,9 +246,75 @@ namespace SourceGit.Views
         {
             if (DataContext is ViewModels.Repository repo && repo.CanCreatePopup())
             {
-                await repo.ShowAndStartPopupAsync(new ViewModels.ToolbarRecursiveOperation(repo, ViewModels.ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively));
+                OpenToolbarRecursiveOperationWindow(new ViewModels.ToolbarRecursiveOperation(
+                    repo,
+                    ViewModels.ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively));
                 e.Handled = true;
             }
+        }
+
+        private async void PullUpdateAndFetchPruneRecursively(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo && repo.CanCreatePopup())
+            {
+                var needsSelection = repo.Submodules.Count > 0 && repo.Settings?.NeedsRecursiveSubmoduleUpdateTargetsConfiguration() == true;
+                var popup = new ViewModels.ToolbarRecursiveOperation(
+                    repo,
+                    ViewModels.ToolbarRecursiveOperationKind.PullUpdateAndFetchPruneRecursively,
+                    needsSelection);
+                OpenToolbarRecursiveOperationWindow(popup);
+                e.Handled = true;
+            }
+        }
+
+        private void OnSyncAllContextRequested(object sender, ContextRequestedEventArgs e)
+        {
+            if (sender is Control control)
+                OpenSyncAllContextMenu(control);
+
+            e.Handled = true;
+        }
+
+        private void OnSyncAllPointerPressed(object sender, PointerPressedEventArgs e)
+        {
+            if (sender is not Control control)
+                return;
+
+            var point = e.GetCurrentPoint(control);
+            if (!point.Properties.IsRightButtonPressed)
+                return;
+
+            OpenSyncAllContextMenu(control);
+            e.Handled = true;
+        }
+
+        private void OpenSyncAllContextMenu(Control control)
+        {
+            if (DataContext is not ViewModels.Repository repo || !repo.CanCreatePopup())
+                return;
+
+            var menu = new ContextMenu();
+
+            var choose = new MenuItem();
+            choose.Header = "Choose submodules...";
+            choose.Icon = App.CreateMenuIcon("Icons.Submodule");
+            choose.IsEnabled = repo.Submodules.Count > 0;
+            choose.Click += (_, ev) =>
+            {
+                menu.Close();
+                Dispatcher.UIThread.Post(() =>
+                {
+                    OpenToolbarRecursiveOperationWindow(new ViewModels.ToolbarRecursiveOperation(
+                        repo,
+                        ViewModels.ToolbarRecursiveOperationKind.PullUpdateAndFetchPruneRecursively,
+                        true,
+                        true));
+                }, DispatcherPriority.Background);
+                ev.Handled = true;
+            };
+
+            menu.Items.Add(choose);
+            menu.Open(control);
         }
 
         private async void Pull(object sender, TappedEventArgs e)
@@ -620,6 +691,15 @@ namespace SourceGit.Views
             var repoView = TopLevel.GetTopLevel(this)?.FindDescendantOfType<Repository>();
             repoView?.LocalBranchTree?.Select(repo.CurrentBranch);
             repo.NavigateToCommit(repo.CurrentBranch.Head);
+        }
+
+        private static void OpenToolbarRecursiveOperationWindow(ViewModels.ToolbarRecursiveOperation operation)
+        {
+            operation.ShowEmbeddedHeader = false;
+            App.ShowWindow(new ToolbarRecursiveOperationWindow
+            {
+                DataContext = operation,
+            });
         }
     }
 }

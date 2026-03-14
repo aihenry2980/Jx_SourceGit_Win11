@@ -972,6 +972,44 @@ namespace SourceGit.ViewModels
                 ShowPopup(pull);
         }
 
+        public async Task<bool> RunDefaultPullAsync(Models.ICommandLog log, bool autoUpdateSubmodules, CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return false;
+
+            if (IsBare)
+            {
+                log?.AppendLine("Can not pull in a bare repository.");
+                App.RaiseException(FullPath, "Can NOT pull in a bare repository.");
+                return false;
+            }
+
+            if (_remotes.Count == 0)
+            {
+                log?.AppendLine("No remotes added to this repository.");
+                App.RaiseException(FullPath, "No remotes added to this repository!!!");
+                return false;
+            }
+
+            if (_currentBranch == null)
+            {
+                log?.AppendLine("Can not find current branch.");
+                App.RaiseException(FullPath, "Can NOT find current branch!!!");
+                return false;
+            }
+
+            var pull = new Pull(this, null);
+            if (pull.SelectedRemote == null || pull.SelectedBranch == null)
+            {
+                log?.AppendLine("No default remote branch is available for pull.");
+                App.RaiseException(FullPath, "Can NOT determine a default remote branch for pull.");
+                return false;
+            }
+
+            using var lockWatcher = LockWatcher();
+            return await pull.ExecuteAsync(log, autoUpdateSubmodules, cancellationToken);
+        }
+
         public async Task PushAsync(bool autoStart)
         {
             if (!CanCreatePopup())
@@ -2050,8 +2088,62 @@ namespace SourceGit.ViewModels
             log.Complete();
         }
 
-        public async Task<bool> RunFetchRecursivelyAsync(bool prune, Models.ICommandLog log)
+        public async Task<bool> RunPullUpdateAndFetchPruneRecursivelyAsync(
+            Models.ICommandLog log,
+            Action<int> onPhaseChanged = null,
+            List<string> selectedTargets = null,
+            CancellationToken cancellationToken = default,
+            Action<int, int, string> onSubmoduleProgressChanged = null)
         {
+            if (cancellationToken.IsCancellationRequested)
+                return false;
+
+            onPhaseChanged?.Invoke(0);
+            log?.AppendLine("=== Step 1/3: Pull ===");
+            var pulled = await RunDefaultPullAsync(log, false, cancellationToken);
+            if (!pulled)
+            {
+                log?.AppendLine("[failed] Pull step failed.");
+                return false;
+            }
+
+            if (cancellationToken.IsCancellationRequested)
+                return false;
+
+            onPhaseChanged?.Invoke(1);
+            log?.AppendLine("=== Step 2/3: Update submodules recursively ===");
+            var updated = await RunUpdateSubmodulesRecursivelyAsync(log, selectedTargets, true, cancellationToken, onSubmoduleProgressChanged);
+            if (!updated)
+            {
+                log?.AppendLine("[failed] Recursive submodule update failed.");
+                return false;
+            }
+
+            if (cancellationToken.IsCancellationRequested)
+                return false;
+
+            onPhaseChanged?.Invoke(2);
+            log?.AppendLine("=== Step 3/3: Fetch and prune recursively ===");
+            var fetched = await RunFetchRecursivelyAsync(true, log, true, cancellationToken);
+            if (!fetched)
+            {
+                log?.AppendLine("[failed] Recursive fetch and prune failed.");
+                return false;
+            }
+
+            return true;
+        }
+
+        public async Task<bool> RunFetchRecursivelyAsync(
+            bool prune,
+            Models.ICommandLog log,
+            bool stopOnError = false,
+            CancellationToken cancellationToken = default,
+            Action<int, int, string> onProgressChanged = null)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return false;
+
             if (_remotes.Count == 0)
             {
                 log?.AppendLine("No remotes added to this repository.");
@@ -2065,6 +2157,13 @@ namespace SourceGit.ViewModels
             var noTags = true;
             var force = _uiStates.EnableForceOnFetch;
             var succ = true;
+            var totalTargets = 0;
+            foreach (var submodule in _submodules)
+            {
+                if (!string.IsNullOrWhiteSpace(submodule.Path))
+                    totalTargets++;
+            }
+            var completedTargets = 0;
 
             // Split recursive fetch into independent units so one hung submodule fetch does not
             // block the whole operation forever.
@@ -2080,9 +2179,15 @@ namespace SourceGit.ViewModels
                     prune,
                     false,
                     log,
-                    "root");
+                    "root",
+                    stopOnError,
+                    cancellationToken);
                 if (!one)
+                {
                     succ = false;
+                    if (stopOnError)
+                        return false;
+                }
             }
 
             foreach (var submodule in _submodules)
@@ -2091,11 +2196,18 @@ namespace SourceGit.ViewModels
                 if (string.IsNullOrWhiteSpace(submodulePath))
                     continue;
 
+                if (cancellationToken.IsCancellationRequested)
+                    return false;
+
+                onProgressChanged?.Invoke(completedTargets, totalTargets, submodulePath);
+
                 var submoduleRoot = Native.OS.GetAbsPath(FullPath, submodulePath).Replace('\\', '/');
                 var gitDir = Path.Combine(submoduleRoot, ".git");
                 if (!Directory.Exists(submoduleRoot) || (!Directory.Exists(gitDir) && !File.Exists(gitDir)))
                 {
                     log?.AppendLine($"Skip submodule `{submodulePath}` (not initialized).");
+                    completedTargets++;
+                    onProgressChanged?.Invoke(completedTargets, totalTargets, submodulePath);
                     continue;
                 }
 
@@ -2103,6 +2215,8 @@ namespace SourceGit.ViewModels
                 if (submoduleRemotes.Count == 0)
                 {
                     log?.AppendLine($"Skip submodule `{submodulePath}` (no remotes).");
+                    completedTargets++;
+                    onProgressChanged?.Invoke(completedTargets, totalTargets, submodulePath);
                     continue;
                 }
 
@@ -2113,14 +2227,23 @@ namespace SourceGit.ViewModels
                         submoduleRoot,
                         remoteName,
                         noTags,
-                        force,
+                    force,
                         prune,
                         true,
                         log,
-                        $"submodule:{submodulePath}");
+                        $"submodule:{submodulePath}",
+                        stopOnError,
+                        cancellationToken);
                     if (!one)
+                    {
                         succ = false;
+                        if (stopOnError)
+                            return false;
+                    }
                 }
+
+                completedTargets++;
+                onProgressChanged?.Invoke(completedTargets, totalTargets, submodulePath);
             }
 
             if (succ)
@@ -2157,22 +2280,33 @@ namespace SourceGit.ViewModels
             bool prune,
             bool recurseSubmodules,
             Models.ICommandLog log,
-            string scope)
+            string scope,
+            bool stopOnError,
+            CancellationToken cancellationToken)
         {
-            if (string.IsNullOrEmpty(remoteName))
+            if (string.IsNullOrEmpty(remoteName) || cancellationToken.IsCancellationRequested)
                 return false;
 
             using var timeout = new CancellationTokenSource(SPLIT_FETCH_TIMEOUT);
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token, cancellationToken);
             var cmd = new Commands.Fetch(repoPath, remoteName, noTags, force, prune, recurseSubmodules)
             {
-                RaiseError = false,
-                CancellationToken = timeout.Token,
+                RaiseError = stopOnError,
+                CancellationToken = linked.Token,
             };
 
             var ok = await cmd.Use(log).RunAsync().ConfigureAwait(false);
+            if (cancellationToken.IsCancellationRequested)
+            {
+                log?.AppendLine($"[canceled] Fetch `{remoteName}` in `{scope}` was canceled.");
+                return false;
+            }
+
             if (timeout.IsCancellationRequested)
             {
                 log?.AppendLine($"[timeout] Fetch `{remoteName}` in `{scope}` exceeded {SPLIT_FETCH_TIMEOUT.TotalMinutes:0} min and was terminated.");
+                if (stopOnError)
+                    App.RaiseException(repoPath, $"Fetch `{remoteName}` in `{scope}` timed out.");
                 return false;
             }
 
@@ -2182,8 +2316,16 @@ namespace SourceGit.ViewModels
             return ok;
         }
 
-        public async Task<bool> RunUpdateSubmodulesRecursivelyAsync(Models.ICommandLog log, List<string> selectedTargets = null)
+        public async Task<bool> RunUpdateSubmodulesRecursivelyAsync(
+            Models.ICommandLog log,
+            List<string> selectedTargets = null,
+            bool stopOnError = false,
+            CancellationToken cancellationToken = default,
+            Action<int, int, string> onProgressChanged = null)
         {
+            if (cancellationToken.IsCancellationRequested)
+                return false;
+
             var targets = new List<string>();
             if (selectedTargets == null)
             {
@@ -2212,25 +2354,43 @@ namespace SourceGit.ViewModels
             using var lockWatcher = _watcher?.Lock();
             var succ = true;
             var anyUpdated = false;
+            var totalTargets = targets.Count;
+            var completedTargets = 0;
 
             foreach (var target in targets)
             {
                 if (string.IsNullOrWhiteSpace(target))
                     continue;
 
+                if (cancellationToken.IsCancellationRequested)
+                    return false;
+
                 using var timeout = new CancellationTokenSource(SPLIT_SUBMODULE_UPDATE_TIMEOUT);
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token, cancellationToken);
                 var cmd = new Commands.Submodule(FullPath)
                 {
-                    RaiseError = false,
-                    CancellationToken = timeout.Token,
+                    RaiseError = stopOnError,
+                    CancellationToken = linked.Token,
                 };
 
+                onProgressChanged?.Invoke(completedTargets, totalTargets, target);
                 log?.AppendLine($"=== Update submodule `{target}` ===");
                 var one = await cmd.Use(log).UpdateAsync([target], true, false).ConfigureAwait(false);
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    log?.AppendLine($"[canceled] Update `{target}` was canceled.");
+                    return false;
+                }
+
                 if (timeout.IsCancellationRequested)
                 {
                     log?.AppendLine($"[timeout] Update `{target}` exceeded {SPLIT_SUBMODULE_UPDATE_TIMEOUT.TotalMinutes:0} min and was terminated.");
                     succ = false;
+                    if (stopOnError)
+                    {
+                        App.RaiseException(FullPath, $"Update `{target}` timed out.");
+                        return false;
+                    }
                     continue;
                 }
 
@@ -2242,7 +2402,12 @@ namespace SourceGit.ViewModels
                 {
                     log?.AppendLine($"[failed] Update `{target}` failed.");
                     succ = false;
+                    if (stopOnError)
+                        return false;
                 }
+
+                completedTargets++;
+                onProgressChanged?.Invoke(completedTargets, totalTargets, target);
             }
 
             if (anyUpdated)

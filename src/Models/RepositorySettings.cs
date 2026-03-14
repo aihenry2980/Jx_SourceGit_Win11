@@ -97,6 +97,12 @@ namespace SourceGit.Models
             set;
         } = string.Empty;
 
+        public bool HasConfiguredRecursiveSubmoduleUpdateTargets
+        {
+            get;
+            set;
+        } = false;
+
         public AvaloniaList<CommitTemplate> CommitTemplates
         {
             get;
@@ -258,8 +264,15 @@ namespace SourceGit.Models
             return ParsePresetBranchRules(RecursiveSubmoduleUpdateTargets);
         }
 
+        public bool NeedsRecursiveSubmoduleUpdateTargetsConfiguration()
+        {
+            return !HasConfiguredRecursiveSubmoduleUpdateTargets;
+        }
+
         public void SetRecursiveSubmoduleUpdateTargets(IEnumerable<string> targets)
         {
+            HasConfiguredRecursiveSubmoduleUpdateTargets = true;
+
             if (targets == null)
             {
                 RecursiveSubmoduleUpdateTargets = string.Empty;

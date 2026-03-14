@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 
 using Avalonia.Controls;
@@ -845,6 +846,16 @@ namespace SourceGit.Views
                 menu.Items.Add(stash);
                 menu.Items.Add(patch);
 
+                if (!hasSelectedFolder)
+                {
+                    var addToLocalIgnore = CreateLocalGitIgnoreMenu(repo, selectedUnstaged);
+                    if (addToLocalIgnore != null)
+                    {
+                        menu.Items.Add(new MenuItem() { Header = "-" });
+                        menu.Items.Add(addToLocalIgnore);
+                    }
+                }
+
                 if (hasSelectedFolder)
                 {
                     var ignoreFolder = new MenuItem();
@@ -1244,6 +1255,16 @@ namespace SourceGit.Views
                 menu.Items.Add(stash);
                 menu.Items.Add(patch);
 
+                if (!hasSelectedFolder)
+                {
+                    var addToLocalIgnore = CreateLocalGitIgnoreMenu(repo, selectedStaged);
+                    if (addToLocalIgnore != null)
+                    {
+                        menu.Items.Add(new MenuItem() { Header = "-" });
+                        menu.Items.Add(addToLocalIgnore);
+                    }
+                }
+
                 if (ai != null)
                 {
                     menu.Items.Add(new MenuItem() { Header = "-" });
@@ -1343,6 +1364,43 @@ namespace SourceGit.Views
                 };
                 addToLocalIgnore.Items.Add(byExtensionRecursively);
             }
+
+            return addToLocalIgnore;
+        }
+
+        private MenuItem CreateLocalGitIgnoreMenu(ViewModels.Repository repo, IReadOnlyList<Models.Change> changes)
+        {
+            if (repo == null || changes == null || changes.Count == 0)
+                return null;
+
+            var exactPaths = new List<string>();
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var change in changes)
+            {
+                if (change == null || string.IsNullOrWhiteSpace(change.Path))
+                    continue;
+
+                if (seen.Add(change.Path))
+                    exactPaths.Add(change.Path);
+            }
+
+            if (exactPaths.Count == 0)
+                return null;
+
+            var addToLocalIgnore = new MenuItem();
+            addToLocalIgnore.Header = "Add to Local Git Ignore";
+            addToLocalIgnore.Icon = App.CreateMenuIcon("Icons.GitIgnore");
+
+            var exactFiles = new MenuItem();
+            exactFiles.Header = "Ignore Exact Selected Files";
+            exactFiles.Click += async (_, e) =>
+            {
+                foreach (var path in exactPaths)
+                    await AddPatternToLocalGitIgnoreAsync(repo, path, true);
+
+                e.Handled = true;
+            };
+            addToLocalIgnore.Items.Add(exactFiles);
 
             return addToLocalIgnore;
         }

@@ -4,6 +4,9 @@ using System.Diagnostics;
 using System.Text;
 using System.Threading.Tasks;
 
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace SourceGit.ViewModels
@@ -127,7 +130,7 @@ namespace SourceGit.ViewModels
             PrepareControlParameters();
         }
 
-        public override async Task<bool> Sure()
+        public override Task<bool> Sure()
         {
             using var lockWatcher = _repo.LockWatcher();
             ProgressDescription = "Run custom action ...";
@@ -143,14 +146,9 @@ namespace SourceGit.ViewModels
             Use(log);
 
             log.AppendLine($"$ {CustomAction.Executable} {cmdline}\n");
-
-            if (CustomAction.WaitForExit)
-                await RunAsync(cmdline, log);
-            else
-                _ = Task.Run(() => Run(cmdline));
-
-            log.Complete();
-            return true;
+            ShowOrFocusLogs(log);
+            _ = Task.Run(() => RunAsync(cmdline, log));
+            return Task.FromResult(true);
         }
 
         private void PrepareControlParameters()
@@ -195,26 +193,7 @@ namespace SourceGit.ViewModels
             return OperatingSystem.IsWindows() ? _repo.FullPath.Replace("/", "\\") : _repo.FullPath;
         }
 
-        private void Run(string args)
-        {
-            var start = new ProcessStartInfo();
-            start.FileName = CustomAction.Executable;
-            start.Arguments = args;
-            start.UseShellExecute = false;
-            start.CreateNoWindow = true;
-            start.WorkingDirectory = _repo.FullPath;
-
-            try
-            {
-                Process.Start(start);
-            }
-            catch (Exception e)
-            {
-                App.RaiseException(_repo.FullPath, e.Message);
-            }
-        }
-
-        private async Task RunAsync(string args, Models.ICommandLog log)
+        private async Task RunAsync(string args, CommandLog log)
         {
             var start = new ProcessStartInfo();
             start.FileName = CustomAction.Executable;
@@ -254,17 +233,52 @@ namespace SourceGit.ViewModels
                 await proc.WaitForExitAsync().ConfigureAwait(false);
 
                 var exitCode = proc.ExitCode;
+                log?.AppendLine($"[Process exited with code {exitCode}]");
                 if (exitCode != 0)
                 {
                     var errMsg = builder.ToString().Trim();
                     if (!string.IsNullOrEmpty(errMsg))
                         App.RaiseException(_repo.FullPath, errMsg);
+                    else
+                        App.RaiseException(_repo.FullPath, $"Custom action exited with code {exitCode}.");
                 }
             }
             catch (Exception e)
             {
+                log?.AppendLine(e.Message);
                 App.RaiseException(_repo.FullPath, e.Message);
             }
+            finally
+            {
+                log?.Complete();
+            }
+        }
+
+        private void ShowOrFocusLogs(CommandLog log)
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (App.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { Windows: { } windows })
+                {
+                    foreach (var window in windows)
+                    {
+                        if (window is Views.ViewLogs &&
+                            window.DataContext is ViewModels.ViewLogs vm &&
+                            ReferenceEquals(vm.Logs, _repo.Logs))
+                        {
+                            vm.SelectedLog = log;
+
+                            if (window.WindowState == WindowState.Minimized)
+                                window.WindowState = WindowState.Normal;
+
+                            window.Activate();
+                            return;
+                        }
+                    }
+                }
+
+                App.ShowWindow(new ViewModels.ViewLogs(_repo));
+            });
         }
 
         private readonly Repository _repo = null;

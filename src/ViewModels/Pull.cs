@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace SourceGit.ViewModels
 {
@@ -106,6 +107,22 @@ namespace SourceGit.ViewModels
 
             var log = _repo.CreateLog("Pull");
             Use(log);
+            var rs = await ExecuteAsync(log, true);
+            log.Complete();
+
+            if (_repo.SelectedViewIndex == 0)
+            {
+                var head = await new Commands.QueryRevisionByRefName(_repo.FullPath, "HEAD").GetResultAsync();
+                _repo.NavigateToCommit(head, true);
+            }
+
+            return rs;
+        }
+
+        public async Task<bool> ExecuteAsync(Models.ICommandLog log, bool autoUpdateSubmodules, CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return false;
 
             var changes = await new Commands.CountLocalChanges(_repo.FullPath, false).GetResultAsync();
             var needPopStash = false;
@@ -117,39 +134,48 @@ namespace SourceGit.ViewModels
                 }
                 else
                 {
-                    var succ = await new Commands.Stash(_repo.FullPath).Use(log).PushAsync("PULL_AUTO_STASH", false);
-                    if (!succ)
+                    var succ = await new Commands.Stash(_repo.FullPath)
                     {
-                        log.Complete();
+                        CancellationToken = cancellationToken,
+                    }.Use(log).PushAsync("PULL_AUTO_STASH", false);
+                    if (!succ)
                         return false;
-                    }
 
                     needPopStash = true;
                 }
             }
 
+            if (cancellationToken.IsCancellationRequested)
+                return false;
+
+            var branchName = !string.IsNullOrEmpty(Current.Upstream) && Current.Upstream.Equals(_selectedBranch.FullName) ?
+                string.Empty :
+                _selectedBranch.Name;
+
             bool rs = await new Commands.Pull(
                 _repo.FullPath,
                 _selectedRemote.Name,
-                !string.IsNullOrEmpty(Current.Upstream) && Current.Upstream.Equals(_selectedBranch.FullName) ? string.Empty : _selectedBranch.Name,
-                UseRebase).Use(log).RunAsync();
-            if (rs)
+                branchName,
+                UseRebase)
             {
+                CancellationToken = cancellationToken,
+            }.Use(log).RunAsync();
+            if (!rs)
+                return false;
+
+            if (cancellationToken.IsCancellationRequested)
+                return false;
+
+            if (autoUpdateSubmodules)
                 await _repo.AutoUpdateSubmodulesAsync(log);
 
-                if (needPopStash)
-                    await new Commands.Stash(_repo.FullPath).Use(log).PopAsync("stash@{0}");
-            }
+            if (needPopStash)
+                await new Commands.Stash(_repo.FullPath)
+                {
+                    CancellationToken = cancellationToken,
+                }.Use(log).PopAsync("stash@{0}");
 
-            log.Complete();
-
-            if (_repo.SelectedViewIndex == 0)
-            {
-                var head = await new Commands.QueryRevisionByRefName(_repo.FullPath, "HEAD").GetResultAsync();
-                _repo.NavigateToCommit(head, true);
-            }
-
-            return rs;
+            return true;
         }
 
         private void PostRemoteSelected()

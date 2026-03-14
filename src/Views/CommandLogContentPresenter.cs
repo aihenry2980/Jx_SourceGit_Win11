@@ -89,6 +89,11 @@ namespace SourceGit.Views
             WordWrap = false;
             HorizontalScrollBarVisibility = ScrollBarVisibility.Auto;
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
+            FontSize = 13;
+
+            if (Application.Current?.Resources.TryGetValue("Fonts.Monospace", out var font) == true &&
+                font is FontFamily monospace)
+                FontFamily = monospace;
 
             TextArea.TextView.Margin = new Thickness(4, 0);
             TextArea.TextView.Options.EnableHyperlinks = false;

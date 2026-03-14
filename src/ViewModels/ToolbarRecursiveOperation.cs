@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Collections;
+using Avalonia.Media;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -10,6 +12,7 @@ namespace SourceGit.ViewModels
 {
     public enum ToolbarRecursiveOperationKind
     {
+        PullUpdateAndFetchPruneRecursively,
         FetchAndPruneRecursively,
         FetchRecursively,
         UpdateSubmodulesRecursively,
@@ -17,6 +20,19 @@ namespace SourceGit.ViewModels
 
     public class ToolbarRecursiveOperation : Popup
     {
+        private enum ToolbarRecursiveOperationMode
+        {
+            Run,
+            ConfigureSelectionOnly,
+        }
+
+        private enum CombinedSyncPhase
+        {
+            Pull,
+            UpdateSubmodules,
+            FetchAndPrune,
+        }
+
         public class SubmoduleSelectionItem : ObservableObject
         {
             public string Path
@@ -61,40 +77,89 @@ namespace SourceGit.ViewModels
             private set => SetProperty(ref _canStopCountdown, value);
         }
 
-        public bool IsSubmoduleSelectionVisible => _kind == ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively;
+        public bool CanCancelOperation => _runCancellation is { IsCancellationRequested: false };
+        public bool IsLogVisible => _mode == ToolbarRecursiveOperationMode.Run;
+        public bool AreOperationButtonsVisible => _mode == ToolbarRecursiveOperationMode.Run;
+        public bool IsCombinedSyncPhaseVisible => _mode == ToolbarRecursiveOperationMode.Run && _kind == ToolbarRecursiveOperationKind.PullUpdateAndFetchPruneRecursively;
+        public bool IsSubmoduleSelectionVisible => _showSubmoduleSelection;
         public bool HasSubmodulesToSelect => SubmoduleSelections.Count > 0;
+        public bool ShowEmbeddedHeader
+        {
+            get => _showEmbeddedHeader;
+            set => SetProperty(ref _showEmbeddedHeader, value);
+        }
+        public bool IsSingleOperationSubmoduleProgressVisible =>
+            _mode == ToolbarRecursiveOperationMode.Run &&
+            !IsCombinedSyncPhaseVisible &&
+            _currentSubmoduleTotal > 0 &&
+            !string.IsNullOrEmpty(_currentSubmoduleName);
+        public bool IsSubmodulePhaseDetailsVisible =>
+            IsCombinedSyncPhaseVisible &&
+            _currentCombinedPhase == CombinedSyncPhase.UpdateSubmodules &&
+            !string.IsNullOrEmpty(_currentSubmoduleName);
+        public string CurrentSubmoduleName => _currentSubmoduleName;
+        public string CurrentSubmoduleProgressText => _currentSubmoduleTotal <= 0 ? string.Empty : $"{_currentSubmoduleDone}/{_currentSubmoduleTotal}";
+
+        public IBrush PullPhaseBackground => GetPhaseBackground(CombinedSyncPhase.Pull);
+        public IBrush PullPhaseBorderBrush => GetPhaseBorderBrush(CombinedSyncPhase.Pull);
+        public IBrush PullPhaseForeground => GetPhaseForeground(CombinedSyncPhase.Pull);
+        public double PullPhaseOpacity => GetPhaseOpacity(CombinedSyncPhase.Pull);
+        public IBrush UpdateSubmodulesPhaseBackground => GetPhaseBackground(CombinedSyncPhase.UpdateSubmodules);
+        public IBrush UpdateSubmodulesPhaseBorderBrush => GetPhaseBorderBrush(CombinedSyncPhase.UpdateSubmodules);
+        public IBrush UpdateSubmodulesPhaseForeground => GetPhaseForeground(CombinedSyncPhase.UpdateSubmodules);
+        public double UpdateSubmodulesPhaseOpacity => GetPhaseOpacity(CombinedSyncPhase.UpdateSubmodules);
+        public IBrush FetchAndPrunePhaseBackground => GetPhaseBackground(CombinedSyncPhase.FetchAndPrune);
+        public IBrush FetchAndPrunePhaseBorderBrush => GetPhaseBorderBrush(CombinedSyncPhase.FetchAndPrune);
+        public IBrush FetchAndPrunePhaseForeground => GetPhaseForeground(CombinedSyncPhase.FetchAndPrune);
+        public double FetchAndPrunePhaseOpacity => GetPhaseOpacity(CombinedSyncPhase.FetchAndPrune);
 
         public AvaloniaList<SubmoduleSelectionItem> SubmoduleSelections
         {
             get;
         } = [];
 
-        public override bool ShowOptions => _kind == ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively;
+        public override bool ShowOptions => _showSubmoduleSelection;
         public override double PopupWidth => 1040;
         public override bool AllowCancelWhenRunning => true;
         public override bool AllowContentInteractionWhenRunning => true;
 
         public override bool CanStartDirectly()
         {
-            return _kind != ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively;
+            return !_showSubmoduleSelection;
         }
 
-        public ToolbarRecursiveOperation(Repository repo, ToolbarRecursiveOperationKind kind)
+        public ToolbarRecursiveOperation(Repository repo, ToolbarRecursiveOperationKind kind, bool forceChooseSubmodules = false, bool configureSelectionOnly = false)
         {
             _repo = repo;
             _kind = kind;
+            _mode = configureSelectionOnly ? ToolbarRecursiveOperationMode.ConfigureSelectionOnly : ToolbarRecursiveOperationMode.Run;
+            _showSubmoduleSelection =
+                kind == ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively ||
+                (kind == ToolbarRecursiveOperationKind.PullUpdateAndFetchPruneRecursively &&
+                    repo.Submodules.Count > 0 &&
+                    (forceChooseSubmodules || repo.Settings?.NeedsRecursiveSubmoduleUpdateTargetsConfiguration() == true));
 
-            Title = kind switch
+            Title = _mode switch
             {
-                ToolbarRecursiveOperationKind.FetchAndPruneRecursively => App.Text("Repository.FetchAndPruneRecursively"),
-                ToolbarRecursiveOperationKind.FetchRecursively => App.Text("Repository.FetchRecursively"),
-                ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively => App.Text("Repository.UpdateSubmodulesRecursively"),
-                _ => "Operation",
+                ToolbarRecursiveOperationMode.ConfigureSelectionOnly => "Choose submodules for Sync All",
+                _ => kind switch
+                {
+                    ToolbarRecursiveOperationKind.PullUpdateAndFetchPruneRecursively => "Pull + Submodules + F+Prune",
+                    ToolbarRecursiveOperationKind.FetchAndPruneRecursively => App.Text("Repository.FetchAndPruneRecursively"),
+                    ToolbarRecursiveOperationKind.FetchRecursively => App.Text("Repository.FetchRecursively"),
+                    ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively => App.Text("Repository.UpdateSubmodulesRecursively"),
+                    _ => "Operation",
+                },
             };
 
-            Description = "Live git output. Auto-closes in 9 seconds after success unless you stop countdown.";
+            Description = _mode switch
+            {
+                ToolbarRecursiveOperationMode.ConfigureSelectionOnly => "Choose which submodules Sync All should update. This selection is remembered for this repository.",
+                _ => "Live git output with syntax highlighting. Auto-closes in 9 seconds after success unless you stop countdown.",
+            };
+            _currentCombinedPhase = CombinedSyncPhase.Pull;
 
-            if (_kind == ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively)
+            if (_showSubmoduleSelection)
             {
                 var saved = _repo.Settings?.GetRecursiveSubmoduleUpdateTargets() ?? [];
                 var savedSet = new HashSet<string>(saved, StringComparer.Ordinal);
@@ -127,20 +192,43 @@ namespace SourceGit.ViewModels
             ProgressDescription = "Done. Auto-close stopped.";
         }
 
+        public void CancelOperation()
+        {
+            if (_runCancellation is not { IsCancellationRequested: false })
+                return;
+
+            _cancelRequested = true;
+            ProgressDescription = "Canceling...";
+            _runCancellation.Cancel();
+            OnPropertyChanged(nameof(CanCancelOperation));
+        }
+
         public override async Task<bool> Sure()
         {
             ProgressDescription = $"Running: {Title}";
             CanStopCountdown = false;
+            _cancelRequested = false;
+            _runCancellation?.Dispose();
+            _runCancellation = new CancellationTokenSource();
+            OnPropertyChanged(nameof(CanCancelOperation));
+            ResetSubmodulePhaseProgress();
 
-            var log = _repo.CreateLog(Title);
-            Log = log;
-            Use(log);
+            if (IsCombinedSyncPhaseVisible)
+                StartPhaseBlinking();
+
+            CommandLog log = null;
+            if (_mode == ToolbarRecursiveOperationMode.Run)
+            {
+                log = _repo.CreateLog(Title);
+                Log = log;
+                Use(log);
+            }
 
             bool succ;
             try
             {
                 List<string> selectedTargets = null;
-                if (_kind == ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively)
+                if (_showSubmoduleSelection)
                 {
                     selectedTargets = [];
                     foreach (var item in SubmoduleSelections)
@@ -156,17 +244,35 @@ namespace SourceGit.ViewModels
                     }
                 }
 
+                if (_mode == ToolbarRecursiveOperationMode.ConfigureSelectionOnly)
+                {
+                    App.SendNotification(_repo.FullPath, "Sync All submodule selection saved.");
+                    return true;
+                }
+
                 succ = _kind switch
                 {
-                    ToolbarRecursiveOperationKind.FetchAndPruneRecursively => await _repo.RunFetchRecursivelyAsync(true, log),
-                    ToolbarRecursiveOperationKind.FetchRecursively => await _repo.RunFetchRecursivelyAsync(false, log),
-                    ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively => await _repo.RunUpdateSubmodulesRecursivelyAsync(log, selectedTargets),
+                    ToolbarRecursiveOperationKind.PullUpdateAndFetchPruneRecursively => await _repo.RunPullUpdateAndFetchPruneRecursivelyAsync(log, SetCombinedPhase, selectedTargets, _runCancellation.Token, UpdateSubmodulePhaseProgress),
+                    ToolbarRecursiveOperationKind.FetchAndPruneRecursively => await _repo.RunFetchRecursivelyAsync(true, log, false, _runCancellation.Token, UpdateSubmodulePhaseProgress),
+                    ToolbarRecursiveOperationKind.FetchRecursively => await _repo.RunFetchRecursivelyAsync(false, log, false, _runCancellation.Token, UpdateSubmodulePhaseProgress),
+                    ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively => await _repo.RunUpdateSubmodulesRecursivelyAsync(log, selectedTargets, false, _runCancellation.Token, UpdateSubmodulePhaseProgress),
                     _ => false,
                 };
             }
             finally
             {
-                log.Complete();
+                StopPhaseBlinking();
+                _runCancellation?.Dispose();
+                _runCancellation = null;
+                OnPropertyChanged(nameof(CanCancelOperation));
+                if (_mode == ToolbarRecursiveOperationMode.Run)
+                    log?.Complete();
+            }
+
+            if (_cancelRequested)
+            {
+                ProgressDescription = "Canceled.";
+                return true;
             }
 
             if (!succ)
@@ -207,10 +313,165 @@ namespace SourceGit.ViewModels
             }
         }
 
+        private void SetCombinedPhase(int phase)
+        {
+            var mapped = phase switch
+            {
+                1 => CombinedSyncPhase.UpdateSubmodules,
+                2 => CombinedSyncPhase.FetchAndPrune,
+                _ => CombinedSyncPhase.Pull,
+            };
+
+            if (Dispatcher.UIThread.CheckAccess())
+                ApplyCombinedPhase(mapped);
+            else
+                Dispatcher.UIThread.Post(() => ApplyCombinedPhase(mapped));
+        }
+
+        private void ApplyCombinedPhase(CombinedSyncPhase phase)
+        {
+            if (_currentCombinedPhase == phase)
+                return;
+
+            _currentCombinedPhase = phase;
+            OnPropertyChanged(nameof(PullPhaseBackground));
+            OnPropertyChanged(nameof(PullPhaseBorderBrush));
+            OnPropertyChanged(nameof(PullPhaseForeground));
+            OnPropertyChanged(nameof(PullPhaseOpacity));
+            OnPropertyChanged(nameof(UpdateSubmodulesPhaseBackground));
+            OnPropertyChanged(nameof(UpdateSubmodulesPhaseBorderBrush));
+            OnPropertyChanged(nameof(UpdateSubmodulesPhaseForeground));
+            OnPropertyChanged(nameof(UpdateSubmodulesPhaseOpacity));
+            OnPropertyChanged(nameof(FetchAndPrunePhaseBackground));
+            OnPropertyChanged(nameof(FetchAndPrunePhaseBorderBrush));
+            OnPropertyChanged(nameof(FetchAndPrunePhaseForeground));
+            OnPropertyChanged(nameof(FetchAndPrunePhaseOpacity));
+            OnPropertyChanged(nameof(IsSubmodulePhaseDetailsVisible));
+        }
+
+        private IBrush GetPhaseBackground(CombinedSyncPhase phase)
+        {
+            return _currentCombinedPhase == phase ? s_activePhaseBackgroundBrush : s_inactivePhaseBackgroundBrush;
+        }
+
+        private IBrush GetPhaseBorderBrush(CombinedSyncPhase phase)
+        {
+            return _currentCombinedPhase == phase ? s_activePhaseBorderBrush : s_inactivePhaseBorderBrush;
+        }
+
+        private IBrush GetPhaseForeground(CombinedSyncPhase phase)
+        {
+            return _currentCombinedPhase == phase ? s_activePhaseForegroundBrush : s_inactivePhaseForegroundBrush;
+        }
+
+        private double GetPhaseOpacity(CombinedSyncPhase phase)
+        {
+            if (_currentCombinedPhase != phase)
+                return 1.0;
+
+            return 0.62 + 0.38 * (0.5 + 0.5 * Math.Sin(_phasePulse));
+        }
+
+        private void StartPhaseBlinking()
+        {
+            StopPhaseBlinking();
+            _phasePulse = 0;
+            _phaseBlinkTimer = DispatcherTimer.Run(() =>
+            {
+                _phasePulse += 0.35;
+                OnPropertyChanged(nameof(PullPhaseOpacity));
+                OnPropertyChanged(nameof(UpdateSubmodulesPhaseOpacity));
+                OnPropertyChanged(nameof(FetchAndPrunePhaseOpacity));
+                return true;
+            }, TimeSpan.FromMilliseconds(90));
+        }
+
+        private void StopPhaseBlinking()
+        {
+            _phaseBlinkTimer?.Dispose();
+            _phaseBlinkTimer = null;
+            _phasePulse = Math.PI / 2;
+            OnPropertyChanged(nameof(PullPhaseOpacity));
+            OnPropertyChanged(nameof(UpdateSubmodulesPhaseOpacity));
+            OnPropertyChanged(nameof(FetchAndPrunePhaseOpacity));
+        }
+
+        private void UpdateSubmodulePhaseProgress(int done, int total, string current)
+        {
+            if (Dispatcher.UIThread.CheckAccess())
+            {
+                ApplySubmodulePhaseProgress(done, total, current);
+            }
+            else
+            {
+                Dispatcher.UIThread.Post(() => ApplySubmodulePhaseProgress(done, total, current));
+            }
+        }
+
+        private void ApplySubmodulePhaseProgress(int done, int total, string current)
+        {
+            _currentSubmoduleDone = done;
+            _currentSubmoduleTotal = total;
+            _currentSubmoduleName = current ?? string.Empty;
+            OnPropertyChanged(nameof(CurrentSubmoduleName));
+            OnPropertyChanged(nameof(CurrentSubmoduleProgressText));
+            OnPropertyChanged(nameof(IsSubmodulePhaseDetailsVisible));
+            OnPropertyChanged(nameof(IsSingleOperationSubmoduleProgressVisible));
+        }
+
+        private void ResetSubmodulePhaseProgress()
+        {
+            _currentSubmoduleDone = 0;
+            _currentSubmoduleTotal = 0;
+            _currentSubmoduleName = string.Empty;
+            OnPropertyChanged(nameof(CurrentSubmoduleName));
+            OnPropertyChanged(nameof(CurrentSubmoduleProgressText));
+            OnPropertyChanged(nameof(IsSubmodulePhaseDetailsVisible));
+            OnPropertyChanged(nameof(IsSingleOperationSubmoduleProgressVisible));
+        }
+
         private readonly Repository _repo = null;
         private readonly ToolbarRecursiveOperationKind _kind;
+        private readonly ToolbarRecursiveOperationMode _mode;
+        private readonly bool _showSubmoduleSelection;
         private CommandLog _log = null;
         private bool _canStopCountdown = false;
         private CancellationTokenSource _countdownCts = null;
+        private CancellationTokenSource _runCancellation = null;
+        private CombinedSyncPhase _currentCombinedPhase;
+        private IDisposable _phaseBlinkTimer = null;
+        private double _phasePulse = Math.PI / 2;
+        private bool _cancelRequested = false;
+        private int _currentSubmoduleDone = 0;
+        private int _currentSubmoduleTotal = 0;
+        private string _currentSubmoduleName = string.Empty;
+        private bool _showEmbeddedHeader = true;
+
+        private static readonly IBrush s_activePhaseBackgroundBrush = new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
+            GradientStops =
+            [
+                new GradientStop(Color.Parse("#FF23B5D3"), 0.0),
+                new GradientStop(Color.Parse("#FF1496B4"), 0.45),
+                new GradientStop(Color.Parse("#FF0E7490"), 0.75),
+                new GradientStop(Color.Parse("#FF095569"), 1.0),
+            ],
+        };
+        private static readonly IBrush s_activePhaseBorderBrush = new SolidColorBrush(Color.Parse("#FF0A4F63"));
+        private static readonly IBrush s_activePhaseForegroundBrush = new SolidColorBrush(Color.Parse("#FFFFE066"));
+        private static readonly IBrush s_inactivePhaseBackgroundBrush = new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
+            GradientStops =
+            [
+                new GradientStop(Color.Parse("#10FFFFFF"), 0.0),
+                new GradientStop(Color.Parse("#04FFFFFF"), 1.0),
+            ],
+        };
+        private static readonly IBrush s_inactivePhaseBorderBrush = new SolidColorBrush(Color.Parse("#FFC4C4C4"));
+        private static readonly IBrush s_inactivePhaseForegroundBrush = new SolidColorBrush(Color.Parse("#FF7A7A7A"));
     }
 }

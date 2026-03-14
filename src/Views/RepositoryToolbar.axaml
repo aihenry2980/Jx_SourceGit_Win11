@@ -112,13 +112,31 @@
         </ToolTip.Tip>
 
         <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
-          <Path Width="14" Height="14" HorizontalAlignment="Center" Data="{StaticResource Icons.Pull}"/>
-          <TextBlock Classes="toolbar_label" Text="{DynamicResource Text.Pull}"/>
+          <Border Background="#FF1D6FDD" CornerRadius="5" Padding="4">
+            <Path Width="14" Height="14" HorizontalAlignment="Center" Fill="White" Data="{StaticResource Icons.Pull}"/>
+          </Border>
+          <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="{DynamicResource Text.Pull}"/>
         </StackPanel>
       </Button>
       <Button Width="0" Height="0" Click="PullDirectlyByHotKey" IsVisible="False" IsEnabled="{Binding !IsBare}" HotKey="{OnPlatform Ctrl+Shift+Down, macOS=⌘+Shift+Down}"/>
 
-      <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Tapped="Push">
+      <Button x:Name="SyncAllButton" Classes="icon_button" Width="56" Margin="8,0,0,0" Click="PullUpdateAndFetchPruneRecursively" ContextRequested="OnSyncAllContextRequested" PointerPressed="OnSyncAllPointerPressed" IsVisible="{Binding !IsBare}" IsEnabled="{Binding !IsBare}">
+        <ToolTip.Tip>
+          <StackPanel Orientation="Vertical">
+            <TextBlock Text="Run the full sync chain in order: pull, update submodules recursively, then fetch+prune parent and submodules recursively." TextWrapping="Wrap" MaxWidth="420"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="A progress popup shows live syntax-highlighted git output and stops immediately on the first error." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="420"/>
+          </StackPanel>
+        </ToolTip.Tip>
+
+        <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
+          <Border Background="#FF0E7490" CornerRadius="5" Padding="4">
+            <Path Width="14" Height="14" Fill="#FFFFE066" Data="{StaticResource Icons.Action}"/>
+          </Border>
+          <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Sync All"/>
+        </StackPanel>
+      </Button>
+
+      <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Tapped="Push" IsVisible="False">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Push local commits to remote so teammates and CI can see your latest branch state." TextWrapping="Wrap" MaxWidth="420"/>
@@ -246,7 +264,7 @@
                  VerticalAlignment="Center"
                  Fill="{DynamicResource Brush.Border2}"/>
 
-      <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Command="{Binding CreateNewBranch}">
+      <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Command="{Binding CreateNewBranch}" IsVisible="False">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Create a new local branch from the currently selected commit or current HEAD." TextWrapping="Wrap" MaxWidth="420"/>
@@ -276,7 +294,7 @@
         </StackPanel>
       </Button>
 
-      <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Click="Cleanup">
+      <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Click="Cleanup" IsVisible="False">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Clean untracked files and directories from working tree (dangerous if misused)." TextWrapping="Wrap" MaxWidth="420"/>
