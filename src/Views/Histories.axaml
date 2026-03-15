@@ -172,8 +172,11 @@
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate DataType="m:Commit">
                 <Border Padding="8,0,0,0" Background="Transparent" ClipToBounds="True">
-                  <TextBlock Text="{Binding SHA, Converter={x:Static c:StringConverters.ToShortSHA5}}"
-                             FontWeight="{Binding IsCurrentHead, Converter={x:Static c:BoolConverters.IsBoldToFontWeight}}"
+                  <TextBlock
+                             Text="{Binding SHA, Converter={x:Static c:StringConverters.ToShortSHA5}}"
+                             FontWeight="{Binding ., Converter={x:Static c:CommitConverters.SHAFontWeight}}"
+                             Foreground="{Binding ., Converter={x:Static c:CommitConverters.SHAForeground}}"
+                             ToolTip.Tip="{Binding ., Converter={x:Static c:CommitConverters.SHAToolTip}}"
                              Opacity="{Binding IsMerged, Converter={x:Static c:BoolConverters.IsMergedToOpacity}}"/>
                 </Border>
               </DataTemplate>
@@ -188,7 +191,7 @@
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate DataType="m:Commit">
                 <Border Padding="{Binding LeftMargin, Converter={x:Static c:DoubleConverters.ToLeftMargin}}" ClipToBounds="True" Background="Transparent">
-                  <Grid ColumnDefinitions="Auto,Auto,Auto,*" Margin="2,0,4,0" ClipToBounds="True">
+                  <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*" Margin="2,0,4,0" ClipToBounds="True">
                     <v:CommitStatusIndicator Grid.Column="0"
                                              CurrentBranch="{Binding $parent[v:Histories].CurrentBranch}"
                                              AheadBrush="{DynamicResource Brush.Accent}"
@@ -201,7 +204,27 @@
                                             Bisect="{Binding $parent[v:Histories].Bisect}"
                                             VerticalAlignment="Center"/>
 
-                    <v:CommitRefsPresenter Grid.Column="2"
+                    <Border Grid.Column="2"
+                            Width="16"
+                            Height="16"
+                            Margin="4,0,6,0"
+                            CornerRadius="8"
+                            Background="#FF7C3AED"
+                            BorderBrush="#FF5B21B6"
+                            BorderThickness="1"
+                            VerticalAlignment="Center"
+                            IsVisible="{Binding HasSubmodulePointerChange}"
+                            ToolTip.Tip="Contains SPP change"
+                            Opacity="{Binding IsMerged, Converter={x:Static c:BoolConverters.IsMergedToOpacity}}">
+                      <Path Width="9"
+                            Height="9"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Data="{StaticResource Icons.Submodule}"
+                            Fill="#FFF7D047"/>
+                    </Border>
+
+                    <v:CommitRefsPresenter Grid.Column="3"
                                            Background="{DynamicResource Brush.Contents}"
                                            Foreground="{DynamicResource Brush.FG1}"
                                            ShowTags="{Binding Source={x:Static vm:Preferences.Instance}, Path=ShowTagsInGraph}"
@@ -222,14 +245,14 @@
                       </v:CommitRefsPresenter.UseGraphColor>
                     </v:CommitRefsPresenter>
 
-                    <v:CommitSubjectPresenter Grid.Column="3"
+                    <v:CommitSubjectPresenter Grid.Column="4"
                                               FontFamily="{DynamicResource Fonts.Default}"
                                               CodeFontFamily="{DynamicResource Fonts.Monospace}"
                                               InlineCodeBackground="{DynamicResource Brush.InlineCode}"
                                               Foreground="{Binding ., Converter={x:Static c:CommitConverters.SubjectToBrush}}"
                                               LinkForeground="{DynamicResource Brush.Link}"
                                               FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Mode=OneWay}"
-                                              Subject="{Binding Subject}"
+                                              Subject="{Binding HistoryDisplaySubject}"
                                               IssueTrackers="{Binding $parent[v:Histories].IssueTrackers}"
                                               FontWeight="{Binding IsCurrentHead, Converter={x:Static c:BoolConverters.IsBoldToFontWeight}}"
                                               Opacity="{Binding IsMerged, Converter={x:Static c:BoolConverters.IsMergedToOpacity}}"

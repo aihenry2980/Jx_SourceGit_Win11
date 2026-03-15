@@ -122,6 +122,26 @@ namespace SourceGit.ViewModels
             }
         }
 
+        public bool AutoFetchPrune
+        {
+            get => _repo.Settings.AutoFetchPrune;
+            set => _repo.Settings.AutoFetchPrune = value;
+        }
+
+        public int? SuccessfulOperationAutoCloseSeconds
+        {
+            get => _repo.Settings.SuccessfulOperationAutoCloseSeconds;
+            set
+            {
+                if (value is null || value < 1)
+                    return;
+
+                var seconds = (int)value;
+                if (_repo.Settings.SuccessfulOperationAutoCloseSeconds != seconds)
+                    _repo.Settings.SuccessfulOperationAutoCloseSeconds = seconds;
+            }
+        }
+
         public AvaloniaList<Models.CommitTemplate> CommitTemplates
         {
             get => _repo.Settings.CommitTemplates;

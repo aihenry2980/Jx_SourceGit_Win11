@@ -4,6 +4,7 @@ namespace SourceGit.Views
     {
         public SubmoduleFileChange()
         {
+            CloseOnESC = true;
             InitializeComponent();
         }
     }

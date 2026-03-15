@@ -45,6 +45,12 @@ namespace SourceGit.Models
             set;
         } = false;
 
+        public bool OnlyShowSPPCommitsInHistory
+        {
+            get;
+            set;
+        } = false;
+
         public BranchSortMode LocalBranchSortMode
         {
             get;

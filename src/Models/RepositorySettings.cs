@@ -43,6 +43,18 @@ namespace SourceGit.Models
             set;
         } = 10;
 
+        public bool AutoFetchPrune
+        {
+            get;
+            set;
+        } = true;
+
+        public int SuccessfulOperationAutoCloseSeconds
+        {
+            get;
+            set;
+        } = 5;
+
         public bool AskBeforeAutoUpdatingSubmodules
         {
             get;

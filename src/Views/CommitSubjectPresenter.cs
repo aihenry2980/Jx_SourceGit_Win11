@@ -244,6 +244,10 @@ namespace SourceGit.Views
                 return;
             }
 
+            var countPrefixMatch = REG_COUNT_PREFIX_FORMAT().Match(subject);
+            if (countPrefixMatch.Success)
+                _elements.Add(new Models.InlineElement(Models.InlineElementType.CountPrefix, 0, countPrefixMatch.Length, string.Empty));
+
             var rules = IssueTrackers ?? [];
             foreach (var rule in rules)
                 rule.Matches(_elements, subject);
@@ -345,6 +349,18 @@ namespace SourceGit.Views
                     _inlines.Add(new Inline(x, link, elem));
                     x += link.WidthIncludingTrailingWhitespace + 8;
                 }
+                else if (elem.Type == Models.InlineElementType.CountPrefix)
+                {
+                    var prefix = new FormattedText(
+                        subject.Substring(elem.Start, elem.Length),
+                        CultureInfo.CurrentCulture,
+                        FlowDirection.LeftToRight,
+                        new Typeface(fontFamily, FontStyle.Normal, FontWeight.Bold),
+                        fontSize,
+                        linkForeground);
+                    _inlines.Add(new Inline(x, prefix, elem));
+                    x += prefix.WidthIncludingTrailingWhitespace;
+                }
 
                 pos = elem.Start + elem.Length;
             }
@@ -375,6 +391,9 @@ namespace SourceGit.Views
 
         [GeneratedRegex(@"`.*?`")]
         private static partial Regex REG_INLINECODE_FORMAT();
+
+        [GeneratedRegex(@"^\(\d+\)\s+")]
+        private static partial Regex REG_COUNT_PREFIX_FORMAT();
 
         [GeneratedRegex(@"^\[[^]]{1,48}?\]")]
         private static partial Regex REG_KEYWORD_FORMAT();

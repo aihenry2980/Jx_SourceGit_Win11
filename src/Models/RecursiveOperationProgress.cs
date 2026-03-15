@@ -12,7 +12,9 @@ namespace SourceGit.Models
     {
         public int Total { get; set; } = 0;
         public int Succeeded { get; set; } = 0;
-        public int Skipped { get; set; } = 0;
+        public int SkippedByUser { get; set; } = 0;
+        public int SkippedAutomatically { get; set; } = 0;
+        public int SkippedNotInitialized { get; set; } = 0;
         public int Failed { get; set; } = 0;
         public string CurrentTarget { get; set; } = string.Empty;
         public RecursiveOperationTargetState CurrentState { get; set; } = RecursiveOperationTargetState.Running;

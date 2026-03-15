@@ -120,11 +120,12 @@
       </Button>
       <Button Width="0" Height="0" Click="PullDirectlyByHotKey" IsVisible="False" IsEnabled="{Binding !IsBare}" HotKey="{OnPlatform Ctrl+Shift+Down, macOS=⌘+Shift+Down}"/>
 
-      <Button x:Name="SyncAllButton" Classes="icon_button" Width="56" Margin="8,0,0,0" Click="PullUpdateAndFetchPruneRecursively" ContextRequested="OnSyncAllContextRequested" PointerPressed="OnSyncAllPointerPressed" IsVisible="{Binding !IsBare}" IsEnabled="{Binding !IsBare}">
+      <Button x:Name="SyncAllButton" Classes="icon_button" Width="56" Margin="8,0,0,0" Tapped="SyncAll" ContextRequested="OnSyncAllContextRequested" PointerPressed="OnSyncAllPointerPressed" IsVisible="{Binding !IsBare}" IsEnabled="{Binding !IsBare}">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
-            <TextBlock Text="Run the full sync chain in order: pull, update submodules recursively, then fetch+prune parent and submodules recursively." TextWrapping="Wrap" MaxWidth="420"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="A progress popup shows live syntax-highlighted git output and stops immediately on the first error." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="420"/>
+            <TextBlock Text="Click: pull current branch, then update selected submodules recursively." TextWrapping="Wrap" MaxWidth="420"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="Ctrl+click: also run fetch+prune recursively for the parent repository and submodules after the update finishes." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="420"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="A progress window shows live syntax-highlighted git output and stops immediately on the first error." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="420"/>
           </StackPanel>
         </ToolTip.Tip>
 
@@ -153,12 +154,14 @@
       </Button>
       <Button Width="0" Height="0" Click="PushDirectlyByHotKey" IsVisible="False" HotKey="{OnPlatform Ctrl+Shift+Up, macOS=⌘+Shift+Up}"/>
 
-      <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Click="FetchAndPruneRecursively">
+      <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Tapped="FetchRecursivelyWithOptionalPrune">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
-            <TextBlock Text="Fetch and prune recursively for the root repository and configured submodules." TextWrapping="Wrap" MaxWidth="420"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="Example: After remote branch cleanup, run this to sync refs and remove stale tracking branches everywhere." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="420"/>
-            <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcut: Ctrl+Alt+Shift+Down." Foreground="{DynamicResource Brush.FG2}"/>
+            <TextBlock Text="Click: fetch recursively and prune stale remote refs for the root repository and configured submodules." TextWrapping="Wrap" MaxWidth="420"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="Ctrl+click: fetch recursively without pruning." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="420"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="Example: Use click after remote branch cleanup, or Ctrl+click when you only want fresh refs without deleting stale ones yet." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="420"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="If Sync All submodule targets were configured, this button uses the same saved submodule selection." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="420"/>
+            <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcuts: Ctrl+Alt+Shift+Down = prune, Ctrl+Alt+Down = no prune." Foreground="{DynamicResource Brush.FG2}"/>
           </StackPanel>
         </ToolTip.Tip>
 
@@ -188,22 +191,6 @@
         </StackPanel>
       </Button>
 
-      <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Click="FetchRecursively">
-        <ToolTip.Tip>
-          <StackPanel Orientation="Vertical">
-            <TextBlock Text="Fetch recursively for root repository and submodules, without pruning remote refs." TextWrapping="Wrap" MaxWidth="420"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="Example: Refresh all branch pointers across modules before reviewing commit differences." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="420"/>
-            <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcut: Ctrl+Alt+Down." Foreground="{DynamicResource Brush.FG2}"/>
-          </StackPanel>
-        </ToolTip.Tip>
-
-        <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
-          <Border Background="#FF0078D7" CornerRadius="5" Padding="4">
-            <Path Width="14" Height="14" Fill="White" Data="{StaticResource Icons.Fetch}"/>
-          </Border>
-          <TextBlock Classes="toolbar_label" Text="Fetch R"/>
-        </StackPanel>
-      </Button>
       <Button Width="0" Height="0" Click="FetchRecursively" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+Down, macOS=⌘+⌥+Down}"/>
 
       <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Click="UndoLastRebase" IsVisible="{Binding !IsBare}" IsEnabled="{Binding !IsBare}">

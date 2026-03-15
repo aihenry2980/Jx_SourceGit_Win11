@@ -12,6 +12,7 @@ namespace SourceGit.ViewModels
 {
     public enum ToolbarRecursiveOperationKind
     {
+        PullAndUpdateSubmodulesRecursively,
         PullUpdateAndFetchPruneRecursively,
         FetchAndPruneRecursively,
         FetchRecursively,
@@ -38,6 +39,7 @@ namespace SourceGit.ViewModels
             Pending,
             Running,
             Succeeded,
+            Skipped,
             Failed,
             Canceled,
         }
@@ -94,7 +96,24 @@ namespace SourceGit.ViewModels
             get => _keepWindowOpen;
             set => SetProperty(ref _keepWindowOpen, value);
         }
-        public bool IsCombinedSyncPhaseVisible => _mode == ToolbarRecursiveOperationMode.Run && _kind == ToolbarRecursiveOperationKind.PullUpdateAndFetchPruneRecursively;
+        public bool IsFetchModeIndicatorVisible =>
+            _mode == ToolbarRecursiveOperationMode.Run &&
+            (_kind == ToolbarRecursiveOperationKind.FetchAndPruneRecursively ||
+             _kind == ToolbarRecursiveOperationKind.FetchRecursively);
+        public string FetchModeText => _kind == ToolbarRecursiveOperationKind.FetchAndPruneRecursively ? "PRUNE ON" : "PRUNE OFF";
+        public IBrush FetchModeBackground => _kind == ToolbarRecursiveOperationKind.FetchAndPruneRecursively
+            ? s_pruneEnabledBackgroundBrush
+            : s_pruneDisabledBackgroundBrush;
+        public IBrush FetchModeBorderBrush => _kind == ToolbarRecursiveOperationKind.FetchAndPruneRecursively
+            ? s_pruneEnabledBorderBrush
+            : s_pruneDisabledBorderBrush;
+        public IBrush FetchModeForeground => _kind == ToolbarRecursiveOperationKind.FetchAndPruneRecursively
+            ? s_pruneEnabledForegroundBrush
+            : s_pruneDisabledForegroundBrush;
+        public bool IsCombinedSyncPhaseVisible =>
+            _mode == ToolbarRecursiveOperationMode.Run &&
+            (_kind == ToolbarRecursiveOperationKind.PullAndUpdateSubmodulesRecursively ||
+             _kind == ToolbarRecursiveOperationKind.PullUpdateAndFetchPruneRecursively);
         public bool IsSubmoduleSelectionVisible => _showSubmoduleSelection;
         public bool HasSubmodulesToSelect => SubmoduleSelections.Count > 0;
         public bool ShowEmbeddedHeader
@@ -119,7 +138,14 @@ namespace SourceGit.ViewModels
             : "Submodule summary";
         public string OperationSummaryTotalText => $"{_summaryTotal} selected";
         public string OperationSummarySucceededText => $"{_summarySucceeded} done";
-        public string OperationSummarySkippedText => $"{_summarySkipped} skipped";
+        public string OperationSummarySkippedByUserText => $"{_summarySkippedByUser} skipped by user";
+        public string OperationSummarySkippedAutomaticallyText => $"{_summarySkippedAutomatically} skipped automatically";
+        public bool IsNotInitializedSummaryVisible =>
+            _kind == ToolbarRecursiveOperationKind.FetchRecursively ||
+            _kind == ToolbarRecursiveOperationKind.FetchAndPruneRecursively ||
+            _kind == ToolbarRecursiveOperationKind.PullUpdateAndFetchPruneRecursively ||
+            _summarySkippedNotInitialized > 0;
+        public string OperationSummarySkippedNotInitializedText => $"{_summarySkippedNotInitialized} not initialized";
         public string OperationSummaryFailedText => $"{_summaryFailed} failed";
 
         public IBrush PullPhaseBackground => GetPhaseBackground(CombinedSyncPhase.Pull);
@@ -163,6 +189,9 @@ namespace SourceGit.ViewModels
             _mode = configureSelectionOnly ? ToolbarRecursiveOperationMode.ConfigureSelectionOnly : ToolbarRecursiveOperationMode.Run;
             _showSubmoduleSelection =
                 kind == ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively ||
+                (kind == ToolbarRecursiveOperationKind.PullAndUpdateSubmodulesRecursively &&
+                    repo.Submodules.Count > 0 &&
+                    (forceChooseSubmodules || repo.Settings?.NeedsRecursiveSubmoduleUpdateTargetsConfiguration() == true)) ||
                 (kind == ToolbarRecursiveOperationKind.PullUpdateAndFetchPruneRecursively &&
                     repo.Submodules.Count > 0 &&
                     (forceChooseSubmodules || repo.Settings?.NeedsRecursiveSubmoduleUpdateTargetsConfiguration() == true));
@@ -172,6 +201,7 @@ namespace SourceGit.ViewModels
                 ToolbarRecursiveOperationMode.ConfigureSelectionOnly => "Choose submodules for Sync All",
                 _ => kind switch
                 {
+                    ToolbarRecursiveOperationKind.PullAndUpdateSubmodulesRecursively => "Pull + Submodules",
                     ToolbarRecursiveOperationKind.PullUpdateAndFetchPruneRecursively => "Pull + Submodules + F+Prune",
                     ToolbarRecursiveOperationKind.FetchAndPruneRecursively => App.Text("Repository.FetchAndPruneRecursively"),
                     ToolbarRecursiveOperationKind.FetchRecursively => App.Text("Repository.FetchRecursively"),
@@ -183,7 +213,7 @@ namespace SourceGit.ViewModels
             Description = _mode switch
             {
                 ToolbarRecursiveOperationMode.ConfigureSelectionOnly => "Choose which submodules Sync All should update. This selection is remembered for this repository.",
-                _ => "Live git output with syntax highlighting. Auto-closes in 9 seconds after success unless you stop countdown.",
+                _ => $"Live git output with syntax highlighting. Auto-closes in {GetAutoCloseCountdownSeconds()} seconds after success unless you stop countdown.",
             };
             ResetCombinedPhaseStates();
 
@@ -276,6 +306,15 @@ namespace SourceGit.ViewModels
                         await _repo.Settings.SaveAsync();
                     }
                 }
+                else if (
+                    _kind == ToolbarRecursiveOperationKind.PullAndUpdateSubmodulesRecursively ||
+                    _kind == ToolbarRecursiveOperationKind.PullUpdateAndFetchPruneRecursively ||
+                    ((_kind == ToolbarRecursiveOperationKind.FetchAndPruneRecursively ||
+                      _kind == ToolbarRecursiveOperationKind.FetchRecursively) &&
+                     _repo.Settings?.HasConfiguredRecursiveSubmoduleUpdateTargets == true))
+                {
+                    selectedTargets = _repo.Settings?.GetRecursiveSubmoduleUpdateTargets() ?? [];
+                }
 
                 if (_mode == ToolbarRecursiveOperationMode.ConfigureSelectionOnly)
                 {
@@ -285,9 +324,10 @@ namespace SourceGit.ViewModels
 
                 succ = _kind switch
                 {
+                    ToolbarRecursiveOperationKind.PullAndUpdateSubmodulesRecursively => await _repo.RunPullAndUpdateSubmodulesRecursivelyAsync(log, SetCombinedPhase, selectedTargets, _runCancellation.Token, UpdateSubmoduleProgress),
                     ToolbarRecursiveOperationKind.PullUpdateAndFetchPruneRecursively => await _repo.RunPullUpdateAndFetchPruneRecursivelyAsync(log, SetCombinedPhase, selectedTargets, _runCancellation.Token, UpdateSubmoduleProgress),
-                    ToolbarRecursiveOperationKind.FetchAndPruneRecursively => await _repo.RunFetchRecursivelyAsync(true, log, false, _runCancellation.Token, UpdateSubmoduleProgress),
-                    ToolbarRecursiveOperationKind.FetchRecursively => await _repo.RunFetchRecursivelyAsync(false, log, false, _runCancellation.Token, UpdateSubmoduleProgress),
+                    ToolbarRecursiveOperationKind.FetchAndPruneRecursively => await _repo.RunFetchRecursivelyAsync(true, log, false, selectedTargets, _runCancellation.Token, UpdateSubmoduleProgress),
+                    ToolbarRecursiveOperationKind.FetchRecursively => await _repo.RunFetchRecursivelyAsync(false, log, false, selectedTargets, _runCancellation.Token, UpdateSubmoduleProgress),
                     ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively => await _repo.RunUpdateSubmodulesRecursivelyAsync(log, selectedTargets, false, _runCancellation.Token, UpdateSubmoduleProgress),
                     _ => false,
                 };
@@ -333,8 +373,9 @@ namespace SourceGit.ViewModels
             _countdownCts = new CancellationTokenSource();
             try
             {
+                var countdownSeconds = GetAutoCloseCountdownSeconds();
                 CanStopCountdown = true;
-                for (var seconds = 9; seconds > 0; seconds -= 3)
+                for (var seconds = countdownSeconds; seconds > 0; seconds--)
                 {
                     var desc = $"Done. Closing in {seconds}s...";
                     if (Dispatcher.UIThread.CheckAccess())
@@ -342,7 +383,7 @@ namespace SourceGit.ViewModels
                     else
                         await Dispatcher.UIThread.InvokeAsync(() => ProgressDescription = desc);
 
-                    await Task.Delay(3000, _countdownCts.Token).ConfigureAwait(false);
+                    await Task.Delay(1000, _countdownCts.Token).ConfigureAwait(false);
                 }
                 return true;
             }
@@ -423,7 +464,9 @@ namespace SourceGit.ViewModels
             _currentCombinedPhase = CombinedSyncPhase.Pull;
             _pullPhaseState = CombinedSyncPhaseState.Pending;
             _updateSubmodulesPhaseState = CombinedSyncPhaseState.Pending;
-            _fetchAndPrunePhaseState = CombinedSyncPhaseState.Pending;
+            _fetchAndPrunePhaseState = _kind == ToolbarRecursiveOperationKind.PullAndUpdateSubmodulesRecursively
+                ? CombinedSyncPhaseState.Skipped
+                : CombinedSyncPhaseState.Pending;
             NotifyAllPhaseProperties();
         }
 
@@ -456,6 +499,7 @@ namespace SourceGit.ViewModels
             {
                 CombinedSyncPhaseState.Running => s_activePhaseBackgroundBrush,
                 CombinedSyncPhaseState.Succeeded => s_successPhaseBackgroundBrush,
+                CombinedSyncPhaseState.Skipped => s_inactivePhaseBackgroundBrush,
                 CombinedSyncPhaseState.Failed => s_failedPhaseBackgroundBrush,
                 CombinedSyncPhaseState.Canceled => s_canceledPhaseBackgroundBrush,
                 _ => s_inactivePhaseBackgroundBrush,
@@ -468,6 +512,7 @@ namespace SourceGit.ViewModels
             {
                 CombinedSyncPhaseState.Running => s_activePhaseBorderBrush,
                 CombinedSyncPhaseState.Succeeded => s_successPhaseBorderBrush,
+                CombinedSyncPhaseState.Skipped => s_inactivePhaseBorderBrush,
                 CombinedSyncPhaseState.Failed => s_failedPhaseBorderBrush,
                 CombinedSyncPhaseState.Canceled => s_canceledPhaseBorderBrush,
                 _ => s_inactivePhaseBorderBrush,
@@ -480,6 +525,7 @@ namespace SourceGit.ViewModels
             {
                 CombinedSyncPhaseState.Running => s_activePhaseForegroundBrush,
                 CombinedSyncPhaseState.Succeeded => s_successPhaseForegroundBrush,
+                CombinedSyncPhaseState.Skipped => s_inactivePhaseForegroundBrush,
                 CombinedSyncPhaseState.Failed => s_failedPhaseForegroundBrush,
                 CombinedSyncPhaseState.Canceled => s_canceledPhaseForegroundBrush,
                 _ => s_inactivePhaseForegroundBrush,
@@ -500,6 +546,7 @@ namespace SourceGit.ViewModels
             {
                 CombinedSyncPhaseState.Running => "running",
                 CombinedSyncPhaseState.Succeeded => "done",
+                CombinedSyncPhaseState.Skipped => "skipped",
                 CombinedSyncPhaseState.Failed => "failed",
                 CombinedSyncPhaseState.Canceled => "canceled",
                 _ => "pending",
@@ -512,6 +559,7 @@ namespace SourceGit.ViewModels
             {
                 CombinedSyncPhaseState.Running => s_runningPhaseStatusBrush,
                 CombinedSyncPhaseState.Succeeded => s_successPhaseStatusBrush,
+                CombinedSyncPhaseState.Skipped => s_pendingPhaseStatusBrush,
                 CombinedSyncPhaseState.Failed => s_failedPhaseStatusBrush,
                 CombinedSyncPhaseState.Canceled => s_canceledPhaseStatusBrush,
                 _ => s_pendingPhaseStatusBrush,
@@ -561,16 +609,21 @@ namespace SourceGit.ViewModels
         {
             _summaryTotal = progress.Total;
             _summarySucceeded = progress.Succeeded;
-            _summarySkipped = progress.Skipped;
+            _summarySkippedByUser = progress.SkippedByUser;
+            _summarySkippedAutomatically = progress.SkippedAutomatically;
+            _summarySkippedNotInitialized = progress.SkippedNotInitialized;
             _summaryFailed = progress.Failed;
-            _currentSubmoduleDone = progress.Succeeded + progress.Skipped + progress.Failed;
+            _currentSubmoduleDone = progress.Succeeded + progress.SkippedAutomatically + progress.Failed;
             _currentSubmoduleTotal = progress.Total;
             _currentSubmoduleName = progress.CurrentTarget ?? string.Empty;
             OnPropertyChanged(nameof(IsOperationSummaryVisible));
             OnPropertyChanged(nameof(OperationSummaryTitle));
             OnPropertyChanged(nameof(OperationSummaryTotalText));
             OnPropertyChanged(nameof(OperationSummarySucceededText));
-            OnPropertyChanged(nameof(OperationSummarySkippedText));
+            OnPropertyChanged(nameof(OperationSummarySkippedByUserText));
+            OnPropertyChanged(nameof(OperationSummarySkippedAutomaticallyText));
+            OnPropertyChanged(nameof(IsNotInitializedSummaryVisible));
+            OnPropertyChanged(nameof(OperationSummarySkippedNotInitializedText));
             OnPropertyChanged(nameof(OperationSummaryFailedText));
             OnPropertyChanged(nameof(CurrentSubmoduleName));
             OnPropertyChanged(nameof(CurrentSubmoduleProgressText));
@@ -593,14 +646,25 @@ namespace SourceGit.ViewModels
         {
             _summaryTotal = 0;
             _summarySucceeded = 0;
-            _summarySkipped = 0;
+            _summarySkippedByUser = 0;
+            _summarySkippedAutomatically = 0;
+            _summarySkippedNotInitialized = 0;
             _summaryFailed = 0;
             OnPropertyChanged(nameof(IsOperationSummaryVisible));
             OnPropertyChanged(nameof(OperationSummaryTitle));
             OnPropertyChanged(nameof(OperationSummaryTotalText));
             OnPropertyChanged(nameof(OperationSummarySucceededText));
-            OnPropertyChanged(nameof(OperationSummarySkippedText));
+            OnPropertyChanged(nameof(OperationSummarySkippedByUserText));
+            OnPropertyChanged(nameof(OperationSummarySkippedAutomaticallyText));
+            OnPropertyChanged(nameof(IsNotInitializedSummaryVisible));
+            OnPropertyChanged(nameof(OperationSummarySkippedNotInitializedText));
             OnPropertyChanged(nameof(OperationSummaryFailedText));
+        }
+
+        private int GetAutoCloseCountdownSeconds()
+        {
+            var seconds = _repo.Settings?.SuccessfulOperationAutoCloseSeconds ?? 5;
+            return Math.Clamp(seconds, 1, 60);
         }
 
         private readonly Repository _repo = null;
@@ -623,7 +687,9 @@ namespace SourceGit.ViewModels
         private string _currentSubmoduleName = string.Empty;
         private int _summaryTotal = 0;
         private int _summarySucceeded = 0;
-        private int _summarySkipped = 0;
+        private int _summarySkippedByUser = 0;
+        private int _summarySkippedAutomatically = 0;
+        private int _summarySkippedNotInitialized = 0;
         private int _summaryFailed = 0;
         private bool _showEmbeddedHeader = true;
         private bool _keepWindowOpen = false;
@@ -668,5 +734,11 @@ namespace SourceGit.ViewModels
         private static readonly IBrush s_successPhaseStatusBrush = new SolidColorBrush(Color.Parse("#FF2F855A"));
         private static readonly IBrush s_failedPhaseStatusBrush = new SolidColorBrush(Color.Parse("#FFB91C1C"));
         private static readonly IBrush s_canceledPhaseStatusBrush = new SolidColorBrush(Color.Parse("#FFB7791F"));
+        private static readonly IBrush s_pruneEnabledBackgroundBrush = new SolidColorBrush(Color.Parse("#1FD13438"));
+        private static readonly IBrush s_pruneEnabledBorderBrush = new SolidColorBrush(Color.Parse("#FFD13438"));
+        private static readonly IBrush s_pruneEnabledForegroundBrush = new SolidColorBrush(Color.Parse("#FFD13438"));
+        private static readonly IBrush s_pruneDisabledBackgroundBrush = new SolidColorBrush(Color.Parse("#140078D7"));
+        private static readonly IBrush s_pruneDisabledBorderBrush = new SolidColorBrush(Color.Parse("#FF0078D7"));
+        private static readonly IBrush s_pruneDisabledForegroundBrush = new SolidColorBrush(Color.Parse("#FF0078D7"));
     }
 }

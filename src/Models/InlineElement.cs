@@ -6,6 +6,7 @@
         Link,
         CommitSHA,
         Code,
+        CountPrefix,
     }
 
     public class InlineElement

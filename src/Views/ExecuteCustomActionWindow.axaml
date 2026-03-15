@@ -1,0 +1,80 @@
+<v:ChromelessWindow xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                    xmlns:v="using:SourceGit.Views"
+                    xmlns:vm="using:SourceGit.ViewModels"
+                    xmlns:c="using:SourceGit.Converters"
+                    mc:Ignorable="d" d:DesignWidth="720" d:DesignHeight="360"
+                    x:Class="SourceGit.Views.ExecuteCustomActionWindow"
+                    x:DataType="vm:ExecuteCustomAction"
+                    x:Name="ThisControl"
+                    Title="{Binding CustomAction.Name}"
+                    Icon="/App.ico"
+                    Width="720"
+                    SizeToContent="Height"
+                    MinWidth="640"
+                    CanResize="False"
+                    WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="Auto,*,Auto,Auto">
+    <Grid Grid.Row="0" Height="28" IsVisible="{Binding !#ThisControl.UseSystemWindowFrame}">
+      <Border Background="{DynamicResource Brush.TitleBar}"
+              BorderThickness="0,0,0,1"
+              BorderBrush="{DynamicResource Brush.Border0}"
+              PointerPressed="BeginMoveWindow"/>
+
+      <TextBlock Classes="bold"
+                 Text="{Binding CustomAction.Name}"
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Center"
+                 IsHitTestVisible="False"/>
+
+      <v:CaptionButtons HorizontalAlignment="Right"
+                        IsCloseButtonOnly="True"
+                        IsVisible="{OnPlatform True, macOS=False}"/>
+    </Grid>
+
+    <v:ExecuteCustomAction Grid.Row="1"
+                           Margin="8,16,8,8"/>
+
+    <StackPanel Grid.Row="2"
+                Margin="8,4,8,8"
+                Height="32"
+                Orientation="Horizontal"
+                HorizontalAlignment="Right">
+      <Button Width="0"
+              Height="0"
+              Click="OnSureByHotKey"
+              HotKey="Enter"
+              IsVisible="{Binding InProgress, Converter={x:Static BoolConverters.Not}}"/>
+
+      <Button Classes="flat primary"
+              Width="100"
+              Height="28"
+              Padding="0"
+              HorizontalContentAlignment="Center"
+              VerticalContentAlignment="Center"
+              Content="{DynamicResource Text.Sure}"
+              Click="OnSure"
+              IsVisible="{Binding InProgress, Converter={x:Static BoolConverters.Not}}"
+              ToolTip.Tip="Enter"/>
+
+      <Button Classes="flat"
+              Width="100"
+              Height="28"
+              Margin="8,0,0,0"
+              Padding="0"
+              HorizontalContentAlignment="Center"
+              VerticalContentAlignment="Center"
+              Content="{DynamicResource Text.Cancel}"
+              Click="OnCancel"
+              IsVisible="{Binding InProgress, Converter={x:Static BoolConverters.Not}}"
+              ToolTip.Tip="ESC"/>
+    </StackPanel>
+
+    <v:PopupRunningStatus Grid.Row="3"
+                          Margin="12,8"
+                          Description="{Binding ProgressDescription}"
+                          IsVisible="{Binding InProgress}"/>
+  </Grid>
+</v:ChromelessWindow>

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 using Avalonia.Controls;
@@ -176,6 +177,20 @@ namespace SourceGit.Views
             }
         }
 
+        private async void FetchRecursivelyWithOptionalPrune(object sender, TappedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo && repo.CanCreatePopup())
+            {
+                var prune = e.KeyModifiers.HasFlag(OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control)
+                    ? false
+                    : true;
+                OpenToolbarRecursiveOperationWindow(new ViewModels.ToolbarRecursiveOperation(
+                    repo,
+                    prune ? ViewModels.ToolbarRecursiveOperationKind.FetchAndPruneRecursively : ViewModels.ToolbarRecursiveOperationKind.FetchRecursively));
+                e.Handled = true;
+            }
+        }
+
         private async void FetchAndPruneRecursively(object sender, RoutedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo && repo.CanCreatePopup())
@@ -253,14 +268,17 @@ namespace SourceGit.Views
             }
         }
 
-        private async void PullUpdateAndFetchPruneRecursively(object sender, RoutedEventArgs e)
+        private async void SyncAll(object sender, TappedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo && repo.CanCreatePopup())
             {
                 var needsSelection = repo.Submodules.Count > 0 && repo.Settings?.NeedsRecursiveSubmoduleUpdateTargetsConfiguration() == true;
+                var kind = e.KeyModifiers.HasFlag(OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control)
+                    ? ViewModels.ToolbarRecursiveOperationKind.PullUpdateAndFetchPruneRecursively
+                    : ViewModels.ToolbarRecursiveOperationKind.PullAndUpdateSubmodulesRecursively;
                 var popup = new ViewModels.ToolbarRecursiveOperation(
                     repo,
-                    ViewModels.ToolbarRecursiveOperationKind.PullUpdateAndFetchPruneRecursively,
+                    kind,
                     needsSelection);
                 OpenToolbarRecursiveOperationWindow(popup);
                 e.Handled = true;
@@ -306,7 +324,7 @@ namespace SourceGit.Views
                 {
                     OpenToolbarRecursiveOperationWindow(new ViewModels.ToolbarRecursiveOperation(
                         repo,
-                        ViewModels.ToolbarRecursiveOperationKind.PullUpdateAndFetchPruneRecursively,
+                        ViewModels.ToolbarRecursiveOperationKind.PullAndUpdateSubmodulesRecursively,
                         true,
                         true));
                 }, DispatcherPriority.Background);

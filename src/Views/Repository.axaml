@@ -102,7 +102,7 @@
               </ListBox.ItemsPanel>
 
               <ListBoxItem>
-                <Grid Classes="view_mode" ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+                <Grid Classes="view_mode" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto">
                   <Path Grid.Column="0" Classes="icon" Data="{StaticResource Icons.Histories}"/>
                   <TextBlock Grid.Column="1" Classes="header" Text="{DynamicResource Text.Histories}"/>
 
@@ -122,7 +122,15 @@
                                 ToolTip.Tip="{DynamicResource Text.Repository.UseRelativeTimeInGraph}">
                     <Path Width="12" Height="12" Data="{StaticResource Icons.Stopwatch}"/>
                   </ToggleButton>
-                  <Button Grid.Column="4"
+                  <ToggleButton Grid.Column="4"
+                                Classes="line_path"
+                                Width="42" Height="26"
+                                Background="Transparent"
+                                IsChecked="{Binding OnlyShowSPPCommitsInHistory, Mode=TwoWay}"
+                                ToolTip.Tip="Only show commits with SPP change">
+                    <TextBlock FontSize="10" FontWeight="Bold" Text="SPP"/>
+                  </ToggleButton>
+                  <Button Grid.Column="5"
                           Classes="icon_button"
                           Width="26" Height="26"
                           Click="OnOpenAdvancedHistoriesOption"

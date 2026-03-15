@@ -27,6 +27,8 @@ namespace SourceGit.Models
         public List<Decorator> Decorators { get; set; } = new();
 
         public bool IsMerged { get; set; } = false;
+        public bool HasSubmodulePointerChange { get; set; } = false;
+        public int ChangedFileCount { get; set; } = -1;
         public int Color { get; set; } = 0;
         public double LeftMargin { get; set; } = 0;
         public int FoldedCommitsBelow { get; set; } = 0;
@@ -39,7 +41,12 @@ namespace SourceGit.Models
         public bool IsCommitterVisible => !Author.Equals(Committer) || AuthorTime != CommitterTime;
         public bool IsCurrentHead => Decorators.Find(x => x.Type is DecoratorType.CurrentBranchHead or DecoratorType.CurrentCommitHead) != null;
         public bool IsSuperProjectPointer => Decorators.Find(x => x.Type == DecoratorType.SuperProjectPointer) != null;
+        public bool IsSubmoduleChangeCommit =>
+            HasSubmodulePointerChange ||
+            Subject.Contains("submodule", StringComparison.OrdinalIgnoreCase) ||
+            Subject.Contains("spp", StringComparison.OrdinalIgnoreCase);
         public bool HasDecorators => Decorators.Count > 0;
+        public string HistoryDisplaySubject => ChangedFileCount >= 0 ? $"({ChangedFileCount}) {Subject}" : Subject;
 
         public string GetFriendlyName()
         {

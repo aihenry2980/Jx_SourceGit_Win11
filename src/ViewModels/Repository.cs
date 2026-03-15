@@ -163,6 +163,19 @@ namespace SourceGit.ViewModels
             }
         }
 
+        public bool OnlyShowSPPCommitsInHistory
+        {
+            get => _uiStates.OnlyShowSPPCommitsInHistory;
+            set
+            {
+                if (value != _uiStates.OnlyShowSPPCommitsInHistory)
+                {
+                    _uiStates.OnlyShowSPPCommitsInHistory = value;
+                    RefreshCommits();
+                }
+            }
+        }
+
         public string Filter
         {
             get => _filter;
@@ -1044,11 +1057,12 @@ namespace SourceGit.ViewModels
             if (!CanCreatePopup())
                 return;
 
-            var popup = new ExecuteCustomAction(this, action, scopeTarget);
-            if (action.Controls.Count == 0)
-                await ShowAndStartPopupAsync(popup);
-            else
-                ShowPopup(popup);
+            App.ShowWindow(new Views.ExecuteCustomActionWindow()
+            {
+                DataContext = new ExecuteCustomAction(this, action, scopeTarget),
+            });
+
+            await Task.CompletedTask;
         }
 
         public async Task CleanupAsync()
@@ -1777,7 +1791,30 @@ namespace SourceGit.ViewModels
                         builder.Append(' ').Append(_superProjectSubmoduleSHA);
                 }
 
-                var commits = await new Commands.QueryCommits(FullPath, builder.ToString()).GetResultAsync().ConfigureAwait(false);
+                var limits = builder.ToString();
+                var commitsTask = new Commands.QueryCommits(FullPath, limits).GetResultAsync();
+                var submoduleFlagsTask = new Commands.QueryCommitSubmodulePointerFlags(FullPath, limits).GetResultAsync();
+                await Task.WhenAll(commitsTask, submoduleFlagsTask).ConfigureAwait(false);
+
+                var commits = commitsTask.Result;
+                var commitDiffStats = submoduleFlagsTask.Result;
+                foreach (var commit in commits)
+                {
+                    if (commitDiffStats.TryGetValue(commit.SHA, out var stat))
+                    {
+                        commit.HasSubmodulePointerChange = stat.HasSubmodulePointerChange;
+                        commit.ChangedFileCount = stat.ChangedFileCount;
+                    }
+                    else
+                    {
+                        commit.HasSubmodulePointerChange = false;
+                        commit.ChangedFileCount = 0;
+                    }
+                }
+
+                if (_uiStates.OnlyShowSPPCommitsInHistory)
+                    commits.RemoveAll(x => !x.HasSubmodulePointerChange);
+
                 AttachSuperProjectPointerDecorator(commits);
                 AttachParentRepositoryDecorator(commits);
                 ApplyHistoryFilterColorsToDecorators(commits);
@@ -2124,10 +2161,44 @@ namespace SourceGit.ViewModels
 
             onPhaseChanged?.Invoke(2);
             log?.AppendLine("=== Step 3/3: Fetch and prune recursively ===");
-            var fetched = await RunFetchRecursivelyAsync(true, log, true, cancellationToken, onSubmoduleProgressChanged);
+            var fetched = await RunFetchRecursivelyAsync(true, log, true, selectedTargets, cancellationToken, onSubmoduleProgressChanged);
             if (!fetched)
             {
                 log?.AppendLine("[failed] Recursive fetch and prune failed.");
+                return false;
+            }
+
+            return true;
+        }
+
+        public async Task<bool> RunPullAndUpdateSubmodulesRecursivelyAsync(
+            Models.ICommandLog log,
+            Action<int> onPhaseChanged = null,
+            List<string> selectedTargets = null,
+            CancellationToken cancellationToken = default,
+            Action<Models.RecursiveOperationProgress> onSubmoduleProgressChanged = null)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return false;
+
+            onPhaseChanged?.Invoke(0);
+            log?.AppendLine("=== Step 1/2: Pull ===");
+            var pulled = await RunDefaultPullAsync(log, false, cancellationToken);
+            if (!pulled)
+            {
+                log?.AppendLine("[failed] Pull step failed.");
+                return false;
+            }
+
+            if (cancellationToken.IsCancellationRequested)
+                return false;
+
+            onPhaseChanged?.Invoke(1);
+            log?.AppendLine("=== Step 2/2: Update submodules recursively ===");
+            var updated = await RunUpdateSubmodulesRecursivelyAsync(log, selectedTargets, true, cancellationToken, onSubmoduleProgressChanged);
+            if (!updated)
+            {
+                log?.AppendLine("[failed] Recursive submodule update failed.");
                 return false;
             }
 
@@ -2138,6 +2209,7 @@ namespace SourceGit.ViewModels
             bool prune,
             Models.ICommandLog log,
             bool stopOnError = false,
+            List<string> selectedTargets = null,
             CancellationToken cancellationToken = default,
             Action<Models.RecursiveOperationProgress> onProgressChanged = null)
         {
@@ -2158,14 +2230,38 @@ namespace SourceGit.ViewModels
             var force = _uiStates.EnableForceOnFetch;
             var succ = true;
             var succeededTargets = 0;
-            var skippedTargets = 0;
+            var skippedAutomaticallyTargets = 0;
+            var skippedByUserTargets = 0;
+            var skippedNotInitializedTargets = 0;
             var failedTargets = 0;
-            var totalTargets = 0;
-            foreach (var submodule in _submodules)
+            var targets = new List<string>();
+            if (selectedTargets == null)
             {
-                if (!string.IsNullOrWhiteSpace(submodule.Path))
-                    totalTargets++;
+                foreach (var submodule in _submodules)
+                {
+                    if (!string.IsNullOrWhiteSpace(submodule.Path))
+                        targets.Add(submodule.Path);
+                }
             }
+            else
+            {
+                var available = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var submodule in _submodules)
+                {
+                    if (!string.IsNullOrWhiteSpace(submodule.Path))
+                        available.Add(submodule.Path);
+                }
+
+                foreach (var target in selectedTargets)
+                {
+                    if (!string.IsNullOrWhiteSpace(target) && available.Contains(target))
+                        targets.Add(target);
+                }
+
+                skippedByUserTargets = Math.Max(0, available.Count - targets.Count);
+            }
+
+            var totalTargets = targets.Count;
             var completedTargets = 0;
 
             // Split recursive fetch into independent units so one hung submodule fetch does not
@@ -2193,12 +2289,8 @@ namespace SourceGit.ViewModels
                 }
             }
 
-            foreach (var submodule in _submodules)
+            foreach (var submodulePath in targets)
             {
-                var submodulePath = submodule.Path;
-                if (string.IsNullOrWhiteSpace(submodulePath))
-                    continue;
-
                 if (cancellationToken.IsCancellationRequested)
                     return false;
 
@@ -2206,7 +2298,9 @@ namespace SourceGit.ViewModels
                 {
                     Total = totalTargets,
                     Succeeded = succeededTargets,
-                    Skipped = skippedTargets,
+                    SkippedByUser = skippedByUserTargets,
+                    SkippedAutomatically = skippedAutomaticallyTargets,
+                    SkippedNotInitialized = skippedNotInitializedTargets,
                     Failed = failedTargets,
                     CurrentTarget = submodulePath,
                     CurrentState = Models.RecursiveOperationTargetState.Running,
@@ -2217,13 +2311,16 @@ namespace SourceGit.ViewModels
                 if (!Directory.Exists(submoduleRoot) || (!Directory.Exists(gitDir) && !File.Exists(gitDir)))
                 {
                     log?.AppendLine($"Skip submodule `{submodulePath}` (not initialized).");
-                    skippedTargets++;
+                    skippedAutomaticallyTargets++;
+                    skippedNotInitializedTargets++;
                     completedTargets++;
                     onProgressChanged?.Invoke(new Models.RecursiveOperationProgress
                     {
                         Total = totalTargets,
                         Succeeded = succeededTargets,
-                        Skipped = skippedTargets,
+                        SkippedByUser = skippedByUserTargets,
+                        SkippedAutomatically = skippedAutomaticallyTargets,
+                        SkippedNotInitialized = skippedNotInitializedTargets,
                         Failed = failedTargets,
                         CurrentTarget = submodulePath,
                         CurrentState = Models.RecursiveOperationTargetState.Skipped,
@@ -2235,13 +2332,15 @@ namespace SourceGit.ViewModels
                 if (submoduleRemotes.Count == 0)
                 {
                     log?.AppendLine($"Skip submodule `{submodulePath}` (no remotes).");
-                    skippedTargets++;
+                    skippedAutomaticallyTargets++;
                     completedTargets++;
                     onProgressChanged?.Invoke(new Models.RecursiveOperationProgress
                     {
                         Total = totalTargets,
                         Succeeded = succeededTargets,
-                        Skipped = skippedTargets,
+                        SkippedByUser = skippedByUserTargets,
+                        SkippedAutomatically = skippedAutomaticallyTargets,
+                        SkippedNotInitialized = skippedNotInitializedTargets,
                         Failed = failedTargets,
                         CurrentTarget = submodulePath,
                         CurrentState = Models.RecursiveOperationTargetState.Skipped,
@@ -2275,7 +2374,9 @@ namespace SourceGit.ViewModels
                             {
                                 Total = totalTargets,
                                 Succeeded = succeededTargets,
-                                Skipped = skippedTargets,
+                                SkippedByUser = skippedByUserTargets,
+                                SkippedAutomatically = skippedAutomaticallyTargets,
+                                SkippedNotInitialized = skippedNotInitializedTargets,
                                 Failed = failedTargets,
                                 CurrentTarget = submodulePath,
                                 CurrentState = Models.RecursiveOperationTargetState.Failed,
@@ -2295,7 +2396,9 @@ namespace SourceGit.ViewModels
                 {
                     Total = totalTargets,
                     Succeeded = succeededTargets,
-                    Skipped = skippedTargets,
+                    SkippedByUser = skippedByUserTargets,
+                    SkippedAutomatically = skippedAutomaticallyTargets,
+                    SkippedNotInitialized = skippedNotInitializedTargets,
                     Failed = failedTargets,
                     CurrentTarget = submodulePath,
                     CurrentState = submoduleSucceeded ? Models.RecursiveOperationTargetState.Succeeded : Models.RecursiveOperationTargetState.Failed,
@@ -2383,6 +2486,7 @@ namespace SourceGit.ViewModels
                 return false;
 
             var targets = new List<string>();
+            var skippedByUserTargets = 0;
             if (selectedTargets == null)
             {
                 foreach (var submodule in _submodules)
@@ -2399,6 +2503,8 @@ namespace SourceGit.ViewModels
                     if (!string.IsNullOrWhiteSpace(target) && available.Contains(target))
                         targets.Add(target);
                 }
+
+                skippedByUserTargets = Math.Max(0, available.Count - targets.Count);
             }
 
             if (targets.Count == 0)
@@ -2435,6 +2541,7 @@ namespace SourceGit.ViewModels
                 {
                     Total = totalTargets,
                     Succeeded = succeededTargets,
+                    SkippedByUser = skippedByUserTargets,
                     Failed = failedTargets,
                     CurrentTarget = target,
                     CurrentState = Models.RecursiveOperationTargetState.Running,
@@ -2457,6 +2564,7 @@ namespace SourceGit.ViewModels
                     {
                         Total = totalTargets,
                         Succeeded = succeededTargets,
+                        SkippedByUser = skippedByUserTargets,
                         Failed = failedTargets,
                         CurrentTarget = target,
                         CurrentState = Models.RecursiveOperationTargetState.Failed,
@@ -2486,6 +2594,7 @@ namespace SourceGit.ViewModels
                         {
                             Total = totalTargets,
                             Succeeded = succeededTargets,
+                            SkippedByUser = skippedByUserTargets,
                             Failed = failedTargets,
                             CurrentTarget = target,
                             CurrentState = Models.RecursiveOperationTargetState.Failed,
@@ -2499,6 +2608,7 @@ namespace SourceGit.ViewModels
                 {
                     Total = totalTargets,
                     Succeeded = succeededTargets,
+                    SkippedByUser = skippedByUserTargets,
                     Failed = failedTargets,
                     CurrentTarget = target,
                     CurrentState = one ? Models.RecursiveOperationTargetState.Succeeded : Models.RecursiveOperationTargetState.Failed,
@@ -3587,7 +3697,7 @@ namespace SourceGit.ViewModels
                 if (_uiStates.FetchAllRemotes)
                 {
                     foreach (var remote in remotes)
-                        await new Commands.Fetch(FullPath, remote).Use(log).RunAsync();
+                        await new Commands.Fetch(FullPath, remote, false, _settings.AutoFetchPrune).Use(log).RunAsync();
                 }
                 else
                 {
@@ -3595,7 +3705,7 @@ namespace SourceGit.ViewModels
                         remotes.Find(x => x.Equals(_settings.DefaultRemote, StringComparison.Ordinal)) :
                         remotes[0];
 
-                    await new Commands.Fetch(FullPath, remote).Use(log).RunAsync();
+                    await new Commands.Fetch(FullPath, remote, false, _settings.AutoFetchPrune).Use(log).RunAsync();
                 }
 
                 _lastFetchTime = DateTime.Now;
