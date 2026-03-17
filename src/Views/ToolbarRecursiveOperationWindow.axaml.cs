@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 
 namespace SourceGit.Views
@@ -13,6 +14,7 @@ namespace SourceGit.Views
         {
             CloseOnESC = true;
             InitializeComponent();
+            AddHandler(KeyDownEvent, OnAnyKeyDown, RoutingStrategies.Tunnel);
 
             var layout = ViewModels.Preferences.Instance.Layout;
             Width = Math.Max(MinWidth, layout.ToolbarRecursiveOperationWindowWidth);
@@ -109,6 +111,11 @@ namespace SourceGit.Views
                 layout.ToolbarRecursiveOperationWindowWidth = Width;
             if (Height >= MinHeight)
                 layout.ToolbarRecursiveOperationWindowHeight = Height;
+        }
+
+        private void OnAnyKeyDown(object sender, KeyEventArgs e)
+        {
+            OperationView?.HandleSubmoduleSelectionKey(e);
         }
 
         private bool _initialized = false;

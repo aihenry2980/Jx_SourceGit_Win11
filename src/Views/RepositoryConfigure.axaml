@@ -183,7 +183,7 @@
 
           <StackPanel Grid.Row="11" Grid.Column="1" Orientation="Vertical" Spacing="6">
             <StackPanel Orientation="Horizontal">
-              <CheckBox x:Name="AutoFetchCheckBox"
+              <CheckBox
                         Content="{DynamicResource Text.Configure.Git.AutoFetch}"
                         IsChecked="{Binding EnableAutoFetch, Mode=TwoWay}"/>
 
@@ -195,7 +195,7 @@
                              ParsingNumberStyle="Integer"
                              FormatString="0"
                              Value="{Binding AutoFetchInterval, Mode=TwoWay, FallbackValue=10}"
-                             IsEnabled="{Binding #AutoFetchCheckBox.IsChecked}"/>
+                             IsEnabled="{Binding AutoBackgroundOperationEnabled}"/>
 
               <TextBlock VerticalAlignment="Center"
                          Margin="5,0,0,0"
@@ -203,9 +203,13 @@
             </StackPanel>
 
             <CheckBox Margin="28,0,0,0"
+                      Content="Sync all automatically"
+                      IsChecked="{Binding EnableAutoSyncAll, Mode=TwoWay}"/>
+
+            <CheckBox Margin="28,0,0,0"
                       Content="Prune dead branches during auto fetch"
                       IsChecked="{Binding AutoFetchPrune, Mode=TwoWay}"
-                      IsEnabled="{Binding #AutoFetchCheckBox.IsChecked}"/>
+                      IsEnabled="{Binding EnableAutoFetch}"/>
 
             <StackPanel Orientation="Horizontal"
                         Margin="28,0,0,0">

@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using System;
 using System.ComponentModel;
 
+using Avalonia;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
@@ -15,6 +16,14 @@ namespace SourceGit.Views
         public LauncherPage()
         {
             InitializeComponent();
+        }
+
+        protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+        {
+            base.OnPropertyChanged(change);
+
+            if (change.Property.Name == nameof(ActualThemeVariant))
+                RefreshToolbarBackground();
         }
 
         protected override void OnDataContextChanged(EventArgs e)

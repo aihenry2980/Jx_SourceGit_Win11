@@ -172,6 +172,12 @@ namespace SourceGit.ViewModels
             get;
         } = [];
 
+        public SubmoduleSelectionItem SelectedSubmoduleSelection
+        {
+            get => _selectedSubmoduleSelection;
+            set => SetProperty(ref _selectedSubmoduleSelection, value);
+        }
+
         public override bool ShowOptions => _showSubmoduleSelection;
         public override double PopupWidth => 1040;
         public override bool AllowCancelWhenRunning => true;
@@ -225,6 +231,9 @@ namespace SourceGit.ViewModels
 
                 foreach (var submodule in _repo.Submodules)
                     SubmoduleSelections.Add(new SubmoduleSelectionItem(submodule.Path, defaultSelectAll || savedSet.Contains(submodule.Path)));
+
+                if (SubmoduleSelections.Count > 0)
+                    SelectedSubmoduleSelection = SubmoduleSelections[0];
             }
         }
 
@@ -693,6 +702,7 @@ namespace SourceGit.ViewModels
         private int _summaryFailed = 0;
         private bool _showEmbeddedHeader = true;
         private bool _keepWindowOpen = false;
+        private SubmoduleSelectionItem _selectedSubmoduleSelection = null;
 
         private static readonly IBrush s_activePhaseBackgroundBrush = new LinearGradientBrush
         {

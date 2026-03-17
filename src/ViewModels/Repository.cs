@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -9,6 +10,7 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Collections;
 using Avalonia.Media;
+using Avalonia.Styling;
 using Avalonia.Threading;
 
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -18,6 +20,19 @@ namespace SourceGit.ViewModels
     public class Repository : ObservableObject, Models.IRepository
     {
         private const int MAX_LOGS = 100;
+
+        private enum HistoryRefreshMode
+        {
+            Full,
+            FastAfterFetch,
+        }
+
+        private class CommitHistorySnapshot
+        {
+            public List<Models.Commit> Commits { get; set; } = [];
+            public Models.CommitGraph Graph { get; set; } = null;
+            public bool ShouldNotifyFoldControlChange { get; set; } = false;
+        }
 
         public bool IsBare
         {
@@ -240,6 +255,12 @@ namespace SourceGit.ViewModels
             get
             {
                 var c = AccentColor;
+                if (Application.Current?.ActualThemeVariant == ThemeVariant.Dark)
+                {
+                    byte Darken(byte v) => (byte)Math.Clamp((int)Math.Round(v * 0.42 + 0x18 * 0.58), 0, 255);
+                    return new SolidColorBrush(Color.FromArgb(0xFF, Darken(c.R), Darken(c.G), Darken(c.B)));
+                }
+
                 byte Lighten(byte v) => (byte)(v + (255 - v) * 0.82);
                 return new SolidColorBrush(Color.FromArgb(0xFF, Lighten(c.R), Lighten(c.G), Lighten(c.B)));
             }
@@ -627,6 +648,36 @@ namespace SourceGit.ViewModels
             private set => SetProperty(ref _isAutoFetching, value);
         }
 
+        public bool IsQuickFetching
+        {
+            get => _isQuickFetching;
+            private set => SetProperty(ref _isQuickFetching, value);
+        }
+
+        public string AutoBackgroundOperationText
+        {
+            get => _autoBackgroundOperationText;
+            private set => SetProperty(ref _autoBackgroundOperationText, value);
+        }
+
+        public bool IsFetchDurationToastVisible
+        {
+            get => _isFetchDurationToastVisible;
+            private set => SetProperty(ref _isFetchDurationToastVisible, value);
+        }
+
+        public double FetchDurationToastOpacity
+        {
+            get => _fetchDurationToastOpacity;
+            private set => SetProperty(ref _fetchDurationToastOpacity, value);
+        }
+
+        public string FetchDurationToastText
+        {
+            get => _fetchDurationToastText;
+            private set => SetProperty(ref _fetchDurationToastText, value);
+        }
+
         public AvaloniaList<Models.IssueTracker> IssueTrackers
         {
             get;
@@ -949,6 +1000,61 @@ namespace SourceGit.ViewModels
                 await ShowAndStartPopupAsync(new Fetch(this));
             else
                 ShowPopup(new Fetch(this));
+        }
+
+        public async Task QuickFetchAsync(bool onlyFilteredBranches = false)
+        {
+            if (!CanCreatePopup())
+                return;
+
+            if (_remotes.Count == 0)
+            {
+                App.RaiseException(FullPath, "No remotes added to this repository!!!");
+                return;
+            }
+
+            var remote = GetPreferredRemoteName();
+            if (string.IsNullOrEmpty(remote))
+            {
+                App.RaiseException(FullPath, "Can NOT determine a default remote for quick fetch.");
+                return;
+            }
+
+            var refspecs = onlyFilteredBranches ? BuildQuickFetchFilteredRefSpecs(remote) : null;
+            if (onlyFilteredBranches && (refspecs == null || refspecs.Count == 0))
+            {
+                App.SendNotification(FullPath, $"Quick Fetch (Filtered) skipped because no included branch filters match remote '{remote}'.");
+                return;
+            }
+
+            var operationName = onlyFilteredBranches ? "Quick Fetch (Filtered)" : "Quick Fetch";
+            var log = CreateLog(operationName);
+            var succ = false;
+            var stopwatch = Stopwatch.StartNew();
+            AutoBackgroundOperationText = operationName;
+            IsQuickFetching = true;
+
+            try
+            {
+                succ = await (onlyFilteredBranches
+                        ? new Commands.Fetch(FullPath, remote, true, false, false, false, refspecs)
+                        : new Commands.Fetch(FullPath, remote, true, false))
+                    .Use(log)
+                    .RunAsync();
+            }
+            finally
+            {
+                IsQuickFetching = false;
+                log.Complete();
+            }
+
+            if (succ)
+            {
+                MarkFetched();
+                ShowFetchDurationToast(stopwatch.Elapsed.TotalSeconds);
+            }
+            else
+                App.SendNotification(FullPath, $"{operationName} failed. Review the repository log for details.");
         }
 
         public async Task FetchRecursivelyAsync(bool prune)
@@ -1340,6 +1446,8 @@ namespace SourceGit.ViewModels
         public void MarkFetched()
         {
             _lastFetchTime = DateTime.Now;
+            RefreshBranches();
+            RefreshCommits(true);
         }
 
         public void NavigateToCommit(string sha, bool isDelayMode = false)
@@ -1759,95 +1867,163 @@ namespace SourceGit.ViewModels
 
         public void RefreshCommits()
         {
+            RefreshCommits(false);
+        }
+
+        public void RefreshCommits(bool fastAfterFetch)
+        {
             if (_cancellationRefreshCommits is { IsCancellationRequested: false })
                 _cancellationRefreshCommits.Cancel();
 
             _cancellationRefreshCommits = new CancellationTokenSource();
             var token = _cancellationRefreshCommits.Token;
+            var refreshMode = fastAfterFetch ? HistoryRefreshMode.FastAfterFetch : HistoryRefreshMode.Full;
 
             Task.Run(async () =>
             {
-                await Dispatcher.UIThread.InvokeAsync(() => _histories.IsLoading = true);
-
-                var builder = new StringBuilder();
-                builder
-                    .Append('-').Append(Preferences.Instance.MaxHistoryCommits).Append(' ')
-                    .Append(_uiStates.BuildHistoryParams());
-
-                var hasIncludedHistoryFilters = false;
-                foreach (var filter in _uiStates.HistoryFilters)
+                await Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    if (filter.Mode == Models.FilterMode.Included)
-                    {
-                        hasIncludedHistoryFilters = true;
-                        break;
-                    }
-                }
-
-                if (hasIncludedHistoryFilters)
-                {
-                    builder.Append(" HEAD");
-                    if (!string.IsNullOrWhiteSpace(_superProjectSubmoduleSHA))
-                        builder.Append(' ').Append(_superProjectSubmoduleSHA);
-                }
-
-                var limits = builder.ToString();
-                var commitsTask = new Commands.QueryCommits(FullPath, limits).GetResultAsync();
-                var submoduleFlagsTask = new Commands.QueryCommitSubmodulePointerFlags(FullPath, limits).GetResultAsync();
-                await Task.WhenAll(commitsTask, submoduleFlagsTask).ConfigureAwait(false);
-
-                var commits = commitsTask.Result;
-                var commitDiffStats = submoduleFlagsTask.Result;
-                foreach (var commit in commits)
-                {
-                    if (commitDiffStats.TryGetValue(commit.SHA, out var stat))
-                    {
-                        commit.HasSubmodulePointerChange = stat.HasSubmodulePointerChange;
-                        commit.ChangedFileCount = stat.ChangedFileCount;
-                    }
-                    else
-                    {
-                        commit.HasSubmodulePointerChange = false;
-                        commit.ChangedFileCount = 0;
-                    }
-                }
-
-                if (_uiStates.OnlyShowSPPCommitsInHistory)
-                    commits.RemoveAll(x => !x.HasSubmodulePointerChange);
-
-                AttachSuperProjectPointerDecorator(commits);
-                AttachParentRepositoryDecorator(commits);
-                ApplyHistoryFilterColorsToDecorators(commits);
-                var foldableBranchFullNames = BuildFoldableBranchFullNameSet(commits);
-                var removed = _foldedBranchFullNames.RemoveWhere(name => !foldableBranchFullNames.Contains(name));
-                if (removed > 0)
-                    NotifyFoldControlsChanged();
-                ApplyFoldStateToDecorators(commits, foldableBranchFullNames);
-                ApplyFoldedBranchRuns(commits, foldableBranchFullNames);
-                var graph = Models.CommitGraph.Parse(commits, _uiStates.HistoryShowFlags.HasFlag(Models.HistoryShowFlags.FirstParentOnly));
-
-                Dispatcher.UIThread.Invoke(() =>
-                {
-                    if (token.IsCancellationRequested)
-                        return;
-
                     if (_histories != null)
                     {
-                        _histories.IsLoading = false;
-                        _histories.Commits = commits;
-                        _histories.Graph = graph;
-                        UpdateVisibleFoldBranchStatesFromCurrentGraph();
-                        NotifyCurrentBranchVisualChanged();
-
-                        BisectState = _histories.UpdateBisectInfo();
-
-                        if (!string.IsNullOrEmpty(_navigateToCommitDelayed))
-                            NavigateToCommit(_navigateToCommitDelayed);
+                        _histories.IsLoading = true;
+                        _histories.IsBackfilling = false;
                     }
+                });
+
+                var fullLimits = BuildHistoryLimits(Preferences.Instance.MaxHistoryCommits);
+                var quickLimits = refreshMode == HistoryRefreshMode.FastAfterFetch
+                    ? BuildQuickHistoryLimits()
+                    : string.Empty;
+
+                if (!string.IsNullOrEmpty(quickLimits) && !quickLimits.Equals(fullLimits, StringComparison.Ordinal))
+                {
+                    var quickSnapshot = await QueryCommitHistorySnapshotAsync(quickLimits, false).ConfigureAwait(false);
+                    if (!token.IsCancellationRequested && quickSnapshot != null && quickSnapshot.Commits.Count > 0)
+                        await ApplyCommitHistorySnapshotAsync(quickSnapshot, token, false, true, false).ConfigureAwait(false);
+                }
+
+                if (token.IsCancellationRequested)
+                    return;
+
+                var fullSnapshot = await QueryCommitHistorySnapshotAsync(fullLimits, true).ConfigureAwait(false);
+                if (fullSnapshot != null)
+                    await ApplyCommitHistorySnapshotAsync(fullSnapshot, token, false, false, true).ConfigureAwait(false);
+            }, token);
+        }
+
+        private string BuildHistoryLimits(int maxCommits)
+        {
+            var builder = new StringBuilder();
+            builder
+                .Append('-').Append(maxCommits).Append(' ')
+                .Append(_uiStates.BuildHistoryParams());
+
+            var hasIncludedHistoryFilters = false;
+            foreach (var filter in _uiStates.HistoryFilters)
+            {
+                if (filter.Mode == Models.FilterMode.Included)
+                {
+                    hasIncludedHistoryFilters = true;
+                    break;
+                }
+            }
+
+            if (hasIncludedHistoryFilters)
+            {
+                builder.Append(" HEAD");
+                if (!string.IsNullOrWhiteSpace(_superProjectSubmoduleSHA))
+                    builder.Append(' ').Append(_superProjectSubmoduleSHA);
+            }
+
+            return builder.ToString();
+        }
+
+        private string BuildQuickHistoryLimits()
+        {
+            var fullCount = Preferences.Instance.MaxHistoryCommits;
+            var quickCount = Math.Min(fullCount, 120);
+            if (quickCount >= fullCount)
+                return string.Empty;
+
+            return BuildHistoryLimits(quickCount);
+        }
+
+        private async Task<CommitHistorySnapshot> QueryCommitHistorySnapshotAsync(string limits, bool pruneFoldState)
+        {
+            var commitsTask = new Commands.QueryCommits(FullPath, limits).GetResultAsync();
+            var submoduleFlagsTask = new Commands.QueryCommitSubmodulePointerFlags(FullPath, limits).GetResultAsync();
+            await Task.WhenAll(commitsTask, submoduleFlagsTask).ConfigureAwait(false);
+
+            var commits = commitsTask.Result;
+            var commitDiffStats = submoduleFlagsTask.Result;
+            foreach (var commit in commits)
+            {
+                if (commitDiffStats.TryGetValue(commit.SHA, out var stat))
+                {
+                    commit.HasSubmodulePointerChange = stat.HasSubmodulePointerChange;
+                    commit.ChangedFileCount = stat.ChangedFileCount;
+                }
+                else
+                {
+                    commit.HasSubmodulePointerChange = false;
+                    commit.ChangedFileCount = 0;
+                }
+            }
+
+            if (_uiStates.OnlyShowSPPCommitsInHistory)
+                commits.RemoveAll(x => !x.HasSubmodulePointerChange);
+
+            AttachSuperProjectPointerDecorator(commits);
+            AttachParentRepositoryDecorator(commits);
+            ApplyHistoryFilterColorsToDecorators(commits);
+            var foldableBranchFullNames = BuildFoldableBranchFullNameSet(commits);
+            var notifyFoldControlChange = false;
+            if (pruneFoldState)
+                notifyFoldControlChange = _foldedBranchFullNames.RemoveWhere(name => !foldableBranchFullNames.Contains(name)) > 0;
+
+            ApplyFoldStateToDecorators(commits, foldableBranchFullNames);
+            ApplyFoldedBranchRuns(commits, foldableBranchFullNames);
+
+            return new CommitHistorySnapshot()
+            {
+                Commits = commits,
+                Graph = Models.CommitGraph.Parse(commits, _uiStates.HistoryShowFlags.HasFlag(Models.HistoryShowFlags.FirstParentOnly)),
+                ShouldNotifyFoldControlChange = notifyFoldControlChange,
+            };
+        }
+
+        private async Task ApplyCommitHistorySnapshotAsync(
+            CommitHistorySnapshot snapshot,
+            CancellationToken token,
+            bool isLoading,
+            bool isBackfilling,
+            bool finalizeNavigation)
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (token.IsCancellationRequested || _histories == null)
+                    return;
+
+                if (snapshot.ShouldNotifyFoldControlChange)
+                    NotifyFoldControlsChanged();
+
+                _histories.IsLoading = isLoading;
+                _histories.IsBackfilling = isBackfilling;
+                _histories.Commits = snapshot.Commits;
+                _histories.Graph = snapshot.Graph;
+                UpdateVisibleFoldBranchStatesFromCurrentGraph();
+                NotifyCurrentBranchVisualChanged();
+
+                BisectState = _histories.UpdateBisectInfo();
+
+                if (finalizeNavigation)
+                {
+                    if (!string.IsNullOrEmpty(_navigateToCommitDelayed))
+                        NavigateToCommit(_navigateToCommitDelayed);
 
                     _navigateToCommitDelayed = string.Empty;
-                });
-            }, token);
+                }
+            });
         }
 
         public void RefreshSubmodules()
@@ -3191,6 +3367,145 @@ namespace SourceGit.ViewModels
             return _remotes[0].Name;
         }
 
+        private List<string> BuildQuickFetchFilteredRefSpecs(string remoteName)
+        {
+            var results = new List<string>();
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            if (_uiStates == null || string.IsNullOrEmpty(remoteName))
+                return results;
+
+            foreach (var filter in _uiStates.HistoryFilters)
+            {
+                if (filter.Mode != Models.FilterMode.Included)
+                    continue;
+
+                switch (filter.Type)
+                {
+                    case Models.FilterType.LocalBranch:
+                        AddQuickFetchLocalBranchRefSpec(filter.Pattern, remoteName, seen, results);
+                        break;
+                    case Models.FilterType.LocalBranchFolder:
+                        AddQuickFetchBranchFolderRefSpecs(filter.Pattern, remoteName, true, seen, results);
+                        break;
+                    case Models.FilterType.RemoteBranch:
+                        AddQuickFetchRemoteBranchRefSpec(filter.Pattern, remoteName, seen, results);
+                        break;
+                    case Models.FilterType.RemoteBranchFolder:
+                        AddQuickFetchBranchFolderRefSpecs(filter.Pattern, remoteName, false, seen, results);
+                        break;
+                }
+            }
+
+            return results;
+        }
+
+        private void AddQuickFetchBranchFolderRefSpecs(string folderPattern, string remoteName, bool isLocalFolder, HashSet<string> seen, List<string> results)
+        {
+            if (string.IsNullOrEmpty(folderPattern))
+                return;
+
+            foreach (var branch in _branches)
+            {
+                if (branch == null || string.IsNullOrEmpty(branch.FullName) || branch.IsLocal != isLocalFolder)
+                    continue;
+
+                if (!IsBranchUnderFolder(branch.FullName, folderPattern))
+                    continue;
+
+                if (isLocalFolder)
+                    AddQuickFetchLocalBranchRefSpec(branch.FullName, remoteName, seen, results);
+                else
+                    AddQuickFetchRemoteBranchRefSpec(branch.FullName, remoteName, seen, results);
+            }
+        }
+
+        private static void AddQuickFetchLocalBranchRefSpec(string fullName, string remoteName, HashSet<string> seen, List<string> results)
+        {
+            const string prefix = "refs/heads/";
+            if (string.IsNullOrEmpty(fullName) || !fullName.StartsWith(prefix, StringComparison.Ordinal))
+                return;
+
+            var branchName = fullName.Substring(prefix.Length);
+            if (string.IsNullOrEmpty(branchName))
+                return;
+
+            var refspec = $"refs/heads/{branchName}:refs/remotes/{remoteName}/{branchName}";
+            if (seen.Add(refspec))
+                results.Add(refspec);
+        }
+
+        private static void AddQuickFetchRemoteBranchRefSpec(string fullName, string remoteName, HashSet<string> seen, List<string> results)
+        {
+            var prefix = $"refs/remotes/{remoteName}/";
+            if (string.IsNullOrEmpty(fullName) || !fullName.StartsWith(prefix, StringComparison.Ordinal))
+                return;
+
+            var branchName = fullName.Substring(prefix.Length);
+            if (string.IsNullOrEmpty(branchName))
+                return;
+
+            var refspec = $"refs/heads/{branchName}:refs/remotes/{remoteName}/{branchName}";
+            if (seen.Add(refspec))
+                results.Add(refspec);
+        }
+
+        private static bool IsBranchUnderFolder(string fullName, string folderPattern)
+        {
+            if (string.IsNullOrEmpty(fullName) || string.IsNullOrEmpty(folderPattern))
+                return false;
+
+            return fullName.Length > folderPattern.Length &&
+                fullName.StartsWith(folderPattern, StringComparison.Ordinal) &&
+                fullName[folderPattern.Length] == '/';
+        }
+
+        private void ShowFetchDurationToast(double seconds)
+        {
+            _fetchDurationToastCancellation?.Cancel();
+            _fetchDurationToastCancellation?.Dispose();
+
+            var cts = new CancellationTokenSource();
+            _fetchDurationToastCancellation = cts;
+
+            FetchDurationToastText = $"The last fetch costs {seconds:0.0} seconds";
+            FetchDurationToastOpacity = 1.0;
+            IsFetchDurationToastVisible = true;
+
+            _ = FadeFetchDurationToastAsync(cts.Token);
+        }
+
+        private async Task FadeFetchDurationToastAsync(CancellationToken token)
+        {
+            const int durationMs = 3000;
+            const int tickMs = 100;
+            var startedAt = DateTime.UtcNow;
+
+            try
+            {
+                while (true)
+                {
+                    token.ThrowIfCancellationRequested();
+
+                    var elapsed = (DateTime.UtcNow - startedAt).TotalMilliseconds;
+                    if (elapsed >= durationMs)
+                        break;
+
+                    FetchDurationToastOpacity = Math.Max(0.0, 1.0 - elapsed / durationMs);
+                    await Task.Delay(tickMs, token);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+
+            if (token.IsCancellationRequested)
+                return;
+
+            FetchDurationToastOpacity = 0.0;
+            IsFetchDurationToastVisible = false;
+        }
+
         private void RebuildPresetBranchExactColorItems()
         {
             var names = _settings?.GetPresetBranchExactNameList() ?? [];
@@ -3669,7 +3984,7 @@ namespace SourceGit.ViewModels
 
             try
             {
-                if (_settings is not { EnableAutoFetch: true } || !CanCreatePopup())
+                if (_settings is not { } || (!_settings.EnableAutoFetch && !_settings.EnableAutoSyncAll) || !CanCreatePopup())
                 {
                     _lastFetchTime = DateTime.Now;
                     return;
@@ -3692,12 +4007,30 @@ namespace SourceGit.ViewModels
                     return;
 
                 IsAutoFetching = true;
-                log = CreateLog("Auto-Fetch");
+                var selectedTargets = _settings.HasConfiguredRecursiveSubmoduleUpdateTargets
+                    ? _settings.GetRecursiveSubmoduleUpdateTargets()
+                    : null;
+                var isAutoSyncAll = _settings.EnableAutoSyncAll;
+                AutoBackgroundOperationText = isAutoSyncAll ? "Auto Sync All" : App.Text("Repository.AutoFetching");
+                log = CreateLog(isAutoSyncAll ? "Auto Sync All" : "Auto-Fetch");
 
-                if (_uiStates.FetchAllRemotes)
+                if (isAutoSyncAll)
+                {
+                    var succ = await RunPullAndUpdateSubmodulesRecursivelyAsync(log, null, selectedTargets).ConfigureAwait(false);
+                    if (succ)
+                    {
+                        _lastFetchTime = DateTime.Now;
+                        RefreshBranches();
+                        RefreshCommits(true);
+                        RefreshSubmodules();
+                        RefreshWorkingCopyChanges();
+                    }
+                }
+                else if (_uiStates.FetchAllRemotes)
                 {
                     foreach (var remote in remotes)
                         await new Commands.Fetch(FullPath, remote, false, _settings.AutoFetchPrune).Use(log).RunAsync();
+                    MarkFetched();
                 }
                 else
                 {
@@ -3706,14 +4039,16 @@ namespace SourceGit.ViewModels
                         remotes[0];
 
                     await new Commands.Fetch(FullPath, remote, false, _settings.AutoFetchPrune).Use(log).RunAsync();
+                    MarkFetched();
                 }
-
-                _lastFetchTime = DateTime.Now;
-                IsAutoFetching = false;
             }
             catch
             {
                 // Ignore all exceptions.
+            }
+            finally
+            {
+                IsAutoFetching = false;
             }
 
             log?.Complete();
@@ -3721,7 +4056,7 @@ namespace SourceGit.ViewModels
 
         public void EnsureAutoFetchTimerState()
         {
-            if (_settings is not { EnableAutoFetch: true })
+            if (_settings is not { } || (!_settings.EnableAutoFetch && !_settings.EnableAutoSyncAll))
             {
                 _autoFetchTimer?.Dispose();
                 _autoFetchTimer = null;
@@ -3756,6 +4091,12 @@ namespace SourceGit.ViewModels
         private bool _isShowingAllBranches = false;
         private bool _shouldShowBranchPresetEmptyState = false;
         private bool _isPresetBranchFilterEditorExpanded = false;
+        private string _autoBackgroundOperationText = "Auto-Fetch";
+        private bool _isQuickFetching = false;
+        private bool _isFetchDurationToastVisible = false;
+        private double _fetchDurationToastOpacity = 1.0;
+        private string _fetchDurationToastText = string.Empty;
+        private CancellationTokenSource _fetchDurationToastCancellation = null;
 
         private bool _isSearchingCommits = false;
         private SearchCommitContext _searchCommitContext = null;

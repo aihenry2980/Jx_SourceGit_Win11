@@ -72,31 +72,47 @@
                    Foreground="{DynamicResource Brush.FG2}"
                    Text="Selection is remembered for this repository."/>
 
-        <ScrollViewer Margin="0,8,0,0"
-                      Height="250"
-                      MaxHeight="250"
-                      VerticalScrollBarVisibility="Auto"
-                      IsVisible="{Binding HasSubmodulesToSelect}">
-          <ItemsControl ItemsSource="{Binding SubmoduleSelections}">
-            <ItemsControl.ItemsPanel>
-              <ItemsPanelTemplate>
-                <UniformGrid Columns="2"/>
-              </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-              <DataTemplate>
-                <CheckBox Margin="0,0,16,0"
-                          MinHeight="24"
-                          Height="24"
-                          Padding="0"
-                          VerticalAlignment="Center"
-                          VerticalContentAlignment="Center"
-                          Content="{Binding Path}"
-                          IsChecked="{Binding IsSelected, Mode=TwoWay}"/>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </ScrollViewer>
+        <ListBox x:Name="SubmoduleSelectionList"
+                 Margin="0,8,0,0"
+                 Height="250"
+                 MaxHeight="250"
+                 BorderThickness="0"
+                 Background="Transparent"
+                 Classes="static_scrollbar"
+                 ItemsSource="{Binding SubmoduleSelections}"
+                 SelectedItem="{Binding SelectedSubmoduleSelection, Mode=TwoWay}"
+                 SelectionMode="Single"
+                 IsVisible="{Binding HasSubmodulesToSelect}"
+                 KeyDown="OnSubmoduleSelectionListKeyDown"
+                 ScrollViewer.AllowAutoHide="False"
+                 ScrollViewer.VerticalScrollBarVisibility="Visible"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+          <ListBox.Styles>
+            <Style Selector="ListBoxItem">
+              <Setter Property="Padding" Value="0"/>
+              <Setter Property="Margin" Value="0"/>
+              <Setter Property="MinHeight" Value="18"/>
+            </Style>
+          </ListBox.Styles>
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate>
+              <UniformGrid Columns="2"/>
+            </ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <CheckBox Margin="0,0,12,0"
+                        MinHeight="18"
+                        Height="18"
+                        Padding="0"
+                        Focusable="False"
+                        VerticalAlignment="Center"
+                        VerticalContentAlignment="Center"
+                        Content="{Binding Path}"
+                        IsChecked="{Binding IsSelected, Mode=TwoWay}"/>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
 
         <TextBlock Margin="0,8,0,0"
                    Foreground="{DynamicResource Brush.FG2}"

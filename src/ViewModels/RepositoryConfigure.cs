@@ -105,7 +105,37 @@ namespace SourceGit.ViewModels
         public bool EnableAutoFetch
         {
             get => _repo.Settings.EnableAutoFetch;
-            set => _repo.Settings.EnableAutoFetch = value;
+            set
+            {
+                if (_repo.Settings.EnableAutoFetch == value)
+                    return;
+
+                _repo.Settings.EnableAutoFetch = value;
+                if (value)
+                    _repo.Settings.EnableAutoSyncAll = false;
+
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(EnableAutoSyncAll));
+                OnPropertyChanged(nameof(AutoBackgroundOperationEnabled));
+            }
+        }
+
+        public bool EnableAutoSyncAll
+        {
+            get => _repo.Settings.EnableAutoSyncAll;
+            set
+            {
+                if (_repo.Settings.EnableAutoSyncAll == value)
+                    return;
+
+                _repo.Settings.EnableAutoSyncAll = value;
+                if (value)
+                    _repo.Settings.EnableAutoFetch = false;
+
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(EnableAutoFetch));
+                OnPropertyChanged(nameof(AutoBackgroundOperationEnabled));
+            }
         }
 
         public int? AutoFetchInterval
@@ -121,6 +151,8 @@ namespace SourceGit.ViewModels
                     _repo.Settings.AutoFetchInterval = interval;
             }
         }
+
+        public bool AutoBackgroundOperationEnabled => EnableAutoFetch || EnableAutoSyncAll;
 
         public bool AutoFetchPrune
         {

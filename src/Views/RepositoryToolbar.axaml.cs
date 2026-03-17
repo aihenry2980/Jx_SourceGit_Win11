@@ -177,6 +177,43 @@ namespace SourceGit.Views
             }
         }
 
+        private async void QuickFetch(object sender, TappedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+            {
+                var filtered = e.KeyModifiers.HasFlag(OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control);
+                await repo.QuickFetchAsync(filtered);
+                e.Handled = true;
+            }
+        }
+
+        private async void SuperQuickFetch(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+            {
+                await repo.QuickFetchAsync(true);
+                e.Handled = true;
+            }
+        }
+
+        private async void SuperQuickFetchByHotKey(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+            {
+                await repo.QuickFetchAsync(true);
+                e.Handled = true;
+            }
+        }
+
+        private async void QuickFetchByHotKey(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+            {
+                await repo.QuickFetchAsync();
+                e.Handled = true;
+            }
+        }
+
         private async void FetchRecursivelyWithOptionalPrune(object sender, TappedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo && repo.CanCreatePopup())

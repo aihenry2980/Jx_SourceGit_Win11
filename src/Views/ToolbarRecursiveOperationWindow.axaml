@@ -35,7 +35,8 @@
                         IsVisible="{OnPlatform True, macOS=False}"/>
     </Grid>
 
-    <v:ToolbarRecursiveOperation Grid.Row="1"
+    <v:ToolbarRecursiveOperation x:Name="OperationView"
+                                 Grid.Row="1"
                                  Margin="8,16,8,8"/>
 
     <StackPanel Grid.Row="2"

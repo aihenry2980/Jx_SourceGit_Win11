@@ -37,6 +37,12 @@ namespace SourceGit.Models
             set;
         } = false;
 
+        public bool EnableAutoSyncAll
+        {
+            get;
+            set;
+        } = false;
+
         public int AutoFetchInterval
         {
             get;

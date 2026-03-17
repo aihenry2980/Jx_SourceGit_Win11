@@ -18,6 +18,12 @@ namespace SourceGit.ViewModels
             set => SetProperty(ref _isLoading, value);
         }
 
+        public bool IsBackfilling
+        {
+            get => _isBackfilling;
+            set => SetProperty(ref _isBackfilling, value);
+        }
+
         public bool IsAuthorColumnVisible
         {
             get => _repo.UIStates.IsAuthorColumnVisibleInHistory;
@@ -551,6 +557,7 @@ namespace SourceGit.ViewModels
         private Repository _repo = null;
         private CommitDetailSharedData _commitDetailSharedData = null;
         private bool _isLoading = true;
+        private bool _isBackfilling = false;
         private List<Models.Commit> _commits = new List<Models.Commit>();
         private Models.CommitGraph _graph = null;
         private Models.Commit _selectedCommit = null;

@@ -1220,16 +1220,37 @@
       </ContentControl>
     </Grid>
 
-    <!-- Right (Auto-Fetch) -->
-    <Border Grid.Column="2" Margin="12" HorizontalAlignment="Center" VerticalAlignment="Center" Effect="drop-shadow(0 0 12 #A0000000)" IsVisible="{Binding IsAutoFetching}">
+    <!-- Right (Background Operation) -->
+    <Border Grid.Column="2" Margin="12" HorizontalAlignment="Center" VerticalAlignment="Center" Effect="drop-shadow(0 0 12 #A0000000)">
+      <Border.IsVisible>
+        <MultiBinding Converter="{x:Static BoolConverters.Or}">
+          <Binding Path="IsAutoFetching"/>
+          <Binding Path="IsQuickFetching"/>
+        </MultiBinding>
+      </Border.IsVisible>
       <Border Background="{DynamicResource Brush.Popup}" CornerRadius="6">
         <StackPanel Orientation="Vertical" Margin="16,8">
-          <TextBlock Text="{DynamicResource Text.Repository.AutoFetching}"/>
+          <TextBlock Text="{Binding AutoBackgroundOperationText}"/>
           <ProgressBar Margin="0,8,0,0"
                        HorizontalAlignment="Stretch"
-                       IsIndeterminate="{Binding IsAutoFetching}"
+                       IsIndeterminate="True"
                        Background="{DynamicResource Brush.FG2}" Foreground="{DynamicResource Brush.Accent}"
                        Minimum="0" Maximum="100"/>
+        </StackPanel>
+      </Border>
+    </Border>
+
+    <Border Grid.Column="2"
+            Margin="12"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Top"
+            Effect="drop-shadow(0 0 12 #A0000000)"
+            IsVisible="{Binding IsFetchDurationToastVisible}"
+            Opacity="{Binding FetchDurationToastOpacity}">
+      <Border Background="#FF1F2937" CornerRadius="6">
+        <StackPanel Orientation="Horizontal" Margin="16,10">
+          <Path Width="14" Height="14" Data="{StaticResource Icons.Info}" Fill="#FFFFD54F"/>
+          <TextBlock Margin="8,0,0,0" FontWeight="SemiBold" Foreground="White" Text="{Binding FetchDurationToastText}"/>
         </StackPanel>
       </Border>
     </Border>
