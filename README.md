@@ -1,3 +1,4 @@
+![Downloads](https://img.shields.io/github/downloads/aihenry2980/Jx_SourceGit_Win11/total?style=flat-square)
 # SourceGit - Opensource Git GUI client.
 
 > [!IMPORTANT]
