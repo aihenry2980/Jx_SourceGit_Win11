@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -13,9 +15,28 @@ namespace SourceGit.Views
 {
     public partial class RepositoryToolbar : UserControl
     {
+        private const double COMPACT_WIDTH_THRESHOLD = 1260;
+        private const double NARROW_WIDTH_THRESHOLD = 1160;
+
+        private ToolbarDensity _toolbarDensity = ToolbarDensity.Default;
+
         public RepositoryToolbar()
         {
             InitializeComponent();
+        }
+
+        protected override void OnSizeChanged(SizeChangedEventArgs e)
+        {
+            base.OnSizeChanged(e);
+
+            var width = e.NewSize.Width;
+            var density =
+                width < NARROW_WIDTH_THRESHOLD ? ToolbarDensity.Narrow :
+                width < COMPACT_WIDTH_THRESHOLD ? ToolbarDensity.Compact :
+                ToolbarDensity.Default;
+
+            if (density != _toolbarDensity)
+                ApplyToolbarDensity(density);
         }
 
         private void OpenWithExternalTools(object sender, RoutedEventArgs ev)
@@ -755,6 +776,60 @@ namespace SourceGit.Views
             {
                 DataContext = operation,
             });
+        }
+
+        private void ApplyToolbarDensity(ToolbarDensity density)
+        {
+            _toolbarDensity = density;
+
+            var buttonWidth = density switch
+            {
+                ToolbarDensity.Narrow => 48,
+                ToolbarDensity.Compact => 52,
+                _ => 56,
+            };
+            var primaryGap = density switch
+            {
+                ToolbarDensity.Narrow => 2,
+                ToolbarDensity.Compact => 4,
+                _ => 8,
+            };
+            var secondaryGap = density switch
+            {
+                ToolbarDensity.Narrow => 1,
+                ToolbarDensity.Compact => 2,
+                _ => 4,
+            };
+            var sideMargin = density == ToolbarDensity.Default ? 4 : 2;
+
+            LeftToolbarGroup.Margin = new Thickness(sideMargin, 0, 0, 0);
+            RightToolbarGroup.Margin = new Thickness(0, 0, sideMargin, 0);
+            UpdateToolbarButtons(LeftToolbarGroup, buttonWidth, 0);
+            UpdateToolbarButtons(CenterToolbarGroup, buttonWidth, primaryGap);
+            UpdateToolbarButtons(RightToolbarGroup, buttonWidth, secondaryGap);
+            ActionSeparator.Margin = new Thickness(primaryGap, 0, 0, 0);
+        }
+
+        private static void UpdateToolbarButtons(StackPanel panel, double buttonWidth, double gap)
+        {
+            foreach (var button in panel.Children.OfType<Button>().Where(x => x.Classes.Contains("icon_button")))
+            {
+                button.Width = buttonWidth;
+
+                var margin = button.Margin;
+                button.Margin = new Thickness(
+                    margin.Left > 0 ? gap : 0,
+                    margin.Top,
+                    margin.Right,
+                    margin.Bottom);
+            }
+        }
+
+        private enum ToolbarDensity
+        {
+            Default,
+            Compact,
+            Narrow,
         }
     }
 }

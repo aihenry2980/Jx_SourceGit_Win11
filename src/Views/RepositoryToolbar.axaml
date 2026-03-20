@@ -17,7 +17,7 @@
     </Style>
   </UserControl.Styles>
   <Grid ColumnDefinitions="*,Auto,*">
-    <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="4,0,0,0">
+    <StackPanel x:Name="LeftToolbarGroup" Grid.Column="0" Orientation="Horizontal" Margin="4,0,0,0">
       <Button x:Name="OpenWithExternalToolsButton" Classes="icon_button" Width="56" Click="OpenWithExternalTools">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
@@ -83,7 +83,7 @@
       <Button Width="0" Height="0" Click="OpenConfigure" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+C, macOS=⌘+⌥+C}"/>
     </StackPanel>
 
-    <StackPanel Grid.Column="1" Orientation="Horizontal">
+    <StackPanel x:Name="CenterToolbarGroup" Grid.Column="1" Orientation="Horizontal">
       <Button Classes="icon_button" Width="56" Click="SuperQuickFetch">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
@@ -302,7 +302,8 @@
       </Button>
       <Button Width="0" Height="0" Click="StashAllByHotKey" IsVisible="False" IsEnabled="{Binding !IsBare}" HotKey="{OnPlatform Ctrl+Alt+S, macOS=⌘+⌥+S}"/>
 
-      <Rectangle Width="1" Height="16"
+      <Rectangle x:Name="ActionSeparator"
+                 Width="1" Height="16"
                  Margin="8,0,0,0"
                  VerticalAlignment="Center"
                  Fill="{DynamicResource Brush.Border2}"/>
@@ -355,7 +356,7 @@
       <Button Width="0" Height="0" Click="Cleanup" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+X, macOS=⌘+⌥+X}"/>
     </StackPanel>
 
-    <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,4,0">
+    <StackPanel x:Name="RightToolbarGroup" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,4,0">
       <Path Width="13" Height="13" Fill="{DynamicResource Brush.FG1}" Data="{StaticResource Icons.Branch}"/>
 
       <Border Margin="6,0,0,0"

@@ -61,10 +61,10 @@
 
 	<Folder Name="/depends/">
 		<Project Path="depends/AvaloniaEdit/src/AvaloniaEdit/AvaloniaEdit.csproj">
-			<Platform Solution="*|x64" Project="x64" />
+			<Platform Solution="Release|x64" Project="x64" />
 		</Project>
 		<Project Path="depends/AvaloniaEdit/src/AvaloniaEdit.TextMate/AvaloniaEdit.TextMate.csproj">
-			<Platform Solution="*|x64" Project="x64" />
+			<Platform Solution="Release|x64" Project="x64" />
 		</Project>
 	</Folder>
 
