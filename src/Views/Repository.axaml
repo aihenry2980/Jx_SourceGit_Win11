@@ -140,8 +140,8 @@
                 </Grid>
               </ListBoxItem>
 
-              <ListBoxItem IsVisible="{Binding !IsBare}">
-                <Grid Classes="view_mode" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto">
+              <ListBoxItem IsVisible="{Binding !IsBare}" Height="46">
+                <Grid Classes="view_mode" RowDefinitions="28,18" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto">
                   <Path Grid.Column="0" Classes="icon" Data="{StaticResource Icons.Changes}"/>
                   <TextBlock Grid.Column="1" Classes="header" Text="{DynamicResource Text.WorkingCopy}"/>
                   <Border Grid.Column="2"
@@ -182,6 +182,29 @@
                           Command="{Binding DiscardAllChanges}"
                           ToolTip.Tip="{DynamicResource Text.Repository.DiscardAll}">
                     <Path Width="12" Height="12" Data="{StaticResource Icons.Undo}"/>
+                  </Button>
+
+                  <Button Grid.Row="1"
+                          Grid.Column="1"
+                          Grid.ColumnSpan="6"
+                          Padding="0"
+                          Background="Transparent"
+                          BorderThickness="0"
+                          HorizontalAlignment="Stretch"
+                          HorizontalContentAlignment="Left"
+                          Click="OnOpenRecursiveLocalChanges"
+                          ToolTip.Tip="Show parent-repository changes and changed submodules recursively">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                      <Path Width="10"
+                            Height="10"
+                            Margin="0,0,6,0"
+                            VerticalAlignment="Center"
+                            Fill="{DynamicResource Brush.FG2}"
+                            Data="{StaticResource Icons.Submodules}"/>
+                      <TextBlock FontSize="10"
+                                 Foreground="{DynamicResource Brush.FG2}"
+                                 Text="Local changes recursively"/>
+                    </StackPanel>
                   </Button>
                 </Grid>
               </ListBoxItem>

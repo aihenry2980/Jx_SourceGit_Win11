@@ -716,6 +716,7 @@ namespace SourceGit.ViewModels
         public void Open()
         {
             _settings = Models.RepositorySettings.Get(_gitCommonDir);
+            _commitHistoryMetadataCache = Models.CommitHistoryMetadataCache.Load(_gitCommonDir);
             _uiStates = Models.RepositoryUIStates.Load(GitDir);
             _foldedBranchFullNames.Clear();
             _visibleFoldableBranchesCount = 0;
@@ -785,6 +786,7 @@ namespace SourceGit.ViewModels
             Preferences.Instance.PropertyChanged -= OnPreferencesPropertyChanged;
 
             _settings = null;
+            _commitHistoryMetadataCache = null;
             _uiStates = null;
             _historyFilterMode = Models.FilterMode.None;
             _lastVisibleBranchesCount = 0;
@@ -1020,7 +1022,7 @@ namespace SourceGit.ViewModels
                 return;
             }
 
-            var refspecs = onlyFilteredBranches ? BuildQuickFetchFilteredRefSpecs(remote) : null;
+            var refspecs = onlyFilteredBranches ? await BuildQuickFetchFilteredRefSpecsAsync(remote).ConfigureAwait(false) : null;
             if (onlyFilteredBranches && (refspecs == null || refspecs.Count == 0))
             {
                 App.SendNotification(FullPath, $"Quick Fetch (Filtered) skipped because no included branch filters match remote '{remote}'.");
@@ -1950,12 +1952,52 @@ namespace SourceGit.ViewModels
 
         private async Task<CommitHistorySnapshot> QueryCommitHistorySnapshotAsync(string limits, bool pruneFoldState)
         {
-            var commitsTask = new Commands.QueryCommits(FullPath, limits).GetResultAsync();
-            var submoduleFlagsTask = new Commands.QueryCommitSubmodulePointerFlags(FullPath, limits).GetResultAsync();
-            await Task.WhenAll(commitsTask, submoduleFlagsTask).ConfigureAwait(false);
+            var commits = await new Commands.QueryCommits(FullPath, limits).GetResultAsync().ConfigureAwait(false);
+            var commitDiffStats = new Dictionary<string, Commands.CommitHistoryDiffStat>(StringComparer.Ordinal);
+            var allCached = _commitHistoryMetadataCache != null && commits.Count > 0;
 
-            var commits = commitsTask.Result;
-            var commitDiffStats = submoduleFlagsTask.Result;
+            foreach (var commit in commits)
+            {
+                if (_commitHistoryMetadataCache != null && _commitHistoryMetadataCache.TryGet(commit.SHA, out var cached))
+                {
+                    commitDiffStats[commit.SHA] = new Commands.CommitHistoryDiffStat()
+                    {
+                        ChangedFileCount = cached.ChangedFileCount,
+                        HasSubmodulePointerChange = cached.HasSubmodulePointerChange,
+                    };
+                }
+                else
+                {
+                    allCached = false;
+                }
+            }
+
+            if (!allCached)
+            {
+                commitDiffStats = await new Commands.QueryCommitSubmodulePointerFlags(FullPath, limits).GetResultAsync().ConfigureAwait(false);
+                if (_commitHistoryMetadataCache != null)
+                {
+                    var cacheUpdates = new Dictionary<string, Models.CommitHistoryMetadata>(StringComparer.Ordinal);
+                    foreach (var commit in commits)
+                    {
+                        if (commitDiffStats.TryGetValue(commit.SHA, out var stat))
+                        {
+                            cacheUpdates[commit.SHA] = new Models.CommitHistoryMetadata()
+                            {
+                                ChangedFileCount = stat.ChangedFileCount,
+                                HasSubmodulePointerChange = stat.HasSubmodulePointerChange,
+                            };
+                        }
+                        else
+                        {
+                            cacheUpdates[commit.SHA] = new Models.CommitHistoryMetadata();
+                        }
+                    }
+
+                    _commitHistoryMetadataCache.UpdateRange(cacheUpdates);
+                }
+            }
+
             foreach (var commit in commits)
             {
                 if (commitDiffStats.TryGetValue(commit.SHA, out var stat))
@@ -2532,7 +2574,7 @@ namespace SourceGit.ViewModels
                         submoduleRoot,
                         remoteName,
                         noTags,
-                    force,
+                        force,
                         prune,
                         true,
                         log,
@@ -3367,12 +3409,11 @@ namespace SourceGit.ViewModels
             return _remotes[0].Name;
         }
 
-        private List<string> BuildQuickFetchFilteredRefSpecs(string remoteName)
+        private async Task<List<string>> BuildQuickFetchFilteredRefSpecsAsync(string remoteName)
         {
-            var results = new List<string>();
-            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var branchNames = new HashSet<string>(StringComparer.Ordinal);
             if (_uiStates == null || string.IsNullOrEmpty(remoteName))
-                return results;
+                return [];
 
             foreach (var filter in _uiStates.HistoryFilters)
             {
@@ -3382,24 +3423,35 @@ namespace SourceGit.ViewModels
                 switch (filter.Type)
                 {
                     case Models.FilterType.LocalBranch:
-                        AddQuickFetchLocalBranchRefSpec(filter.Pattern, remoteName, seen, results);
+                        AddQuickFetchLocalBranchTarget(filter.Pattern, remoteName, branchNames);
                         break;
                     case Models.FilterType.LocalBranchFolder:
-                        AddQuickFetchBranchFolderRefSpecs(filter.Pattern, remoteName, true, seen, results);
+                        AddQuickFetchBranchFolderTargets(filter.Pattern, remoteName, true, branchNames);
                         break;
                     case Models.FilterType.RemoteBranch:
-                        AddQuickFetchRemoteBranchRefSpec(filter.Pattern, remoteName, seen, results);
+                        AddQuickFetchRemoteBranchTarget(filter.Pattern, remoteName, branchNames);
                         break;
                     case Models.FilterType.RemoteBranchFolder:
-                        AddQuickFetchBranchFolderRefSpecs(filter.Pattern, remoteName, false, seen, results);
+                        AddQuickFetchBranchFolderTargets(filter.Pattern, remoteName, false, branchNames);
                         break;
                 }
+            }
+
+            var results = new List<string>();
+            if (branchNames.Count == 0)
+                return results;
+
+            var remote = new Commands.Remote(FullPath);
+            foreach (var branchName in branchNames)
+            {
+                if (await remote.HasBranchAsync(remoteName, branchName).ConfigureAwait(false))
+                    results.Add($"refs/heads/{branchName}:refs/remotes/{remoteName}/{branchName}");
             }
 
             return results;
         }
 
-        private void AddQuickFetchBranchFolderRefSpecs(string folderPattern, string remoteName, bool isLocalFolder, HashSet<string> seen, List<string> results)
+        private void AddQuickFetchBranchFolderTargets(string folderPattern, string remoteName, bool isLocalFolder, HashSet<string> branchNames)
         {
             if (string.IsNullOrEmpty(folderPattern))
                 return;
@@ -3413,28 +3465,50 @@ namespace SourceGit.ViewModels
                     continue;
 
                 if (isLocalFolder)
-                    AddQuickFetchLocalBranchRefSpec(branch.FullName, remoteName, seen, results);
+                    AddQuickFetchLocalBranchTarget(branch, remoteName, branchNames);
                 else
-                    AddQuickFetchRemoteBranchRefSpec(branch.FullName, remoteName, seen, results);
+                    AddQuickFetchRemoteBranchTarget(branch.FullName, remoteName, branchNames);
             }
         }
 
-        private static void AddQuickFetchLocalBranchRefSpec(string fullName, string remoteName, HashSet<string> seen, List<string> results)
+        private void AddQuickFetchLocalBranchTarget(string fullName, string remoteName, HashSet<string> branchNames)
         {
             const string prefix = "refs/heads/";
             if (string.IsNullOrEmpty(fullName) || !fullName.StartsWith(prefix, StringComparison.Ordinal))
                 return;
 
-            var branchName = fullName.Substring(prefix.Length);
-            if (string.IsNullOrEmpty(branchName))
-                return;
-
-            var refspec = $"refs/heads/{branchName}:refs/remotes/{remoteName}/{branchName}";
-            if (seen.Add(refspec))
-                results.Add(refspec);
+            var branch = _branches.Find(x => x.IsLocal && x.FullName.Equals(fullName, StringComparison.Ordinal));
+            AddQuickFetchLocalBranchTarget(branch, remoteName, branchNames);
         }
 
-        private static void AddQuickFetchRemoteBranchRefSpec(string fullName, string remoteName, HashSet<string> seen, List<string> results)
+        private void AddQuickFetchLocalBranchTarget(Models.Branch branch, string remoteName, HashSet<string> branchNames)
+        {
+            if (branch == null || string.IsNullOrEmpty(branch.Name))
+                return;
+
+            var remoteBranchName = string.Empty;
+            if (!string.IsNullOrEmpty(branch.Upstream) &&
+                branch.Upstream.StartsWith($"refs/remotes/{remoteName}/", StringComparison.Ordinal))
+            {
+                remoteBranchName = branch.Upstream.Substring($"refs/remotes/{remoteName}/".Length);
+            }
+            else
+            {
+                var sameNameRemote = _branches.Find(x =>
+                    !x.IsLocal &&
+                    x.Remote == remoteName &&
+                    x.Name.Equals(branch.Name, StringComparison.Ordinal));
+                if (sameNameRemote != null)
+                    remoteBranchName = sameNameRemote.Name;
+            }
+
+            if (string.IsNullOrEmpty(remoteBranchName))
+                return;
+
+            branchNames.Add(remoteBranchName);
+        }
+
+        private static void AddQuickFetchRemoteBranchTarget(string fullName, string remoteName, HashSet<string> branchNames)
         {
             var prefix = $"refs/remotes/{remoteName}/";
             if (string.IsNullOrEmpty(fullName) || !fullName.StartsWith(prefix, StringComparison.Ordinal))
@@ -3444,9 +3518,7 @@ namespace SourceGit.ViewModels
             if (string.IsNullOrEmpty(branchName))
                 return;
 
-            var refspec = $"refs/heads/{branchName}:refs/remotes/{remoteName}/{branchName}";
-            if (seen.Add(refspec))
-                results.Add(refspec);
+            branchNames.Add(branchName);
         }
 
         private static bool IsBranchUnderFolder(string fullName, string folderPattern)
@@ -4072,6 +4144,7 @@ namespace SourceGit.ViewModels
 
         private readonly string _gitCommonDir = null;
         private Models.RepositorySettings _settings = null;
+        private Models.CommitHistoryMetadataCache _commitHistoryMetadataCache = null;
         private Models.RepositoryUIStates _uiStates = null;
         private Models.FilterMode _historyFilterMode = Models.FilterMode.None;
         private bool _hasAllowedSignersFile = false;

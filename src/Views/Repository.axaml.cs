@@ -69,6 +69,14 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
+        private void OnOpenRecursiveLocalChanges(object _, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+                App.ShowWindow(new ViewModels.RecursiveLocalChanges(repo));
+
+            e.Handled = true;
+        }
+
         private void OnLocalBranchTreeSelectionChanged(object _1, RoutedEventArgs _2)
         {
             RemoteBranchTree.UnselectAll();

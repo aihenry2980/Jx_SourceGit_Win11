@@ -81,6 +81,7 @@ namespace SourceGit
     [JsonSerializable(typeof(Models.JetBrainsState))]
     [JsonSerializable(typeof(Models.ThemeOverrides))]
     [JsonSerializable(typeof(Models.Version))]
+    [JsonSerializable(typeof(Models.CommitHistoryMetadataCacheData))]
     [JsonSerializable(typeof(Models.RepositorySettings))]
     [JsonSerializable(typeof(Models.RepositoryUIStates))]
     [JsonSerializable(typeof(List<Models.ConventionalCommitType>))]
