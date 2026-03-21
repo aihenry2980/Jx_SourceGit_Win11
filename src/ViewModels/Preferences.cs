@@ -198,6 +198,12 @@ namespace SourceGit.ViewModels
             set => SetProperty(ref _presetBranchExactNameColors, value);
         }
 
+        public string AutoRevertPullConflictExtensions
+        {
+            get => _autoRevertPullConflictExtensions;
+            set => SetProperty(ref _autoRevertPullConflictExtensions, value?.ReplaceLineEndings("\n") ?? string.Empty);
+        }
+
         public int MaxHistoryCommits
         {
             get => _maxHistoryCommits;
@@ -738,6 +744,38 @@ namespace SourceGit.ViewModels
             return colors.GetValueOrDefault(exactName, PRESET_BRANCH_EXACT_DEFAULT_COLOR);
         }
 
+        public List<string> GetAutoRevertPullConflictExtensions()
+        {
+            var parsed = ParsePresetBranchRules(_autoRevertPullConflictExtensions);
+            var outs = new List<string>();
+            var dedupe = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var rule in parsed)
+            {
+                var normalized = NormalizeFileExtension(rule);
+                if (string.IsNullOrEmpty(normalized))
+                    continue;
+
+                if (dedupe.Add(normalized))
+                    outs.Add(normalized);
+            }
+
+            return outs;
+        }
+
+        public bool ShouldAutoRevertPullConflictFile(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return false;
+
+            var ext = NormalizeFileExtension(Path.GetExtension(path));
+            if (string.IsNullOrEmpty(ext))
+                return false;
+
+            var configured = GetAutoRevertPullConflictExtensions();
+            return configured.Exists(one => one.Equals(ext, StringComparison.OrdinalIgnoreCase));
+        }
+
         public bool SetPresetBranchExactNameColor(string exactName, uint color)
         {
             if (string.IsNullOrWhiteSpace(exactName))
@@ -834,6 +872,7 @@ namespace SourceGit.ViewModels
         private void Normalize()
         {
             _maxHistoryCommits = Math.Clamp(_maxHistoryCommits, MIN_HISTORY_COMMITS, MAX_HISTORY_COMMITS);
+            _autoRevertPullConflictExtensions ??= DEFAULT_AUTO_REVERT_PULL_CONFLICT_EXTENSIONS;
         }
 
         private static List<string> ParsePresetBranchRules(string raw)
@@ -885,6 +924,18 @@ namespace SourceGit.ViewModels
             }
 
             return parsed;
+        }
+
+        private static string NormalizeFileExtension(string raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+                return string.Empty;
+
+            var ext = raw.Trim().ToLowerInvariant();
+            if (!ext.StartsWith(".", StringComparison.Ordinal))
+                ext = "." + ext;
+
+            return ext.Length > 1 ? ext : string.Empty;
         }
 
         private static string SerializePresetBranchRuleColors(Dictionary<string, uint> colors)
@@ -1022,6 +1073,7 @@ namespace SourceGit.ViewModels
         private string _presetBranchExactNames = string.Empty;
         private string _presetBranchContainsPatterns = string.Empty;
         private string _presetBranchExactNameColors = string.Empty;
+        private string _autoRevertPullConflictExtensions = DEFAULT_AUTO_REVERT_PULL_CONFLICT_EXTENSIONS;
 
         private bool _check4UpdatesOnStartup = true;
         private double _lastCheckUpdateTime = 0;
@@ -1050,5 +1102,61 @@ namespace SourceGit.ViewModels
         private uint _statisticsSampleColor = 0xFF00FF00;
 
         public const uint PRESET_BRANCH_EXACT_DEFAULT_COLOR = 0xFF10893E;
+        public const string DEFAULT_AUTO_REVERT_PULL_CONFLICT_EXTENSIONS =
+            ".accdb\n" +
+            ".accde\n" +
+            ".accdr\n" +
+            ".accdt\n" +
+            ".doc\n" +
+            ".docm\n" +
+            ".docx\n" +
+            ".dot\n" +
+            ".dotm\n" +
+            ".dotx\n" +
+            ".mda\n" +
+            ".mdb\n" +
+            ".mde\n" +
+            ".mdw\n" +
+            ".mpp\n" +
+            ".mpt\n" +
+            ".mpx\n" +
+            ".msg\n" +
+            ".one\n" +
+            ".oft\n" +
+            ".ost\n" +
+            ".ppam\n" +
+            ".pot\n" +
+            ".potm\n" +
+            ".potx\n" +
+            ".pps\n" +
+            ".ppsm\n" +
+            ".ppsx\n" +
+            ".ppt\n" +
+            ".pptm\n" +
+            ".pptx\n" +
+            ".pst\n" +
+            ".pub\n" +
+            ".sldm\n" +
+            ".sldx\n" +
+            ".thmx\n" +
+            ".vsd\n" +
+            ".vsdm\n" +
+            ".vsdx\n" +
+            ".vss\n" +
+            ".vssm\n" +
+            ".vssx\n" +
+            ".vst\n" +
+            ".vstm\n" +
+            ".vstx\n" +
+            ".wbk\n" +
+            ".xla\n" +
+            ".xlam\n" +
+            ".xls\n" +
+            ".xlsb\n" +
+            ".xlsm\n" +
+            ".xlsx\n" +
+            ".xlt\n" +
+            ".xltm\n" +
+            ".xltx";
     }
 }

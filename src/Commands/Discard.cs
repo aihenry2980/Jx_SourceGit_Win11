@@ -90,5 +90,30 @@ namespace SourceGit.Commands
                 File.Delete(pathSpecFile);
             }
         }
+
+        public static async Task RestoreToHeadAsync(string repo, IEnumerable<string> paths, Models.ICommandLog log)
+        {
+            var restores = new List<string>();
+            var dedupe = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var path in paths)
+            {
+                if (!string.IsNullOrWhiteSpace(path) && dedupe.Add(path))
+                    restores.Add(path);
+            }
+
+            if (restores.Count == 0)
+                return;
+
+            var pathSpecFile = Path.GetTempFileName();
+            try
+            {
+                await File.WriteAllLinesAsync(pathSpecFile, restores).ConfigureAwait(false);
+                await new Restore(repo, pathSpecFile, "HEAD", true, true, false).Use(log).ExecAsync().ConfigureAwait(false);
+            }
+            finally
+            {
+                File.Delete(pathSpecFile);
+            }
+        }
     }
 }

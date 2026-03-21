@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Threading;
 
@@ -152,14 +153,7 @@ namespace SourceGit.ViewModels
                 string.Empty :
                 _selectedBranch.Name;
 
-            bool rs = await new Commands.Pull(
-                _repo.FullPath,
-                _selectedRemote.Name,
-                branchName,
-                UseRebase)
-            {
-                CancellationToken = cancellationToken,
-            }.Use(log).RunAsync();
+            var rs = await RunPullWithAutoRevertAsync(branchName, log, cancellationToken);
             if (!rs)
                 return false;
 
@@ -170,12 +164,139 @@ namespace SourceGit.ViewModels
                 await _repo.AutoUpdateSubmodulesAsync(log);
 
             if (needPopStash)
-                await new Commands.Stash(_repo.FullPath)
+            {
+                var stash = new Commands.Stash(_repo.FullPath)
                 {
                     CancellationToken = cancellationToken,
-                }.Use(log).PopAsync("stash@{0}");
+                }.Use(log);
+                var popped = await stash.PopAsync("stash@{0}");
+                if (!popped && !await TryAutoResolveStashPopConflictsAsync(stash, log))
+                    return false;
+            }
 
             return true;
+        }
+
+        private async Task<bool> RunPullWithAutoRevertAsync(string branchName, Models.ICommandLog log, CancellationToken cancellationToken)
+        {
+            var cmd = new Commands.Pull(
+                _repo.FullPath,
+                _selectedRemote.Name,
+                branchName,
+                UseRebase)
+            {
+                CancellationToken = cancellationToken,
+            }.Use(log);
+            var result = await cmd.RunWithResultAsync();
+            if (result.IsSuccess)
+                return true;
+
+            if (await TryAutoRevertPullConflictedFilesAndRetryAsync(branchName, log, cancellationToken, result))
+                return true;
+
+            RaiseCommandFailure(result);
+            return false;
+        }
+
+        private async Task<bool> TryAutoRevertPullConflictedFilesAndRetryAsync(
+            string branchName,
+            Models.ICommandLog log,
+            CancellationToken cancellationToken,
+            Commands.Command.Result failed)
+        {
+            var conflictedPaths = ExtractOverwrittenPaths(failed);
+            if (conflictedPaths.Count == 0)
+                return false;
+
+            var changes = await new Commands.QueryLocalChanges(_repo.FullPath).GetResultAsync();
+            var matched = changes.FindAll(change =>
+                conflictedPaths.Contains(change.Path) &&
+                Preferences.Instance.ShouldAutoRevertPullConflictFile(change.Path));
+            if (matched.Count == 0)
+                return false;
+
+            log.AppendLine($"Auto-reverting {matched.Count} configured pull-conflict file(s) and retrying pull.");
+            await Commands.Discard.ChangesAsync(_repo.FullPath, matched, log);
+
+            var retry = new Commands.Pull(
+                _repo.FullPath,
+                _selectedRemote.Name,
+                branchName,
+                UseRebase)
+            {
+                CancellationToken = cancellationToken,
+            }.Use(log);
+            var retried = await retry.RunWithResultAsync();
+            if (!retried.IsSuccess)
+            {
+                RaiseCommandFailure(retried);
+                return false;
+            }
+
+            App.SendNotification(_repo.FullPath, $"Auto-reverted {matched.Count} configured pull-conflict file(s) and retried pull.");
+            return true;
+        }
+
+        private async Task<bool> TryAutoResolveStashPopConflictsAsync(Commands.Stash stash, Models.ICommandLog log)
+        {
+            var changes = await new Commands.QueryLocalChanges(_repo.FullPath).GetResultAsync();
+            var conflicted = changes.FindAll(change => change.IsConflicted);
+            if (conflicted.Count == 0)
+                return false;
+
+            var matched = conflicted.FindAll(change => Preferences.Instance.ShouldAutoRevertPullConflictFile(change.Path));
+            if (matched.Count == 0 || matched.Count != conflicted.Count)
+                return false;
+
+            log.AppendLine($"Auto-reverting {matched.Count} configured stash-pop conflict file(s) to keep the pulled version.");
+            await Commands.Discard.RestoreToHeadAsync(_repo.FullPath, matched.Select(x => x.Path), log);
+            await stash.DropAsync("stash@{0}");
+            App.SendNotification(_repo.FullPath, $"Auto-reverted {matched.Count} configured stash-pop conflict file(s).");
+            return true;
+        }
+
+        private static HashSet<string> ExtractOverwrittenPaths(Commands.Command.Result result)
+        {
+            var outs = new HashSet<string>(System.StringComparer.Ordinal);
+            var lines = (result.StdErr + "\n" + result.StdOut).Replace("\r\n", "\n").Split('\n');
+            var collecting = false;
+
+            foreach (var raw in lines)
+            {
+                var line = raw.TrimEnd();
+                if (string.IsNullOrWhiteSpace(line))
+                {
+                    collecting = false;
+                    continue;
+                }
+
+                var trimmed = line.TrimStart();
+                if (trimmed.StartsWith("Your local changes to the following files would be overwritten by ", System.StringComparison.Ordinal) ||
+                    trimmed.StartsWith("The following untracked working tree files would be overwritten by ", System.StringComparison.Ordinal))
+                {
+                    collecting = true;
+                    continue;
+                }
+
+                if (!collecting)
+                    continue;
+
+                if (raw.Length > 0 && char.IsWhiteSpace(raw[0]))
+                {
+                    outs.Add(trimmed);
+                    continue;
+                }
+
+                collecting = false;
+            }
+
+            return outs;
+        }
+
+        private void RaiseCommandFailure(Commands.Command.Result result)
+        {
+            var message = (result.StdErr + "\n" + result.StdOut).Trim();
+            App.RaiseException(_repo.FullPath, string.IsNullOrEmpty(message) ? "Git pull failed." : message);
         }
 
         private void PostRemoteSelected()

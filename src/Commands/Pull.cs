@@ -23,10 +23,37 @@ namespace SourceGit.Commands
 
         public async Task<bool> RunAsync()
         {
+            return (await RunWithResultAsync().ConfigureAwait(false)).IsSuccess;
+        }
+
+        public async Task<Result> RunWithResultAsync()
+        {
             SSHKey = await new Config(WorkingDirectory).GetAsync($"remote.{_remote}.sshkey").ConfigureAwait(false);
-            return await ExecAsync().ConfigureAwait(false);
+
+            Log?.AppendLine($"$ git {Args}\n");
+            var result = await ReadToEndAsync().ConfigureAwait(false);
+
+            AppendOutput(result.StdOut);
+            AppendOutput(result.StdErr);
+            Log?.AppendLine(string.Empty);
+
+            return result;
         }
 
         private readonly string _remote;
+
+        private void AppendOutput(string content)
+        {
+            if (string.IsNullOrEmpty(content))
+                return;
+
+            var normalized = content.Replace("\r\n", "\n");
+            var lines = normalized.Split('\n');
+            foreach (var line in lines)
+            {
+                if (!string.IsNullOrEmpty(line))
+                    Log?.AppendLine(line);
+            }
+        }
     }
 }
