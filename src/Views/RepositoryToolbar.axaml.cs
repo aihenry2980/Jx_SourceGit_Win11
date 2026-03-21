@@ -162,6 +162,27 @@ namespace SourceGit.Views
             OpenWithExternalTools(OpenWithExternalToolsButton, e);
         }
 
+        private void OnLogsContextRequested(object sender, ContextRequestedEventArgs e)
+        {
+            if (sender is Control control)
+                OpenLogsContextMenu(control);
+
+            e.Handled = true;
+        }
+
+        private void OnLogsPointerPressed(object sender, PointerPressedEventArgs e)
+        {
+            if (sender is not Control control)
+                return;
+
+            var point = e.GetCurrentPoint(control);
+            if (!point.Properties.IsRightButtonPressed)
+                return;
+
+            OpenLogsContextMenu(control);
+            e.Handled = true;
+        }
+
         private async void OpenStatistics(object _, RoutedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo)
@@ -718,6 +739,37 @@ namespace SourceGit.Views
             OpenCustomActionMenu(OpenCustomActionMenuButton, e);
         }
 
+        private void OpenLogsContextMenu(Control control)
+        {
+            if (DataContext is not ViewModels.Repository repo)
+                return;
+
+            var menu = new ContextMenu();
+            menu.Placement = PlacementMode.BottomEdgeAlignedLeft;
+
+            var logs = new MenuItem();
+            logs.Header = App.Text("Repository.ViewLogs");
+            logs.Icon = App.CreateMenuIcon("Icons.Logs");
+            logs.Click += async (_, ev) =>
+            {
+                await App.ShowDialog(new ViewModels.ViewLogs(repo));
+                ev.Handled = true;
+            };
+
+            var profiler = new MenuItem();
+            profiler.Header = "Memory Profile";
+            profiler.Icon = App.CreateMenuIcon("Icons.Statistics");
+            profiler.Click += (_, ev) =>
+            {
+                App.ShowWindow(new ViewModels.MemoryProfiler());
+                ev.Handled = true;
+            };
+
+            menu.Items.Add(logs);
+            menu.Items.Add(profiler);
+            menu.Open(control);
+        }
+
         private async void OpenGitLogs(object sender, RoutedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo)
@@ -725,6 +777,12 @@ namespace SourceGit.Views
                 await App.ShowDialog(new ViewModels.ViewLogs(repo));
                 e.Handled = true;
             }
+        }
+
+        private void OpenMemoryProfilerByHotKey(object sender, RoutedEventArgs e)
+        {
+            App.ShowWindow(new ViewModels.MemoryProfiler());
+            e.Handled = true;
         }
 
         private void CreateNewBranchByHotKey(object sender, RoutedEventArgs e)

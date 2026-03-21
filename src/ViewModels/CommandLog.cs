@@ -49,6 +49,8 @@ namespace SourceGit.ViewModels
             }
         }
 
+        public int EstimatedContentLength => IsComplete ? _content?.Length ?? 0 : _builder?.Length ?? 0;
+
         public CommandLog(string name)
         {
             Name = name;

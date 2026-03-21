@@ -59,6 +59,8 @@ namespace SourceGit.ViewModels
             private set => SetProperty(ref _results, value);
         }
 
+        public int CachedWorktreeFileCount => _worktreeFiles?.Count ?? 0;
+
         public Models.Commit Selected
         {
             get => _selected;

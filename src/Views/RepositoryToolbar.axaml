@@ -34,7 +34,7 @@
       </Button>
       <Button Width="0" Height="0" Click="OpenWithExternalToolsByHotKey" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+O, macOS=⌘+⌥+O}"/>
 
-      <Button Classes="icon_button" Width="56" Click="OpenGitLogs">
+      <Button x:Name="LogsButton" Classes="icon_button" Width="56" Click="OpenGitLogs" ContextRequested="OnLogsContextRequested" PointerPressed="OnLogsPointerPressed">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="View SourceGit command logs and operation history for this repository." TextWrapping="Wrap" MaxWidth="420"/>
@@ -50,6 +50,7 @@
       </Button>
       <Button Width="0" Height="0" Click="OpenGitLogs" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+L, macOS=⌘+⌥+L}"/>
 
+      <Button Width="0" Height="0" Click="OpenMemoryProfilerByHotKey" IsVisible="False" HotKey="Ctrl+Alt+M"/>
       <Button Classes="icon_button" Width="56" Click="OpenStatistics">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">

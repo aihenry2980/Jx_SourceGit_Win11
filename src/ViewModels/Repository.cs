@@ -17,7 +17,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace SourceGit.ViewModels
 {
-    public class Repository : ObservableObject, Models.IRepository
+    public partial class Repository : ObservableObject, Models.IRepository
     {
         private const int MAX_LOGS = 100;
 
