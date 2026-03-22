@@ -15,9 +15,13 @@ namespace SourceGit.Views
             public Geometry Icon { get; set; } = null;
             public FormattedText Label { get; set; } = null;
             public FormattedText FoldLabel { get; set; } = null;
+            public string RawLabel { get; set; } = string.Empty;
+            public Typeface LabelTypeface { get; set; } = new Typeface(FontFamily.Default);
+            public double LabelFontSize { get; set; } = 0;
             public IBrush Brush { get; set; } = null;
             public IBrush BorderBrush { get; set; } = null;
             public IBrush IconBrush { get; set; } = null;
+            public IBrush LabelBrush { get; set; } = null;
             public IBrush FoldButtonBackground { get; set; } = null;
             public IBrush FoldButtonForeground { get; set; } = null;
             public bool IsHead { get; set; } = false;
@@ -92,6 +96,15 @@ namespace SourceGit.Views
             set => SetValue(ShowTagsProperty, value);
         }
 
+        public static readonly StyledProperty<string> HighlightTextProperty =
+            AvaloniaProperty.Register<CommitRefsPresenter, string>(nameof(HighlightText), string.Empty);
+
+        public string HighlightText
+        {
+            get => GetValue(HighlightTextProperty);
+            set => SetValue(HighlightTextProperty, value);
+        }
+
         static CommitRefsPresenter()
         {
             AffectsMeasure<CommitRefsPresenter>(
@@ -100,7 +113,8 @@ namespace SourceGit.Views
                 ForegroundProperty,
                 UseGraphColorProperty,
                 BackgroundProperty,
-                ShowTagsProperty);
+                ShowTagsProperty,
+                HighlightTextProperty);
         }
 
         public Models.Decorator DecoratorAt(Point point)
@@ -158,6 +172,7 @@ namespace SourceGit.Views
                             context.DrawRectangle(item.Brush, null, entireRect);
                     }
 
+                    DrawLabelHighlights(context, item, x + 16, y + 8.0 - item.Label.Height * 0.5);
                     context.DrawText(item.Label, new Point(x + 16, y + 8.0 - item.Label.Height * 0.5));
                 }
                 else
@@ -178,6 +193,7 @@ namespace SourceGit.Views
                         context.DrawLine(new Pen(item.Brush), new Point(x + 16, y), new Point(x + 16, y + 16));
                     }
 
+                    DrawLabelHighlights(context, item, x + 20, y + 8.0 - item.Label.Height * 0.5);
                     context.DrawText(item.Label, new Point(x + 20, y + 8.0 - item.Label.Height * 0.5));
                 }
 
@@ -266,8 +282,12 @@ namespace SourceGit.Views
                     var item = new RenderItem()
                     {
                         Label = label,
+                        RawLabel = decorator.Name,
+                        LabelTypeface = labelTypeface,
+                        LabelFontSize = labelSizeForItem,
                         Brush = normalBG,
                         BorderBrush = normalBG,
+                        LabelBrush = labelBrush,
                         IconBrush = isCurrentCommitHead
                             ? s_headTagForegroundBrush
                             : isSuperProjectPointer
@@ -374,6 +394,58 @@ namespace SourceGit.Views
             return new Size(0, 0);
         }
 
+        private void DrawLabelHighlights(DrawingContext context, RenderItem item, double x, double y)
+        {
+            var query = HighlightText;
+            if (string.IsNullOrWhiteSpace(query) || string.IsNullOrEmpty(item.RawLabel))
+                return;
+
+            var start = 0;
+            while (true)
+            {
+                var found = item.RawLabel.IndexOf(query, start, StringComparison.OrdinalIgnoreCase);
+                if (found < 0)
+                    break;
+
+                var prefixWidth = 0.0;
+                if (found > 0)
+                {
+                    var prefix = new FormattedText(
+                        item.RawLabel.Substring(0, found),
+                        CultureInfo.CurrentCulture,
+                        FlowDirection.LeftToRight,
+                        item.LabelTypeface,
+                        item.LabelFontSize,
+                        item.LabelBrush);
+                    prefixWidth = prefix.WidthIncludingTrailingWhitespace;
+                }
+
+                var matchLen = Math.Min(query.Length, item.RawLabel.Length - found);
+                var match = new FormattedText(
+                    item.RawLabel.Substring(found, matchLen),
+                    CultureInfo.CurrentCulture,
+                    FlowDirection.LeftToRight,
+                    item.LabelTypeface,
+                    item.LabelFontSize,
+                    item.LabelBrush);
+
+                var rect = new RoundedRect(
+                    new Rect(x + prefixWidth - 1, y, match.WidthIncludingTrailingWhitespace + 2, item.Label.Height),
+                    new CornerRadius(3));
+                context.DrawRectangle(s_highlightBackground, null, rect);
+
+                var highlightText = new FormattedText(
+                    item.RawLabel.Substring(found, matchLen),
+                    CultureInfo.CurrentCulture,
+                    FlowDirection.LeftToRight,
+                    item.LabelTypeface,
+                    item.LabelFontSize,
+                    s_highlightForeground);
+                context.DrawText(highlightText, new Point(x + prefixWidth, y));
+                start = found + matchLen;
+            }
+        }
+
         private bool TryGetItemAtPoint(Point point, out RenderItem found, out Rect foldRect)
         {
             found = null;
@@ -436,5 +508,7 @@ namespace SourceGit.Views
         private static readonly IBrush s_parentRepositoryBackgroundBrush = new SolidColorBrush(Color.Parse("#1B5E20"));
         private static readonly IBrush s_parentRepositoryBorderBrush = new SolidColorBrush(Color.Parse("#0F3A12"));
         private static readonly IBrush s_parentRepositoryForegroundBrush = new SolidColorBrush(Color.Parse("#FFEB3B"));
+        private static readonly IBrush s_highlightBackground = new SolidColorBrush(Color.Parse("#E6F2C200"));
+        private static readonly IBrush s_highlightForeground = Brushes.Black;
     }
 }

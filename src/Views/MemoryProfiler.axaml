@@ -5,6 +5,7 @@
                     xmlns:m="using:SourceGit.Models"
                     xmlns:vm="using:SourceGit.ViewModels"
                     xmlns:v="using:SourceGit.Views"
+                    xmlns:lvc="using:LiveChartsCore.SkiaSharpView.Avalonia"
                     mc:Ignorable="d" d:DesignWidth="980" d:DesignHeight="640"
                     x:Class="SourceGit.Views.MemoryProfiler"
                     x:DataType="vm:MemoryProfiler"
@@ -38,52 +39,114 @@
 
     <Border Grid.Row="1"
             Margin="8,8,8,0"
-            Padding="10"
+            Padding="8"
             Background="{DynamicResource Brush.Contents}"
             BorderBrush="{DynamicResource Brush.Border2}"
             BorderThickness="1"
             CornerRadius="6">
-      <StackPanel Spacing="8">
-        <Grid ColumnDefinitions="*,*,*,*">
-          <Border Grid.Column="0" Margin="0,0,8,0" Padding="8" Background="{DynamicResource Brush.BG1}" CornerRadius="4">
-            <StackPanel Spacing="2">
-              <TextBlock Classes="small" Foreground="{DynamicResource Brush.FG2}" Text="Process private"/>
-              <TextBlock Classes="bold" Text="{Binding ProcessPrivateMemory}"/>
+      <Grid ColumnDefinitions="*,4,260">
+        <StackPanel Grid.Column="0" Spacing="6">
+          <Grid ColumnDefinitions="*,*,*,*">
+            <Border Grid.Column="0" Margin="0,0,6,0" Padding="6" Background="{DynamicResource Brush.BG1}" CornerRadius="4">
+              <StackPanel Spacing="2">
+                <TextBlock Classes="small" Foreground="{DynamicResource Brush.FG2}" Text="Process private"/>
+                <TextBlock Classes="bold" Text="{Binding ProcessPrivateMemory}"/>
+              </StackPanel>
+            </Border>
+
+            <Border Grid.Column="1" Margin="0,0,6,0" Padding="6" Background="{DynamicResource Brush.BG1}" CornerRadius="4">
+              <StackPanel Spacing="2">
+                <TextBlock Classes="small" Foreground="{DynamicResource Brush.FG2}" Text="Managed heap"/>
+                <TextBlock Classes="bold" Text="{Binding ManagedHeapMemory}"/>
+              </StackPanel>
+            </Border>
+
+            <Border Grid.Column="2" Margin="0,0,6,0" Padding="6" Background="{DynamicResource Brush.BG1}" CornerRadius="4">
+              <StackPanel Spacing="2">
+                <TextBlock Classes="small" Foreground="{DynamicResource Brush.FG2}" Text="Tracked repos"/>
+                <TextBlock Classes="bold" Text="{Binding TrackedRepositoryMemory}"/>
+              </StackPanel>
+            </Border>
+
+            <Border Grid.Column="3" Padding="6" Background="{DynamicResource Brush.BG1}" CornerRadius="4">
+              <StackPanel Spacing="2">
+                <TextBlock Classes="small" Foreground="{DynamicResource Brush.FG2}" Text="Shared caches"/>
+                <TextBlock Classes="bold" Text="{Binding TrackedSharedMemory}"/>
+              </StackPanel>
+            </Border>
+          </Grid>
+
+          <Grid ColumnDefinitions="Auto,*">
+            <TextBlock Classes="small" Foreground="{DynamicResource Brush.FG2}" Text="Snapshot:"/>
+            <TextBlock Grid.Column="1" Margin="6,0,0,0" Classes="small" Foreground="{DynamicResource Brush.FG2}" Text="{Binding SnapshotTime}"/>
+          </Grid>
+
+          <TextBlock Classes="small"
+                     Foreground="{DynamicResource Brush.FG2}"
+                     Text="{Binding EstimateNote}"
+                     TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <GridSplitter Grid.Column="1"
+                      MinWidth="4"
+                      HorizontalAlignment="Stretch"
+                      VerticalAlignment="Stretch"
+                      Background="{DynamicResource Brush.Border1}"
+                      BorderBrush="{DynamicResource Brush.Border0}"
+                      BorderThickness="1,0"/>
+
+        <Border Grid.Column="2"
+                Margin="12,0,0,0"
+                Padding="6"
+                Background="{DynamicResource Brush.BG1}"
+                CornerRadius="4">
+          <Grid ColumnDefinitions="120,*">
+            <lvc:PieChart Grid.Column="0"
+                          Width="112"
+                          Height="112"
+                          VerticalAlignment="Top"
+                          Series="{Binding ProcessMemorySeries}"
+                          LegendPosition="Hidden"
+                          TooltipPosition="Hidden"/>
+
+            <StackPanel Grid.Column="1" Margin="8,0,0,0" Spacing="2">
+              <TextBlock Classes="bold" Text="Process private breakdown"/>
+              <ItemsControl ItemsSource="{Binding ProcessMemoryLegend}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Orientation="Vertical"/>
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate DataType="m:MemorySliceLegendItem">
+                    <Grid Margin="0,1,0,0" ColumnDefinitions="Auto,*,Auto">
+                      <Border Grid.Column="0"
+                              Width="8"
+                              Height="8"
+                              Margin="0,4,5,0"
+                              CornerRadius="4"
+                              Background="{Binding Color}"/>
+                      <TextBlock Grid.Column="1"
+                                 Classes="small"
+                                 Text="{Binding Name}"
+                                 TextTrimming="CharacterEllipsis"/>
+                      <TextBlock Grid.Column="2"
+                                 Margin="6,0,0,0"
+                                 Classes="small"
+                                 Text="{Binding FormattedBytes}"/>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Classes="small"
+                         Foreground="{DynamicResource Brush.FG2}"
+                         Text="{Binding ProcessMemoryChartNote}"
+                         TextWrapping="Wrap"
+                         MaxLines="2"/>
             </StackPanel>
-          </Border>
-
-          <Border Grid.Column="1" Margin="0,0,8,0" Padding="8" Background="{DynamicResource Brush.BG1}" CornerRadius="4">
-            <StackPanel Spacing="2">
-              <TextBlock Classes="small" Foreground="{DynamicResource Brush.FG2}" Text="Managed heap"/>
-              <TextBlock Classes="bold" Text="{Binding ManagedHeapMemory}"/>
-            </StackPanel>
-          </Border>
-
-          <Border Grid.Column="2" Margin="0,0,8,0" Padding="8" Background="{DynamicResource Brush.BG1}" CornerRadius="4">
-            <StackPanel Spacing="2">
-              <TextBlock Classes="small" Foreground="{DynamicResource Brush.FG2}" Text="Tracked repos"/>
-              <TextBlock Classes="bold" Text="{Binding TrackedRepositoryMemory}"/>
-            </StackPanel>
-          </Border>
-
-          <Border Grid.Column="3" Padding="8" Background="{DynamicResource Brush.BG1}" CornerRadius="4">
-            <StackPanel Spacing="2">
-              <TextBlock Classes="small" Foreground="{DynamicResource Brush.FG2}" Text="Shared caches"/>
-              <TextBlock Classes="bold" Text="{Binding TrackedSharedMemory}"/>
-            </StackPanel>
-          </Border>
-        </Grid>
-
-        <Grid ColumnDefinitions="Auto,*">
-          <TextBlock Classes="small" Foreground="{DynamicResource Brush.FG2}" Text="Snapshot:"/>
-          <TextBlock Grid.Column="1" Margin="6,0,0,0" Classes="small" Foreground="{DynamicResource Brush.FG2}" Text="{Binding SnapshotTime}"/>
-        </Grid>
-
-        <TextBlock Classes="small"
-                   Foreground="{DynamicResource Brush.FG2}"
-                   Text="{Binding EstimateNote}"
-                   TextWrapping="Wrap"/>
-      </StackPanel>
+          </Grid>
+        </Border>
+      </Grid>
     </Border>
 
     <Grid Grid.Row="2" Margin="8">

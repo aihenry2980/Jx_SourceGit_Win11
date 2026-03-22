@@ -71,6 +71,7 @@ namespace SourceGit.ViewModels
                 var lastSelected = SelectedCommit;
                 if (SetProperty(ref _commits, value))
                 {
+                    UpdateQuickFindMatches(_repo?.HistoryQuickFindAppliedText ?? string.Empty);
                     if (value.Count > 0 && lastSelected != null)
                         SelectedCommit = value.Find(x => x.SHA == lastSelected.SHA);
                 }
@@ -286,6 +287,17 @@ namespace SourceGit.ViewModels
         {
             if (!string.IsNullOrWhiteSpace(OriginRemoteURL))
                 Native.OS.OpenBrowser(OriginRemoteURL);
+        }
+
+        public void ApplyQuickFind(string query)
+        {
+            if (_commits == null || _commits.Count == 0)
+                return;
+
+            if (!UpdateQuickFindMatches(query))
+                return;
+
+            Commits = [.. _commits];
         }
 
         public async Task<Models.Commit> GetCommitAsync(string sha)
@@ -552,6 +564,22 @@ namespace SourceGit.ViewModels
 
             prefills.Add(new InteractiveRebasePrefill(target.SHA, Models.InteractiveRebaseAction.Reword));
             return true;
+        }
+
+        private bool UpdateQuickFindMatches(string query)
+        {
+            var changed = false;
+            foreach (var commit in _commits)
+            {
+                var matched = commit.MatchesHistoryQuickFind(query);
+                if (commit.IsQuickFindMatched != matched)
+                {
+                    commit.IsQuickFindMatched = matched;
+                    changed = true;
+                }
+            }
+
+            return changed;
         }
 
         private Repository _repo = null;

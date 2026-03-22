@@ -28,6 +28,7 @@ namespace SourceGit.Models
 
         public bool IsMerged { get; set; } = false;
         public bool HasSubmodulePointerChange { get; set; } = false;
+        public bool IsQuickFindMatched { get; set; } = false;
         public int ChangedFileCount { get; set; } = -1;
         public int Color { get; set; } = 0;
         public double LeftMargin { get; set; } = 0;
@@ -47,6 +48,26 @@ namespace SourceGit.Models
             Subject.Contains("spp", StringComparison.OrdinalIgnoreCase);
         public bool HasDecorators => Decorators.Count > 0;
         public string HistoryDisplaySubject => ChangedFileCount >= 0 ? $"({ChangedFileCount}) {Subject}" : Subject;
+
+        public bool MatchesHistoryQuickFind(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+                return false;
+
+            if (SHA.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                Subject.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                Author.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                Committer.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            foreach (var decorator in Decorators)
+            {
+                if (decorator.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
 
         public string GetFriendlyName()
         {

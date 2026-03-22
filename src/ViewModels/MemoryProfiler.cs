@@ -5,6 +5,10 @@ using System.Diagnostics;
 using Avalonia.Collections;
 
 using CommunityToolkit.Mvvm.ComponentModel;
+using LiveChartsCore;
+using LiveChartsCore.SkiaSharpView;
+using LiveChartsCore.SkiaSharpView.Painting;
+using SkiaSharp;
 
 namespace SourceGit.ViewModels
 {
@@ -12,6 +16,13 @@ namespace SourceGit.ViewModels
     {
         public AvaloniaList<Models.RepositoryMemoryProfile> Repositories { get; } = [];
         public AvaloniaList<Models.SharedMemoryProfile> SharedCaches { get; } = [];
+        public AvaloniaList<Models.MemorySliceLegendItem> ProcessMemoryLegend { get; } = [];
+
+        public List<ISeries> ProcessMemorySeries
+        {
+            get => _processMemorySeries;
+            private set => SetProperty(ref _processMemorySeries, value);
+        }
 
         public Models.RepositoryMemoryProfile SelectedRepository
         {
@@ -57,6 +68,8 @@ namespace SourceGit.ViewModels
 
         public string EstimateNote => "These numbers are estimates for SourceGit-owned state. The process total also includes CLR/runtime/native memory that cannot be assigned exactly per repository.";
 
+        public string ProcessMemoryChartNote => "Pie chart explains the process private total only. Managed heap overlaps these slices and is shown separately as a reference.";
+
         public MemoryProfiler()
         {
             Refresh();
@@ -68,6 +81,7 @@ namespace SourceGit.ViewModels
 
             Repositories.Clear();
             SharedCaches.Clear();
+            ProcessMemoryLegend.Clear();
 
             var launcher = App.GetLauncher();
             var snapshots = new List<Models.RepositoryMemoryProfile>();
@@ -100,6 +114,7 @@ namespace SourceGit.ViewModels
             TrackedRepositoryMemory = Models.MemoryProfileFormatter.Format(repoBytes);
             TrackedSharedMemory = Models.MemoryProfileFormatter.Format(sharedBytes);
             SnapshotTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            BuildProcessMemoryChart(process.PrivateMemorySize64, repoBytes, sharedBytes);
 
             Models.RepositoryMemoryProfile selected = null;
             if (!string.IsNullOrEmpty(previousPath))
@@ -126,10 +141,66 @@ namespace SourceGit.ViewModels
         }
 
         private Models.RepositoryMemoryProfile _selectedRepository = null;
+        private List<ISeries> _processMemorySeries = [];
         private string _processPrivateMemory = "0 B";
         private string _managedHeapMemory = "0 B";
         private string _trackedRepositoryMemory = "0 B";
         private string _trackedSharedMemory = "0 B";
         private string _snapshotTime = string.Empty;
+
+        private void BuildProcessMemoryChart(long processPrivateBytes, long repoBytes, long sharedBytes)
+        {
+            var unattributedBytes = Math.Max(0, processPrivateBytes - repoBytes - sharedBytes);
+            var total = Math.Max(1, processPrivateBytes);
+
+            ProcessMemoryLegend.Add(new Models.MemorySliceLegendItem(
+                "Tracked repos",
+                repoBytes,
+                "#FF1D6FDD",
+                "SourceGit repo-owned estimates"));
+            ProcessMemoryLegend.Add(new Models.MemorySliceLegendItem(
+                "Shared caches",
+                sharedBytes,
+                "#FF10893E",
+                "Shared app caches like avatars"));
+            ProcessMemoryLegend.Add(new Models.MemorySliceLegendItem(
+                "Unattributed/runtime",
+                unattributedBytes,
+                "#FF7C3AED",
+                "CLR, native UI/graphics, runtime, stacks, and other unassigned memory"));
+
+            ProcessMemorySeries =
+            [
+                CreateProcessMemorySlice("Tracked repos", repoBytes, total, new SKColor(0x1D, 0x6F, 0xDD)),
+                CreateProcessMemorySlice("Shared caches", sharedBytes, total, new SKColor(0x10, 0x89, 0x3E)),
+                CreateProcessMemorySlice("Unattributed/runtime", unattributedBytes, total, new SKColor(0x7C, 0x3A, 0xED)),
+            ];
+        }
+
+        private static ISeries CreateProcessMemorySlice(string name, long bytes, long total, SKColor color)
+        {
+            return new PieSeries<long>
+            {
+                Name = name,
+                Values = [Math.Max(0, bytes)],
+                Fill = new SolidColorPaint(color),
+                Stroke = new SolidColorPaint(new SKColor(255, 255, 255, 120)) { StrokeThickness = 1 },
+                Pushout = 0,
+                InnerRadius = 24,
+                HoverPushout = 6,
+                MaxRadialColumnWidth = 28,
+                DataLabelsPosition = LiveChartsCore.Measure.PolarLabelsPosition.Middle,
+                DataLabelsPaint = new SolidColorPaint(new SKColor(255, 255, 255)),
+                DataLabelsSize = 10,
+                DataLabelsFormatter = point =>
+                {
+                    if (bytes <= 0)
+                        return string.Empty;
+
+                    var pct = bytes / (double)total;
+                    return pct >= 0.06 ? $"{pct:P0}" : string.Empty;
+                },
+            };
+        }
     }
 }

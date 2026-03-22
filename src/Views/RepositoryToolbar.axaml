@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:m="using:SourceGit.Models"
+             xmlns:c="using:SourceGit.Converters"
              xmlns:vm="using:SourceGit.ViewModels"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="SourceGit.Views.RepositoryToolbar"
@@ -15,10 +16,27 @@
       <Setter Property="MaxWidth" Value="56"/>
       <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
     </Style>
+    <Style Selector="TextBlock.tooltip_cmd">
+      <Setter Property="Foreground" Value="#FF0F8CFF"/>
+      <Setter Property="FontFamily" Value="{DynamicResource Fonts.Monospace}"/>
+      <Setter Property="FontSize" Value="22"/>
+      <Setter Property="TextWrapping" Value="WrapWithOverflow"/>
+      <Setter Property="MaxWidth" Value="1400"/>
+    </Style>
+    <Style Selector="ToolTip">
+      <Setter Property="MaxWidth" Value="1500"/>
+    </Style>
+    <Style Selector="Border.toolbar_status_chip">
+      <Setter Property="Padding" Value="8,2"/>
+      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="Margin" Value="6,0,0,0"/>
+    </Style>
   </UserControl.Styles>
   <Grid ColumnDefinitions="*,Auto,*">
     <StackPanel x:Name="LeftToolbarGroup" Grid.Column="0" Orientation="Horizontal" Margin="4,0,0,0">
-      <Button x:Name="OpenWithExternalToolsButton" Classes="icon_button" Width="56" Click="OpenWithExternalTools">
+      <Button x:Name="OpenWithExternalToolsButton" Classes="icon_button" Width="44" Click="OpenWithExternalTools">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Open this repository in external tools (Explorer, terminal, editor, browser remotes)." TextWrapping="Wrap" MaxWidth="420"/>
@@ -34,7 +52,7 @@
       </Button>
       <Button Width="0" Height="0" Click="OpenWithExternalToolsByHotKey" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+O, macOS=⌘+⌥+O}"/>
 
-      <Button x:Name="LogsButton" Classes="icon_button" Width="56" Click="OpenGitLogs" ContextRequested="OnLogsContextRequested" PointerPressed="OnLogsPointerPressed">
+      <Button x:Name="LogsButton" Classes="icon_button" Width="44" Click="OpenGitLogs" ContextRequested="OnLogsContextRequested" PointerPressed="OnLogsPointerPressed">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="View SourceGit command logs and operation history for this repository." TextWrapping="Wrap" MaxWidth="420"/>
@@ -51,7 +69,7 @@
       <Button Width="0" Height="0" Click="OpenGitLogs" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+L, macOS=⌘+⌥+L}"/>
 
       <Button Width="0" Height="0" Click="OpenMemoryProfilerByHotKey" IsVisible="False" HotKey="Ctrl+Alt+M"/>
-      <Button Classes="icon_button" Width="56" Click="OpenStatistics">
+      <Button Classes="icon_button" Width="44" Click="OpenStatistics">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Show repository statistics such as commit activity and contributor trends." TextWrapping="Wrap" MaxWidth="420"/>
@@ -67,7 +85,7 @@
       </Button>
       <Button Width="0" Height="0" Click="OpenStatistics" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+I, macOS=⌘+⌥+I}"/>
 
-      <Button Classes="icon_button" Width="56" Click="OpenConfigure">
+      <Button Classes="icon_button" Width="44" Click="OpenConfigure">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Open repository configuration (Git settings, local ignore, commit template, issue tracker, custom actions)." TextWrapping="Wrap" MaxWidth="420"/>
@@ -88,10 +106,11 @@
       <Button Classes="icon_button" Width="56" Click="SuperQuickFetch">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
-            <TextBlock Text="Super quick fetch only the explicitly included branch filters on the preferred remote." TextWrapping="Wrap" MaxWidth="420"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="Use this when you only care about the currently filtered branch targets and want the fastest possible refresh." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="420"/>
+            <TextBlock Text="Super quick fetch only the explicitly included branch filters on the preferred remote." TextWrapping="Wrap" MaxWidth="960"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="Use this when you only care about the currently filtered branch targets and want the fastest possible refresh." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
+            <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git fetch --progress --verbose --no-tags &lt;preferred-remote&gt; &lt;filtered-refspecs...&gt;"/>
             <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcut: Ctrl+Alt+Shift+F." Foreground="{DynamicResource Brush.FG2}"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="If no included branch filters match the preferred remote, it skips the fetch and tells you why." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="420"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="If no included branch filters match the preferred remote, it skips the fetch and tells you why." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
           </StackPanel>
         </ToolTip.Tip>
 
@@ -107,11 +126,11 @@
       <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Tapped="QuickFetch">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
-            <TextBlock Text="Quick fetch the preferred remote only, without tags, prune, or recursive submodule work." TextWrapping="Wrap" MaxWidth="420"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="Use this when you only want to know whether new commits arrived as fast as possible." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="420"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="Ctrl+click: fetch only the explicitly included branch filters on the preferred remote." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="420"/>
+            <TextBlock Text="Quick fetch the preferred remote only, without tags, prune, or recursive submodule work." TextWrapping="Wrap" MaxWidth="960"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="Use this when you only want to know whether new commits arrived as fast as possible." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
+            <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git fetch --progress --verbose --no-tags &lt;preferred-remote&gt;"/>
             <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcut: Ctrl+Alt+F." Foreground="{DynamicResource Brush.FG2}"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="It runs directly in background, writes to repository logs, and uses the fast recent-history refresh path." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="420"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="It runs directly in background, writes to repository logs, and uses the fast recent-history refresh path." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
           </StackPanel>
         </ToolTip.Tip>
 
@@ -127,8 +146,9 @@
       <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Tapped="Fetch">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
-            <TextBlock Text="Fetch remote updates (new commits/refs) without modifying your working tree or current branch." TextWrapping="Wrap" MaxWidth="420"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="Example: Fetch first, inspect incoming commits in graph, then decide whether to pull or rebase." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="420"/>
+            <TextBlock Text="Fetch remote updates (new commits/refs) without modifying your working tree or current branch." TextWrapping="Wrap" MaxWidth="960"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="Example: Fetch first, inspect incoming commits in graph, then decide whether to pull or rebase." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
+            <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git fetch --progress --verbose --no-tags [&lt;selected-remote&gt; or all-remotes]"/>
             <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcut: Ctrl+Down (direct fetch)." Foreground="{DynamicResource Brush.FG2}"/>
             <TextBlock Classes="small italic" Margin="0,4,0,0" Text="{DynamicResource Text.CtrlClickTip}" Foreground="{DynamicResource Brush.FG2}"/>
           </StackPanel>
@@ -161,8 +181,9 @@
       <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Tapped="Pull" IsVisible="{Binding !IsBare}" IsEnabled="{Binding !IsBare}">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
-            <TextBlock Text="Pull remote changes into the current local branch (fetch + merge/rebase according to settings)." TextWrapping="Wrap" MaxWidth="420"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="Example: Pull origin/main to keep your local main aligned before starting new work." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="420"/>
+            <TextBlock Text="Pull remote changes into the current local branch (fetch + merge/rebase according to settings)." TextWrapping="Wrap" MaxWidth="960"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="Example: Pull origin/main to keep your local main aligned before starting new work." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
+            <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git pull --verbose --progress [--rebase=true] &lt;remote&gt; &lt;branch&gt;"/>
             <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcut: Ctrl+Shift+Down (direct pull)." Foreground="{DynamicResource Brush.FG2}"/>
             <TextBlock Classes="small italic" Margin="0,4,0,0" Text="{DynamicResource Text.CtrlClickTip}" Foreground="{DynamicResource Brush.FG2}"/>
           </StackPanel>
@@ -180,9 +201,16 @@
       <Button x:Name="SyncAllButton" Classes="icon_button" Width="56" Margin="8,0,0,0" Tapped="SyncAll" ContextRequested="OnSyncAllContextRequested" PointerPressed="OnSyncAllPointerPressed" IsVisible="{Binding !IsBare}" IsEnabled="{Binding !IsBare}">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
-            <TextBlock Text="Click: pull current branch, then update selected submodules recursively." TextWrapping="Wrap" MaxWidth="420"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="Ctrl+click: also run fetch+prune recursively for the parent repository and submodules after the update finishes." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="420"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="A progress window shows live syntax-highlighted git output and stops immediately on the first error." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="420"/>
+            <TextBlock Text="Click: pull current branch, then update selected submodules recursively." TextWrapping="Wrap" MaxWidth="960"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="Ctrl+click: also run fetch+prune recursively for the parent repository and submodules after the update finishes." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
+            <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="Click: git pull --verbose --progress ..."/>
+            <TextBlock Classes="tooltip_cmd" Margin="0,2,0,0" Text="then: git submodule update --recursive --init -- &lt;selected-submodules...&gt;"/>
+            <TextBlock Classes="tooltip_cmd" Margin="0,2,0,0">
+              <Run Text="Ctrl+click adds: git fetch --progress --verbose --no-tags "/>
+              <Run Text="--prune " Foreground="#FFE74C3C"/>
+              <Run Text="--recurse-submodules &lt;remote&gt;"/>
+            </TextBlock>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="A progress window shows live syntax-highlighted git output and stops immediately on the first error." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
           </StackPanel>
         </ToolTip.Tip>
 
@@ -214,10 +242,18 @@
       <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Tapped="FetchRecursivelyWithOptionalPrune">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
-            <TextBlock Text="Click: fetch recursively and prune stale remote refs for the root repository and configured submodules." TextWrapping="Wrap" MaxWidth="420"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="Ctrl+click: fetch recursively without pruning." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="420"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="Example: Use click after remote branch cleanup, or Ctrl+click when you only want fresh refs without deleting stale ones yet." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="420"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="If Sync All submodule targets were configured, this button uses the same saved submodule selection." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="420"/>
+            <TextBlock Text="Click: fetch recursively and prune stale remote refs for the root repository and configured submodules." TextWrapping="Wrap" MaxWidth="960"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="Ctrl+click: fetch recursively without pruning." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
+            <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0">
+              <Run Text="Click: git fetch --progress --verbose --no-tags "/>
+              <Run Text="--prune " Foreground="#FFE74C3C"/>
+              <Run Text="--recurse-submodules &lt;remote&gt;"/>
+            </TextBlock>
+            <TextBlock Classes="tooltip_cmd" Margin="0,2,0,0">
+              <Run Text="Ctrl+click: git fetch --progress --verbose --no-tags --recurse-submodules &lt;remote&gt;"/>
+            </TextBlock>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="Example: Use click after remote branch cleanup, or Ctrl+click when you only want fresh refs without deleting stale ones yet." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="If Sync All submodule targets were configured, this button uses the same saved submodule selection." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
             <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcuts: Ctrl+Alt+Shift+Down = prune, Ctrl+Alt+Down = no prune." Foreground="{DynamicResource Brush.FG2}"/>
           </StackPanel>
         </ToolTip.Tip>
@@ -234,8 +270,9 @@
       <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Click="RefreshHistoryGraph">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
-            <TextBlock Text="Refresh history panel immediately (branches + commits) and rebuild graph layout." TextWrapping="Wrap" MaxWidth="420"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="Example: Use after external git commands or local ignore updates to force a clean visual refresh." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="420"/>
+            <TextBlock Text="Refresh history panel immediately (branches + commits) and rebuild graph layout." TextWrapping="Wrap" MaxWidth="960"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="Example: Use after external git commands or local ignore updates to force a clean visual refresh." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
+            <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="Queries: git branch ... | git log ... | git submodule status"/>
             <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcut: F5 (refresh active repository)." Foreground="{DynamicResource Brush.FG2}"/>
           </StackPanel>
         </ToolTip.Tip>
@@ -250,11 +287,13 @@
 
       <Button Width="0" Height="0" Click="FetchRecursively" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+Down, macOS=⌘+⌥+Down}"/>
 
-      <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Click="UndoLastRebase" IsVisible="{Binding !IsBare}" IsEnabled="{Binding !IsBare}">
+      <Button x:Name="UndoRecentCommandsButton" Classes="icon_button" Width="56" Margin="8,0,0,0" Click="UndoRecentCommands" IsVisible="{Binding !IsBare}" IsEnabled="{Binding !IsBare}">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
-            <TextBlock Text="Undo the latest rebase by resetting current local branch back to ORIG_HEAD." TextWrapping="Wrap" MaxWidth="420"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="Example: If branch was rebased onto the wrong target, use this to recover previous state safely." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="420"/>
+            <TextBlock Text="Show the latest reversible HEAD-changing git commands and choose whether to undo the recent 1, 2, or 3 commands." TextWrapping="Wrap" MaxWidth="960"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="Example: If pull, merge, or rebase moved the branch somewhere unexpected, pick how many recent commands to roll back." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
+            <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git reflog -n 4 HEAD"/>
+            <TextBlock Classes="tooltip_cmd" Margin="0,2,0,0" Text="then: git reset --{soft|mixed|hard} &lt;target-sha&gt;"/>
             <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcut: Ctrl+Alt+Z." Foreground="{DynamicResource Brush.FG2}"/>
           </StackPanel>
         </ToolTip.Tip>
@@ -271,8 +310,9 @@
       <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Click="UpdateSubmodulesRecursively" IsVisible="{Binding !IsBare}" IsEnabled="{Binding !IsBare}">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
-            <TextBlock Text="Update submodules recursively to the revisions recorded by the parent repository." TextWrapping="Wrap" MaxWidth="420"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="Example: After pulling parent changes, run this to sync all submodules to expected commits." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="420"/>
+            <TextBlock Text="Update submodules recursively to the revisions recorded by the parent repository." TextWrapping="Wrap" MaxWidth="960"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="Example: After pulling parent changes, run this to sync all submodules to expected commits." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
+            <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git submodule update --recursive --init -- &lt;selected-submodules...&gt;"/>
             <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcut: Ctrl+Alt+U." Foreground="{DynamicResource Brush.FG2}"/>
           </StackPanel>
         </ToolTip.Tip>
@@ -289,8 +329,9 @@
       <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Tapped="StashAll" IsVisible="{Binding !IsBare}">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
-            <TextBlock Text="Stash all current working-tree and index changes into a temporary WIP snapshot." TextWrapping="Wrap" MaxWidth="420"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="Example: Save unfinished edits before branch checkout, then re-apply later from stash list." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="420"/>
+            <TextBlock Text="Stash all current working-tree and index changes into a temporary WIP snapshot." TextWrapping="Wrap" MaxWidth="960"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="Example: Save unfinished edits before branch checkout, then re-apply later from stash list." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
+            <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git stash push --include-untracked -m &quot;WIP&quot;"/>
             <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcut: Ctrl+Alt+S." Foreground="{DynamicResource Brush.FG2}"/>
             <TextBlock Classes="small italic" Margin="0,4,0,0" Text="{DynamicResource Text.CtrlClickTip}" Foreground="{DynamicResource Brush.FG2}"/>
           </StackPanel>
@@ -358,6 +399,39 @@
     </StackPanel>
 
     <StackPanel x:Name="RightToolbarGroup" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,4,0">
+      <Button Classes="icon_button"
+              Width="28"
+              Height="24"
+              Margin="6,0,0,0"
+              ToolTip.Placement="Bottom">
+        <ToolTip.Tip>
+          <StackPanel Orientation="Vertical" MaxWidth="520">
+            <TextBlock FontWeight="Bold" Text="History marker legend"/>
+            <TextBlock Classes="small" Margin="0,6,0,0" Text="SPP and PARENT are special ref chips in commit refs."/>
+            <StackPanel Orientation="Horizontal" Margin="0,6,0,0" Spacing="8">
+              <Border Padding="8,2" CornerRadius="10" Background="#FF1D6FDD" BorderBrush="#FF114B99" BorderThickness="1">
+                <TextBlock Foreground="#FFFFE066" FontWeight="Bold" Text="SPP"/>
+              </Border>
+              <Border Padding="8,2" CornerRadius="10" Background="#FF0F5A2E" BorderBrush="#FF0A4020" BorderThickness="1">
+                <TextBlock Foreground="#FFFFE066" FontWeight="Bold" Text="PARENT"/>
+              </Border>
+            </StackPanel>
+            <TextBlock Margin="0,8,0,0">
+              <Run Text="Purple bold SHA"/>
+              <Run Text=" means the commit contains an SPP/submodule-pointer change."/>
+            </TextBlock>
+            <StackPanel Orientation="Horizontal" Margin="0,6,0,0" Spacing="8">
+              <TextBlock Foreground="#FF7C3AED" FontWeight="Bold" Text="95977"/>
+              <Border Width="16" Height="16" CornerRadius="8" Background="#FF7C3AED" BorderBrush="#FF5B21B6" BorderThickness="1">
+                <Path Width="9" Height="9" HorizontalAlignment="Center" VerticalAlignment="Center" Data="{StaticResource Icons.Submodule}" Fill="#FFF7D047"/>
+              </Border>
+            </StackPanel>
+            <TextBlock Classes="small" Margin="0,8,0,0" Text="Grey ref chips appear because the commit is part of the filtered history, not because that ref itself matched your included filter." TextWrapping="Wrap"/>
+          </StackPanel>
+        </ToolTip.Tip>
+        <Path Width="12" Height="12" Data="{StaticResource Icons.Info}"/>
+      </Button>
+
       <Path Width="13" Height="13" Fill="{DynamicResource Brush.FG1}" Data="{StaticResource Icons.Branch}"/>
 
       <Border Margin="6,0,0,0"

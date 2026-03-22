@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
@@ -223,8 +225,7 @@ namespace SourceGit.Views
         {
             if (DataContext is ViewModels.Repository repo)
             {
-                var filtered = e.KeyModifiers.HasFlag(OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control);
-                await repo.QuickFetchAsync(filtered);
+                await repo.QuickFetchAsync();
                 e.Handled = true;
             }
         }
@@ -303,36 +304,17 @@ namespace SourceGit.Views
             }
         }
 
+        private async void UndoRecentCommands(object sender, RoutedEventArgs e)
+        {
+            if (sender is Control control)
+                await OpenUndoRecentCommandsMenuAsync(control);
+
+            e.Handled = true;
+        }
+
         private async void UndoLastRebase(object sender, RoutedEventArgs e)
         {
-            if (DataContext is not ViewModels.Repository repo || !repo.CanCreatePopup())
-                return;
-
-            var current = repo.CurrentBranch;
-            if (current == null || !current.IsLocal)
-            {
-                App.SendNotification("Undo Last Rebase", "Current local branch is not available.");
-                e.Handled = true;
-                return;
-            }
-
-            var confirmed = await App.AskConfirmAsync(
-                $"Undo last rebase on '{current.Name}' by resetting to ORIG_HEAD?");
-            if (!confirmed)
-            {
-                e.Handled = true;
-                return;
-            }
-
-            var target = await new Commands.QuerySingleCommit(repo.FullPath, "ORIG_HEAD").GetResultAsync();
-            if (target == null)
-            {
-                App.SendNotification("Undo Last Rebase", "ORIG_HEAD not found. Nothing to undo.");
-                e.Handled = true;
-                return;
-            }
-
-            repo.ShowPopup(new ViewModels.Reset(repo, current, target));
+            await OpenUndoRecentCommandsMenuAsync(UndoRecentCommandsButton);
             e.Handled = true;
         }
 
@@ -412,6 +394,67 @@ namespace SourceGit.Views
 
             menu.Items.Add(choose);
             menu.Open(control);
+        }
+
+        private async Task OpenUndoRecentCommandsMenuAsync(Control anchor)
+        {
+            if (DataContext is not ViewModels.Repository repo || !repo.CanCreatePopup())
+                return;
+
+            var current = repo.CurrentBranch;
+            if (current == null || !current.IsLocal)
+            {
+                App.SendNotification("Undo Recent Commands", "Current local branch is not available.");
+                return;
+            }
+
+            var reflog = await new Commands.QueryHeadReflog(repo.FullPath, 4).GetResultAsync();
+            if (reflog.Count < 2)
+            {
+                App.SendNotification("Undo Recent Commands", "Not enough recent HEAD movements were found to undo.");
+                return;
+            }
+
+            var menu = new ContextMenu();
+            menu.Placement = PlacementMode.BottomEdgeAlignedLeft;
+            menu.MinWidth = 720;
+
+            var maxCount = Math.Min(3, reflog.Count - 1);
+            for (var count = 1; count <= maxCount; count++)
+            {
+                var targetEntry = reflog[count];
+                var recentSummaries = new List<string>();
+                for (var i = 0; i < count && i < reflog.Count; i++)
+                {
+                    if (!string.IsNullOrWhiteSpace(reflog[i].Summary))
+                        recentSummaries.Add(ShortenUndoSummary(reflog[i].Summary));
+                }
+
+                var item = new MenuItem();
+                item.Icon = App.CreateMenuIcon("Icons.Undo");
+                item.MinHeight = 52;
+                item.Header = CreateUndoRecentMenuHeader(
+                    $"Undo recent {count} cmd{(count == 1 ? string.Empty : "s")}",
+                    recentSummaries.Count > 0
+                        ? string.Join(" | ", recentSummaries)
+                        : $"Reset to {targetEntry.SHA.Substring(0, Math.Min(10, targetEntry.SHA.Length))}");
+                item.Click += async (_, ev) =>
+                {
+                    var target = await new Commands.QuerySingleCommit(repo.FullPath, targetEntry.SHA).GetResultAsync();
+                    if (target == null)
+                    {
+                        App.SendNotification("Undo Recent Commands", $"Target commit '{targetEntry.SHA}' was not found.");
+                        ev.Handled = true;
+                        return;
+                    }
+
+                    repo.ShowPopup(new ViewModels.Reset(repo, current, target));
+                    ev.Handled = true;
+                };
+                menu.Items.Add(item);
+            }
+
+            menu.Open(anchor);
         }
 
         private async void Pull(object sender, TappedEventArgs e)
@@ -770,6 +813,34 @@ namespace SourceGit.Views
             menu.Open(control);
         }
 
+        private static object CreateUndoRecentMenuHeader(string title, string detail)
+        {
+            var stack = new StackPanel() { Orientation = Orientation.Vertical, Spacing = 1 };
+            stack.Children.Add(new TextBlock()
+            {
+                Text = title,
+                FontWeight = FontWeight.SemiBold,
+            });
+            stack.Children.Add(new TextBlock()
+            {
+                Text = detail,
+                FontSize = 11,
+                Foreground = new SolidColorBrush(Colors.Gray),
+                TextWrapping = TextWrapping.Wrap,
+                MaxWidth = 620,
+            });
+            return stack;
+        }
+
+        private static string ShortenUndoSummary(string summary)
+        {
+            if (string.IsNullOrWhiteSpace(summary))
+                return string.Empty;
+
+            var trimmed = summary.Trim();
+            return trimmed.Length <= 72 ? trimmed : $"{trimmed.Substring(0, 69)}...";
+        }
+
         private async void OpenGitLogs(object sender, RoutedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo)
@@ -846,6 +917,12 @@ namespace SourceGit.Views
                 ToolbarDensity.Compact => 52,
                 _ => 56,
             };
+            var utilityButtonWidth = density switch
+            {
+                ToolbarDensity.Narrow => 36,
+                ToolbarDensity.Compact => 40,
+                _ => 44,
+            };
             var primaryGap = density switch
             {
                 ToolbarDensity.Narrow => 2,
@@ -862,7 +939,7 @@ namespace SourceGit.Views
 
             LeftToolbarGroup.Margin = new Thickness(sideMargin, 0, 0, 0);
             RightToolbarGroup.Margin = new Thickness(0, 0, sideMargin, 0);
-            UpdateToolbarButtons(LeftToolbarGroup, buttonWidth, 0);
+            UpdateToolbarButtons(LeftToolbarGroup, utilityButtonWidth, 0);
             UpdateToolbarButtons(CenterToolbarGroup, buttonWidth, primaryGap);
             UpdateToolbarButtons(RightToolbarGroup, buttonWidth, secondaryGap);
             ActionSeparator.Margin = new Thickness(primaryGap, 0, 0, 0);

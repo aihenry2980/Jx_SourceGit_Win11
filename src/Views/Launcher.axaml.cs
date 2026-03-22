@@ -236,7 +236,12 @@ namespace SourceGit.Views
                             e.Handled = true;
                             return;
                         case Key.F:
-                            repo.IsSearchingCommits = true;
+                            if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+                                repo.IsSearchingCommits = true;
+                            else if (repo.SelectedViewIndex == 0)
+                                repo.RequestHistoryQuickFindFocus();
+                            else
+                                repo.IsSearchingCommits = true;
                             e.Handled = true;
                             return;
                         case Key.H when e.KeyModifiers.HasFlag(KeyModifiers.Shift):

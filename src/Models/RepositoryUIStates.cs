@@ -201,6 +201,12 @@ namespace SourceGit.Models
             set;
         } = false;
 
+        public bool IsLeftSidebarCompact
+        {
+            get;
+            set;
+        } = false;
+
         public List<string> ExpandedBranchNodesInSideBar
         {
             get;

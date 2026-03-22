@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 
 using Avalonia;
 using Avalonia.Collections;
+using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
@@ -123,6 +124,9 @@ namespace SourceGit.ViewModels
             {
                 if (SetProperty(ref _selectedViewIndex, value))
                 {
+                    if (value == 0 && _isSearchingCommits && IsLeftSidebarCompact)
+                        IsLeftSidebarCompact = false;
+
                     SelectedView = value switch
                     {
                         1 => _workingCopy,
@@ -190,6 +194,42 @@ namespace SourceGit.ViewModels
                 }
             }
         }
+
+        public bool IsLeftSidebarCompact
+        {
+            get => _uiStates.IsLeftSidebarCompact;
+            set
+            {
+                if (value != _uiStates.IsLeftSidebarCompact)
+                {
+                    if (value && _isSearchingCommits)
+                        IsSearchingCommits = false;
+
+                    _uiStates.IsLeftSidebarCompact = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(SidebarWidth));
+                    OnPropertyChanged(nameof(SidebarSplitterWidth));
+                }
+            }
+        }
+
+        public GridLength SidebarWidth
+        {
+            get => IsLeftSidebarCompact ? new GridLength(68, GridUnitType.Pixel) : Preferences.Instance.Layout.RepositorySidebarWidth;
+            set
+            {
+                if (IsLeftSidebarCompact)
+                    return;
+
+                if (Preferences.Instance.Layout.RepositorySidebarWidth != value)
+                {
+                    Preferences.Instance.Layout.RepositorySidebarWidth = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public GridLength SidebarSplitterWidth => IsLeftSidebarCompact ? new GridLength(0, GridUnitType.Pixel) : new GridLength(3, GridUnitType.Pixel);
 
         public string Filter
         {
@@ -365,7 +405,11 @@ namespace SourceGit.ViewModels
         public int LocalChangesCount
         {
             get => _localChangesCount;
-            private set => SetProperty(ref _localChangesCount, value);
+            private set
+            {
+                if (SetProperty(ref _localChangesCount, value))
+                    NotifyCompactStatusChanged();
+            }
         }
 
         public int StashesCount
@@ -512,6 +556,9 @@ namespace SourceGit.ViewModels
             {
                 if (SetProperty(ref _isSearchingCommits, value))
                 {
+                    if (value && IsLeftSidebarCompact)
+                        IsLeftSidebarCompact = false;
+
                     if (value)
                         SelectedViewIndex = 0;
                     else
@@ -520,9 +567,79 @@ namespace SourceGit.ViewModels
             }
         }
 
+        public int CurrentBranchAheadCount => CurrentBranch?.Ahead.Count ?? 0;
+
+        public int CurrentBranchBehindCount => CurrentBranch?.Behind.Count ?? 0;
+
+        public bool HasAheadStatus => CurrentBranchAheadCount > 0;
+
+        public bool HasBehindStatus => CurrentBranchBehindCount > 0;
+
+        public bool HasLocalChangesStatus => LocalChangesCount > 0;
+
+        public bool HasInProgressStatus => InProgressContext != null;
+
+        public bool HasStatusStripItems => HasAheadStatus || HasBehindStatus || HasLocalChangesStatus || HasInProgressStatus;
+
+        public bool ShowCleanStatus => !HasStatusStripItems;
+
+        public string HistoryQuickFindText
+        {
+            get => _historyQuickFindText;
+            set
+            {
+                value ??= string.Empty;
+                if (!SetProperty(ref _historyQuickFindText, value))
+                    return;
+
+                QueueHistoryQuickFindApply();
+            }
+        }
+
+        public string HistoryQuickFindAppliedText
+        {
+            get => _historyQuickFindAppliedText;
+            private set => SetProperty(ref _historyQuickFindAppliedText, value);
+        }
+
+        public long HistoryQuickFindFocusRequestId
+        {
+            get => _historyQuickFindFocusRequestId;
+            private set => SetProperty(ref _historyQuickFindFocusRequestId, value);
+        }
+
+        public string InProgressStatusText
+        {
+            get
+            {
+                return InProgressContext switch
+                {
+                    RebaseInProgress => "1 rebase in progress",
+                    MergeInProgress => "1 merge in progress",
+                    CherryPickInProgress => "1 cherry-pick in progress",
+                    RevertInProgress => "1 revert in progress",
+                    { Name: { Length: > 0 } name } => $"1 {name.ToLowerInvariant()} in progress",
+                    _ => string.Empty,
+                };
+            }
+        }
+
         public SearchCommitContext SearchCommitContext
         {
             get => _searchCommitContext;
+        }
+
+        public void RequestHistoryQuickFindFocus()
+        {
+            if (SelectedViewIndex != 0)
+                SelectedViewIndex = 0;
+
+            HistoryQuickFindFocusRequestId++;
+        }
+
+        public void ClearHistoryQuickFind()
+        {
+            HistoryQuickFindText = string.Empty;
         }
 
         public bool IsLocalBranchGroupExpanded
@@ -767,6 +884,10 @@ namespace SourceGit.ViewModels
         {
             SelectedView = null; // Do NOT modify. Used to remove exists widgets for GC.Collect
             Logs.Clear();
+
+            _historyQuickFindDebounce?.Cancel();
+            _historyQuickFindDebounce?.Dispose();
+            _historyQuickFindDebounce = null;
 
             _uiStates.Unload(_workingCopy.CommitMessage);
 
@@ -1022,17 +1143,18 @@ namespace SourceGit.ViewModels
                 return;
             }
 
+            var stopwatch = Stopwatch.StartNew();
             var refspecs = onlyFilteredBranches ? await BuildQuickFetchFilteredRefSpecsAsync(remote).ConfigureAwait(false) : null;
             if (onlyFilteredBranches && (refspecs == null || refspecs.Count == 0))
             {
                 App.SendNotification(FullPath, $"Quick Fetch (Filtered) skipped because no included branch filters match remote '{remote}'.");
+                ShowFetchDurationToast(stopwatch.Elapsed.TotalSeconds);
                 return;
             }
 
             var operationName = onlyFilteredBranches ? "Quick Fetch (Filtered)" : "Quick Fetch";
             var log = CreateLog(operationName);
             var succ = false;
-            var stopwatch = Stopwatch.StartNew();
             AutoBackgroundOperationText = operationName;
             IsQuickFetching = true;
 
@@ -2171,6 +2293,7 @@ namespace SourceGit.ViewModels
 
                     LocalChangesCount = changes.Count;
                     OnPropertyChanged(nameof(InProgressContext));
+                    NotifyCompactStatusChanged();
                     GetOwnerPage()?.ChangeDirtyState(Models.DirtyState.HasLocalChanges, changes.Count == 0);
                 });
             }, token);
@@ -3230,6 +3353,20 @@ namespace SourceGit.ViewModels
             OnPropertyChanged(nameof(CurrentBranchDisplayLabel));
             OnPropertyChanged(nameof(CurrentBranchDisplayBackground));
             OnPropertyChanged(nameof(CurrentBranchDisplayForeground));
+            NotifyCompactStatusChanged();
+        }
+
+        private void NotifyCompactStatusChanged()
+        {
+            OnPropertyChanged(nameof(CurrentBranchAheadCount));
+            OnPropertyChanged(nameof(CurrentBranchBehindCount));
+            OnPropertyChanged(nameof(HasAheadStatus));
+            OnPropertyChanged(nameof(HasBehindStatus));
+            OnPropertyChanged(nameof(HasLocalChangesStatus));
+            OnPropertyChanged(nameof(HasInProgressStatus));
+            OnPropertyChanged(nameof(HasStatusStripItems));
+            OnPropertyChanged(nameof(ShowCleanStatus));
+            OnPropertyChanged(nameof(InProgressStatusText));
         }
 
         private uint ResolveCurrentBranchDisplayColor()
@@ -4088,6 +4225,13 @@ namespace SourceGit.ViewModels
 
                 if (isAutoSyncAll)
                 {
+                    if (!CanRunAutoSyncAll(out var autoSyncSkipReason))
+                    {
+                        log?.AppendLine($"[skipped] {autoSyncSkipReason}");
+                        _lastFetchTime = DateTime.Now;
+                        return;
+                    }
+
                     var succ = await RunPullAndUpdateSubmodulesRecursivelyAsync(log, null, selectedTargets).ConfigureAwait(false);
                     if (succ)
                     {
@@ -4142,6 +4286,89 @@ namespace SourceGit.ViewModels
             }
         }
 
+        private void QueueHistoryQuickFindApply()
+        {
+            if (_historyQuickFindDebounce != null)
+            {
+                _historyQuickFindDebounce.Cancel();
+                _historyQuickFindDebounce.Dispose();
+                _historyQuickFindDebounce = null;
+            }
+
+            if (string.IsNullOrEmpty(_historyQuickFindText))
+            {
+                ApplyHistoryQuickFind(string.Empty);
+                return;
+            }
+
+            var cts = new CancellationTokenSource();
+            _historyQuickFindDebounce = cts;
+            _ = DebouncedApplyHistoryQuickFindAsync(cts);
+        }
+
+        private async Task DebouncedApplyHistoryQuickFindAsync(CancellationTokenSource cts)
+        {
+            var token = cts.Token;
+            try
+            {
+                await Task.Delay(200, token);
+                if (token.IsCancellationRequested)
+                    return;
+
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    if (!token.IsCancellationRequested)
+                        ApplyHistoryQuickFind(_historyQuickFindText);
+                }, DispatcherPriority.Background);
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected while the user is still typing.
+            }
+            finally
+            {
+                if (ReferenceEquals(_historyQuickFindDebounce, cts))
+                    _historyQuickFindDebounce = null;
+
+                cts.Dispose();
+            }
+        }
+
+        private void ApplyHistoryQuickFind(string query)
+        {
+            query ??= string.Empty;
+            if (string.Equals(_historyQuickFindAppliedText, query, StringComparison.Ordinal))
+                return;
+
+            HistoryQuickFindAppliedText = query;
+            _histories?.ApplyQuickFind(query);
+        }
+
+        private bool CanRunAutoSyncAll(out string reason)
+        {
+            if (IsBare)
+            {
+                reason = "Auto Sync All skipped because pull is not available in a bare repository.";
+                return false;
+            }
+
+            if (_currentBranch == null)
+            {
+                reason = "Auto Sync All skipped because no current branch is available for pull.";
+                return false;
+            }
+
+            var pull = new Pull(this, null);
+            if (pull.SelectedRemote == null || pull.SelectedBranch == null)
+            {
+                reason = "Auto Sync All skipped because no default remote branch is configured for pull.";
+                return false;
+            }
+
+            reason = string.Empty;
+            return true;
+        }
+
         private readonly string _gitCommonDir = null;
         private Models.RepositorySettings _settings = null;
         private Models.CommitHistoryMetadataCache _commitHistoryMetadataCache = null;
@@ -4173,6 +4400,10 @@ namespace SourceGit.ViewModels
 
         private bool _isSearchingCommits = false;
         private SearchCommitContext _searchCommitContext = null;
+        private string _historyQuickFindText = string.Empty;
+        private string _historyQuickFindAppliedText = string.Empty;
+        private long _historyQuickFindFocusRequestId = 0;
+        private CancellationTokenSource _historyQuickFindDebounce = null;
         private AvaloniaList<PresetBranchExactColorItem> _presetBranchExactColorItems = [];
 
         private string _filter = string.Empty;

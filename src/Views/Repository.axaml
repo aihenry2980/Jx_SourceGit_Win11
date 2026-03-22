@@ -13,11 +13,47 @@
     <SolidColorBrush x:Key="Brush.Accent" Color="{Binding AccentColor}"/>
     <SolidColorBrush x:Key="Brush.AccentHovered" Color="{Binding AccentHoveredColor}"/>
   </UserControl.Resources>
+  <UserControl.Styles>
+    <Style Selector="RadioButton.history_order_segment">
+      <Setter Property="Height" Value="18"/>
+      <Setter Property="MinWidth" Value="34"/>
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border CornerRadius="8"
+                  Background="{TemplateBinding Background}">
+            <ContentPresenter HorizontalAlignment="Center"
+                              VerticalAlignment="Center"
+                              Margin="6,0"
+                              Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                              Foreground="{TemplateBinding Foreground}"/>
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:checked">
+        <Setter Property="Background" Value="{DynamicResource Brush.Accent}"/>
+      </Style>
+      <Style Selector="^ TextBlock">
+        <Setter Property="FontSize" Value="9"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush.FG2}"/>
+      </Style>
+      <Style Selector="^:pointerover TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource Brush.FG1}"/>
+      </Style>
+      <Style Selector="^:checked TextBlock">
+        <Setter Property="Foreground" Value="White"/>
+      </Style>
+    </Style>
+  </UserControl.Styles>
 
   <Grid>
     <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="{Binding Source={x:Static vm:Preferences.Instance}, Path=Layout.RepositorySidebarWidth, Mode=TwoWay}" MinWidth="200" MaxWidth="500"/>
-      <ColumnDefinition Width="3"/>
+      <ColumnDefinition Width="{Binding SidebarWidth, Mode=TwoWay}" MinWidth="64" MaxWidth="500"/>
+      <ColumnDefinition Width="{Binding SidebarSplitterWidth}"/>
       <ColumnDefinition Width="*"/>
     </Grid.ColumnDefinitions>
 
@@ -25,6 +61,30 @@
     <Grid Grid.Column="0" RowDefinitions="Auto,*">
       <!-- Page Switcher for Left Contents (Dashboard or CommitSearch) -->
       <StackPanel Grid.Row="0" Margin="0,6" Height="24" HorizontalAlignment="Center" Orientation="Horizontal">
+        <ToggleButton Classes="icon_button"
+                      Width="24"
+                      Height="24"
+                      Margin="0,0,8,0"
+                      IsChecked="{Binding IsLeftSidebarCompact, Mode=TwoWay}"
+                      ToolTip.Tip="Collapse the left sidebar into icon-only mode for smaller displays">
+          <Grid>
+            <TextBlock HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       FontFamily="{DynamicResource Fonts.Monospace}"
+                       FontSize="11"
+                       FontWeight="Bold"
+                       Text="&lt;&lt;"
+                       IsVisible="{Binding !IsLeftSidebarCompact}"/>
+            <TextBlock HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       FontFamily="{DynamicResource Fonts.Monospace}"
+                       FontSize="11"
+                       FontWeight="Bold"
+                       Text="&gt;&gt;"
+                       IsVisible="{Binding IsLeftSidebarCompact}"/>
+          </Grid>
+        </ToggleButton>
+
         <RadioButton Classes="switch_button"
                      Width="48"
                      GroupName="SearchGroup"
@@ -47,7 +107,7 @@
             <TextBlock>
               <Run Text="{DynamicResource Text.Repository.Search}" Foreground="{DynamicResource Brush.FG1}"/>
               <Run Text=" "/>
-              <Run Text="{OnPlatform Ctrl+F, macOS=⌘+F}" FontSize="11" Foreground="{DynamicResource MenuFlyoutItemKeyboardAcceleratorTextForeground}"/>
+              <Run Text="{OnPlatform Ctrl+Shift+F, macOS=⌘+⇧+F}" FontSize="11" Foreground="{DynamicResource MenuFlyoutItemKeyboardAcceleratorTextForeground}"/>
             </TextBlock>
           </ToolTip.Tip>
           <Path Width="12" Height="12" Stretch="Fill" HorizontalAlignment="Center" Data="{StaticResource Icons.Search}"/>
@@ -104,13 +164,14 @@
               <ListBoxItem>
                 <Grid Classes="view_mode" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto">
                   <Path Grid.Column="0" Classes="icon" Data="{StaticResource Icons.Histories}"/>
-                  <TextBlock Grid.Column="1" Classes="header" Text="{DynamicResource Text.Histories}"/>
+                  <TextBlock Grid.Column="1" Classes="header" Text="{DynamicResource Text.Histories}" IsVisible="{Binding !IsLeftSidebarCompact}"/>
 
                   <ToggleButton Grid.Column="2"
                                 Classes="line_path"
                                 Width="26" Height="26"
                                 Background="Transparent"
                                 IsChecked="{Binding OnlyHighlightCurrentBranchInHistory, Mode=TwoWay}"
+                                IsVisible="{Binding !IsLeftSidebarCompact}"
                                 ToolTip.Tip="{DynamicResource Text.Repository.OnlyHighlightCurrentBranchInGraph}">
                     <Path Width="12" Height="12" Data="{StaticResource Icons.LightOn}"/>
                   </ToggleButton>
@@ -119,6 +180,7 @@
                                 Width="26" Height="26"
                                 Background="Transparent"
                                 IsChecked="{Binding Source={x:Static vm:Preferences.Instance}, Path=DisplayTimeAsPeriodInHistories, Mode=TwoWay}"
+                                IsVisible="{Binding !IsLeftSidebarCompact}"
                                 ToolTip.Tip="{DynamicResource Text.Repository.UseRelativeTimeInGraph}">
                     <Path Width="12" Height="12" Data="{StaticResource Icons.Stopwatch}"/>
                   </ToggleButton>
@@ -127,12 +189,14 @@
                                 Width="42" Height="26"
                                 Background="Transparent"
                                 IsChecked="{Binding OnlyShowSPPCommitsInHistory, Mode=TwoWay}"
+                                IsVisible="{Binding !IsLeftSidebarCompact}"
                                 ToolTip.Tip="Only show commits with SPP change">
                     <TextBlock FontSize="10" FontWeight="Bold" Text="SPP"/>
                   </ToggleButton>
                   <Button Grid.Column="5"
                           Classes="icon_button"
                           Width="26" Height="26"
+                          IsVisible="{Binding !IsLeftSidebarCompact}"
                           Click="OnOpenAdvancedHistoriesOption"
                           ToolTip.Tip="{DynamicResource Text.Repository.MoreOptions}">
                     <Path Width="12" Height="12" Data="{StaticResource Icons.More}"/>
@@ -143,14 +207,19 @@
               <ListBoxItem IsVisible="{Binding !IsBare}" Height="46">
                 <Grid Classes="view_mode" RowDefinitions="28,18" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto">
                   <Path Grid.Column="0" Classes="icon" Data="{StaticResource Icons.Changes}"/>
-                  <TextBlock Grid.Column="1" Classes="header" Text="{DynamicResource Text.WorkingCopy}"/>
+                  <TextBlock Grid.Column="1" Classes="header" Text="{DynamicResource Text.WorkingCopy}" IsVisible="{Binding !IsLeftSidebarCompact}"/>
                   <Border Grid.Column="2"
                           Height="18"
                           Margin="6,0" Padding="9,0"
                           CornerRadius="9"
                           VerticalAlignment="Center"
-                          Background="{DynamicResource Brush.Badge}"
-                          IsVisible="{Binding LocalChangesCount, Mode=OneWay, Converter={x:Static c:IntConverters.IsGreaterThanZero}}">
+                          Background="{DynamicResource Brush.Badge}">
+                    <Border.IsVisible>
+                      <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="!IsLeftSidebarCompact"/>
+                        <Binding Path="LocalChangesCount" Converter="{x:Static c:IntConverters.IsGreaterThanZero}"/>
+                      </MultiBinding>
+                    </Border.IsVisible>
                     <TextBlock Text="{Binding LocalChangesCount, Mode=OneWay}"
                                Foreground="{DynamicResource Brush.BadgeFG}"
                                FontFamily="{DynamicResource Fonts.Monospace}"
@@ -160,11 +229,18 @@
                         Width="12" Height="12"
                         Margin="0,0,6,0"
                         Data="{StaticResource Icons.Info}"
-                        Fill="DarkOrange"
-                        IsVisible="{Binding InProgressContext, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                        Fill="DarkOrange">
+                    <Path.IsVisible>
+                      <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="!IsLeftSidebarCompact"/>
+                        <Binding Path="InProgressContext" Converter="{x:Static ObjectConverters.IsNotNull}"/>
+                      </MultiBinding>
+                    </Path.IsVisible>
+                  </Path>
                   <Button Grid.Column="4"
                           Classes="icon_button"
                           Width="26" Height="26"
+                          IsVisible="{Binding !IsLeftSidebarCompact}"
                           Click="OnOpenLocalIgnoreConfigure"
                           ToolTip.Tip="Local Git Ignore">
                     <Path Width="12" Height="12" Data="{StaticResource Icons.GitIgnore}"/>
@@ -172,6 +248,7 @@
                   <Button Grid.Column="5"
                           Classes="icon_button"
                           Width="26" Height="26"
+                          IsVisible="{Binding !IsLeftSidebarCompact}"
                           Click="OnApplyLocalIgnoreRules"
                           ToolTip.Tip="Refresh Local Ignore">
                     <Path Width="12" Height="12" Data="{StaticResource Icons.Refresh}"/>
@@ -180,6 +257,7 @@
                           Classes="icon_button"
                           Width="26" Height="26"
                           Command="{Binding DiscardAllChanges}"
+                          IsVisible="{Binding !IsLeftSidebarCompact}"
                           ToolTip.Tip="{DynamicResource Text.Repository.DiscardAll}">
                     <Path Width="12" Height="12" Data="{StaticResource Icons.Undo}"/>
                   </Button>
@@ -193,6 +271,7 @@
                           HorizontalAlignment="Stretch"
                           HorizontalContentAlignment="Left"
                           Click="OnOpenRecursiveLocalChanges"
+                          IsVisible="{Binding !IsLeftSidebarCompact}"
                           ToolTip.Tip="Show parent-repository changes and changed submodules recursively">
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                       <Path Width="10"
@@ -212,14 +291,19 @@
               <ListBoxItem IsVisible="{Binding !IsBare}">
                 <Grid Classes="view_mode" ColumnDefinitions="Auto,*,Auto,Auto">
                   <Path Grid.Column="0" Classes="icon" Data="{StaticResource Icons.Stashes}"/>
-                  <TextBlock Grid.Column="1" Classes="header" Text="{DynamicResource Text.Stashes}"/>
+                  <TextBlock Grid.Column="1" Classes="header" Text="{DynamicResource Text.Stashes}" IsVisible="{Binding !IsLeftSidebarCompact}"/>
                   <Border Grid.Column="2"
                           Height="18"
                           Margin="6,0" Padding="9,0"
                           CornerRadius="9"
                           VerticalAlignment="Center"
-                          Background="{DynamicResource Brush.Badge}"
-                          IsVisible="{Binding StashesCount, Mode=OneWay, Converter={x:Static c:IntConverters.IsGreaterThanZero}}">
+                          Background="{DynamicResource Brush.Badge}">
+                    <Border.IsVisible>
+                      <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="!IsLeftSidebarCompact"/>
+                        <Binding Path="StashesCount" Converter="{x:Static c:IntConverters.IsGreaterThanZero}"/>
+                      </MultiBinding>
+                    </Border.IsVisible>
                     <TextBlock Text="{Binding StashesCount, Mode=OneWay}"
                                Foreground="{DynamicResource Brush.BadgeFG}"
                                FontFamily="{DynamicResource Fonts.Monospace}"
@@ -229,6 +313,7 @@
                           Classes="icon_button"
                           Width="26" Height="26"
                           Command="{Binding ClearStashes}"
+                          IsVisible="{Binding !IsLeftSidebarCompact}"
                           IsEnabled="{Binding StashesCount, Converter={x:Static c:IntConverters.IsGreaterThanZero}}"
                           ToolTip.Tip="{DynamicResource Text.Repository.ClearStashes}">
                     <Path Width="12" Height="12" Data="{StaticResource Icons.RemoveAll}"/>
@@ -248,7 +333,8 @@
                  BorderBrush="{DynamicResource Brush.Border2}"
                  Watermark="{DynamicResource Text.Repository.Filter}"
                  Text="{Binding Filter, Mode=TwoWay}"
-                 VerticalContentAlignment="Center">
+                 VerticalContentAlignment="Center"
+                 IsVisible="{Binding !IsLeftSidebarCompact}">
           <TextBox.InnerLeftContent>
             <Path Width="14" Height="14"
                   Margin="6,0,0,0"
@@ -274,6 +360,7 @@
         <ToggleButton Grid.Row="2"
                       Classes="group_expander"
                       Margin="8,6,4,0"
+                      IsVisible="{Binding !IsLeftSidebarCompact}"
                       IsChecked="{Binding IsPresetBranchFilterEditorExpanded, Mode=TwoWay}">
           <Grid ColumnDefinitions="16,*,Auto">
             <Path Grid.Column="0"
@@ -297,8 +384,13 @@
                 Padding="10,8"
                 CornerRadius="4"
                 BorderThickness="1"
-                BorderBrush="{DynamicResource Brush.Border2}"
-                IsVisible="{Binding IsPresetBranchFilterEditorExpanded}">
+                BorderBrush="{DynamicResource Brush.Border2}">
+          <Border.IsVisible>
+            <MultiBinding Converter="{x:Static BoolConverters.And}">
+              <Binding Path="!IsLeftSidebarCompact"/>
+              <Binding Path="IsPresetBranchFilterEditorExpanded"/>
+            </MultiBinding>
+          </Border.IsVisible>
           <StackPanel Orientation="Vertical">
             <Grid ColumnDefinitions="*,Auto">
               <TextBlock Grid.Column="0"
@@ -571,7 +663,7 @@
           </StackPanel>
         </Border>
 
-        <Grid Grid.Row="5" x:Name="LeftSidebarGroups" Margin="0,4,0,0" RowDefinitions="28,Auto,28,Auto,28,Auto,28,Auto,28,Auto" SizeChanged="OnLeftSidebarSizeChanged">
+        <Grid Grid.Row="5" x:Name="LeftSidebarGroups" Margin="0,4,0,0" RowDefinitions="28,Auto,28,Auto,28,Auto,28,Auto,28,Auto" SizeChanged="OnLeftSidebarSizeChanged" IsVisible="{Binding !IsLeftSidebarCompact}">
           <!-- Local Branches -->
           <ToggleButton Grid.Row="0" Classes="group_expander" IsChecked="{Binding IsLocalBranchGroupExpanded, Mode=TwoWay}">
             <Grid ColumnDefinitions="16,*,Auto,Auto">
@@ -1147,11 +1239,12 @@
               <Binding Path="ExcludedHistoryFilterCount" Converter="{x:Static c:IntConverters.IsGreaterThanZero}"/>
               <Binding Path="CanFoldVisibleBranchesInGraph"/>
               <Binding Path="CanUnfoldBranchesInGraph"/>
+              <Binding Path="HasStatusStripItems"/>
             </MultiBinding>
           </MultiBinding>
         </Border.IsVisible>
 
-        <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto">
+        <Grid ColumnDefinitions="Auto,Auto,Auto,*">
           <Button Grid.Column="0"
                   Classes="flat"
                   Margin="8,0,0,0"
@@ -1186,39 +1279,158 @@
             </StackPanel>
           </Button>
 
-          <Button Grid.Column="2"
-                  Classes="flat"
-                  Margin="8,0,0,0"
-                  Padding="8,2"
-                  Click="OnFoldVisibleBranchesInGraph"
-                  IsEnabled="{Binding CanFoldVisibleBranchesInGraph}"
-                  ToolTip.Tip="Fold all visible branches in graph">
-            <StackPanel Orientation="Horizontal">
-              <Path Width="12" Height="12" Margin="0,0,6,0" Data="{StaticResource Icons.Minus}" Fill="{DynamicResource Brush.FG2}"/>
-              <TextBlock Text="Fold Visible"/>
-            </StackPanel>
-          </Button>
+          <TextBox Grid.Column="2"
+                   x:Name="TxtHistoryQuickFindBox"
+                   Width="260"
+                   Height="24"
+                   Margin="8,2,0,2"
+                   VerticalContentAlignment="Center"
+                   Watermark="Quick find in history"
+                   Text="{Binding HistoryQuickFindText, Mode=TwoWay}"
+                   Tag="{Binding HistoryQuickFindFocusRequestId}"
+                   PropertyChanged="OnHistoryQuickFindBoxPropertyChanged"
+                   KeyDown="OnHistoryQuickFindKeyDown"
+                   IsVisible="{Binding SelectedViewIndex, Converter={x:Static c:IntConverters.IsZero}}">
+            <TextBox.InnerLeftContent>
+              <Path Width="12"
+                    Height="12"
+                    Margin="6,0,0,0"
+                    Fill="{DynamicResource Brush.FG2}"
+                    Data="{StaticResource Icons.Search}"/>
+            </TextBox.InnerLeftContent>
+            <TextBox.InnerRightContent>
+              <TextBlock Margin="0,0,6,0"
+                         VerticalAlignment="Center"
+                         FontSize="10"
+                         Foreground="{DynamicResource Brush.FG2}"
+                         Text="{OnPlatform Ctrl+F, macOS=⌘+F}"/>
+            </TextBox.InnerRightContent>
+          </TextBox>
 
-          <Button Grid.Column="3"
-                  Classes="flat"
-                  Margin="8,0,0,0"
-                  Padding="8,2"
-                  Click="OnUnfoldAllBranchesInGraph"
-                  IsEnabled="{Binding CanUnfoldBranchesInGraph}"
-                  ToolTip.Tip="Unfold all folded branches in graph">
-            <StackPanel Orientation="Horizontal">
-              <Path Width="12" Height="12" Margin="0,0,6,0" Data="{StaticResource Icons.Plus}" Fill="{DynamicResource Brush.FG2}"/>
-              <TextBlock Text="Unfold All"/>
-            </StackPanel>
-          </Button>
+          <StackPanel Grid.Column="3"
+                      Margin="8,0,8,0"
+                      Orientation="Horizontal"
+                      HorizontalAlignment="Right"
+                      Spacing="6"
+                      VerticalAlignment="Center">
+            <Button Classes="flat"
+                    Padding="8,2"
+                    Click="OnFoldVisibleBranchesInGraph"
+                    IsEnabled="{Binding CanFoldVisibleBranchesInGraph}"
+                    ToolTip.Tip="Fold all visible branches in graph">
+              <StackPanel Orientation="Horizontal">
+                <Path Width="12" Height="12" Margin="0,0,6,0" Data="{StaticResource Icons.Minus}" Fill="{DynamicResource Brush.FG2}"/>
+                <TextBlock Text="Fold Visible"/>
+              </StackPanel>
+            </Button>
 
-          <Button Grid.Column="4"
-                  Classes="icon_button"
-                  Margin="8,0,0,0"
-                  Command="{Binding ClearHistoryFilters}"
-                  ToolTip.Tip="{DynamicResource Text.Repository.ClearAllCommitsFilter}">
-            <Path Width="14" Height="14" Margin="8,0,8,0" Data="{StaticResource Icons.RemoveAll}"/>
-          </Button>
+            <Button Classes="flat"
+                    Padding="8,2"
+                    Click="OnUnfoldAllBranchesInGraph"
+                    IsEnabled="{Binding CanUnfoldBranchesInGraph}"
+                    ToolTip.Tip="Unfold all folded branches in graph">
+              <StackPanel Orientation="Horizontal">
+                <Path Width="12" Height="12" Margin="0,0,6,0" Data="{StaticResource Icons.Plus}" Fill="{DynamicResource Brush.FG2}"/>
+                <TextBlock Text="Unfold All"/>
+              </StackPanel>
+            </Button>
+
+            <Button Classes="icon_button"
+                    Command="{Binding ClearHistoryFilters}"
+                    ToolTip.Tip="{DynamicResource Text.Repository.ClearAllCommitsFilter}">
+              <Path Width="14" Height="14" Margin="8,0,8,0" Data="{StaticResource Icons.RemoveAll}"/>
+            </Button>
+
+            <Border Margin="2,0,0,0"
+                    Padding="1"
+                    CornerRadius="9"
+                    Background="{DynamicResource Brush.BG1}"
+                    BorderBrush="{DynamicResource Brush.Border1}"
+                    BorderThickness="1"
+                    IsVisible="{Binding SelectedViewIndex, Converter={x:Static c:IntConverters.IsZero}}">
+              <StackPanel Orientation="Horizontal" Spacing="1">
+                <RadioButton Classes="history_order_segment"
+                             GroupName="HistoryOrderModeInline"
+                             IsChecked="{Binding EnableTopoOrderInHistory, Converter={x:Static BoolConverters.Not}}"
+                             Click="OnHistoryOrderByDateClicked">
+                  <ToolTip.Tip>
+                    <StackPanel Orientation="Vertical" MaxWidth="320">
+                      <TextBlock FontWeight="Bold" Text="{DynamicResource Text.Repository.HistoriesOrder.ByDate}"/>
+                      <TextBlock Classes="small"
+                                 Margin="0,4,0,0"
+                                 Foreground="{DynamicResource Brush.FG2}"
+                                 Text="Order commits by commit date."/>
+                    </StackPanel>
+                  </ToolTip.Tip>
+                  <TextBlock Text="Date"/>
+                </RadioButton>
+
+                <RadioButton Classes="history_order_segment"
+                             GroupName="HistoryOrderModeInline"
+                             IsChecked="{Binding EnableTopoOrderInHistory}"
+                             Click="OnHistoryOrderTopoClicked">
+                  <ToolTip.Tip>
+                    <StackPanel Orientation="Vertical" MaxWidth="320">
+                      <TextBlock FontWeight="Bold" Text="{DynamicResource Text.Repository.HistoriesOrder.Topo}"/>
+                      <TextBlock Classes="small"
+                                 Margin="0,4,0,0"
+                                 Foreground="{DynamicResource Brush.FG2}"
+                                 Text="Order commits by graph topology."/>
+                    </StackPanel>
+                  </ToolTip.Tip>
+                  <TextBlock Text="Topo"/>
+                </RadioButton>
+              </StackPanel>
+            </Border>
+
+            <Border Padding="8,2"
+                    CornerRadius="10"
+                    BorderThickness="1"
+                    BorderBrush="#FF5B9BD5"
+                    Background="#1A5B9BD5"
+                    IsVisible="{Binding HasAheadStatus}">
+              <TextBlock Foreground="#FF0F8CFF"
+                         FontSize="11"
+                         FontWeight="SemiBold"
+                         Text="{Binding CurrentBranchAheadCount, StringFormat='ahead {0}'}"/>
+            </Border>
+
+            <Border Padding="8,2"
+                    CornerRadius="10"
+                    BorderThickness="1"
+                    BorderBrush="#FFE67E22"
+                    Background="#1AE67E22"
+                    IsVisible="{Binding HasBehindStatus}">
+              <TextBlock Foreground="#FFD97706"
+                         FontSize="11"
+                         FontWeight="SemiBold"
+                         Text="{Binding CurrentBranchBehindCount, StringFormat='behind {0}'}"/>
+            </Border>
+
+            <Border Padding="8,2"
+                    CornerRadius="10"
+                    BorderThickness="1"
+                    BorderBrush="#FF34A853"
+                    Background="#1A34A853"
+                    IsVisible="{Binding HasLocalChangesStatus}">
+              <TextBlock Foreground="#FF10893E"
+                         FontSize="11"
+                         FontWeight="SemiBold"
+                         Text="{Binding LocalChangesCount, StringFormat='local files {0}'}"/>
+            </Border>
+
+            <Border Padding="8,2"
+                    CornerRadius="10"
+                    BorderThickness="1"
+                    BorderBrush="#FF8E44AD"
+                    Background="#1A8E44AD"
+                    IsVisible="{Binding HasInProgressStatus}">
+              <TextBlock Foreground="#FF7C3AED"
+                         FontSize="11"
+                         FontWeight="SemiBold"
+                         Text="{Binding InProgressStatusText}"/>
+            </Border>
+          </StackPanel>
         </Grid>
       </Border>
 

@@ -95,6 +95,15 @@ namespace SourceGit.Views
             set => SetValue(SubjectProperty, value);
         }
 
+        public static readonly StyledProperty<string> HighlightTextProperty =
+            AvaloniaProperty.Register<CommitSubjectPresenter, string>(nameof(HighlightText), string.Empty);
+
+        public string HighlightText
+        {
+            get => GetValue(HighlightTextProperty);
+            set => SetValue(HighlightTextProperty, value);
+        }
+
         public static readonly StyledProperty<AvaloniaList<Models.IssueTracker>> IssueTrackersProperty =
             AvaloniaProperty.Register<CommitSubjectPresenter, AvaloniaList<Models.IssueTracker>>(nameof(IssueTrackers));
 
@@ -136,11 +145,13 @@ namespace SourceGit.Views
                         var rect = new Rect(inline.X, (height - inline.Text.Height - 2) * 0.5, inline.Text.WidthIncludingTrailingWhitespace + 8, inline.Text.Height + 2);
                         var roundedRect = new RoundedRect(rect, new CornerRadius(4));
                         context.DrawRectangle(InlineCodeBackground, null, roundedRect);
+                        DrawInlineHighlights(context, inline, inline.X + 4, (height - inline.Text.Height) * 0.5);
                         context.DrawText(inline.Text, new Point(inline.X + 4, (height - inline.Text.Height) * 0.5));
                         maxX = Math.Min(width, inline.X + inline.Text.WidthIncludingTrailingWhitespace + 8);
                     }
                     else
                     {
+                        DrawInlineHighlights(context, inline, inline.X, (height - inline.Text.Height) * 0.5);
                         context.DrawText(inline.Text, new Point(inline.X, (height - inline.Text.Height) * 0.5));
                         maxX = Math.Min(width, inline.X + inline.Text.WidthIncludingTrailingWhitespace);
                     }
@@ -178,6 +189,10 @@ namespace SourceGit.Views
                 change.Property == LinkForegroundProperty)
             {
                 _needRebuildInlines = true;
+                InvalidateVisual();
+            }
+            else if (change.Property == HighlightTextProperty)
+            {
                 InvalidateVisual();
             }
             else if (change.Property == InlineCodeBackgroundProperty ||
@@ -310,55 +325,87 @@ namespace SourceGit.Views
                         foreground);
 
                     _inlines.Add(new Inline(x, normal, null));
+                    _inlines[^1].RawText = subject.Substring(pos, elem.Start - pos);
+                    _inlines[^1].Typeface = typeface;
+                    _inlines[^1].FontSize = fontSize;
+                    _inlines[^1].Brush = foreground;
                     x += normal.WidthIncludingTrailingWhitespace;
                 }
 
                 if (elem.Type == Models.InlineElementType.Keyword)
                 {
+                    var raw = subject.Substring(elem.Start, elem.Length);
                     var keyword = new FormattedText(
-                        subject.Substring(elem.Start, elem.Length),
+                        raw,
                         CultureInfo.CurrentCulture,
                         FlowDirection.LeftToRight,
                         new Typeface(fontFamily, FontStyle.Normal, FontWeight.Bold),
                         fontSize,
                         foreground);
-                    _inlines.Add(new Inline(x, keyword, elem));
+                    _inlines.Add(new Inline(x, keyword, elem)
+                    {
+                        RawText = raw,
+                        Typeface = new Typeface(fontFamily, FontStyle.Normal, FontWeight.Bold),
+                        FontSize = fontSize,
+                        Brush = foreground,
+                    });
                     x += keyword.WidthIncludingTrailingWhitespace;
                 }
                 else if (elem.Type == Models.InlineElementType.Link)
                 {
+                    var raw = subject.Substring(elem.Start, elem.Length);
                     var link = new FormattedText(
-                        subject.Substring(elem.Start, elem.Length),
+                        raw,
                         CultureInfo.CurrentCulture,
                         FlowDirection.LeftToRight,
                         typeface,
                         fontSize,
                         linkForeground);
-                    _inlines.Add(new Inline(x, link, elem));
+                    _inlines.Add(new Inline(x, link, elem)
+                    {
+                        RawText = raw,
+                        Typeface = typeface,
+                        FontSize = fontSize,
+                        Brush = linkForeground,
+                    });
                     x += link.WidthIncludingTrailingWhitespace;
                 }
                 else if (elem.Type == Models.InlineElementType.Code)
                 {
+                    var raw = subject.Substring(elem.Start + 1, elem.Length - 2);
                     var link = new FormattedText(
-                        subject.Substring(elem.Start + 1, elem.Length - 2),
+                        raw,
                         CultureInfo.CurrentCulture,
                         FlowDirection.LeftToRight,
                         codeTypeface,
                         fontSize - 0.5,
                         foreground);
-                    _inlines.Add(new Inline(x, link, elem));
+                    _inlines.Add(new Inline(x, link, elem)
+                    {
+                        RawText = raw,
+                        Typeface = codeTypeface,
+                        FontSize = fontSize - 0.5,
+                        Brush = foreground,
+                    });
                     x += link.WidthIncludingTrailingWhitespace + 8;
                 }
                 else if (elem.Type == Models.InlineElementType.CountPrefix)
                 {
+                    var raw = subject.Substring(elem.Start, elem.Length);
                     var prefix = new FormattedText(
-                        subject.Substring(elem.Start, elem.Length),
+                        raw,
                         CultureInfo.CurrentCulture,
                         FlowDirection.LeftToRight,
                         new Typeface(fontFamily, FontStyle.Normal, FontWeight.Bold),
                         fontSize,
                         linkForeground);
-                    _inlines.Add(new Inline(x, prefix, elem));
+                    _inlines.Add(new Inline(x, prefix, elem)
+                    {
+                        RawText = raw,
+                        Typeface = new Typeface(fontFamily, FontStyle.Normal, FontWeight.Bold),
+                        FontSize = fontSize,
+                        Brush = linkForeground,
+                    });
                     x += prefix.WidthIncludingTrailingWhitespace;
                 }
 
@@ -375,7 +422,65 @@ namespace SourceGit.Views
                         fontSize,
                         foreground);
 
-                _inlines.Add(new Inline(x, normal, null));
+                _inlines.Add(new Inline(x, normal, null)
+                {
+                    RawText = subject.Substring(pos),
+                    Typeface = typeface,
+                    FontSize = fontSize,
+                    Brush = foreground,
+                });
+            }
+        }
+
+        private void DrawInlineHighlights(DrawingContext context, Inline inline, double x, double y)
+        {
+            var query = HighlightText;
+            if (string.IsNullOrWhiteSpace(query) || string.IsNullOrEmpty(inline.RawText))
+                return;
+
+            var start = 0;
+            while (true)
+            {
+                var found = inline.RawText.IndexOf(query, start, StringComparison.OrdinalIgnoreCase);
+                if (found < 0)
+                    break;
+
+                var prefixWidth = 0.0;
+                if (found > 0)
+                {
+                    var prefix = new FormattedText(
+                        inline.RawText.Substring(0, found),
+                        CultureInfo.CurrentCulture,
+                        FlowDirection.LeftToRight,
+                        inline.Typeface,
+                        inline.FontSize,
+                        inline.Brush);
+                    prefixWidth = prefix.WidthIncludingTrailingWhitespace;
+                }
+
+                var matchLen = Math.Min(query.Length, inline.RawText.Length - found);
+                var match = new FormattedText(
+                    inline.RawText.Substring(found, matchLen),
+                    CultureInfo.CurrentCulture,
+                    FlowDirection.LeftToRight,
+                    inline.Typeface,
+                    inline.FontSize,
+                    inline.Brush);
+
+                var rect = new RoundedRect(
+                    new Rect(x + prefixWidth - 1, y, match.WidthIncludingTrailingWhitespace + 2, inline.Text.Height),
+                    new CornerRadius(3));
+                context.DrawRectangle(s_highlightBackground, null, rect);
+
+                var highlightText = new FormattedText(
+                    inline.RawText.Substring(found, matchLen),
+                    CultureInfo.CurrentCulture,
+                    FlowDirection.LeftToRight,
+                    inline.Typeface,
+                    inline.FontSize,
+                    s_highlightForeground);
+                context.DrawText(highlightText, new Point(x + prefixWidth, y));
+                start = found + matchLen;
             }
         }
 
@@ -403,6 +508,10 @@ namespace SourceGit.Views
             public double X { get; set; } = 0;
             public FormattedText Text { get; set; } = null;
             public Models.InlineElement Element { get; set; } = null;
+            public string RawText { get; set; } = string.Empty;
+            public Typeface Typeface { get; set; } = new Typeface(FontFamily.Default);
+            public double FontSize { get; set; } = 0;
+            public IBrush Brush { get; set; } = null;
 
             public Inline(double x, FormattedText text, Models.InlineElement elem)
             {
@@ -416,5 +525,7 @@ namespace SourceGit.Views
         private List<Inline> _inlines = [];
         private Models.InlineElement _lastHover = null;
         private bool _needRebuildInlines = false;
+        private static readonly IBrush s_highlightBackground = new SolidColorBrush(Color.Parse("#E6F2C200"));
+        private static readonly IBrush s_highlightForeground = Brushes.Black;
     }
 }

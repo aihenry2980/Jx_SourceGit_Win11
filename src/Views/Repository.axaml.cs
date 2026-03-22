@@ -69,6 +69,30 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
+        private void OnHistoryQuickFindBoxPropertyChanged(object sender, AvaloniaPropertyChangedEventArgs e)
+        {
+            if (e.Property != TextBox.TagProperty || sender is not TextBox box)
+                return;
+
+            if (box.Tag is not long requestId || requestId <= 0)
+                return;
+
+            box.Focus();
+            box.SelectAll();
+        }
+
+        private void OnHistoryQuickFindKeyDown(object _, KeyEventArgs e)
+        {
+            if (DataContext is not ViewModels.Repository repo)
+                return;
+
+            if (e.Key == Key.Escape)
+            {
+                repo.ClearHistoryQuickFind();
+                e.Handled = true;
+            }
+        }
+
         private void OnOpenRecursiveLocalChanges(object _, RoutedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo)
@@ -344,6 +368,22 @@ namespace SourceGit.Views
                 TxtSearchCommitsBox.CaretIndex = content.Length;
                 repo.SearchCommitContext.StartSearch();
             }
+            e.Handled = true;
+        }
+
+        private void OnHistoryOrderByDateClicked(object _, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+                repo.EnableTopoOrderInHistory = false;
+
+            e.Handled = true;
+        }
+
+        private void OnHistoryOrderTopoClicked(object _, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+                repo.EnableTopoOrderInHistory = true;
+
             e.Handled = true;
         }
 
