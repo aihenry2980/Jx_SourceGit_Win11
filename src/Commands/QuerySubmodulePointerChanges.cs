@@ -34,6 +34,21 @@ namespace SourceGit.Commands
             Args = builder.ToString().TrimEnd();
         }
 
+        public QuerySubmodulePointerChanges(string repo, string oldRevision, string newRevision)
+        {
+            WorkingDirectory = repo;
+            Context = repo;
+
+            var builder = new StringBuilder();
+            builder.Append("diff --raw ");
+            if (!string.IsNullOrWhiteSpace(oldRevision))
+                builder.Append(oldRevision).Append(' ');
+            if (!string.IsNullOrWhiteSpace(newRevision))
+                builder.Append(newRevision);
+
+            Args = builder.ToString().TrimEnd();
+        }
+
         public async Task<Dictionary<string, Change>> GetResultAsync()
         {
             var rs = await ReadToEndAsync().ConfigureAwait(false);

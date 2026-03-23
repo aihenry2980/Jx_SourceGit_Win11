@@ -115,7 +115,13 @@
       </StackPanel>
 
       <!-- Dashboard -->
-      <Grid Grid.Row="1" Margin="0,0,0,8" RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" IsVisible="{Binding !IsSearchingCommits}">
+      <ScrollViewer x:Name="DashboardScrollViewer"
+                    Grid.Row="1"
+                    Margin="0,0,0,8"
+                    HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto"
+                    IsVisible="{Binding !IsSearchingCommits}">
+      <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*">
         <!-- Page Switcher for Right Panel -->
         <Border Grid.Row="0" Margin="8,0,4,0" BorderThickness="1" BorderBrush="{DynamicResource Brush.Border2}" CornerRadius="6">
           <Border CornerRadius="6" ClipToBounds="True">
@@ -875,6 +881,7 @@
           </ListBox>
         </Grid>
       </Grid>
+      </ScrollViewer>
 
       <!-- Commit Search Panel -->
       <Grid Grid.Row="1" RowDefinitions="Auto,26,*" Margin="8,0,4,8" IsVisible="{Binding IsSearchingCommits}" PropertyChanged="OnSearchCommitPanelPropertyChanged">
@@ -1281,7 +1288,7 @@
 
           <TextBox Grid.Column="2"
                    x:Name="TxtHistoryQuickFindBox"
-                   Width="260"
+                   Width="150"
                    Height="24"
                    Margin="8,2,0,2"
                    VerticalContentAlignment="Center"

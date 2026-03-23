@@ -1824,34 +1824,89 @@ namespace SourceGit.Views
             {
                 var to = await new Commands.QuerySingleCommit(repo.FullPath, target.Head).GetResultAsync();
                 if (to != null)
-                    ShowHardResetPopup(repo, source, to);
+                {
+                    var updateSubmodulesRecursively = await AskShouldUpdateSubmodulesRecursivelyAsync(
+                        repo,
+                        source.Head,
+                        to.SHA,
+                        "reset");
+                    ShowHardResetPopup(repo, source, to, updateSubmodulesRecursively);
+                }
 
                 return;
             }
 
-            repo.ShowPopup(new ViewModels.Rebase(repo, source, target));
+            var rebase = new ViewModels.Rebase(repo, source, target)
+            {
+                UpdateSubmodulesRecursivelyAfterOperation = await AskShouldUpdateSubmodulesRecursivelyAsync(
+                    repo,
+                    source.Head,
+                    target.Head,
+                    "rebase"),
+            };
+            repo.ShowPopup(rebase);
         }
 
-        private Task ExecuteCommitBranchDropActionAsync(ViewModels.Repository repo, Models.Branch source, Models.Commit target, KeyModifiers modifiers)
+        private async Task ExecuteCommitBranchDropActionAsync(ViewModels.Repository repo, Models.Branch source, Models.Commit target, KeyModifiers modifiers)
         {
             if (repo == null || source == null || target == null || !repo.CanCreatePopup())
-                return Task.CompletedTask;
+                return;
 
             if (IsHardResetModifierActive(modifiers))
-                ShowHardResetPopup(repo, source, target);
+            {
+                var updateSubmodulesRecursively = await AskShouldUpdateSubmodulesRecursivelyAsync(
+                    repo,
+                    source.Head,
+                    target.SHA,
+                    "reset");
+                ShowHardResetPopup(repo, source, target, updateSubmodulesRecursively);
+            }
             else
-                repo.ShowPopup(new ViewModels.Rebase(repo, source, target));
-
-            return Task.CompletedTask;
+            {
+                var rebase = new ViewModels.Rebase(repo, source, target)
+                {
+                    UpdateSubmodulesRecursivelyAfterOperation = await AskShouldUpdateSubmodulesRecursivelyAsync(
+                        repo,
+                        source.Head,
+                        target.SHA,
+                        "rebase"),
+                };
+                repo.ShowPopup(rebase);
+            }
         }
 
-        private static void ShowHardResetPopup(ViewModels.Repository repo, Models.Branch source, Models.Commit target)
+        private static void ShowHardResetPopup(ViewModels.Repository repo, Models.Branch source, Models.Commit target, bool updateSubmodulesRecursively)
         {
             var reset = new ViewModels.Reset(repo, source, target)
             {
                 SelectedMode = Models.ResetMode.Supported[^1], // hard
+                UpdateSubmodulesRecursivelyAfterOperation = updateSubmodulesRecursively,
             };
             repo.ShowPopup(reset);
+        }
+
+        private static async Task<bool> AskShouldUpdateSubmodulesRecursivelyAsync(
+            ViewModels.Repository repo,
+            string fromRevision,
+            string toRevision,
+            string operationName)
+        {
+            if (repo == null ||
+                repo.Submodules == null ||
+                repo.Submodules.Count == 0 ||
+                string.IsNullOrWhiteSpace(fromRevision) ||
+                string.IsNullOrWhiteSpace(toRevision) ||
+                string.Equals(fromRevision, toRevision, StringComparison.Ordinal))
+                return false;
+
+            var changes = await new Commands.QuerySubmodulePointerChanges(repo.FullPath, fromRevision, toRevision)
+                .GetResultAsync()
+                .ConfigureAwait(false);
+            if (changes.Count == 0)
+                return false;
+
+            var message = $"This drag {operationName} changes submodule pointers (SPP).\n\nUpdate submodules recursively after the {operationName} completes successfully?";
+            return await App.AskConfirmAsync(message, Models.ConfirmButtonType.YesNo);
         }
 
         private bool TryGetCurrentBranchDragName(Models.Commit commit, out string branchName)

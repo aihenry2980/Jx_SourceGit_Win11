@@ -19,6 +19,11 @@ namespace SourceGit.Views
         public Repository()
         {
             InitializeComponent();
+            DashboardScrollViewer.AddHandler(
+                InputElement.PointerWheelChangedEvent,
+                OnDashboardScrollViewerPointerWheelChanged,
+                RoutingStrategies.Tunnel,
+                true);
         }
 
         protected override void OnLoaded(RoutedEventArgs e)
@@ -31,6 +36,12 @@ namespace SourceGit.Views
         {
             if (e.Property == IsVisibleProperty && sender is Grid { IsVisible: true })
                 TxtSearchCommitsBox.Focus();
+        }
+
+        private void OnDashboardScrollViewerPointerWheelChanged(object sender, PointerWheelEventArgs e)
+        {
+            if (sender is ScrollViewer scrollViewer && !scrollViewer.IsPointerOver)
+                e.Handled = true;
         }
 
         private void OnSearchKeyDown(object _, KeyEventArgs e)

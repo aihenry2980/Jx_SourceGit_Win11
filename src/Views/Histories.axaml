@@ -231,6 +231,7 @@
 
                     <v:CommitRefsPresenter Grid.Column="3"
                                            Background="{DynamicResource Brush.Contents}"
+                                           CompactTrackingBranches="{Binding Source={x:Static vm:Preferences.Instance}, Path=CompactTrackingBranches}"
                                            Foreground="{DynamicResource Brush.FG1}"
                                            HighlightText="{Binding $parent[v:Repository].((vm:Repository)DataContext).HistoryQuickFindAppliedText}"
                                            ShowTags="{Binding Source={x:Static vm:Preferences.Instance}, Path=ShowTagsInGraph}"

@@ -16,6 +16,8 @@ namespace SourceGit.Commands
             builder.Append("pull --verbose --progress ");
             if (useRebase)
                 builder.Append("--rebase=true ");
+            else
+                builder.Append("--no-rebase ");
             builder.Append(remote).Append(' ').Append(branch);
 
             Args = builder.ToString();

@@ -20,6 +20,12 @@ namespace SourceGit.ViewModels
             set;
         }
 
+        public bool UpdateSubmodulesRecursivelyAfterOperation
+        {
+            get;
+            set;
+        } = false;
+
         public Reset(Repository repo, Models.Branch current, Models.Commit to)
         {
             _repo = repo;
@@ -30,17 +36,31 @@ namespace SourceGit.ViewModels
 
         public override async Task<bool> Sure()
         {
-            using var lockWatcher = _repo.LockWatcher();
             ProgressDescription = $"Reset current branch to {To.SHA} ...";
 
             var log = _repo.CreateLog($"Reset HEAD to '{To.SHA}'");
             Use(log);
 
-            var succ = await new Commands.Reset(_repo.FullPath, To.SHA, SelectedMode.Arg)
-                .Use(log)
-                .ExecAsync();
+            bool succ;
+            using (var lockWatcher = _repo.LockWatcher())
+            {
+                succ = await new Commands.Reset(_repo.FullPath, To.SHA, SelectedMode.Arg)
+                    .Use(log)
+                    .ExecAsync();
+            }
 
-            await _repo.AutoUpdateSubmodulesAsync(log);
+            if (succ)
+            {
+                if (UpdateSubmodulesRecursivelyAfterOperation)
+                {
+                    log.AppendLine("=== Update submodules recursively after reset ===");
+                    succ = await _repo.RunUpdateSubmodulesRecursivelyAsync(log).ConfigureAwait(false);
+                }
+                else
+                {
+                    await _repo.AutoUpdateSubmodulesAsync(log);
+                }
+            }
 
             log.Complete();
             return succ;

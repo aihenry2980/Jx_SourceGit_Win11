@@ -99,6 +99,7 @@
                     <DataTemplate DataType="m:Commit">
                       <StackPanel Orientation="Horizontal">
                         <v:CommitRefsPresenter Foreground="{DynamicResource Brush.FG1}"
+                                               CompactTrackingBranches="{Binding Source={x:Static vm:Preferences.Instance}, Path=CompactTrackingBranches}"
                                                FontSize="12"
                                                VerticalAlignment="Center"
                                                UseGraphColor="False"/>
@@ -165,6 +166,7 @@
                     <DataTemplate DataType="m:Commit">
                       <StackPanel Orientation="Horizontal">
                         <v:CommitRefsPresenter Foreground="{DynamicResource Brush.FG1}"
+                                               CompactTrackingBranches="{Binding Source={x:Static vm:Preferences.Instance}, Path=CompactTrackingBranches}"
                                                FontSize="12"
                                                VerticalAlignment="Center"
                                                UseGraphColor="False"/>

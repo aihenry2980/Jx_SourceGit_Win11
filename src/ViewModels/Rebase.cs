@@ -22,6 +22,12 @@ namespace SourceGit.ViewModels
             set;
         }
 
+        public bool UpdateSubmodulesRecursivelyAfterOperation
+        {
+            get;
+            set;
+        } = false;
+
         public Rebase(Repository repo, Models.Branch current, Models.Branch on)
         {
             _repo = repo;
@@ -42,19 +48,28 @@ namespace SourceGit.ViewModels
 
         public override async Task<bool> Sure()
         {
-            using var lockWatcher = _repo.LockWatcher();
             _repo.ClearCommitMessage();
             ProgressDescription = "Rebasing ...";
 
             var log = _repo.CreateLog("Rebase");
             Use(log);
 
-            await new Commands.Rebase(_repo.FullPath, _revision, AutoStash)
-                .Use(log)
-                .ExecAsync();
+            bool succ;
+            using (var lockWatcher = _repo.LockWatcher())
+            {
+                succ = await new Commands.Rebase(_repo.FullPath, _revision, AutoStash)
+                    .Use(log)
+                    .ExecAsync();
+            }
+
+            if (succ && UpdateSubmodulesRecursivelyAfterOperation)
+            {
+                log.AppendLine("=== Update submodules recursively after rebase ===");
+                succ = await _repo.RunUpdateSubmodulesRecursivelyAsync(log).ConfigureAwait(false);
+            }
 
             log.Complete();
-            return true;
+            return succ;
         }
 
         private readonly Repository _repo;

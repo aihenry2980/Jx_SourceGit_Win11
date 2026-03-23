@@ -13,6 +13,8 @@ namespace SourceGit.Views
         public class RenderItem
         {
             public Geometry Icon { get; set; } = null;
+            public Geometry SecondaryIcon { get; set; } = null;
+            public FormattedText PrefixLabel { get; set; } = null;
             public FormattedText Label { get; set; } = null;
             public FormattedText FoldLabel { get; set; } = null;
             public string RawLabel { get; set; } = string.Empty;
@@ -21,6 +23,9 @@ namespace SourceGit.Views
             public IBrush Brush { get; set; } = null;
             public IBrush BorderBrush { get; set; } = null;
             public IBrush IconBrush { get; set; } = null;
+            public IBrush SecondaryIconBrush { get; set; } = null;
+            public IBrush PrimaryIconBackground { get; set; } = null;
+            public IBrush SecondaryIconBackground { get; set; } = null;
             public IBrush LabelBrush { get; set; } = null;
             public IBrush FoldButtonBackground { get; set; } = null;
             public IBrush FoldButtonForeground { get; set; } = null;
@@ -29,6 +34,7 @@ namespace SourceGit.Views
             public bool UseSolidBackground { get; set; } = false;
             public bool CanFold { get; set; } = false;
             public bool IsFolded { get; set; } = false;
+            public double LeadingWidth { get; set; } = 16.0;
             public double Width { get; set; } = 0.0;
             public Models.Decorator Decorator { get; set; } = null;
         }
@@ -105,6 +111,15 @@ namespace SourceGit.Views
             set => SetValue(HighlightTextProperty, value);
         }
 
+        public static readonly StyledProperty<bool> CompactTrackingBranchesProperty =
+            AvaloniaProperty.Register<CommitRefsPresenter, bool>(nameof(CompactTrackingBranches));
+
+        public bool CompactTrackingBranches
+        {
+            get => GetValue(CompactTrackingBranchesProperty);
+            set => SetValue(CompactTrackingBranchesProperty, value);
+        }
+
         static CommitRefsPresenter()
         {
             AffectsMeasure<CommitRefsPresenter>(
@@ -114,7 +129,8 @@ namespace SourceGit.Views
                 UseGraphColorProperty,
                 BackgroundProperty,
                 ShowTagsProperty,
-                HighlightTextProperty);
+                HighlightTextProperty,
+                CompactTrackingBranchesProperty);
         }
 
         public Models.Decorator DecoratorAt(Point point)
@@ -172,8 +188,15 @@ namespace SourceGit.Views
                             context.DrawRectangle(item.Brush, null, entireRect);
                     }
 
-                    DrawLabelHighlights(context, item, x + 16, y + 8.0 - item.Label.Height * 0.5);
-                    context.DrawText(item.Label, new Point(x + 16, y + 8.0 - item.Label.Height * 0.5));
+                    var labelX = x + item.LeadingWidth;
+                    DrawLabelHighlights(context, item, labelX, y + 8.0 - item.Label.Height * 0.5);
+                    if (item.PrefixLabel != null)
+                    {
+                        context.DrawText(item.PrefixLabel, new Point(labelX, y + 8.0 - item.PrefixLabel.Height * 0.5));
+                        labelX += item.PrefixLabel.WidthIncludingTrailingWhitespace;
+                    }
+
+                    context.DrawText(item.Label, new Point(labelX, y + 8.0 - item.Label.Height * 0.5));
                 }
                 else
                 {
@@ -186,22 +209,57 @@ namespace SourceGit.Views
                         if (bg != null)
                             context.DrawRectangle(bg, null, entireRect);
 
-                        var labelRect = new RoundedRect(new Rect(x + 16, y, item.Label.Width + 8, 16), new CornerRadius(0, 4, 4, 0));
+                        var fullLabelWidth = (item.PrefixLabel?.WidthIncludingTrailingWhitespace ?? 0.0) + item.Label.Width;
+                        var labelRect = new RoundedRect(new Rect(x + item.LeadingWidth, y, fullLabelWidth + 8, 16), new CornerRadius(0, 4, 4, 0));
                         using (context.PushOpacity(.2))
                             context.DrawRectangle(item.Brush, null, labelRect);
 
-                        context.DrawLine(new Pen(item.Brush), new Point(x + 16, y), new Point(x + 16, y + 16));
+                        context.DrawLine(new Pen(item.Brush), new Point(x + item.LeadingWidth, y), new Point(x + item.LeadingWidth, y + 16));
                     }
 
-                    DrawLabelHighlights(context, item, x + 20, y + 8.0 - item.Label.Height * 0.5);
-                    context.DrawText(item.Label, new Point(x + 20, y + 8.0 - item.Label.Height * 0.5));
+                    var labelX = x + item.LeadingWidth + 4;
+                    DrawLabelHighlights(context, item, labelX, y + 8.0 - item.Label.Height * 0.5);
+                    if (item.PrefixLabel != null)
+                    {
+                        context.DrawText(item.PrefixLabel, new Point(labelX, y + 8.0 - item.PrefixLabel.Height * 0.5));
+                        labelX += item.PrefixLabel.WidthIncludingTrailingWhitespace;
+                    }
+
+                    context.DrawText(item.Label, new Point(labelX, y + 8.0 - item.Label.Height * 0.5));
                 }
 
                 var borderBrush = item.BorderBrush ?? item.Brush;
                 context.DrawRectangle(null, new Pen(borderBrush), entireRect);
 
+                if (item.PrimaryIconBackground != null)
+                {
+                    context.DrawRectangle(
+                        item.PrimaryIconBackground,
+                        null,
+                        new RoundedRect(new Rect(x + 2, y + 2, 10, 12), new CornerRadius(3)));
+                }
+
                 using (context.PushTransform(Matrix.CreateTranslation(x + 3, y + 3)))
                     context.DrawGeometry(item.IconBrush ?? fg, null, item.Icon);
+
+                if (item.SecondaryIcon != null)
+                {
+                    if (item.SecondaryIconBackground != null)
+                    {
+                        context.DrawRectangle(
+                            item.SecondaryIconBackground,
+                            null,
+                            new RoundedRect(new Rect(x + 14, y + 2, 10, 12), new CornerRadius(3)));
+                    }
+
+                    context.DrawLine(
+                        new Pen(item.BorderBrush ?? item.Brush, 1),
+                        new Point(x + 13, y + 3),
+                        new Point(x + 13, y + 13));
+
+                    using (context.PushTransform(Matrix.CreateTranslation(x + 15, y + 3)))
+                        context.DrawGeometry(item.SecondaryIconBrush ?? fg, null, item.SecondaryIcon);
+                }
 
                 if (item.CanFold)
                 {
@@ -251,11 +309,30 @@ namespace SourceGit.Views
                 var x = 0.0;
                 var allowWrap = AllowWrap;
                 var showTags = ShowTags;
+                var compactTrackingBranches = CompactTrackingBranches;
+                var consumedRemoteDecoratorIndexes = compactTrackingBranches ? new HashSet<int>() : null;
 
-                foreach (var decorator in refs)
+                for (var i = 0; i < refs.Count; i++)
                 {
+                    if (compactTrackingBranches && consumedRemoteDecoratorIndexes.Contains(i))
+                        continue;
+
+                    var decorator = refs[i];
                     if (!showTags && decorator.Type == Models.DecoratorType.Tag)
                         continue;
+
+                    Models.Decorator secondaryDecorator = null;
+                    if (compactTrackingBranches &&
+                        decorator.Type is Models.DecoratorType.CurrentBranchHead or Models.DecoratorType.LocalBranchHead &&
+                        !string.IsNullOrWhiteSpace(decorator.Name))
+                    {
+                        var remoteDecoratorIndex = FindCompactRemoteMatch(refs, decorator.Name);
+                        if (remoteDecoratorIndex >= 0 && remoteDecoratorIndex != i)
+                        {
+                            consumedRemoteDecoratorIndexes.Add(remoteDecoratorIndex);
+                            secondaryDecorator = refs[remoteDecoratorIndex];
+                        }
+                    }
 
                     var isHead = decorator.Type is Models.DecoratorType.CurrentBranchHead or Models.DecoratorType.CurrentCommitHead;
                     var isCurrentCommitHead = decorator.Type == Models.DecoratorType.CurrentCommitHead;
@@ -271,8 +348,26 @@ namespace SourceGit.Views
 
                     var labelTypeface = isHead || isSuperProjectPointer || isParentRepository ? typefaceBold : typeface;
                     var labelSizeForItem = isHead ? labelSize + 1 : labelSize;
+                    FormattedText prefixLabel = null;
+                    var labelText = decorator.Name;
+                    if (decorator.Type == Models.DecoratorType.RemoteBranchHead)
+                    {
+                        var slashIdx = decorator.Name.IndexOf('/');
+                        if (slashIdx > 0 && slashIdx + 1 < decorator.Name.Length)
+                        {
+                            prefixLabel = new FormattedText(
+                                decorator.Name.Substring(0, slashIdx + 1),
+                                CultureInfo.CurrentCulture,
+                                FlowDirection.LeftToRight,
+                                typefaceBold,
+                                labelSizeForItem,
+                                s_remotePrefixAccentBrush);
+                            labelText = decorator.Name.Substring(slashIdx + 1);
+                        }
+                    }
+
                     var label = new FormattedText(
-                        decorator.Name,
+                        labelText,
                         CultureInfo.CurrentCulture,
                         FlowDirection.LeftToRight,
                         labelTypeface,
@@ -281,6 +376,7 @@ namespace SourceGit.Views
 
                     var item = new RenderItem()
                     {
+                        PrefixLabel = prefixLabel,
                         Label = label,
                         RawLabel = decorator.Name,
                         LabelTypeface = labelTypeface,
@@ -300,6 +396,22 @@ namespace SourceGit.Views
                         IsCurrentCommitHead = isCurrentCommitHead,
                         Decorator = decorator,
                     };
+
+                    if (secondaryDecorator != null)
+                    {
+                        item.SecondaryIcon = CreateIcon(this.FindResource("Icons.Remote") as StreamGeometry, 10.0);
+                        item.IconBrush = isCurrentCommitHead
+                            ? s_headTagForegroundBrush
+                            : isSuperProjectPointer
+                                ? s_superProjectPointerForegroundBrush
+                                : isParentRepository
+                                    ? s_parentRepositoryForegroundBrush
+                                : s_compactLocalIconBrush;
+                        item.SecondaryIconBrush = s_compactRemoteIconBrush;
+                        item.PrimaryIconBackground = s_compactLocalIconBackgroundBrush;
+                        item.SecondaryIconBackground = s_compactRemoteIconBackgroundBrush;
+                        item.LeadingWidth = 29.0;
+                    }
 
                     item.CanFold = decorator.IsBranchFoldable &&
                         decorator.Type is Models.DecoratorType.CurrentBranchHead or
@@ -367,7 +479,8 @@ namespace SourceGit.Views
                             item.FoldButtonForeground);
                     }
 
-                    item.Width = 16 + (isHead ? 0 : 4) + label.Width + 4;
+                    var prefixWidth = prefixLabel?.WidthIncludingTrailingWhitespace ?? 0.0;
+                    item.Width = item.LeadingWidth + (isHead ? 0 : 4) + prefixWidth + label.Width + 4;
                     if (item.CanFold)
                         item.Width += 18;
                     _items.Add(item);
@@ -498,6 +611,47 @@ namespace SourceGit.Views
             return drawGeo;
         }
 
+        private static int FindCompactRemoteMatch(List<Models.Decorator> refs, string localName)
+        {
+            if (refs == null || string.IsNullOrWhiteSpace(localName))
+                return -1;
+
+            var exactOriginName = $"origin/{localName}";
+            var firstMatch = -1;
+            var matchCount = 0;
+
+            for (var i = 0; i < refs.Count; i++)
+            {
+                var decorator = refs[i];
+                if (decorator.Type != Models.DecoratorType.RemoteBranchHead)
+                    continue;
+
+                if (!GetRemoteLeafName(decorator.Name).Equals(localName, StringComparison.Ordinal))
+                    continue;
+
+                if (decorator.Name.Equals(exactOriginName, StringComparison.Ordinal))
+                    return i;
+
+                if (firstMatch < 0)
+                    firstMatch = i;
+
+                matchCount++;
+            }
+
+            return matchCount == 1 ? firstMatch : -1;
+        }
+
+        private static string GetRemoteLeafName(string remoteName)
+        {
+            if (string.IsNullOrWhiteSpace(remoteName))
+                return string.Empty;
+
+            var slashIdx = remoteName.IndexOf('/');
+            return slashIdx >= 0 && slashIdx + 1 < remoteName.Length
+                ? remoteName.Substring(slashIdx + 1)
+                : remoteName;
+        }
+
         private List<RenderItem> _items = new List<RenderItem>();
         private static readonly IBrush s_headTagBackgroundBrush = new SolidColorBrush(Color.Parse("#C62828"));
         private static readonly IBrush s_headTagBorderBrush = new SolidColorBrush(Color.Parse("#7F0000"));
@@ -510,5 +664,10 @@ namespace SourceGit.Views
         private static readonly IBrush s_parentRepositoryForegroundBrush = new SolidColorBrush(Color.Parse("#FFEB3B"));
         private static readonly IBrush s_highlightBackground = new SolidColorBrush(Color.Parse("#E6F2C200"));
         private static readonly IBrush s_highlightForeground = Brushes.Black;
+        private static readonly IBrush s_remotePrefixAccentBrush = new SolidColorBrush(Color.Parse("#1565C0"));
+        private static readonly IBrush s_compactLocalIconBrush = Brushes.White;
+        private static readonly IBrush s_compactRemoteIconBrush = Brushes.White;
+        private static readonly IBrush s_compactLocalIconBackgroundBrush = new SolidColorBrush(Color.Parse("#FF1E8E3E"));
+        private static readonly IBrush s_compactRemoteIconBackgroundBrush = new SolidColorBrush(Color.Parse("#FF1565C0"));
     }
 }

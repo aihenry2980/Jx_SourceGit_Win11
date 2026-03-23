@@ -48,14 +48,19 @@ namespace SourceGit.ViewModels
 
         public bool UseRebase
         {
-            get => _repo.UIStates.PreferRebaseInsteadOfMerge;
-            set => _repo.UIStates.PreferRebaseInsteadOfMerge = value;
+            get => _useRebase;
+            set
+            {
+                if (SetProperty(ref _useRebase, value))
+                    _repo.UIStates.PreferRebaseInsteadOfMerge = value;
+            }
         }
 
-        public Pull(Repository repo, Models.Branch specifiedRemoteBranch)
+        public Pull(Repository repo, Models.Branch specifiedRemoteBranch, bool? initialUseRebase = null)
         {
             _repo = repo;
             Current = repo.CurrentBranch;
+            _useRebase = initialUseRebase ?? _repo.UIStates.PreferRebaseInsteadOfMerge;
 
             if (specifiedRemoteBranch != null)
             {
@@ -149,9 +154,7 @@ namespace SourceGit.ViewModels
             if (cancellationToken.IsCancellationRequested)
                 return false;
 
-            var branchName = !string.IsNullOrEmpty(Current.Upstream) && Current.Upstream.Equals(_selectedBranch.FullName) ?
-                string.Empty :
-                _selectedBranch.Name;
+            var branchName = _selectedBranch.Name;
 
             var rs = await RunPullWithAutoRevertAsync(branchName, log, cancellationToken);
             if (!rs)
@@ -347,5 +350,6 @@ namespace SourceGit.ViewModels
         private Models.Remote _selectedRemote = null;
         private List<Models.Branch> _remoteBranches = null;
         private Models.Branch _selectedBranch = null;
+        private bool _useRebase = false;
     }
 }

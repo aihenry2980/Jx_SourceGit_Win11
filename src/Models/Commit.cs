@@ -152,13 +152,37 @@ namespace SourceGit.Models
                 }
             }
 
-            Decorators.Sort((l, r) =>
+            SortDecorators(Decorators);
+        }
+
+        public static void SortDecorators(List<Decorator> decorators)
+        {
+            if (decorators == null || decorators.Count <= 1)
+                return;
+
+            decorators.Sort((l, r) =>
             {
-                var delta = (int)l.Type - (int)r.Type;
+                var delta = GetDecoratorPriority(l.Type) - GetDecoratorPriority(r.Type);
                 if (delta != 0)
                     return delta;
+
                 return NumericSort.Compare(l.Name, r.Name);
             });
+        }
+
+        private static int GetDecoratorPriority(DecoratorType type)
+        {
+            return type switch
+            {
+                DecoratorType.CurrentCommitHead => 0,
+                DecoratorType.SuperProjectPointer => 1,
+                DecoratorType.ParentRepository => 2,
+                DecoratorType.CurrentBranchHead => 3,
+                DecoratorType.LocalBranchHead => 4,
+                DecoratorType.RemoteBranchHead => 5,
+                DecoratorType.Tag => 6,
+                _ => 100,
+            };
         }
     }
 

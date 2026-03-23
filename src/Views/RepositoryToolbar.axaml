@@ -181,9 +181,9 @@
       <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Tapped="Pull" IsVisible="{Binding !IsBare}" IsEnabled="{Binding !IsBare}">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
-            <TextBlock Text="Pull remote changes into the current local branch (fetch + merge/rebase according to settings)." TextWrapping="Wrap" MaxWidth="960"/>
+            <TextBlock Text="Pull remote changes into the current local branch using merge mode." TextWrapping="Wrap" MaxWidth="960"/>
             <TextBlock Classes="small" Margin="0,4,0,0" Text="Example: Pull origin/main to keep your local main aligned before starting new work." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
-            <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git pull --verbose --progress [--rebase=true] &lt;remote&gt; &lt;branch&gt;"/>
+            <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git pull --verbose --progress --no-rebase &lt;remote&gt; &lt;branch&gt;"/>
             <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcut: Ctrl+Shift+Down (direct pull)." Foreground="{DynamicResource Brush.FG2}"/>
             <TextBlock Classes="small italic" Margin="0,4,0,0" Text="{DynamicResource Text.CtrlClickTip}" Foreground="{DynamicResource Brush.FG2}"/>
           </StackPanel>

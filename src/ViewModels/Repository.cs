@@ -1208,7 +1208,7 @@ namespace SourceGit.ViewModels
                 return;
             }
 
-            var pull = new Pull(this, null);
+            var pull = new Pull(this, null, false);
             if (autoStart && pull.SelectedBranch != null)
                 await ShowAndStartPopupAsync(pull);
             else
@@ -1241,7 +1241,7 @@ namespace SourceGit.ViewModels
                 return false;
             }
 
-            var pull = new Pull(this, null);
+            var pull = new Pull(this, null, false);
             if (pull.SelectedRemote == null || pull.SelectedBranch == null)
             {
                 log?.AppendLine("No default remote branch is available for pull.");
@@ -3837,13 +3837,7 @@ namespace SourceGit.ViewModels
                 Name = "SPP",
             });
 
-            target.Decorators.Sort((l, r) =>
-            {
-                var delta = (int)l.Type - (int)r.Type;
-                if (delta != 0)
-                    return delta;
-                return Models.NumericSort.Compare(l.Name, r.Name);
-            });
+            Models.Commit.SortDecorators(target.Decorators);
         }
 
         private void AttachParentRepositoryDecorator(List<Models.Commit> commits)
@@ -3867,13 +3861,7 @@ namespace SourceGit.ViewModels
                 Name = "PARENT",
             });
 
-            target.Decorators.Sort((l, r) =>
-            {
-                var delta = (int)l.Type - (int)r.Type;
-                if (delta != 0)
-                    return delta;
-                return Models.NumericSort.Compare(l.Name, r.Name);
-            });
+            Models.Commit.SortDecorators(target.Decorators);
         }
 
         private void ApplyHistoryFilterColorsToDecorators(List<Models.Commit> commits)
@@ -3883,6 +3871,20 @@ namespace SourceGit.ViewModels
 
             var branchColors = new Dictionary<string, uint>(StringComparer.Ordinal);
             var includedBranches = new HashSet<string>(StringComparer.Ordinal);
+            var branchesByFullName = new Dictionary<string, Models.Branch>(StringComparer.Ordinal);
+            var localBranchesByUpstream = new Dictionary<string, Models.Branch>(StringComparer.Ordinal);
+            foreach (var branch in _branches)
+            {
+                if (!string.IsNullOrWhiteSpace(branch.FullName))
+                    branchesByFullName[branch.FullName] = branch;
+
+                if (branch.IsLocal &&
+                    !string.IsNullOrWhiteSpace(branch.Upstream) &&
+                    !localBranchesByUpstream.ContainsKey(branch.Upstream))
+                {
+                    localBranchesByUpstream[branch.Upstream] = branch;
+                }
+            }
             if (_settings != null)
             {
                 var configured = _settings.GetPresetBranchConfiguredColorMap();
@@ -3929,21 +3931,91 @@ namespace SourceGit.ViewModels
                         case Models.DecoratorType.CurrentBranchHead:
                         case Models.DecoratorType.LocalBranchHead:
                             var localRefName = $"refs/heads/{decorator.Name}";
-                            if (branchColors.TryGetValue(localRefName, out var localColor))
+                            if (TryResolveBranchDisplayColor(localRefName, true, branchColors, branchesByFullName, localBranchesByUpstream, out var localColor))
                                 decorator.Color = localColor;
-                            else if (hasIncludedBranches && !includedBranches.Contains(localRefName))
+                            else if (hasIncludedBranches && !ShouldKeepBranchVisibleColor(localRefName, true, includedBranches, branchesByFullName, localBranchesByUpstream))
                                 decorator.Color = incidentalBranchColor;
                             break;
                         case Models.DecoratorType.RemoteBranchHead:
                             var remoteRefName = $"refs/remotes/{decorator.Name}";
-                            if (branchColors.TryGetValue(remoteRefName, out var remoteColor))
+                            if (TryResolveBranchDisplayColor(remoteRefName, false, branchColors, branchesByFullName, localBranchesByUpstream, out var remoteColor))
                                 decorator.Color = remoteColor;
-                            else if (hasIncludedBranches && !includedBranches.Contains(remoteRefName))
+                            else if (hasIncludedBranches && !ShouldKeepBranchVisibleColor(remoteRefName, false, includedBranches, branchesByFullName, localBranchesByUpstream))
                                 decorator.Color = incidentalBranchColor;
                             break;
                     }
                 }
             }
+        }
+
+        private static bool TryResolveBranchDisplayColor(
+            string fullRefName,
+            bool isLocal,
+            Dictionary<string, uint> branchColors,
+            Dictionary<string, Models.Branch> branchesByFullName,
+            Dictionary<string, Models.Branch> localBranchesByUpstream,
+            out uint color)
+        {
+            color = 0;
+            if (string.IsNullOrWhiteSpace(fullRefName))
+                return false;
+
+            if (branchColors.TryGetValue(fullRefName, out color))
+                return true;
+
+            if (isLocal)
+            {
+                if (branchesByFullName.TryGetValue(fullRefName, out var localBranch) &&
+                    !string.IsNullOrWhiteSpace(localBranch.Upstream) &&
+                    branchColors.TryGetValue(localBranch.Upstream, out color))
+                {
+                    return true;
+                }
+            }
+            else
+            {
+                if (localBranchesByUpstream.TryGetValue(fullRefName, out var trackingLocal) &&
+                    branchColors.TryGetValue(trackingLocal.FullName, out color))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool ShouldKeepBranchVisibleColor(
+            string fullRefName,
+            bool isLocal,
+            HashSet<string> includedBranches,
+            Dictionary<string, Models.Branch> branchesByFullName,
+            Dictionary<string, Models.Branch> localBranchesByUpstream)
+        {
+            if (string.IsNullOrWhiteSpace(fullRefName))
+                return false;
+
+            if (includedBranches.Contains(fullRefName))
+                return true;
+
+            if (isLocal)
+            {
+                if (branchesByFullName.TryGetValue(fullRefName, out var localBranch) &&
+                    !string.IsNullOrWhiteSpace(localBranch.Upstream) &&
+                    includedBranches.Contains(localBranch.Upstream))
+                {
+                    return true;
+                }
+            }
+            else
+            {
+                if (localBranchesByUpstream.TryGetValue(fullRefName, out var trackingLocal) &&
+                    includedBranches.Contains(trackingLocal.FullName))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private HashSet<string> BuildFoldableBranchFullNameSet(List<Models.Commit> commits)
@@ -4358,7 +4430,7 @@ namespace SourceGit.ViewModels
                 return false;
             }
 
-            var pull = new Pull(this, null);
+            var pull = new Pull(this, null, false);
             if (pull.SelectedRemote == null || pull.SelectedBranch == null)
             {
                 reason = "Auto Sync All skipped because no default remote branch is configured for pull.";
