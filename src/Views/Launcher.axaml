@@ -23,6 +23,7 @@
       <!-- Bottom border -->
       <Border Grid.Column="0" Grid.ColumnSpan="5"
               x:Name="TitleBarBG"
+              Background="{Binding ActivePageTitleBarBackground}"
               BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Brush.Border0}"
               DoubleTapped="MaximizeOrRestoreWindow"
               PointerPressed="BeginMoveWindow"/>

@@ -341,7 +341,6 @@
       </DataGrid>
 
       <v:CommitGraph x:Name="CommitGraph"
-                     Margin="0,24,0,0"
                      Graph="{Binding Graph}"
                      DotBrush="{DynamicResource Brush.Contents}"
                      OnlyHighlightCurrentBranch="{Binding $parent[v:Histories].OnlyHighlightCurrentBranch}"
@@ -408,6 +407,23 @@
                    PointerPressed="OnOpenOriginRemoteURL"
                    ToolTip.Tip="{Binding OriginRemoteURL}"
                    IsVisible="{Binding OriginRemoteURL, Converter={x:Static c:StringConverters.IsNotNullOrWhitespace}}"/>
+
+        <Border HorizontalAlignment="Stretch"
+                VerticalAlignment="Top"
+                Margin="20,62,20,0"
+                Padding="12,8"
+                CornerRadius="8"
+                Background="#14000000"
+                BorderThickness="1"
+                BorderBrush="{DynamicResource Brush.Border0}">
+          <TextBlock Text="{Binding $parent[v:Repository].((vm:Repository)DataContext).FullPath}"
+                     TextAlignment="Center"
+                     TextTrimming="CharacterEllipsis"
+                     FontFamily="{DynamicResource Fonts.Monospace}"
+                     FontSize="18"
+                     Foreground="{DynamicResource Brush.FG2}"
+                     ToolTip.Tip="{Binding $parent[v:Repository].((vm:Repository)DataContext).FullPath}"/>
+        </Border>
 
         <StackPanel Margin="0,8" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Bottom">
           <Path Width="12" Height="12" VerticalAlignment="Center" Data="{StaticResource Icons.Info}" Fill="{DynamicResource Brush.FG2}"/>

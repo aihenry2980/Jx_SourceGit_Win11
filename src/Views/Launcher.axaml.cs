@@ -2,6 +2,7 @@
 
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml.MarkupExtensions;
@@ -66,12 +67,9 @@ namespace SourceGit.Views
             {
                 Background = Brushes.Transparent;
                 TransparencyLevelHint = [WindowTransparencyLevel.Mica];
-                TitleBarBG.Background = Brushes.Transparent;
             }
-            else
-            {
-                TitleBarBG.Bind(BackgroundProperty, new DynamicResourceExtension("Brush.TitleBar"));
-            }
+
+            TitleBarBG.Bind(BackgroundProperty, new Binding("ActivePageTitleBarBackground"));
 
             var layout = ViewModels.Preferences.Instance.Layout;
             Width = layout.LauncherWidth;
@@ -130,6 +128,12 @@ namespace SourceGit.Views
                     CaptionHeight = new GridLength(state == WindowState.Maximized ? 30 : 38);
 
                 ViewModels.Preferences.Instance.Layout.LauncherWindowState = state;
+            }
+            else if (change.Property.Name == nameof(ActualThemeVariant) &&
+                     change.NewValue != null &&
+                     DataContext is ViewModels.Launcher launcher)
+            {
+                launcher.NotifyTitleBarBrushChanged();
             }
         }
 

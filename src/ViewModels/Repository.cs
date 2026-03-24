@@ -1181,6 +1181,26 @@ namespace SourceGit.ViewModels
                 App.SendNotification(FullPath, $"{operationName} failed. Review the repository log for details.");
         }
 
+        public string GetPreferredRemoteNameForToolbarCommandEditor()
+        {
+            return GetPreferredRemoteName();
+        }
+
+        public Task<List<string>> GetQuickFetchFilteredRefSpecsForToolbarCommandEditorAsync(string remoteName)
+        {
+            return BuildQuickFetchFilteredRefSpecsAsync(remoteName);
+        }
+
+        public List<string> GetFetchRemoteNamesForCurrentRepositoryForToolbarCommandEditor()
+        {
+            return GetFetchRemoteNamesForCurrentRepository();
+        }
+
+        public Task<List<string>> GetFetchRemoteNamesForRepositoryForToolbarCommandEditorAsync(string repoPath)
+        {
+            return GetFetchRemoteNamesForRepositoryAsync(repoPath);
+        }
+
         public async Task FetchRecursivelyAsync(bool prune)
         {
             if (!CanCreatePopup())

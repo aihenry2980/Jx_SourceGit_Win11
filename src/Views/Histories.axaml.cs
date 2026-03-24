@@ -164,8 +164,10 @@ namespace SourceGit.Views
                 var rowHeight = dataGrid.RowHeight;
                 if (rowHeight <= 0 || double.IsNaN(rowHeight))
                     rowHeight = rows[0].Bounds.Height;
+                var offsetY = CalculateGraphVerticalOffset(rowsPresenter, rowHeight, 0);
 
-                CommitGraph.Layout = new(0, graphClipWidth, rowHeight, graphOffsetX);
+                UpdateCommitGraphMargin(rowsPresenter);
+                CommitGraph.Layout = new(0, graphClipWidth, rowHeight, graphOffsetX, offsetY);
             }
 
             if (dataGrid.SelectedItems.Count == 1)
@@ -239,6 +241,8 @@ namespace SourceGit.Views
             if (rowsPresenter == null)
                 return;
 
+            UpdateCommitGraphMargin(rowsPresenter);
+
             var rowHeight = dataGrid.RowHeight;
             if (rowHeight <= 0 || double.IsNaN(rowHeight))
                 rowHeight = 24;
@@ -262,17 +266,21 @@ namespace SourceGit.Views
             if (!TryGetGraphColumnLayout(dataGrid, out var graphOffsetX, out var clipWidth))
                 return;
 
+            var graphOffsetY = CalculateGraphVerticalOffset(rowsPresenter, rowHeight, startY);
+
             if (Math.Abs(_lastGraphStartY - startY) > 0.01 ||
                 Math.Abs(_lastGraphClipWidth - clipWidth) > 0.01 ||
                 Math.Abs(_lastGraphRowHeight - rowHeight) > 0.01 ||
-                Math.Abs(_lastGraphOffsetX - graphOffsetX) > 0.01)
+                Math.Abs(_lastGraphOffsetX - graphOffsetX) > 0.01 ||
+                Math.Abs(_lastGraphOffsetY - graphOffsetY) > 0.01)
             {
                 _lastGraphStartY = startY;
                 _lastGraphClipWidth = clipWidth;
                 _lastGraphRowHeight = rowHeight;
                 _lastGraphOffsetX = graphOffsetX;
+                _lastGraphOffsetY = graphOffsetY;
 
-                CommitGraph.Layout = new(startY, clipWidth, rowHeight, graphOffsetX);
+                CommitGraph.Layout = new(startY, clipWidth, rowHeight, graphOffsetX, graphOffsetY);
             }
 
             if (_pendingEnsureHeadVisibleRetries > 0)
@@ -331,6 +339,37 @@ namespace SourceGit.Views
                 return width;
 
             return Math.Max(0, col.MinWidth);
+        }
+
+        private static double CalculateGraphVerticalOffset(DataGridRowsPresenter rowsPresenter, double rowHeight, double startY)
+        {
+            foreach (var child in rowsPresenter.Children)
+            {
+                if (child is DataGridRow { IsVisible: true } row &&
+                    row.Bounds.Height > 0 &&
+                    !double.IsNaN(row.Bounds.Height) &&
+                    row.Bounds.Bottom > 0)
+                {
+                    var expectedCenter = row.Index * rowHeight + rowHeight * 0.5 - startY;
+                    var actualCenter = row.Bounds.Top + row.Bounds.Height * 0.5;
+                    return actualCenter - expectedCenter;
+                }
+            }
+
+            return 0;
+        }
+
+        private void UpdateCommitGraphMargin(DataGridRowsPresenter rowsPresenter)
+        {
+            var top = rowsPresenter.Bounds.Top;
+            if (double.IsNaN(top) || top < 0)
+                top = 0;
+
+            if (Math.Abs(_lastGraphTopOffset - top) > 0.01)
+            {
+                _lastGraphTopOffset = top;
+                CommitGraph.Margin = new Thickness(0, top, 0, 0);
+            }
         }
 
         private void OnScrollToTopPointerPressed(object sender, PointerPressedEventArgs e)
@@ -2207,6 +2246,8 @@ namespace SourceGit.Views
         private double _lastGraphClipWidth = 0;
         private double _lastGraphRowHeight = 0;
         private double _lastGraphOffsetX = 0;
+        private double _lastGraphOffsetY = 0;
+        private double _lastGraphTopOffset = -1;
         private int _pendingEnsureHeadVisibleRetries = 0;
         private bool _lastHistoriesIsLoading = false;
         private bool _isCenteringHeadCommit = false;

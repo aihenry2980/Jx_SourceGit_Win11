@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 using Avalonia;
@@ -20,7 +21,24 @@ namespace SourceGit.Views
         private const double COMPACT_WIDTH_THRESHOLD = 1260;
         private const double NARROW_WIDTH_THRESHOLD = 1160;
 
+        private enum ToolbarGitButtonKind
+        {
+            SuperQuickFetch,
+            QuickFetch,
+            Fetch,
+            Pull,
+            SyncAll,
+            FetchRecursively,
+            Refresh,
+            UndoRecentCommands,
+            UpdateSubmodulesRecursively,
+            StashAll,
+        }
+
+        private sealed record ToolbarGitCommandSpec(string MenuLabel, string WindowTitle, string Description, string CommandText, Action<ViewModels.Repository> OnSuccess = null);
+
         private ToolbarDensity _toolbarDensity = ToolbarDensity.Default;
+        private ContextMenu _activeToolbarGitCommandMenu = null;
 
         public RepositoryToolbar()
         {
@@ -182,6 +200,27 @@ namespace SourceGit.Views
                 return;
 
             OpenLogsContextMenu(control);
+            e.Handled = true;
+        }
+
+        private void OnToolbarGitButtonContextRequested(object sender, ContextRequestedEventArgs e)
+        {
+            if (sender is Control control)
+                OpenToolbarGitButtonContextMenu(control);
+
+            e.Handled = true;
+        }
+
+        private void OnToolbarGitButtonPointerPressed(object sender, PointerPressedEventArgs e)
+        {
+            if (sender is not Control control)
+                return;
+
+            var point = e.GetCurrentPoint(control);
+            if (!point.Properties.IsRightButtonPressed)
+                return;
+
+            OpenToolbarGitButtonContextMenu(control);
             e.Handled = true;
         }
 
@@ -393,7 +432,350 @@ namespace SourceGit.Views
             };
 
             menu.Items.Add(choose);
+            menu.Items.Add(new MenuItem() { Header = "-" });
+            AddToolbarGitCommandEditorMenuItems(menu, repo, ToolbarGitButtonKind.SyncAll);
             menu.Open(control);
+        }
+
+        private void OpenToolbarGitButtonContextMenu(Control control)
+        {
+            if (DataContext is not ViewModels.Repository repo || !repo.CanCreatePopup())
+                return;
+
+            if (!TryGetToolbarGitButtonKind(control.Tag as string, out var kind))
+                return;
+
+            _activeToolbarGitCommandMenu?.Close();
+            var menu = new ContextMenu();
+            menu.Placement = PlacementMode.BottomEdgeAlignedLeft;
+            menu.Closed += (_, _) =>
+            {
+                if (ReferenceEquals(control.ContextMenu, menu))
+                    control.ContextMenu = null;
+
+                if (ReferenceEquals(_activeToolbarGitCommandMenu, menu))
+                    _activeToolbarGitCommandMenu = null;
+            };
+
+            AddToolbarGitCommandEditorMenuItems(menu, repo, kind);
+            if (menu.Items.Count > 0)
+            {
+                control.ContextMenu = menu;
+                _activeToolbarGitCommandMenu = menu;
+                menu.Open(control);
+            }
+        }
+
+        private void AddToolbarGitCommandEditorMenuItems(ContextMenu menu, ViewModels.Repository repo, ToolbarGitButtonKind kind)
+        {
+            AddToolbarGitCommandEditorMenuItem(menu, repo, kind, false);
+
+            if (kind is ToolbarGitButtonKind.SyncAll or ToolbarGitButtonKind.FetchRecursively)
+                AddToolbarGitCommandEditorMenuItem(menu, repo, kind, true);
+        }
+
+        private void AddToolbarGitCommandEditorMenuItem(ContextMenu menu, ViewModels.Repository repo, ToolbarGitButtonKind kind, bool alternateMode)
+        {
+            var item = new MenuItem();
+            item.Header = alternateMode ? "Edit Ctrl command..." : "Edit command...";
+            item.Icon = App.CreateMenuIcon("Icons.Edit");
+            item.Click += async (_, e) =>
+            {
+                menu.Close();
+                var spec = await BuildToolbarGitCommandSpecAsync(repo, kind, alternateMode);
+                if (spec == null)
+                {
+                    App.SendNotification("Toolbar Git Command", "No editable git command is available for this button right now.");
+                    e.Handled = true;
+                    return;
+                }
+
+                OpenToolbarGitCommandEditor(spec, repo);
+                e.Handled = true;
+            };
+            menu.Items.Add(item);
+        }
+
+        private void OpenToolbarGitCommandEditor(ToolbarGitCommandSpec spec, ViewModels.Repository repo)
+        {
+            App.ShowWindow(new ToolbarGitCommandEditorWindow()
+            {
+                DataContext = new ViewModels.ToolbarGitCommandEditor(
+                    repo,
+                    spec.WindowTitle,
+                    spec.Description,
+                    spec.CommandText,
+                    spec.OnSuccess == null ? null : () => spec.OnSuccess(repo)),
+            });
+        }
+
+        private async Task<ToolbarGitCommandSpec> BuildToolbarGitCommandSpecAsync(ViewModels.Repository repo, ToolbarGitButtonKind kind, bool alternateMode)
+        {
+            return kind switch
+            {
+                ToolbarGitButtonKind.SuperQuickFetch => await BuildSuperQuickFetchCommandSpecAsync(repo),
+                ToolbarGitButtonKind.QuickFetch => BuildQuickFetchCommandSpec(repo),
+                ToolbarGitButtonKind.Fetch => BuildFetchCommandSpec(repo),
+                ToolbarGitButtonKind.Pull => BuildPullCommandSpec(repo),
+                ToolbarGitButtonKind.SyncAll => BuildSyncAllCommandSpec(repo, alternateMode),
+                ToolbarGitButtonKind.FetchRecursively => await BuildFetchRecursivelyCommandSpecAsync(repo, alternateMode),
+                ToolbarGitButtonKind.Refresh => BuildRefreshCommandSpec(repo),
+                ToolbarGitButtonKind.UndoRecentCommands => BuildUndoRecentCommandsCommandSpec(repo),
+                ToolbarGitButtonKind.UpdateSubmodulesRecursively => BuildUpdateSubmodulesCommandSpec(repo),
+                ToolbarGitButtonKind.StashAll => BuildStashAllCommandSpec(repo),
+                _ => null,
+            };
+        }
+
+        private async Task<ToolbarGitCommandSpec> BuildSuperQuickFetchCommandSpecAsync(ViewModels.Repository repo)
+        {
+            var remote = repo.GetPreferredRemoteNameForToolbarCommandEditor();
+            if (string.IsNullOrWhiteSpace(remote))
+                return null;
+
+            var refspecs = await repo.GetQuickFetchFilteredRefSpecsForToolbarCommandEditorAsync(remote);
+            var builder = new StringBuilder();
+            if (refspecs.Count == 0)
+                builder.AppendLine($"# No included branch filters currently resolve to remote '{remote}'.");
+
+            builder.Append("git fetch --progress --verbose --no-tags ").Append(Quote(remote));
+            foreach (var refspec in refspecs)
+                builder.Append(' ').Append(Quote(refspec));
+
+            return new ToolbarGitCommandSpec(
+                "Edit command...",
+                "Edit SQFetch Command",
+                "Edit the Super Quick Fetch command for the preferred remote. This runs in the repository logs window.",
+                builder.ToString(),
+                r => r.MarkFetched());
+        }
+
+        private ToolbarGitCommandSpec BuildQuickFetchCommandSpec(ViewModels.Repository repo)
+        {
+            var remote = repo.GetPreferredRemoteNameForToolbarCommandEditor();
+            if (string.IsNullOrWhiteSpace(remote))
+                return null;
+
+            return new ToolbarGitCommandSpec(
+                "Edit command...",
+                "Edit QFetch Command",
+                "Edit the Quick Fetch command for the preferred remote. This runs in the repository logs window.",
+                $"git fetch --progress --verbose --no-tags {Quote(remote)}",
+                r => r.MarkFetched());
+        }
+
+        private ToolbarGitCommandSpec BuildFetchCommandSpec(ViewModels.Repository repo)
+        {
+            var noTags = repo.UIStates.FetchWithoutTags ? "--no-tags" : "--tags";
+            var force = repo.UIStates.EnableForceOnFetch ? " --force" : string.Empty;
+            var builder = new StringBuilder();
+            var remotes = repo.UIStates.FetchAllRemotes && repo.Remotes.Count > 1
+                ? repo.Remotes.Select(x => x.Name).ToList()
+                : new List<string>() { repo.GetPreferredRemoteNameForToolbarCommandEditor() ?? repo.Remotes.FirstOrDefault()?.Name };
+
+            foreach (var remote in remotes.Where(x => !string.IsNullOrWhiteSpace(x)))
+                builder.AppendLine($"git fetch --progress --verbose {noTags}{force} {Quote(remote)}");
+
+            if (builder.Length == 0)
+                return null;
+
+            return new ToolbarGitCommandSpec(
+                "Edit command...",
+                "Edit Fetch Command",
+                "Edit the current default Fetch command. If fetch-all-remotes is enabled, each remote is listed on its own line.",
+                builder.ToString().TrimEnd(),
+                r => r.MarkFetched());
+        }
+
+        private ToolbarGitCommandSpec BuildPullCommandSpec(ViewModels.Repository repo)
+        {
+            var pull = new ViewModels.Pull(repo, null, false);
+            if (pull.SelectedRemote == null || pull.SelectedBranch == null)
+                return null;
+
+            var builder = new StringBuilder();
+            builder.AppendLine("# If local changes exist, the normal toolbar pull may auto-stash first.");
+            builder.Append("git pull --verbose --progress --no-rebase ")
+                .Append(Quote(pull.SelectedRemote.Name))
+                .Append(' ')
+                .Append(Quote(pull.SelectedBranch.Name));
+
+            return new ToolbarGitCommandSpec(
+                "Edit command...",
+                "Edit Pull Command",
+                "Edit the current default Pull command for the checked-out branch. This runs in the repository logs window.",
+                builder.ToString(),
+                RefreshRepositoryAfterToolbarGitCommand);
+        }
+
+        private ToolbarGitCommandSpec BuildSyncAllCommandSpec(ViewModels.Repository repo, bool alternateMode)
+        {
+            var pull = new ViewModels.Pull(repo, null, false);
+            if (pull.SelectedRemote == null || pull.SelectedBranch == null)
+                return null;
+
+            var targets = GetSelectedSubmoduleTargets(repo);
+            var builder = new StringBuilder();
+            builder.Append("git pull --verbose --progress --no-rebase ")
+                .Append(Quote(pull.SelectedRemote.Name))
+                .Append(' ')
+                .Append(Quote(pull.SelectedBranch.Name))
+                .AppendLine();
+            builder.Append("git submodule update --recursive --init");
+            foreach (var target in targets)
+                builder.Append(' ').Append(Quote(target));
+
+            if (targets.Count == 0)
+                builder.Append(" -- <selected-submodules...>");
+            else
+                builder.Insert("git submodule update --recursive --init".Length, " --");
+
+            if (alternateMode)
+            {
+                builder.AppendLine();
+                builder.AppendLine("# Ctrl mode also performs recursive fetch+prune for the root repo and configured submodules.");
+                builder.Append("git fetch --progress --verbose --no-tags --prune ")
+                    .Append(Quote(repo.GetPreferredRemoteNameForToolbarCommandEditor() ?? "origin"));
+            }
+
+            return new ToolbarGitCommandSpec(
+                alternateMode ? "Edit Ctrl command..." : "Edit command...",
+                alternateMode ? "Edit Sync All Ctrl Command" : "Edit Sync All Command",
+                "Edit the current Sync All command sequence. Commands run top to bottom in the repository logs window.",
+                builder.ToString(),
+                RefreshRepositoryAfterToolbarGitCommand);
+        }
+
+        private async Task<ToolbarGitCommandSpec> BuildFetchRecursivelyCommandSpecAsync(ViewModels.Repository repo, bool alternateMode)
+        {
+            var prune = !alternateMode;
+            var builder = new StringBuilder();
+            foreach (var remote in repo.GetFetchRemoteNamesForCurrentRepositoryForToolbarCommandEditor())
+            {
+                builder.Append("git fetch --progress --verbose --no-tags ");
+                if (prune)
+                    builder.Append("--prune ");
+                builder.Append(Quote(remote)).AppendLine();
+            }
+
+            foreach (var target in GetSelectedSubmoduleTargets(repo))
+            {
+                var submoduleRoot = Native.OS.GetAbsPath(repo.FullPath, target).Replace('\\', '/');
+                var remotes = await repo.GetFetchRemoteNamesForRepositoryForToolbarCommandEditorAsync(submoduleRoot);
+                foreach (var remote in remotes)
+                {
+                    builder.Append("git -C ")
+                        .Append(Quote(submoduleRoot))
+                        .Append(" fetch --progress --verbose --no-tags ");
+                    if (prune)
+                        builder.Append("--prune ");
+                    builder.Append(Quote(remote)).AppendLine();
+                }
+            }
+
+            if (builder.Length == 0)
+                return null;
+
+            return new ToolbarGitCommandSpec(
+                alternateMode ? "Edit Ctrl command..." : "Edit command...",
+                alternateMode ? "Edit Fetch Recursively Ctrl Command" : "Edit Fetch Recursively Command",
+                "Edit the recursive fetch command sequence. Each line runs separately in the repository logs window.",
+                builder.ToString().TrimEnd(),
+                r => r.MarkFetched());
+        }
+
+        private ToolbarGitCommandSpec BuildRefreshCommandSpec(ViewModels.Repository repo)
+        {
+            return new ToolbarGitCommandSpec(
+                "Edit command...",
+                "Edit Refresh Command",
+                "Edit the git query sequence used to refresh the history graph. Empty lines and comment lines are ignored.",
+                "# Refresh branches\n" +
+                "git branch --all --verbose\n" +
+                "# Refresh recent history\n" +
+                "git log --decorate --oneline -n 3000\n" +
+                "# Refresh submodule states\n" +
+                "git submodule status",
+                RefreshRepositoryAfterToolbarGitCommand);
+        }
+
+        private ToolbarGitCommandSpec BuildUndoRecentCommandsCommandSpec(ViewModels.Repository repo)
+        {
+            return new ToolbarGitCommandSpec(
+                "Edit command...",
+                "Edit Undo Recent Commands",
+                "Edit the undo helper sequence. Replace the placeholder reset target before running.",
+                "git reflog -n 4 HEAD\n# Replace <target-sha> with the commit you want to reset to.\ngit reset --hard <target-sha>",
+                RefreshRepositoryAfterToolbarGitCommand);
+        }
+
+        private ToolbarGitCommandSpec BuildUpdateSubmodulesCommandSpec(ViewModels.Repository repo)
+        {
+            var targets = GetSelectedSubmoduleTargets(repo);
+            var builder = new StringBuilder("git submodule update --recursive --init");
+            if (targets.Count == 0)
+            {
+                builder.Append(" -- <selected-submodules...>");
+            }
+            else
+            {
+                builder.Append(" --");
+                foreach (var target in targets)
+                    builder.Append(' ').Append(Quote(target));
+            }
+
+            return new ToolbarGitCommandSpec(
+                "Edit command...",
+                "Edit Update Submodules Command",
+                "Edit the recursive submodule update command. This runs in the repository logs window.",
+                builder.ToString(),
+                RefreshRepositoryAfterToolbarGitCommand);
+        }
+
+        private ToolbarGitCommandSpec BuildStashAllCommandSpec(ViewModels.Repository repo)
+        {
+            return new ToolbarGitCommandSpec(
+                "Edit command...",
+                "Edit Stash Command",
+                "Edit the default stash command template. This runs in the repository logs window.",
+                "git stash push --include-untracked -m \"WIP\"",
+                r =>
+                {
+                    r.RefreshWorkingCopyChanges();
+                    r.RefreshStashes();
+                });
+        }
+
+        private static bool TryGetToolbarGitButtonKind(string tag, out ToolbarGitButtonKind kind)
+        {
+            return Enum.TryParse(tag, out kind);
+        }
+
+        private static List<string> GetSelectedSubmoduleTargets(ViewModels.Repository repo)
+        {
+            var saved = repo.Settings?.GetRecursiveSubmoduleUpdateTargets() ?? [];
+            if (saved.Count == 0)
+                return repo.Submodules.Select(x => x.Path).Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
+
+            var available = new HashSet<string>(repo.Submodules.Select(x => x.Path), StringComparer.Ordinal);
+            return saved.Where(x => !string.IsNullOrWhiteSpace(x) && available.Contains(x)).ToList();
+        }
+
+        private static string Quote(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return "\"\"";
+
+            return "\"" + value.Replace("\"", "\\\"") + "\"";
+        }
+
+        private static void RefreshRepositoryAfterToolbarGitCommand(ViewModels.Repository repo)
+        {
+            repo.RefreshBranches();
+            repo.RefreshCommits();
+            repo.RefreshSubmodules();
+            repo.RefreshWorkingCopyChanges();
+            repo.RefreshStashes();
         }
 
         private async Task OpenUndoRecentCommandsMenuAsync(Control anchor)

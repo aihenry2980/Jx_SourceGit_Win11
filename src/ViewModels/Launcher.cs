@@ -2,7 +2,10 @@ using System;
 using System.IO;
 using System.Text;
 
+using Avalonia;
 using Avalonia.Collections;
+using Avalonia.Media;
+using Avalonia.Styling;
 using Avalonia.Threading;
 
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -34,8 +37,41 @@ namespace SourceGit.ViewModels
             get => _activePage;
             set
             {
+                if (_activePage == value)
+                    return;
+
+                UnsubscribeActivePageEvents(_activePage);
                 if (SetProperty(ref _activePage, value))
+                {
+                    SubscribeActivePageEvents(_activePage);
+                    OnPropertyChanged(nameof(ActivePageTitleBarBackground));
                     PostActivePageChanged();
+                }
+            }
+        }
+
+        public IBrush ActivePageTitleBarBackground
+        {
+            get
+            {
+                if (_activePage?.Node?.Bookmark is int bookmark &&
+                    Models.Bookmarks.Get(bookmark) is ISolidColorBrush solid)
+                {
+                    var c = solid.Color;
+                    if (Application.Current?.ActualThemeVariant == ThemeVariant.Dark)
+                    {
+                        byte Darken(byte v) => (byte)Math.Clamp((int)Math.Round(v * 0.42 + 0x18 * 0.58), 0, 255);
+                        return new SolidColorBrush(Color.FromArgb(0xFF, Darken(c.R), Darken(c.G), Darken(c.B)));
+                    }
+
+                    byte Lighten(byte v) => (byte)Math.Clamp((int)Math.Round(v * 0.34 + 0xFF * 0.66), 0, 255);
+                    return new SolidColorBrush(Color.FromArgb(0xFF, Lighten(c.R), Lighten(c.G), Lighten(c.B)));
+                }
+
+                if (Application.Current?.Resources.TryGetValue("Brush.TitleBar", out var brush) == true)
+                    return brush as IBrush;
+
+                return Brushes.Transparent;
             }
         }
 
@@ -393,6 +429,11 @@ namespace SourceGit.ViewModels
             _activePage?.Notifications.Add(notification);
         }
 
+        public void NotifyTitleBarBrushChanged()
+        {
+            OnPropertyChanged(nameof(ActivePageTitleBarBackground));
+        }
+
         private string GetRepositoryGitDir(string repo)
         {
             var fullpath = Path.Combine(repo, ".git");
@@ -458,10 +499,56 @@ namespace SourceGit.ViewModels
             CancelCommandPalette();
         }
 
+        private void SubscribeActivePageEvents(LauncherPage page)
+        {
+            if (page == null)
+                return;
+
+            page.PropertyChanged += OnActivePagePropertyChanged;
+            _subscribedNode = page.Node;
+            if (_subscribedNode != null)
+                _subscribedNode.PropertyChanged += OnActivePageNodePropertyChanged;
+        }
+
+        private void UnsubscribeActivePageEvents(LauncherPage page)
+        {
+            if (page == null)
+                return;
+
+            page.PropertyChanged -= OnActivePagePropertyChanged;
+            if (_subscribedNode != null)
+            {
+                _subscribedNode.PropertyChanged -= OnActivePageNodePropertyChanged;
+                _subscribedNode = null;
+            }
+        }
+
+        private void OnActivePagePropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (sender is not LauncherPage page || e.PropertyName != nameof(LauncherPage.Node))
+                return;
+
+            if (_subscribedNode != null)
+                _subscribedNode.PropertyChanged -= OnActivePageNodePropertyChanged;
+
+            _subscribedNode = page.Node;
+            if (_subscribedNode != null)
+                _subscribedNode.PropertyChanged += OnActivePageNodePropertyChanged;
+
+            OnPropertyChanged(nameof(ActivePageTitleBarBackground));
+        }
+
+        private void OnActivePageNodePropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(RepositoryNode.Bookmark))
+                OnPropertyChanged(nameof(ActivePageTitleBarBackground));
+        }
+
         private Workspace _activeWorkspace;
         private LauncherPage _activePage;
         private bool _ignoreIndexChange;
         private string _title = string.Empty;
         private ICommandPalette _commandPalette;
+        private RepositoryNode _subscribedNode;
     }
 }

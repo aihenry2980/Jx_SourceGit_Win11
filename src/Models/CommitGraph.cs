@@ -6,7 +6,7 @@ using Avalonia.Media;
 
 namespace SourceGit.Models
 {
-    public record CommitGraphLayout(double StartY, double ClipWidth, double RowHeight, double OffsetX = 0);
+    public record CommitGraphLayout(double StartY, double ClipWidth, double RowHeight, double OffsetX = 0, double OffsetY = 0);
 
     public class CommitGraph
     {

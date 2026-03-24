@@ -62,12 +62,13 @@ namespace SourceGit.Views
             var startY = layout.StartY;
             var clipWidth = layout.ClipWidth;
             var offsetX = layout.OffsetX;
+            var offsetY = layout.OffsetY;
             var clipHeight = Bounds.Height;
             var rowHeight = layout.RowHeight;
             var endY = startY + clipHeight + 28;
 
             using (context.PushClip(new Rect(offsetX, 0, clipWidth, clipHeight)))
-            using (context.PushTransform(Matrix.CreateTranslation(offsetX, -startY)))
+            using (context.PushTransform(Matrix.CreateTranslation(offsetX, -startY + offsetY)))
             {
                 DrawCurves(context, graph, startY, endY, rowHeight);
                 DrawAnchors(context, graph, startY, endY, rowHeight);

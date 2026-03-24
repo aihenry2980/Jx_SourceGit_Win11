@@ -103,7 +103,13 @@
     </StackPanel>
 
     <StackPanel x:Name="CenterToolbarGroup" Grid.Column="1" Orientation="Horizontal">
-      <Button Classes="icon_button" Width="56" Click="SuperQuickFetch">
+      <Button x:Name="SuperQuickFetchButton"
+              Classes="icon_button"
+              Width="56"
+              Click="SuperQuickFetch"
+              Tag="SuperQuickFetch"
+              ContextRequested="OnToolbarGitButtonContextRequested"
+              PointerPressed="OnToolbarGitButtonPointerPressed">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Super quick fetch only the explicitly included branch filters on the preferred remote." TextWrapping="Wrap" MaxWidth="960"/>
@@ -123,7 +129,14 @@
       </Button>
       <Button Width="0" Height="0" Click="SuperQuickFetchByHotKey" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+Shift+F, macOS=âŒ˜+âŒ¥+â‡§+F}"/>
 
-      <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Tapped="QuickFetch">
+      <Button x:Name="QuickFetchButton"
+              Classes="icon_button"
+              Width="56"
+              Margin="8,0,0,0"
+              Tapped="QuickFetch"
+              Tag="QuickFetch"
+              ContextRequested="OnToolbarGitButtonContextRequested"
+              PointerPressed="OnToolbarGitButtonPointerPressed">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Quick fetch the preferred remote only, without tags, prune, or recursive submodule work." TextWrapping="Wrap" MaxWidth="960"/>
@@ -143,7 +156,14 @@
       </Button>
       <Button Width="0" Height="0" Click="QuickFetchByHotKey" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+F, macOS=⌘+⌥+F}"/>
 
-      <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Tapped="Fetch">
+      <Button x:Name="FetchButton"
+              Classes="icon_button"
+              Width="56"
+              Margin="8,0,0,0"
+              Tapped="Fetch"
+              Tag="Fetch"
+              ContextRequested="OnToolbarGitButtonContextRequested"
+              PointerPressed="OnToolbarGitButtonPointerPressed">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Fetch remote updates (new commits/refs) without modifying your working tree or current branch." TextWrapping="Wrap" MaxWidth="960"/>
@@ -178,7 +198,16 @@
         </StackPanel>
       </Button>
 
-      <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Tapped="Pull" IsVisible="{Binding !IsBare}" IsEnabled="{Binding !IsBare}">
+      <Button x:Name="PullButton"
+              Classes="icon_button"
+              Width="56"
+              Margin="8,0,0,0"
+              Tapped="Pull"
+              Tag="Pull"
+              ContextRequested="OnToolbarGitButtonContextRequested"
+              PointerPressed="OnToolbarGitButtonPointerPressed"
+              IsVisible="{Binding !IsBare}"
+              IsEnabled="{Binding !IsBare}">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Pull remote changes into the current local branch using merge mode." TextWrapping="Wrap" MaxWidth="960"/>
@@ -198,7 +227,7 @@
       </Button>
       <Button Width="0" Height="0" Click="PullDirectlyByHotKey" IsVisible="False" IsEnabled="{Binding !IsBare}" HotKey="{OnPlatform Ctrl+Shift+Down, macOS=⌘+Shift+Down}"/>
 
-      <Button x:Name="SyncAllButton" Classes="icon_button" Width="56" Margin="8,0,0,0" Tapped="SyncAll" ContextRequested="OnSyncAllContextRequested" PointerPressed="OnSyncAllPointerPressed" IsVisible="{Binding !IsBare}" IsEnabled="{Binding !IsBare}">
+      <Button x:Name="SyncAllButton" Classes="icon_button" Width="56" Margin="8,0,0,0" Tapped="SyncAll" Tag="SyncAll" ContextRequested="OnSyncAllContextRequested" PointerPressed="OnSyncAllPointerPressed" IsVisible="{Binding !IsBare}" IsEnabled="{Binding !IsBare}">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Click: pull current branch, then update selected submodules recursively." TextWrapping="Wrap" MaxWidth="960"/>
@@ -239,7 +268,14 @@
       </Button>
       <Button Width="0" Height="0" Click="PushDirectlyByHotKey" IsVisible="False" HotKey="{OnPlatform Ctrl+Shift+Up, macOS=⌘+Shift+Up}"/>
 
-      <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Tapped="FetchRecursivelyWithOptionalPrune">
+      <Button x:Name="FetchRecursivelyButton"
+              Classes="icon_button"
+              Width="56"
+              Margin="8,0,0,0"
+              Tapped="FetchRecursivelyWithOptionalPrune"
+              Tag="FetchRecursively"
+              ContextRequested="OnToolbarGitButtonContextRequested"
+              PointerPressed="OnToolbarGitButtonPointerPressed">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Click: fetch recursively and prune stale remote refs for the root repository and configured submodules." TextWrapping="Wrap" MaxWidth="960"/>
@@ -267,7 +303,14 @@
       </Button>
       <Button Width="0" Height="0" Click="FetchAndPruneRecursively" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+Shift+Down, macOS=⌘+⌥+⇧+Down}"/>
 
-      <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Click="RefreshHistoryGraph">
+      <Button x:Name="RefreshButton"
+              Classes="icon_button"
+              Width="56"
+              Margin="8,0,0,0"
+              Click="RefreshHistoryGraph"
+              Tag="Refresh"
+              ContextRequested="OnToolbarGitButtonContextRequested"
+              PointerPressed="OnToolbarGitButtonPointerPressed">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Refresh history panel immediately (branches + commits) and rebuild graph layout." TextWrapping="Wrap" MaxWidth="960"/>
@@ -287,7 +330,7 @@
 
       <Button Width="0" Height="0" Click="FetchRecursively" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+Down, macOS=⌘+⌥+Down}"/>
 
-      <Button x:Name="UndoRecentCommandsButton" Classes="icon_button" Width="56" Margin="8,0,0,0" Click="UndoRecentCommands" IsVisible="{Binding !IsBare}" IsEnabled="{Binding !IsBare}">
+      <Button x:Name="UndoRecentCommandsButton" Classes="icon_button" Width="56" Margin="8,0,0,0" Click="UndoRecentCommands" Tag="UndoRecentCommands" ContextRequested="OnToolbarGitButtonContextRequested" PointerPressed="OnToolbarGitButtonPointerPressed" IsVisible="{Binding !IsBare}" IsEnabled="{Binding !IsBare}">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Show the latest reversible HEAD-changing git commands and choose whether to undo the recent 1, 2, or 3 commands." TextWrapping="Wrap" MaxWidth="960"/>
@@ -307,7 +350,16 @@
       </Button>
       <Button Width="0" Height="0" Click="UndoLastRebase" IsVisible="False" IsEnabled="{Binding !IsBare}" HotKey="{OnPlatform Ctrl+Alt+Z, macOS=⌘+⌥+Z}"/>
 
-      <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Click="UpdateSubmodulesRecursively" IsVisible="{Binding !IsBare}" IsEnabled="{Binding !IsBare}">
+      <Button x:Name="UpdateSubmodulesRecursivelyButton"
+              Classes="icon_button"
+              Width="56"
+              Margin="8,0,0,0"
+              Click="UpdateSubmodulesRecursively"
+              Tag="UpdateSubmodulesRecursively"
+              ContextRequested="OnToolbarGitButtonContextRequested"
+              PointerPressed="OnToolbarGitButtonPointerPressed"
+              IsVisible="{Binding !IsBare}"
+              IsEnabled="{Binding !IsBare}">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Update submodules recursively to the revisions recorded by the parent repository." TextWrapping="Wrap" MaxWidth="960"/>
@@ -326,7 +378,15 @@
       </Button>
       <Button Width="0" Height="0" Click="UpdateSubmodulesRecursively" IsVisible="False" IsEnabled="{Binding !IsBare}" HotKey="{OnPlatform Ctrl+Alt+U, macOS=⌘+⌥+U}"/>
 
-      <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Tapped="StashAll" IsVisible="{Binding !IsBare}">
+      <Button x:Name="StashAllButton"
+              Classes="icon_button"
+              Width="56"
+              Margin="8,0,0,0"
+              Tapped="StashAll"
+              Tag="StashAll"
+              ContextRequested="OnToolbarGitButtonContextRequested"
+              PointerPressed="OnToolbarGitButtonPointerPressed"
+              IsVisible="{Binding !IsBare}">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Stash all current working-tree and index changes into a temporary WIP snapshot." TextWrapping="Wrap" MaxWidth="960"/>
