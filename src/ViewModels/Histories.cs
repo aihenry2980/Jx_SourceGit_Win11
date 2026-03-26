@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Avalonia.Controls;
@@ -162,6 +163,7 @@ namespace SourceGit.ViewModels
 
         public void Dispose()
         {
+            CancelPendingDetailLoad();
             Commits = [];
             _repo = null;
             _graph = null;
@@ -206,8 +208,10 @@ namespace SourceGit.ViewModels
             var commit = _commits.Find(x => x.SHA.StartsWith(commitSHA, StringComparison.Ordinal));
             if (commit != null)
             {
+                CancelPendingDetailLoad();
                 SelectedCommit = commit;
                 NavigationId = _navigationId + 1;
+                QueueCommitDetailLoad(commit);
                 return;
             }
 
@@ -219,6 +223,7 @@ namespace SourceGit.ViewModels
 
                 Dispatcher.UIThread.Post(() =>
                 {
+                    CancelPendingDetailLoad();
                     _ignoreSelectionChange = true;
                     SelectedCommit = null;
 
@@ -245,6 +250,7 @@ namespace SourceGit.ViewModels
 
             if (commits.Count == 0)
             {
+                CancelPendingDetailLoad();
                 _repo.SearchCommitContext.Selected = null;
                 DetailContext = null;
             }
@@ -256,20 +262,11 @@ namespace SourceGit.ViewModels
 
                 SelectedCommit = commit;
                 NavigationId = _navigationId + 1;
-
-                if (_detailContext is CommitDetail detail)
-                {
-                    detail.Commit = commit;
-                }
-                else
-                {
-                    var commitDetail = new CommitDetail(_repo, _commitDetailSharedData);
-                    commitDetail.Commit = commit;
-                    DetailContext = commitDetail;
-                }
+                QueueCommitDetailLoad(commit);
             }
             else if (commits.Count == 2)
             {
+                CancelPendingDetailLoad();
                 _repo.SearchCommitContext.Selected = null;
 
                 var end = commits[0] as Models.Commit;
@@ -278,6 +275,7 @@ namespace SourceGit.ViewModels
             }
             else
             {
+                CancelPendingDetailLoad();
                 _repo.SearchCommitContext.Selected = null;
                 DetailContext = new Models.Count(commits.Count);
             }
@@ -582,6 +580,78 @@ namespace SourceGit.ViewModels
             return changed;
         }
 
+        private void QueueCommitDetailLoad(Models.Commit commit)
+        {
+            if (commit == null)
+                return;
+
+            if (_detailContext is CommitDetail existing &&
+                existing.Commit != null &&
+                existing.Commit.SHA.Equals(commit.SHA, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            CancelPendingDetailLoad();
+            var cts = new CancellationTokenSource();
+            _detailLoadDebounce = cts;
+            _ = LoadCommitDetailAsync(commit, cts);
+        }
+
+        private async Task LoadCommitDetailAsync(Models.Commit commit, CancellationTokenSource cts)
+        {
+            var token = cts.Token;
+            try
+            {
+                await Task.Delay(150, token);
+                if (token.IsCancellationRequested)
+                    return;
+
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    if (token.IsCancellationRequested ||
+                        !ReferenceEquals(_detailLoadDebounce, cts) ||
+                        _selectedCommit == null ||
+                        !_selectedCommit.SHA.Equals(commit.SHA, StringComparison.Ordinal))
+                    {
+                        return;
+                    }
+
+                    if (_detailContext is CommitDetail detail)
+                    {
+                        detail.Commit = commit;
+                    }
+                    else
+                    {
+                        var commitDetail = new CommitDetail(_repo, _commitDetailSharedData);
+                        commitDetail.Commit = commit;
+                        DetailContext = commitDetail;
+                    }
+                }, DispatcherPriority.Background);
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected while quickly scanning history.
+            }
+            finally
+            {
+                if (ReferenceEquals(_detailLoadDebounce, cts))
+                    _detailLoadDebounce = null;
+
+                cts.Dispose();
+            }
+        }
+
+        private void CancelPendingDetailLoad()
+        {
+            if (_detailLoadDebounce == null)
+                return;
+
+            _detailLoadDebounce.Cancel();
+            _detailLoadDebounce.Dispose();
+            _detailLoadDebounce = null;
+        }
+
         private Repository _repo = null;
         private CommitDetailSharedData _commitDetailSharedData = null;
         private bool _isLoading = true;
@@ -593,6 +663,7 @@ namespace SourceGit.ViewModels
         private long _navigationId = 0;
         private IDisposable _detailContext = null;
         private bool _ignoreSelectionChange = false;
+        private CancellationTokenSource _detailLoadDebounce = null;
 
         private GridLength _leftArea = new GridLength(1, GridUnitType.Star);
         private GridLength _rightArea = new GridLength(1, GridUnitType.Star);

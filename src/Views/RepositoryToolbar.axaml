@@ -181,20 +181,31 @@
       </Button>
       <Button Width="0" Height="0" Click="FetchDirectlyByHotKey" IsVisible="False" HotKey="{OnPlatform Ctrl+Down, macOS=⌘+Down}"/>
 
-      <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Tapped="QuickFetch" IsVisible="False">
+      <Button x:Name="QuickPullButton"
+              Classes="icon_button"
+              Width="56"
+              Margin="8,0,0,0"
+              Tapped="QuickPull"
+              Tag="QuickPull"
+              ContextRequested="OnToolbarGitButtonContextRequested"
+              PointerPressed="OnToolbarGitButtonPointerPressed"
+              IsVisible="{Binding !IsBare}"
+              IsEnabled="{Binding !IsBare}">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
-            <TextBlock Text="Quick fetch the preferred remote only, without tags, prune, or recursive submodule work." TextWrapping="Wrap" MaxWidth="420"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="Use this when you only want to know whether new commits arrived as fast as possible." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="420"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="It runs directly in background, writes to repository logs, and uses the fast recent-history refresh path." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="420"/>
+            <TextBlock Text="Quick pull the tracked upstream using an explicit fetch plus fast-forward-only merge." TextWrapping="Wrap" MaxWidth="960"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="Use this for the common case where the branch can move forward cleanly and you want a faster update path than the full pull popup flow." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
+            <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git fetch --progress --verbose &lt;remote&gt; refs/heads/&lt;branch&gt;:refs/remotes/&lt;remote&gt;/&lt;branch&gt;"/>
+            <TextBlock Classes="tooltip_cmd" Margin="0,2,0,0" Text="git merge --progress --no-edit --ff-only &lt;remote&gt;/&lt;branch&gt;"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="It runs directly in background, writes to repository logs, and fails instead of silently falling back if a fast-forward is not possible." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
           </StackPanel>
         </ToolTip.Tip>
 
         <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
-          <Border Background="#FFEAA400" CornerRadius="5" Padding="4">
-            <Path Width="14" Height="14" HorizontalAlignment="Center" Fill="White" Data="{StaticResource Icons.Lightning}"/>
+          <Border Background="#FF0F766E" CornerRadius="5" Padding="4">
+            <Path Width="14" Height="14" HorizontalAlignment="Center" Fill="#FFFFE066" Data="{StaticResource Icons.Pull}"/>
           </Border>
-          <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="QFetch"/>
+          <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="QPull"/>
         </StackPanel>
       </Button>
 

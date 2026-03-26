@@ -41,6 +41,12 @@ namespace SourceGit.ViewModels
                 {
                     _sharedData.ActiveTabIndex = value;
 
+                    if (value == 1)
+                    {
+                        EnsureChangesLoaded();
+                        TrySelectFirstVisibleChange();
+                    }
+
                     if (value == 1 && DiffContext == null && _selectedChanges is { Count: 1 })
                         DiffContext = new DiffContext(_repo.FullPath, new Models.DiffOption(_commit, _selectedChanges[0]));
                 }
@@ -127,6 +133,8 @@ namespace SourceGit.ViewModels
                 {
                     if (ActiveTabIndex != 1 || value is not { Count: 1 })
                         DiffContext = null;
+                    else if (!_changesLoaded)
+                        EnsureChangesLoaded();
                     else
                         DiffContext = new DiffContext(_repo.FullPath, new Models.DiffOption(_commit, value[0]), _diffContext);
                 }
@@ -145,7 +153,18 @@ namespace SourceGit.ViewModels
             set
             {
                 if (SetProperty(ref _searchChangeFilter, value))
-                    RefreshVisibleChanges();
+                {
+                    if (_changesLoaded)
+                    {
+                        RefreshVisibleChanges();
+                        if (ActiveTabIndex == 1)
+                            TrySelectFirstVisibleChange();
+                    }
+                    else if (ActiveTabIndex == 1)
+                    {
+                        EnsureChangesLoaded();
+                    }
+                }
             }
         }
 
@@ -198,6 +217,8 @@ namespace SourceGit.ViewModels
 
         public void Dispose()
         {
+            _cancellationSource?.Cancel();
+            _cancellationSource?.Dispose();
             _repo = null;
             _commit = null;
             _changes = null;
@@ -208,6 +229,8 @@ namespace SourceGit.ViewModels
             _diffContext = null;
             _viewRevisionFileContent = null;
             _cancellationSource = null;
+            _changesLoaded = false;
+            _changesLoading = false;
             _requestingRevisionFiles = false;
             _revisionFiles = null;
             _revisionFileSearchSuggestion = null;
@@ -490,10 +513,19 @@ namespace SourceGit.ViewModels
         private void Refresh()
         {
             _changes = [];
+            _visibleChanges = [];
+            _selectedChanges = null;
+            _changesLoaded = false;
+            _changesLoading = false;
             _requestingRevisionFiles = false;
             _revisionFiles = null;
 
+            FullMessage = null;
             SignInfo = null;
+            Changes = [];
+            VisibleChanges = [];
+            SelectedChanges = null;
+            DiffContext = null;
             ViewRevisionFileContent = null;
             ViewRevisionFilePath = string.Empty;
             CanOpenRevisionFileWithDefaultEditor = false;
@@ -551,37 +583,8 @@ namespace SourceGit.ViewModels
                 }, token);
             }
 
-            Task.Run(async () =>
-            {
-                var parent = _commit.Parents.Count == 0 ? Models.Commit.EmptyTreeSHA1 : $"{_commit.SHA}^";
-                var cmd = new Commands.CompareRevisions(_repo.FullPath, parent, _commit.SHA) { CancellationToken = token };
-                var changes = await cmd.ReadAsync().ConfigureAwait(false);
-                await Commands.QueryRevisionLineStats.ApplyAsync(_repo.FullPath, parent, _commit.SHA, changes).ConfigureAwait(false);
-                var visible = changes;
-                if (!string.IsNullOrWhiteSpace(_searchChangeFilter))
-                {
-                    visible = new List<Models.Change>();
-                    foreach (var c in changes)
-                    {
-                        if (c.Path.Contains(_searchChangeFilter, StringComparison.OrdinalIgnoreCase))
-                            visible.Add(c);
-                    }
-                }
-
-                if (!token.IsCancellationRequested)
-                {
-                    Dispatcher.UIThread.Post(() =>
-                    {
-                        Changes = changes;
-                        VisibleChanges = visible;
-
-                        if (visible.Count == 0)
-                            SelectedChanges = null;
-                        else
-                            SelectedChanges = [VisibleChanges[0]];
-                    });
-                }
-            }, token);
+            if (ActiveTabIndex == 1)
+                EnsureChangesLoaded();
         }
 
         private async Task<Models.InlineElementCollector> ParseInlinesInMessageAsync(string message)
@@ -652,6 +655,59 @@ namespace SourceGit.ViewModels
 
                 VisibleChanges = visible;
             }
+        }
+
+        private void EnsureChangesLoaded()
+        {
+            if (_commit == null || _changesLoaded || _changesLoading || _cancellationSource == null)
+                return;
+
+            _changesLoading = true;
+            var token = _cancellationSource.Token;
+            var commit = _commit;
+            Task.Run(async () =>
+            {
+                var parent = commit.Parents.Count == 0 ? Models.Commit.EmptyTreeSHA1 : $"{commit.SHA}^";
+                var cmd = new Commands.CompareRevisions(_repo.FullPath, parent, commit.SHA) { CancellationToken = token };
+                var changes = await cmd.ReadAsync().ConfigureAwait(false);
+                await Commands.QueryRevisionLineStats.ApplyAsync(_repo.FullPath, parent, commit.SHA, changes).ConfigureAwait(false);
+
+                if (token.IsCancellationRequested)
+                    return;
+
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (token.IsCancellationRequested || _commit?.SHA != commit.SHA)
+                        return;
+
+                    _changes = changes;
+                    _changesLoaded = true;
+                    _changesLoading = false;
+                    Changes = changes;
+                    RefreshVisibleChanges();
+                    TrySelectFirstVisibleChange();
+                });
+            }, token);
+        }
+
+        private void TrySelectFirstVisibleChange()
+        {
+            if (ActiveTabIndex != 1)
+                return;
+
+            if (VisibleChanges is not { Count: > 0 })
+            {
+                SelectedChanges = null;
+                return;
+            }
+
+            if (_selectedChanges is { Count: 1 } current &&
+                VisibleChanges.Contains(current[0]))
+            {
+                return;
+            }
+
+            SelectedChanges = [VisibleChanges[0]];
         }
 
         private void RefreshRevisionSearchSuggestion()
@@ -793,6 +849,8 @@ namespace SourceGit.ViewModels
         private List<Models.Change> _selectedChanges = null;
         private string _searchChangeFilter = string.Empty;
         private DiffContext _diffContext = null;
+        private bool _changesLoaded = false;
+        private bool _changesLoading = false;
         private string _viewRevisionFilePath = string.Empty;
         private object _viewRevisionFileContent = null;
         private CancellationTokenSource _cancellationSource = null;

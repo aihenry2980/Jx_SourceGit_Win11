@@ -10,6 +10,8 @@ namespace SourceGit.ViewModels
     {
         public List<Models.Remote> Remotes => _repo.Remotes;
         public Models.Branch Current { get; }
+        public bool PreferQuickPath { get; set; } = false;
+        public bool AllowQuickPathFallback { get; set; } = true;
 
         public bool HasSpecifiedRemoteBranch
         {
@@ -156,7 +158,7 @@ namespace SourceGit.ViewModels
 
             var branchName = _selectedBranch.Name;
 
-            var rs = await RunPullWithAutoRevertAsync(branchName, log, cancellationToken);
+            var rs = await RunPullWithAutoRevertAsync(branchName, changes, log, cancellationToken);
             if (!rs)
                 return false;
 
@@ -180,8 +182,15 @@ namespace SourceGit.ViewModels
             return true;
         }
 
-        private async Task<bool> RunPullWithAutoRevertAsync(string branchName, Models.ICommandLog log, CancellationToken cancellationToken)
+        private async Task<bool> RunPullWithAutoRevertAsync(string branchName, int localChangesCount, Models.ICommandLog log, CancellationToken cancellationToken)
         {
+            if (PreferQuickPath)
+            {
+                var quickPulled = await TryRunQuickPullAsync(branchName, localChangesCount, log, cancellationToken);
+                if (quickPulled.HasValue)
+                    return quickPulled.Value;
+            }
+
             var cmd = new Commands.Pull(
                 _repo.FullPath,
                 _selectedRemote.Name,
@@ -199,6 +208,69 @@ namespace SourceGit.ViewModels
 
             RaiseCommandFailure(result);
             return false;
+        }
+
+        private async Task<bool?> TryRunQuickPullAsync(
+            string branchName,
+            int localChangesCount,
+            Models.ICommandLog log,
+            CancellationToken cancellationToken)
+        {
+            if (cancellationToken.IsCancellationRequested ||
+                localChangesCount != 0 ||
+                UseRebase ||
+                _repo?.CurrentBranch == null ||
+                _selectedRemote == null ||
+                _selectedBranch == null ||
+                string.IsNullOrWhiteSpace(branchName) ||
+                string.IsNullOrWhiteSpace(_repo.CurrentBranch.Upstream) ||
+                !_repo.CurrentBranch.Upstream.Equals(_selectedBranch.FullName, System.StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            log?.AppendLine("Attempting quick pull path: fetch upstream and fast-forward only.");
+
+            var refspec = $"refs/heads/{branchName}:refs/remotes/{_selectedRemote.Name}/{branchName}";
+            var fetch = new Commands.Fetch(_repo.FullPath, _selectedRemote.Name, true, false, false, false, [refspec])
+            {
+                RaiseError = !AllowQuickPathFallback,
+                CancellationToken = cancellationToken,
+            }.Use(log);
+            if (!await fetch.RunAsync())
+            {
+                if (!AllowQuickPathFallback)
+                    return false;
+
+                log?.AppendLine("[fallback] Quick pull fetch step failed. Falling back to normal pull.");
+                log?.AppendLine(string.Empty);
+                return null;
+            }
+
+            if (cancellationToken.IsCancellationRequested)
+                return false;
+
+            var merge = new Commands.Merge(_repo.FullPath, _selectedBranch.FriendlyName, "--ff-only", false)
+            {
+                RaiseError = !AllowQuickPathFallback,
+                CancellationToken = cancellationToken,
+            }.Use(log);
+            if (!await merge.ExecAsync())
+            {
+                if (!AllowQuickPathFallback)
+                    return false;
+
+                log?.AppendLine("[fallback] Fast-forward only merge was not possible. Falling back to normal pull.");
+                log?.AppendLine(string.Empty);
+                return null;
+            }
+
+            _repo.RefreshBranches();
+            _repo.RefreshCommits(true);
+            _repo.RefreshWorkingCopyChanges();
+            log?.AppendLine("Quick pull path completed.");
+            log?.AppendLine(string.Empty);
+            return true;
         }
 
         private async Task<bool> TryAutoRevertPullConflictedFilesAndRetryAsync(

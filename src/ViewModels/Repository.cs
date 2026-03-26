@@ -254,7 +254,14 @@ namespace SourceGit.ViewModels
         public List<Models.Branch> Branches
         {
             get => _branches;
-            private set => SetProperty(ref _branches, value);
+            private set
+            {
+                if (SetProperty(ref _branches, value))
+                {
+                    _presetBranchFilterMatchCacheVersion++;
+                    _presetBranchFilterMatchCache = null;
+                }
+            }
         }
 
         public Models.Branch CurrentBranch
@@ -459,6 +466,7 @@ namespace SourceGit.ViewModels
                     return;
 
                 _settings.PresetBranchExactNames = value;
+                InvalidatePresetBranchFilterMatchCache();
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(PresetBranchFilterSummary));
                 RebuildPresetBranchExactColorItems();
@@ -479,6 +487,7 @@ namespace SourceGit.ViewModels
                     return;
 
                 _settings.PresetBranchContainsPatterns = value;
+                InvalidatePresetBranchFilterMatchCache();
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(PresetBranchFilterSummary));
                 SavePresetBranchFilterSettingsAsync();
@@ -498,6 +507,7 @@ namespace SourceGit.ViewModels
                     return;
 
                 _settings.PresetBranchExcludeNames = value;
+                InvalidatePresetBranchFilterMatchCache();
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(PresetBranchFilterSummary));
                 SavePresetBranchFilterSettingsAsync();
@@ -769,6 +779,12 @@ namespace SourceGit.ViewModels
         {
             get => _isQuickFetching;
             private set => SetProperty(ref _isQuickFetching, value);
+        }
+
+        public bool IsQuickPulling
+        {
+            get => _isQuickPulling;
+            private set => SetProperty(ref _isQuickPulling, value);
         }
 
         public string AutoBackgroundOperationText
@@ -1235,6 +1251,57 @@ namespace SourceGit.ViewModels
                 ShowPopup(pull);
         }
 
+        public async Task QuickPullAsync()
+        {
+            if (IsBare || !CanCreatePopup())
+                return;
+
+            if (_remotes.Count == 0)
+            {
+                App.RaiseException(FullPath, "No remotes added to this repository!!!");
+                return;
+            }
+
+            if (_currentBranch == null)
+            {
+                App.RaiseException(FullPath, "Can NOT find current branch!!!");
+                return;
+            }
+
+            var pull = new Pull(this, null, false)
+            {
+                PreferQuickPath = true,
+                AllowQuickPathFallback = false,
+            };
+
+            if (pull.SelectedRemote == null || pull.SelectedBranch == null)
+            {
+                App.RaiseException(FullPath, "Can NOT determine a default remote branch for quick pull.");
+                return;
+            }
+
+            var log = CreateLog("Quick Pull");
+            AutoBackgroundOperationText = "Quick Pull";
+            IsQuickPulling = true;
+            var succ = false;
+
+            try
+            {
+                using var lockWatcher = LockWatcher();
+                succ = await pull.ExecuteAsync(log, false);
+            }
+            finally
+            {
+                IsQuickPulling = false;
+                log.Complete();
+            }
+
+            if (succ)
+                App.SendNotification(FullPath, "Quick Pull completed.");
+            else
+                App.SendNotification(FullPath, "Quick Pull failed. Review the repository log for details.");
+        }
+
         public async Task<bool> RunDefaultPullAsync(Models.ICommandLog log, bool autoUpdateSubmodules, CancellationToken cancellationToken = default)
         {
             if (cancellationToken.IsCancellationRequested)
@@ -1437,9 +1504,10 @@ namespace SourceGit.ViewModels
         {
             UsePresetBranchFilterForSession();
 
-            var exactNames = _settings?.GetPresetBranchExactNameSet() ?? [];
-            var containsPatterns = _settings?.GetPresetBranchContainsRuleList() ?? [];
-            var excludeNames = _settings?.GetPresetBranchExcludeNameSet() ?? [];
+            var presetBranchFilter = GetPresetBranchFilterMatchCache();
+            var exactNames = presetBranchFilter.ExactNames;
+            var containsPatterns = presetBranchFilter.ContainsPatterns;
+            var excludeNames = presetBranchFilter.ExcludeNames;
             var exactNameColors = _settings?.GetPresetBranchExactNameColorMap() ?? [];
             var hasIncludeRules = exactNames.Count > 0 || containsPatterns.Count > 0;
             var hasExcludeRules = excludeNames.Count > 0;
@@ -1494,7 +1562,7 @@ namespace SourceGit.ViewModels
 
             foreach (var branch in _branches)
             {
-                if (!ShouldShowByPresetBranchFilters(branch.Name, exactNames, containsPatterns, excludeNames))
+                if (!presetBranchFilter.ShouldShow(branch.Name))
                     continue;
 
                 var color = 0u;
@@ -1508,7 +1576,7 @@ namespace SourceGit.ViewModels
                     if (!string.IsNullOrEmpty(branch.Upstream) &&
                         !branch.IsUpstreamGone &&
                         branchesByFullName.TryGetValue(branch.Upstream, out var upstreamBranch) &&
-                        ShouldShowByPresetBranchFilters(upstreamBranch.Name, exactNames, containsPatterns, excludeNames))
+                        presetBranchFilter.ShouldShow(upstreamBranch.Name))
                     {
                         AddIncludedHistoryFilter(branch.Upstream, Models.FilterType.RemoteBranch, color);
                     }
@@ -1519,6 +1587,7 @@ namespace SourceGit.ViewModels
                 }
             }
 
+            EnsureIncludedBranchFiltersHaveColors();
             SavePresetBranchFilterSettingsAsync();
             RefreshHistoryFilters(true);
             RefreshBranchSidebarByCurrentFilters();
@@ -3190,15 +3259,13 @@ namespace SourceGit.ViewModels
 
         private List<Models.Branch> GetVisibleBranchesByCurrentFilter()
         {
-            var exactNames = _settings?.GetPresetBranchExactNameSet() ?? [];
-            var containsPatterns = _settings?.GetPresetBranchContainsRuleList() ?? [];
-            var excludeNames = _settings?.GetPresetBranchExcludeNameSet() ?? [];
+            var presetBranchFilter = GetPresetBranchFilterMatchCache();
 
             var visibles = new List<Models.Branch>();
             foreach (var branch in _branches)
             {
                 if (!IsShowingAllBranches &&
-                    !ShouldShowByPresetBranchFilters(branch.Name, exactNames, containsPatterns, excludeNames))
+                    !presetBranchFilter.ShouldShow(branch.Name))
                     continue;
 
                 if (!string.IsNullOrEmpty(_filter) && !branch.FullName.Contains(_filter, StringComparison.OrdinalIgnoreCase))
@@ -3304,6 +3371,7 @@ namespace SourceGit.ViewModels
 
         private void RefreshHistoryFilters(bool refresh)
         {
+            EnsureIncludedBranchFiltersHaveColors();
             HistoryFilterMode = _uiStates.GetHistoryFilterMode();
             NotifyHistoryFilterIndicatorsChanged();
             NotifyCurrentBranchVisualChanged();
@@ -3776,6 +3844,55 @@ namespace SourceGit.ViewModels
             return false;
         }
 
+        private PresetBranchFilterMatchCache GetPresetBranchFilterMatchCache()
+        {
+            var exactRaw = _settings?.PresetBranchExactNames ?? string.Empty;
+            var containsRaw = _settings?.PresetBranchContainsPatterns ?? string.Empty;
+            var excludeRaw = _settings?.PresetBranchExcludeNames ?? string.Empty;
+
+            if (_presetBranchFilterMatchCache != null &&
+                _presetBranchFilterMatchCache.Version == _presetBranchFilterMatchCacheVersion &&
+                _presetBranchFilterMatchCache.ExactRaw.Equals(exactRaw, StringComparison.Ordinal) &&
+                _presetBranchFilterMatchCache.ContainsRaw.Equals(containsRaw, StringComparison.Ordinal) &&
+                _presetBranchFilterMatchCache.ExcludeRaw.Equals(excludeRaw, StringComparison.Ordinal))
+            {
+                return _presetBranchFilterMatchCache;
+            }
+
+            var cache = new PresetBranchFilterMatchCache()
+            {
+                Version = _presetBranchFilterMatchCacheVersion,
+                ExactRaw = exactRaw,
+                ContainsRaw = containsRaw,
+                ExcludeRaw = excludeRaw,
+                ExactNames = _settings?.GetPresetBranchExactNameSet() ?? [],
+                ContainsPatterns = _settings?.GetPresetBranchContainsRuleList() ?? [],
+                ExcludeNames = _settings?.GetPresetBranchExcludeNameSet() ?? [],
+            };
+
+            var distinctNames = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var branch in _branches)
+            {
+                if (!string.IsNullOrWhiteSpace(branch?.Name))
+                    distinctNames.Add(branch.Name);
+            }
+
+            foreach (var name in distinctNames)
+            {
+                if (ShouldShowByPresetBranchFilters(name, cache.ExactNames, cache.ContainsPatterns, cache.ExcludeNames))
+                    cache.VisibleBranchNames.Add(name);
+            }
+
+            _presetBranchFilterMatchCache = cache;
+            return cache;
+        }
+
+        private void InvalidatePresetBranchFilterMatchCache()
+        {
+            _presetBranchFilterMatchCacheVersion++;
+            _presetBranchFilterMatchCache = null;
+        }
+
         private static string NormalizeSubmodulePointerSHA(string sha)
         {
             if (string.IsNullOrWhiteSpace(sha))
@@ -3920,21 +4037,17 @@ namespace SourceGit.ViewModels
 
             foreach (var filter in _uiStates.HistoryFilters)
             {
-                if (filter.Mode != Models.FilterMode.Included || filter.Color == 0)
+                if (filter.Mode != Models.FilterMode.Included)
                 {
-                    if (filter.Mode == Models.FilterMode.Included &&
-                        filter.Type is Models.FilterType.LocalBranch or Models.FilterType.RemoteBranch)
-                    {
-                        includedBranches.Add(filter.Pattern);
-                    }
-
                     continue;
                 }
 
                 if (filter.Type is Models.FilterType.LocalBranch or Models.FilterType.RemoteBranch)
                 {
-                    branchColors[filter.Pattern] = filter.Color;
                     includedBranches.Add(filter.Pattern);
+
+                    if (filter.Color != 0)
+                        branchColors[filter.Pattern] = filter.Color;
                 }
             }
 
@@ -4002,6 +4115,82 @@ namespace SourceGit.ViewModels
             }
 
             return false;
+        }
+
+        private void EnsureIncludedBranchFiltersHaveColors()
+        {
+            if (_uiStates == null || _uiStates.HistoryFilters.Count == 0)
+                return;
+
+            var branchesByFullName = new Dictionary<string, Models.Branch>(StringComparer.Ordinal);
+            var localBranchesByUpstream = new Dictionary<string, Models.Branch>(StringComparer.Ordinal);
+            foreach (var branch in _branches)
+            {
+                if (!string.IsNullOrWhiteSpace(branch.FullName))
+                    branchesByFullName[branch.FullName] = branch;
+
+                if (branch.IsLocal &&
+                    !string.IsNullOrWhiteSpace(branch.Upstream) &&
+                    !localBranchesByUpstream.ContainsKey(branch.Upstream))
+                {
+                    localBranchesByUpstream[branch.Upstream] = branch;
+                }
+            }
+
+            var assignedByLogicalBranch = new Dictionary<string, uint>(StringComparer.Ordinal);
+            var nextAutoColorIndex = 0;
+            foreach (var filter in _uiStates.HistoryFilters)
+            {
+                if (filter.Mode != Models.FilterMode.Included ||
+                    filter.Type is not (Models.FilterType.LocalBranch or Models.FilterType.RemoteBranch))
+                {
+                    continue;
+                }
+
+                var logicalBranchKey = ResolveBranchColorGroupKey(filter.Pattern, branchesByFullName, localBranchesByUpstream);
+                if (string.IsNullOrWhiteSpace(logicalBranchKey))
+                    logicalBranchKey = filter.Pattern;
+
+                if (filter.Color != 0)
+                {
+                    assignedByLogicalBranch[logicalBranchKey] = filter.Color;
+                    continue;
+                }
+
+                if (!assignedByLogicalBranch.TryGetValue(logicalBranchKey, out var color))
+                {
+                    color = s_autoHistoryFilterBranchColors[nextAutoColorIndex % s_autoHistoryFilterBranchColors.Length];
+                    assignedByLogicalBranch[logicalBranchKey] = color;
+                    nextAutoColorIndex++;
+                }
+
+                filter.Color = color;
+            }
+        }
+
+        private static string ResolveBranchColorGroupKey(
+            string fullRefName,
+            Dictionary<string, Models.Branch> branchesByFullName,
+            Dictionary<string, Models.Branch> localBranchesByUpstream)
+        {
+            if (string.IsNullOrWhiteSpace(fullRefName))
+                return string.Empty;
+
+            if (branchesByFullName.TryGetValue(fullRefName, out var branch))
+            {
+                if (branch.IsLocal)
+                    return branch.FullName;
+
+                if (localBranchesByUpstream.TryGetValue(fullRefName, out var trackingLocal))
+                    return trackingLocal.FullName;
+
+                return branch.FullName;
+            }
+
+            if (localBranchesByUpstream.TryGetValue(fullRefName, out var local))
+                return local.FullName;
+
+            return fullRefName;
         }
 
         private static bool ShouldKeepBranchVisibleColor(
@@ -4464,6 +4653,8 @@ namespace SourceGit.ViewModels
         private readonly string _gitCommonDir = null;
         private Models.RepositorySettings _settings = null;
         private Models.CommitHistoryMetadataCache _commitHistoryMetadataCache = null;
+        private PresetBranchFilterMatchCache _presetBranchFilterMatchCache = null;
+        private long _presetBranchFilterMatchCacheVersion = 0;
         private Models.RepositoryUIStates _uiStates = null;
         private Models.FilterMode _historyFilterMode = Models.FilterMode.None;
         private bool _hasAllowedSignersFile = false;
@@ -4485,6 +4676,7 @@ namespace SourceGit.ViewModels
         private bool _isPresetBranchFilterEditorExpanded = false;
         private string _autoBackgroundOperationText = "Auto-Fetch";
         private bool _isQuickFetching = false;
+        private bool _isQuickPulling = false;
         private bool _isFetchDurationToastVisible = false;
         private double _fetchDurationToastOpacity = 1.0;
         private string _fetchDurationToastText = string.Empty;
@@ -4529,6 +4721,28 @@ namespace SourceGit.ViewModels
         private CancellationTokenSource _cancellationRefreshCommits = null;
         private CancellationTokenSource _cancellationRefreshStashes = null;
 
+        private sealed class PresetBranchFilterMatchCache
+        {
+            public long Version { get; set; }
+
+            public string ExactRaw { get; set; } = string.Empty;
+            public string ContainsRaw { get; set; } = string.Empty;
+            public string ExcludeRaw { get; set; } = string.Empty;
+
+            public HashSet<string> ExactNames { get; set; } = new(StringComparer.Ordinal);
+            public List<string> ContainsPatterns { get; set; } = [];
+            public HashSet<string> ExcludeNames { get; set; } = new(StringComparer.Ordinal);
+            public HashSet<string> VisibleBranchNames { get; } = new(StringComparer.Ordinal);
+
+            public bool ShouldShow(string name)
+            {
+                if (string.IsNullOrEmpty(name))
+                    return false;
+
+                return VisibleBranchNames.Contains(name);
+            }
+        }
+
         private static readonly List<PresetBranchColorOption> PRESET_BRANCH_COLOR_OPTIONS =
         [
             new PresetBranchColorOption("Green", 0xFF10893E),
@@ -4559,5 +4773,24 @@ namespace SourceGit.ViewModels
 
         private static readonly TimeSpan SPLIT_FETCH_TIMEOUT = TimeSpan.FromMinutes(5);
         private static readonly TimeSpan SPLIT_SUBMODULE_UPDATE_TIMEOUT = TimeSpan.FromMinutes(5);
+        private static readonly uint[] s_autoHistoryFilterBranchColors =
+        [
+            0xFF10893E, // green
+            0xFF0078D7, // blue
+            0xFF744DA9, // purple
+            0xFFF7630C, // orange
+            0xFFC239B3, // magenta
+            0xFF0099BC, // cyan
+            0xFFD13438, // red
+            0xFF00B294, // mint
+            0xFF4F6BED, // indigo
+            0xFFFFB900, // gold
+            0xFF7FBA00, // lime
+            0xFF8E562E, // brown
+            0xFF00B7C3, // sky
+            0xFF8764B8, // violet
+            0xFFFF6F61, // coral
+            0xFF008272, // teal
+        ];
     }
 }

@@ -26,6 +26,7 @@ namespace SourceGit.Views
             SuperQuickFetch,
             QuickFetch,
             Fetch,
+            QuickPull,
             Pull,
             SyncAll,
             FetchRecursively,
@@ -296,6 +297,15 @@ namespace SourceGit.Views
             }
         }
 
+        private async void QuickPull(object sender, TappedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+            {
+                await repo.QuickPullAsync();
+                e.Handled = true;
+            }
+        }
+
         private async void FetchRecursivelyWithOptionalPrune(object sender, TappedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo && repo.CanCreatePopup())
@@ -516,6 +526,7 @@ namespace SourceGit.Views
                 ToolbarGitButtonKind.SuperQuickFetch => await BuildSuperQuickFetchCommandSpecAsync(repo),
                 ToolbarGitButtonKind.QuickFetch => BuildQuickFetchCommandSpec(repo),
                 ToolbarGitButtonKind.Fetch => BuildFetchCommandSpec(repo),
+                ToolbarGitButtonKind.QuickPull => BuildQuickPullCommandSpec(repo),
                 ToolbarGitButtonKind.Pull => BuildPullCommandSpec(repo),
                 ToolbarGitButtonKind.SyncAll => BuildSyncAllCommandSpec(repo, alternateMode),
                 ToolbarGitButtonKind.FetchRecursively => await BuildFetchRecursivelyCommandSpecAsync(repo, alternateMode),
@@ -585,6 +596,37 @@ namespace SourceGit.Views
                 "Edit the current default Fetch command. If fetch-all-remotes is enabled, each remote is listed on its own line.",
                 builder.ToString().TrimEnd(),
                 r => r.MarkFetched());
+        }
+
+        private ToolbarGitCommandSpec BuildQuickPullCommandSpec(ViewModels.Repository repo)
+        {
+            var pull = new ViewModels.Pull(repo, null, false)
+            {
+                PreferQuickPath = true,
+                AllowQuickPathFallback = false,
+            };
+            if (pull.SelectedRemote == null || pull.SelectedBranch == null)
+                return null;
+
+            var remote = pull.SelectedRemote.Name;
+            var branch = pull.SelectedBranch.Name;
+            var remoteRef = $"refs/remotes/{remote}/{branch}";
+
+            var builder = new StringBuilder();
+            builder.Append("git fetch --progress --verbose ")
+                .Append(Quote(remote))
+                .Append(' ')
+                .Append(Quote($"refs/heads/{branch}:{remoteRef}"))
+                .AppendLine();
+            builder.Append("git merge --progress --no-edit --ff-only ")
+                .Append(Quote($"{remote}/{branch}"));
+
+            return new ToolbarGitCommandSpec(
+                "Edit command...",
+                "Edit Quick Pull Command",
+                "Edit the explicit fetch plus fast-forward-only merge sequence used by QPull. Commands run top to bottom in the repository logs window.",
+                builder.ToString(),
+                RefreshRepositoryAfterToolbarGitCommand);
         }
 
         private ToolbarGitCommandSpec BuildPullCommandSpec(ViewModels.Repository repo)

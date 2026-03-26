@@ -1535,8 +1535,10 @@ namespace SourceGit.Views
             };
             submenu.Items.Add(undoLastRebase);
             menu.Items.Add(submenu);
+            AddLevel1BranchFilterModeMenuItem(menu, repo, current, actionBackground);
             AddLevel1ExcludeBranchMenuItem(menu, repo, current.Name, actionBackground);
             AddLevel1PushBranchMenuItem(menu, repo, current, actionBackground);
+            AddLevel1ForcePushBranchMenuItem(menu, repo, current, actionBackground);
             AddLevel1CopyBranchNameMenuItem(menu, current.Name, actionBackground);
         }
 
@@ -1596,9 +1598,11 @@ namespace SourceGit.Views
             };
             submenu.Items.Add(delete);
             menu.Items.Add(submenu);
+            AddLevel1BranchFilterModeMenuItem(menu, repo, branch, actionBackground);
             AddLevel1CheckoutBranchMenuItem(menu, repo, branch, branch.Name, actionBackground);
             AddLevel1ExcludeBranchMenuItem(menu, repo, branch.Name, actionBackground);
             AddLevel1PushBranchMenuItem(menu, repo, branch, actionBackground);
+            AddLevel1ForcePushBranchMenuItem(menu, repo, branch, actionBackground);
             AddLevel1CopyBranchNameMenuItem(menu, branch.Name, actionBackground);
         }
 
@@ -1647,9 +1651,19 @@ namespace SourceGit.Views
             };
             submenu.Items.Add(delete);
             menu.Items.Add(submenu);
+            AddLevel1BranchFilterModeMenuItem(menu, repo, branch, actionBackground);
             AddLevel1CheckoutBranchMenuItem(menu, repo, branch, name, actionBackground);
             AddLevel1ExcludeBranchMenuItem(menu, repo, branch.Name, actionBackground);
             AddLevel1CopyBranchNameMenuItem(menu, name, actionBackground);
+        }
+
+        private static void AddLevel1BranchFilterModeMenuItem(ContextMenu menu, ViewModels.Repository repo, Models.Branch branch, IBrush background)
+        {
+            var filterMode = new MenuItem();
+            filterMode.Classes.Add("filter_mode_switcher");
+            filterMode.Header = new ViewModels.FilterModeInGraph(repo, branch);
+            filterMode.Background = background;
+            menu.Items.Add(filterMode);
         }
 
         private static void AddLevel1CheckoutBranchMenuItem(ContextMenu menu, ViewModels.Repository repo, Models.Branch branch, string displayName, IBrush background)
@@ -1695,6 +1709,28 @@ namespace SourceGit.Views
                 e.Handled = true;
             };
             menu.Items.Add(push);
+        }
+
+        private static void AddLevel1ForcePushBranchMenuItem(ContextMenu menu, ViewModels.Repository repo, Models.Branch branch, IBrush background)
+        {
+            var forcePush = new MenuItem();
+            forcePush.Header = $"Force Push {branch.Name}";
+            forcePush.Icon = App.CreateMenuIcon("Icons.Push");
+            forcePush.IsEnabled = repo.Remotes.Count > 0;
+            forcePush.Background = background;
+            forcePush.Click += (_, e) =>
+            {
+                if (repo.CanCreatePopup())
+                {
+                    var push = new ViewModels.Push(repo, branch)
+                    {
+                        ForcePush = true,
+                    };
+                    repo.ShowPopup(push);
+                }
+                e.Handled = true;
+            };
+            menu.Items.Add(forcePush);
         }
 
         private static void AddLevel1CopyBranchNameMenuItem(ContextMenu menu, string branchName, IBrush background)
