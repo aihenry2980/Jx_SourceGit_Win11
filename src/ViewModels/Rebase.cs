@@ -68,6 +68,9 @@ namespace SourceGit.ViewModels
                 succ = await _repo.RunUpdateSubmodulesRecursivelyAsync(log).ConfigureAwait(false);
             }
 
+            if (succ)
+                _repo.RefreshSuperProjectSubmodulePointer();
+
             log.Complete();
             return succ;
         }

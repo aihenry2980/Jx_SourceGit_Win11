@@ -338,13 +338,16 @@ namespace SourceGit.Views
                     var isCurrentCommitHead = decorator.Type == Models.DecoratorType.CurrentCommitHead;
                     var isSuperProjectPointer = decorator.Type == Models.DecoratorType.SuperProjectPointer;
                     var isParentRepository = decorator.Type == Models.DecoratorType.ParentRepository;
+                    var isMutedIncidentalBranch = IsMutedIncidentalBranch(decorator);
                     var labelBrush = isCurrentCommitHead
                         ? s_headTagForegroundBrush
                         : isSuperProjectPointer
                             ? s_superProjectPointerForegroundBrush
                             : isParentRepository
                                 ? s_parentRepositoryForegroundBrush
-                            : fg;
+                            : isMutedIncidentalBranch
+                                ? s_incidentalBranchForegroundBrush
+                                : fg;
 
                     var labelTypeface = isHead || isSuperProjectPointer || isParentRepository ? typefaceBold : typeface;
                     var labelSizeForItem = isHead ? labelSize + 1 : labelSize;
@@ -361,7 +364,7 @@ namespace SourceGit.Views
                                 FlowDirection.LeftToRight,
                                 typefaceBold,
                                 labelSizeForItem,
-                                s_remotePrefixAccentBrush);
+                                isMutedIncidentalBranch ? s_incidentalBranchForegroundBrush : s_remotePrefixAccentBrush);
                             labelText = decorator.Name.Substring(slashIdx + 1);
                         }
                     }
@@ -390,7 +393,9 @@ namespace SourceGit.Views
                                 ? s_superProjectPointerForegroundBrush
                                 : isParentRepository
                                     ? s_parentRepositoryForegroundBrush
-                                : fg,
+                                : isMutedIncidentalBranch
+                                    ? s_incidentalBranchForegroundBrush
+                                    : fg,
                         UseSolidBackground = isSuperProjectPointer || isParentRepository,
                         IsHead = isHead,
                         IsCurrentCommitHead = isCurrentCommitHead,
@@ -665,9 +670,25 @@ namespace SourceGit.Views
         private static readonly IBrush s_highlightBackground = new SolidColorBrush(Color.Parse("#E6F2C200"));
         private static readonly IBrush s_highlightForeground = Brushes.Black;
         private static readonly IBrush s_remotePrefixAccentBrush = new SolidColorBrush(Color.Parse("#1565C0"));
+        private static readonly IBrush s_incidentalBranchForegroundBrush = new SolidColorBrush(Color.Parse("#FF9AA0A6"));
         private static readonly IBrush s_compactLocalIconBrush = Brushes.White;
         private static readonly IBrush s_compactRemoteIconBrush = Brushes.White;
         private static readonly IBrush s_compactLocalIconBackgroundBrush = new SolidColorBrush(Color.Parse("#FF1E8E3E"));
         private static readonly IBrush s_compactRemoteIconBackgroundBrush = new SolidColorBrush(Color.Parse("#FF1565C0"));
+
+        private static bool IsMutedIncidentalBranch(Models.Decorator decorator)
+        {
+            if (decorator == null ||
+                decorator.Color == 0 ||
+                decorator.Type is not Models.DecoratorType.CurrentBranchHead and
+                    not Models.DecoratorType.LocalBranchHead and
+                    not Models.DecoratorType.RemoteBranchHead)
+            {
+                return false;
+            }
+
+            var color = Color.FromUInt32(decorator.Color);
+            return color.A <= 0x40;
+        }
     }
 }

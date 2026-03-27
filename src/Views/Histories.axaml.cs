@@ -1472,12 +1472,19 @@ namespace SourceGit.Views
             submenu.Header = current.Name;
             var graphColor = GetCommitGraphColor(commitColorIndex);
             var color = decoratorColor != 0 ? decoratorColor : (graphColor != 0 ? graphColor : repo.GetBranchFilterColor(current));
-            submenu.Background = CreateBranchNameBackground(color, true);
+            var nameBackground = CreateBranchNameBackground(color, true);
+            submenu.Background = nameBackground;
             var actionBackground = CreateBranchActionBackground(color, true);
+            var filterModeVm = new ViewModels.FilterModeInGraph(repo, current);
+            filterModeVm.BranchColorChanged += nextColor =>
+            {
+                nameBackground.Color = CreateBranchNameBackground(nextColor, true).Color;
+                actionBackground.Color = CreateBranchActionBackground(nextColor, true).Color;
+            };
 
             var visibility = new MenuItem();
             visibility.Classes.Add("filter_mode_switcher");
-            visibility.Header = new ViewModels.FilterModeInGraph(repo, current);
+            visibility.Header = filterModeVm;
             submenu.Items.Add(visibility);
             submenu.Items.Add(new MenuItem() { Header = "-" });
 
@@ -1535,7 +1542,7 @@ namespace SourceGit.Views
             };
             submenu.Items.Add(undoLastRebase);
             menu.Items.Add(submenu);
-            AddLevel1BranchFilterModeMenuItem(menu, repo, current, actionBackground);
+            AddLevel1BranchFilterModeMenuItem(menu, filterModeVm, actionBackground);
             AddLevel1ExcludeBranchMenuItem(menu, repo, current.Name, actionBackground);
             AddLevel1PushBranchMenuItem(menu, repo, current, actionBackground);
             AddLevel1ForcePushBranchMenuItem(menu, repo, current, actionBackground);
@@ -1552,12 +1559,19 @@ namespace SourceGit.Views
             submenu.Header = branch.Name;
             var graphColor = GetCommitGraphColor(commitColorIndex);
             var color = decoratorColor != 0 ? decoratorColor : (graphColor != 0 ? graphColor : repo.GetBranchFilterColor(branch));
-            submenu.Background = CreateBranchNameBackground(color, true);
+            var nameBackground = CreateBranchNameBackground(color, true);
+            submenu.Background = nameBackground;
             var actionBackground = CreateBranchActionBackground(color, true);
+            var filterModeVm = new ViewModels.FilterModeInGraph(repo, branch);
+            filterModeVm.BranchColorChanged += nextColor =>
+            {
+                nameBackground.Color = CreateBranchNameBackground(nextColor, true).Color;
+                actionBackground.Color = CreateBranchActionBackground(nextColor, true).Color;
+            };
 
             var visibility = new MenuItem();
             visibility.Classes.Add("filter_mode_switcher");
-            visibility.Header = new ViewModels.FilterModeInGraph(repo, branch);
+            visibility.Header = filterModeVm;
             submenu.Items.Add(visibility);
             submenu.Items.Add(new MenuItem() { Header = "-" });
 
@@ -1598,7 +1612,7 @@ namespace SourceGit.Views
             };
             submenu.Items.Add(delete);
             menu.Items.Add(submenu);
-            AddLevel1BranchFilterModeMenuItem(menu, repo, branch, actionBackground);
+            AddLevel1BranchFilterModeMenuItem(menu, filterModeVm, actionBackground);
             AddLevel1CheckoutBranchMenuItem(menu, repo, branch, branch.Name, actionBackground);
             AddLevel1ExcludeBranchMenuItem(menu, repo, branch.Name, actionBackground);
             AddLevel1PushBranchMenuItem(menu, repo, branch, actionBackground);
@@ -1618,12 +1632,19 @@ namespace SourceGit.Views
             submenu.Header = name;
             var graphColor = GetCommitGraphColor(commitColorIndex);
             var color = decoratorColor != 0 ? decoratorColor : (graphColor != 0 ? graphColor : repo.GetBranchFilterColor(branch));
-            submenu.Background = CreateBranchNameBackground(color, false);
+            var nameBackground = CreateBranchNameBackground(color, false);
+            submenu.Background = nameBackground;
             var actionBackground = CreateBranchActionBackground(color, false);
+            var filterModeVm = new ViewModels.FilterModeInGraph(repo, branch);
+            filterModeVm.BranchColorChanged += nextColor =>
+            {
+                nameBackground.Color = CreateBranchNameBackground(nextColor, false).Color;
+                actionBackground.Color = CreateBranchActionBackground(nextColor, false).Color;
+            };
 
             var visibility = new MenuItem();
             visibility.Classes.Add("filter_mode_switcher");
-            visibility.Header = new ViewModels.FilterModeInGraph(repo, branch);
+            visibility.Header = filterModeVm;
             submenu.Items.Add(visibility);
             submenu.Items.Add(new MenuItem() { Header = "-" });
 
@@ -1651,17 +1672,17 @@ namespace SourceGit.Views
             };
             submenu.Items.Add(delete);
             menu.Items.Add(submenu);
-            AddLevel1BranchFilterModeMenuItem(menu, repo, branch, actionBackground);
+            AddLevel1BranchFilterModeMenuItem(menu, filterModeVm, actionBackground);
             AddLevel1CheckoutBranchMenuItem(menu, repo, branch, name, actionBackground);
             AddLevel1ExcludeBranchMenuItem(menu, repo, branch.Name, actionBackground);
             AddLevel1CopyBranchNameMenuItem(menu, name, actionBackground);
         }
 
-        private static void AddLevel1BranchFilterModeMenuItem(ContextMenu menu, ViewModels.Repository repo, Models.Branch branch, IBrush background)
+        private static void AddLevel1BranchFilterModeMenuItem(ContextMenu menu, ViewModels.FilterModeInGraph filterModeVm, IBrush background)
         {
             var filterMode = new MenuItem();
             filterMode.Classes.Add("filter_mode_switcher");
-            filterMode.Header = new ViewModels.FilterModeInGraph(repo, branch);
+            filterMode.Header = filterModeVm;
             filterMode.Background = background;
             menu.Items.Add(filterMode);
         }
@@ -1747,14 +1768,14 @@ namespace SourceGit.Views
             menu.Items.Add(copy);
         }
 
-        private static IBrush CreateBranchActionBackground(uint branchColor, bool isLocal)
+        private static SolidColorBrush CreateBranchActionBackground(uint branchColor, bool isLocal)
         {
             var color = Color.FromUInt32(branchColor == 0 ? Models.RepositorySettings.PRESET_BRANCH_EXACT_DEFAULT_COLOR : branchColor);
             var alpha = isLocal ? (byte)0x80 : (byte)0x20;
             return new SolidColorBrush(Color.FromArgb(alpha, color.R, color.G, color.B));
         }
 
-        private static IBrush CreateBranchNameBackground(uint branchColor, bool isLocal)
+        private static SolidColorBrush CreateBranchNameBackground(uint branchColor, bool isLocal)
         {
             var color = Color.FromUInt32(branchColor == 0 ? Models.RepositorySettings.PRESET_BRANCH_EXACT_DEFAULT_COLOR : branchColor);
             var alpha = isLocal ? (byte)0xA0 : (byte)0x32;

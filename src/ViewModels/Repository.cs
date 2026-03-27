@@ -2384,6 +2384,7 @@ namespace SourceGit.ViewModels
                     OnPropertyChanged(nameof(InProgressContext));
                     NotifyCompactStatusChanged();
                     GetOwnerPage()?.ChangeDirtyState(Models.DirtyState.HasLocalChanges, changes.Count == 0);
+                    RefreshSuperProjectSubmodulePointer();
                 });
             }, token);
         }
@@ -4052,7 +4053,7 @@ namespace SourceGit.ViewModels
             }
 
             var hasIncludedBranches = includedBranches.Count > 0;
-            const uint incidentalBranchColor = 0xFF808080;
+            const uint incidentalBranchColor = 0x18808080;
 
             foreach (var commit in commits)
             {

@@ -48,6 +48,54 @@
         <Setter Property="Foreground" Value="White"/>
       </Style>
     </Style>
+    <Style Selector="ToggleButton.history_inline_toggle">
+      <Setter Property="Height" Value="20"/>
+      <Setter Property="MinWidth" Value="52"/>
+      <Setter Property="Padding" Value="8,2"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="Background" Value="{DynamicResource Brush.BG1}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border1}"/>
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border CornerRadius="{TemplateBinding CornerRadius}"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  Padding="{TemplateBinding Padding}">
+            <ContentPresenter HorizontalAlignment="Center"
+                              VerticalAlignment="Center"
+                              Margin="0"
+                              Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"/>
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^ Path">
+        <Setter Property="Fill" Value="{DynamicResource Brush.FG2}"/>
+      </Style>
+      <Style Selector="^ TextBlock">
+        <Setter Property="FontSize" Value="9"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush.FG2}"/>
+      </Style>
+      <Style Selector="^:pointerover">
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}"/>
+      </Style>
+      <Style Selector="^:pointerover TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource Brush.FG1}"/>
+      </Style>
+      <Style Selector="^:checked">
+        <Setter Property="Background" Value="{DynamicResource Brush.Accent}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}"/>
+      </Style>
+      <Style Selector="^:checked TextBlock">
+        <Setter Property="Foreground" Value="White"/>
+      </Style>
+      <Style Selector="^:checked Path">
+        <Setter Property="Fill" Value="#FFFFE066"/>
+      </Style>
+    </Style>
   </UserControl.Styles>
 
   <Grid>
@@ -1251,7 +1299,7 @@
           </MultiBinding>
         </Border.IsVisible>
 
-        <Grid ColumnDefinitions="Auto,Auto,Auto,*">
+        <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*">
           <Button Grid.Column="0"
                   Classes="flat"
                   Margin="8,0,0,0"
@@ -1314,7 +1362,37 @@
             </TextBox.InnerRightContent>
           </TextBox>
 
-          <StackPanel Grid.Column="3"
+          <Border Grid.Column="3"
+                  Margin="8,0,0,0"
+                  Padding="1"
+                  CornerRadius="9"
+                  Background="{DynamicResource Brush.BG1}"
+                  BorderBrush="{DynamicResource Brush.Border1}"
+                  BorderThickness="1"
+                  ToolTip.Tip="Show or hide tag refs in the history graph">
+            <StackPanel Orientation="Horizontal" Spacing="1">
+              <RadioButton Classes="history_order_segment"
+                           GroupName="HistoryTagsInline"
+                           IsChecked="{Binding Source={x:Static vm:Preferences.Instance}, Path=ShowTagsInGraph}"
+                           Click="OnHistoryTagsShownClicked">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                  <Path Width="10"
+                        Height="10"
+                        Data="{StaticResource Icons.Tag}"/>
+                  <TextBlock Text="Tags"/>
+                </StackPanel>
+              </RadioButton>
+
+              <RadioButton Classes="history_order_segment"
+                           GroupName="HistoryTagsInline"
+                           IsChecked="{Binding Source={x:Static vm:Preferences.Instance}, Path=ShowTagsInGraph, Converter={x:Static BoolConverters.Not}}"
+                           Click="OnHistoryTagsHiddenClicked">
+                <TextBlock Text="No Tags"/>
+              </RadioButton>
+            </StackPanel>
+          </Border>
+
+          <StackPanel Grid.Column="4"
                       Margin="8,0,8,0"
                       Orientation="Horizontal"
                       HorizontalAlignment="Right"

@@ -60,6 +60,8 @@ namespace SourceGit.ViewModels
                 {
                     await _repo.AutoUpdateSubmodulesAsync(log);
                 }
+
+                _repo.RefreshSuperProjectSubmodulePointer();
             }
 
             log.Complete();

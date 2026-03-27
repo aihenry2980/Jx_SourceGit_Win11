@@ -75,6 +75,9 @@ namespace SourceGit.ViewModels
                     await new Commands.Stash(_repo.FullPath)
                         .Use(log)
                         .PopAsync("stash@{0}");
+
+                _repo.RefreshWorkingCopyChanges();
+                _repo.RefreshSuperProjectSubmodulePointer();
             }
 
             log.Complete();

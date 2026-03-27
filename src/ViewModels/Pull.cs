@@ -179,6 +179,7 @@ namespace SourceGit.ViewModels
                     return false;
             }
 
+            _repo.RefreshWorkingCopyChanges();
             return true;
         }
 

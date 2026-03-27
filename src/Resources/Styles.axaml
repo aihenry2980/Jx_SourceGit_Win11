@@ -1043,6 +1043,18 @@
     </Style>
   </Style>
 
+  <Style Selector="MenuItem.bookmark_palette /template/ Popup#PART_Popup">
+    <Setter Property="MaxHeight" Value="760"/>
+  </Style>
+
+  <Style Selector="MenuItem.bookmark_palette /template/ Border#PART_LayoutRoot">
+    <Setter Property="MinWidth" Value="52"/>
+  </Style>
+
+  <Style Selector="MenuItem.bookmark_palette /template/ Popup#PART_Popup Border">
+    <Setter Property="MaxHeight" Value="760"/>
+  </Style>
+
   <Style Selector="ComboBox">
     <Style.Resources>
       <Thickness x:Key="ComboBoxDropdownBorderPadding">4,0</Thickness>

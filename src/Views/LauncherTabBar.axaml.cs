@@ -314,6 +314,7 @@ namespace SourceGit.Views
                     var bookmark = new MenuItem();
                     bookmark.Header = App.Text("PageTabBar.Tab.Bookmark");
                     bookmark.Icon = App.CreateMenuIcon("Icons.Bookmark");
+                    bookmark.Classes.Add("bookmark_palette");
 
                     for (int i = 0; i < Models.Bookmarks.Brushes.Length; i++)
                     {

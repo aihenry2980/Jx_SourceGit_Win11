@@ -11,6 +11,18 @@
             Avalonia.Media.Brushes.DarkCyan,
             Avalonia.Media.Brushes.DeepSkyBlue,
             Avalonia.Media.Brushes.Purple,
+            Avalonia.Media.Brushes.HotPink,
+            Avalonia.Media.Brushes.Crimson,
+            Avalonia.Media.Brushes.Coral,
+            Avalonia.Media.Brushes.DarkKhaki,
+            Avalonia.Media.Brushes.YellowGreen,
+            Avalonia.Media.Brushes.SeaGreen,
+            Avalonia.Media.Brushes.DodgerBlue,
+            Avalonia.Media.Brushes.SlateBlue,
+            Avalonia.Media.Brushes.MediumOrchid,
+            Avalonia.Media.Brushes.Sienna,
+            Avalonia.Media.Brushes.IndianRed,
+            Avalonia.Media.Brushes.Teal,
         ];
 
         public static Avalonia.Media.IBrush Get(int i)

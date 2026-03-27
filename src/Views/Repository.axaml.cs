@@ -398,6 +398,18 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
+        private void OnHistoryTagsShownClicked(object _, RoutedEventArgs e)
+        {
+            ViewModels.Preferences.Instance.ShowTagsInGraph = true;
+            e.Handled = true;
+        }
+
+        private void OnHistoryTagsHiddenClicked(object _, RoutedEventArgs e)
+        {
+            ViewModels.Preferences.Instance.ShowTagsInGraph = false;
+            e.Handled = true;
+        }
+
         private void OnOpenAdvancedHistoriesOption(object sender, RoutedEventArgs e)
         {
             if (sender is Button button && DataContext is ViewModels.Repository repo)

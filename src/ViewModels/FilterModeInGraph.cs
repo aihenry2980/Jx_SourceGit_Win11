@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -5,6 +6,8 @@ namespace SourceGit.ViewModels
 {
     public class FilterModeInGraph : ObservableObject
     {
+        public event Action<uint> BranchColorChanged;
+
         public bool IsFiltered
         {
             get => _mode == Models.FilterMode.Included;
@@ -37,6 +40,7 @@ namespace SourceGit.ViewModels
                     _target is Models.Branch branch)
                 {
                     _repo.SetBranchDisplayColor(branch, value.Color);
+                    BranchColorChanged?.Invoke(value.Color);
                 }
             }
         }
@@ -70,10 +74,13 @@ namespace SourceGit.ViewModels
                     {
                         var color = _selectedBranchColor?.Color ?? Preferences.PRESET_BRANCH_EXACT_DEFAULT_COLOR;
                         _repo.SetBranchFilterColor(branch, color);
+                        BranchColorChanged?.Invoke(color);
                     }
                     else
                     {
                         _repo.SetBranchFilterMode(branch, _mode, false, true);
+                        var color = _selectedBranchColor?.Color ?? Preferences.PRESET_BRANCH_EXACT_DEFAULT_COLOR;
+                        BranchColorChanged?.Invoke(color);
                     }
                 }
                 else if (_target is Models.Tag tag)

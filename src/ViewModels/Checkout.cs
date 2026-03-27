@@ -89,6 +89,8 @@ namespace SourceGit.ViewModels
                 _repo.SetBranchFilterMode(b, Models.FilterMode.Included, false, false);
 
             _repo.MarkBranchesDirtyManually();
+            if (succ)
+                _repo.RefreshSuperProjectSubmodulePointer();
 
             ProgressDescription = "Waiting for branch updated...";
             await Task.Delay(400);
