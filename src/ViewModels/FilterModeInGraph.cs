@@ -45,7 +45,7 @@ namespace SourceGit.ViewModels
             }
         }
 
-        public FilterModeInGraph(Repository repo, object target)
+        public FilterModeInGraph(Repository repo, object target, uint initialBranchColor = 0)
         {
             _repo = repo;
             _target = target;
@@ -53,7 +53,7 @@ namespace SourceGit.ViewModels
             if (_target is Models.Branch b)
             {
                 _mode = _repo.UIStates.GetHistoryFilterMode(b.FullName);
-                var selectedColor = _repo.GetBranchFilterColor(b);
+                var selectedColor = initialBranchColor != 0 ? initialBranchColor : _repo.GetEffectiveBranchDisplayColor(b);
                 _selectedBranchColor = FindBranchColorOption(selectedColor);
             }
             else if (_target is Models.Tag t)

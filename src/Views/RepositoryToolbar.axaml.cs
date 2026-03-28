@@ -1232,8 +1232,18 @@ namespace SourceGit.Views
                 ev.Handled = true;
             };
 
+            var cpuProfiler = new MenuItem();
+            cpuProfiler.Header = "CPU Profile";
+            cpuProfiler.Icon = App.CreateMenuIcon("Icons.Statistics");
+            cpuProfiler.Click += (_, ev) =>
+            {
+                App.ShowWindow(new ViewModels.CpuProfiler());
+                ev.Handled = true;
+            };
+
             menu.Items.Add(logs);
             menu.Items.Add(profiler);
+            menu.Items.Add(cpuProfiler);
             menu.Open(control);
         }
 
@@ -1277,6 +1287,12 @@ namespace SourceGit.Views
         private void OpenMemoryProfilerByHotKey(object sender, RoutedEventArgs e)
         {
             App.ShowWindow(new ViewModels.MemoryProfiler());
+            e.Handled = true;
+        }
+
+        private void OpenCpuProfilerByHotKey(object sender, RoutedEventArgs e)
+        {
+            App.ShowWindow(new ViewModels.CpuProfiler());
             e.Handled = true;
         }
 

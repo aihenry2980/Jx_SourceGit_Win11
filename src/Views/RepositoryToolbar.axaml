@@ -69,6 +69,7 @@
       <Button Width="0" Height="0" Click="OpenGitLogs" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+L, macOS=⌘+⌥+L}"/>
 
       <Button Width="0" Height="0" Click="OpenMemoryProfilerByHotKey" IsVisible="False" HotKey="Ctrl+Alt+M"/>
+      <Button Width="0" Height="0" Click="OpenCpuProfilerByHotKey" IsVisible="False" HotKey="Ctrl+Alt+Shift+M"/>
       <Button Classes="icon_button" Width="44" Click="OpenStatistics">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">

@@ -1,0 +1,252 @@
+<v:ChromelessWindow xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                    xmlns:m="using:SourceGit.Models"
+                    xmlns:vm="using:SourceGit.ViewModels"
+                    xmlns:v="using:SourceGit.Views"
+                    xmlns:lvc="using:LiveChartsCore.SkiaSharpView.Avalonia"
+                    mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="620"
+                    x:Class="SourceGit.Views.CpuProfiler"
+                    x:DataType="vm:CpuProfiler"
+                    x:Name="ThisControl"
+                    Title="CPU Profile"
+                    Icon="/App.ico"
+                    Width="900"
+                    Height="620"
+                    CanResize="True"
+                    WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="Auto,Auto,*,Auto">
+    <Grid Grid.Row="0" Height="28" IsVisible="{Binding !#ThisControl.UseSystemWindowFrame}">
+      <Border Background="{DynamicResource Brush.TitleBar}"
+              BorderThickness="0,0,0,1"
+              BorderBrush="{DynamicResource Brush.Border0}"
+              PointerPressed="BeginMoveWindow"/>
+
+      <Path Width="14"
+            Height="14"
+            Margin="10,0,0,0"
+            HorizontalAlignment="Left"
+            Data="{StaticResource Icons.Statistics}"
+            IsVisible="{OnPlatform True, macOS=False}"/>
+
+      <TextBlock Classes="bold"
+                 Text="CPU Profile"
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Center"
+                 IsHitTestVisible="False"/>
+
+      <v:CaptionButtons HorizontalAlignment="Right"
+                        IsCloseButtonOnly="True"
+                        IsVisible="{OnPlatform True, macOS=False}"/>
+    </Grid>
+
+    <Border Grid.Row="1"
+            Margin="8,8,8,0"
+            Padding="8"
+            Background="{DynamicResource Brush.Contents}"
+            BorderBrush="{DynamicResource Brush.Border2}"
+            BorderThickness="1"
+            CornerRadius="6">
+      <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto">
+        <Border Grid.Column="0"
+                Margin="0,0,6,0"
+                Padding="6"
+                Background="{DynamicResource Brush.BG1}"
+                CornerRadius="4">
+          <StackPanel Spacing="2">
+            <TextBlock Classes="small" Foreground="{DynamicResource Brush.FG2}" Text="Process CPU"/>
+            <TextBlock Classes="bold" Text="{Binding ProcessCpuPercent}"/>
+          </StackPanel>
+        </Border>
+
+        <Border Grid.Column="1"
+                Margin="0,0,6,0"
+                Padding="6"
+                Background="{DynamicResource Brush.BG1}"
+                CornerRadius="4">
+          <StackPanel Spacing="2">
+            <TextBlock Classes="small" Foreground="{DynamicResource Brush.FG2}" Text="Hottest thread"/>
+            <TextBlock Classes="bold" Text="{Binding HottestThread}" TextTrimming="CharacterEllipsis"/>
+          </StackPanel>
+        </Border>
+
+        <Border Grid.Column="2"
+                Padding="6"
+                Background="{DynamicResource Brush.BG1}"
+                CornerRadius="4">
+          <StackPanel Spacing="2">
+            <TextBlock Classes="small" Foreground="{DynamicResource Brush.FG2}" Text="Sample interval"/>
+            <TextBlock Classes="bold" Text="{Binding SampleInterval}"/>
+          </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="1" Grid.ColumnSpan="3" ColumnDefinitions="Auto,*" Margin="0,8,0,0">
+          <TextBlock Classes="small" Foreground="{DynamicResource Brush.FG2}" Text="Last sample:"/>
+          <TextBlock Grid.Column="1" Margin="6,0,0,0" Classes="small" Foreground="{DynamicResource Brush.FG2}" Text="{Binding LastSampleTime}"/>
+        </Grid>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="2" Margin="8">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="220"/>
+        <RowDefinition Height="8"/>
+        <RowDefinition Height="180"/>
+        <RowDefinition Height="8"/>
+        <RowDefinition Height="*"/>
+      </Grid.RowDefinitions>
+
+      <Border Grid.Row="0"
+              Background="{DynamicResource Brush.Contents}"
+              BorderBrush="{DynamicResource Brush.Border2}"
+              BorderThickness="1"
+              CornerRadius="6"
+              Padding="8">
+        <Grid RowDefinitions="Auto,*">
+          <TextBlock Classes="bold" Text="Recent process CPU usage"/>
+          <lvc:CartesianChart Grid.Row="1"
+                              Margin="0,8,0,0"
+                              Background="{DynamicResource Brush.Window}"
+                              Series="{Binding CpuSeries}"
+                              XAxes="{Binding CpuXAxes}"
+                              YAxes="{Binding CpuYAxes}"/>
+        </Grid>
+      </Border>
+
+      <Border Grid.Row="2"
+              Background="{DynamicResource Brush.Contents}"
+              BorderBrush="{DynamicResource Brush.Border2}"
+              BorderThickness="1"
+              CornerRadius="6">
+        <Grid RowDefinitions="Auto,*">
+          <TextBlock Margin="10,10,10,6"
+                     Classes="bold"
+                     Text="Active git operations"/>
+
+          <Grid Grid.Row="1" Margin="8,0,8,8">
+            <TextBlock HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource Brush.FG2}"
+                       Text="No active logged git operations right now."
+                       IsVisible="{Binding !HasActiveOperations}"/>
+
+            <ListBox Background="Transparent"
+                     BorderThickness="0"
+                     ItemsSource="{Binding ActiveOperations}"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     IsVisible="{Binding HasActiveOperations}">
+              <ListBox.ItemTemplate>
+                <DataTemplate DataType="m:ActiveGitOperationSample">
+                  <Border Padding="8"
+                          Margin="0,0,0,6"
+                          Background="{DynamicResource Brush.BG1}"
+                          BorderBrush="{DynamicResource Brush.Border1}"
+                          BorderThickness="1"
+                          CornerRadius="4">
+                    <StackPanel Spacing="3">
+                      <Grid ColumnDefinitions="*,Auto,Auto">
+                        <TextBlock Grid.Column="0"
+                                   Classes="bold"
+                                   Text="{Binding RepositoryName}"
+                                   TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Grid.Column="1"
+                                   Margin="8,0,0,0"
+                                   Foreground="#FF0F8CFF"
+                                   Text="{Binding OperationName}"/>
+                        <TextBlock Grid.Column="2"
+                                   Margin="8,0,0,0"
+                                   Foreground="{DynamicResource Brush.FG2}"
+                                   Text="{Binding DurationText}"/>
+                      </Grid>
+
+                      <TextBlock Classes="small"
+                                 Foreground="{DynamicResource Brush.FG2}"
+                                 Text="{Binding RepositoryPath}"
+                                 TextTrimming="CharacterEllipsis"/>
+
+                      <TextBlock FontFamily="{DynamicResource Fonts.Monospace}"
+                                 FontSize="11"
+                                 Foreground="{DynamicResource Brush.FG1}"
+                                 Text="{Binding CurrentCommand}"
+                                 TextTrimming="CharacterEllipsis"/>
+
+                      <TextBlock Classes="small"
+                                 Foreground="#FFD35400"
+                                 Text="{Binding BackgroundText}"
+                                 IsVisible="{Binding IsBackground}"/>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Grid>
+        </Grid>
+      </Border>
+
+      <Border Grid.Row="4"
+              Background="{DynamicResource Brush.Contents}"
+              BorderBrush="{DynamicResource Brush.Border2}"
+              BorderThickness="1"
+              CornerRadius="6">
+        <Grid RowDefinitions="Auto,*">
+          <TextBlock Margin="10,10,10,6"
+                     Classes="bold"
+                     Text="Top CPU threads"/>
+
+          <ListBox Grid.Row="1"
+                   Margin="8,0,8,8"
+                   Background="Transparent"
+                   BorderThickness="0"
+                   ItemsSource="{Binding TopThreads}"
+                   ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="m:CpuThreadSample">
+                  <Border Padding="8"
+                          Margin="0,0,0,4"
+                          Background="{DynamicResource Brush.BG1}"
+                          BorderBrush="{DynamicResource Brush.Border1}"
+                          BorderThickness="1"
+                          CornerRadius="4">
+                  <Grid ColumnDefinitions="84,84,*,Auto">
+                    <TextBlock Grid.Column="0"
+                               FontSize="11"
+                               Text="{Binding ThreadId, StringFormat='TID {0}'}"/>
+                    <TextBlock Grid.Column="1"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Text="{Binding CpuPercentText}"/>
+                    <TextBlock Grid.Column="2"
+                               Margin="8,0,0,0"
+                               FontSize="11"
+                               Foreground="{DynamicResource Brush.FG2}"
+                               Text="{Binding State}"
+                               TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Grid.Column="3"
+                               Margin="8,0,0,0"
+                               FontSize="11"
+                               Foreground="#FFD35400"
+                               Text="{Binding Note}"/>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <Border Grid.Row="3"
+            Margin="8,0,8,8"
+            Padding="8"
+            Background="{DynamicResource Brush.Contents}"
+            BorderBrush="{DynamicResource Brush.Border2}"
+            BorderThickness="1"
+            CornerRadius="6">
+      <TextBlock Classes="small"
+                 Foreground="{DynamicResource Brush.FG2}"
+                 Text="{Binding Note}"
+                 TextWrapping="Wrap"/>
+    </Border>
+  </Grid>
+</v:ChromelessWindow>

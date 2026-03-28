@@ -1475,7 +1475,7 @@ namespace SourceGit.Views
             var nameBackground = CreateBranchNameBackground(color, true);
             submenu.Background = nameBackground;
             var actionBackground = CreateBranchActionBackground(color, true);
-            var filterModeVm = new ViewModels.FilterModeInGraph(repo, current);
+            var filterModeVm = new ViewModels.FilterModeInGraph(repo, current, color);
             filterModeVm.BranchColorChanged += nextColor =>
             {
                 nameBackground.Color = CreateBranchNameBackground(nextColor, true).Color;
@@ -1562,7 +1562,7 @@ namespace SourceGit.Views
             var nameBackground = CreateBranchNameBackground(color, true);
             submenu.Background = nameBackground;
             var actionBackground = CreateBranchActionBackground(color, true);
-            var filterModeVm = new ViewModels.FilterModeInGraph(repo, branch);
+            var filterModeVm = new ViewModels.FilterModeInGraph(repo, branch, color);
             filterModeVm.BranchColorChanged += nextColor =>
             {
                 nameBackground.Color = CreateBranchNameBackground(nextColor, true).Color;
@@ -1626,16 +1626,18 @@ namespace SourceGit.Views
                 return;
 
             var name = branch.FriendlyName;
+            var remoteIndent = new Thickness(18, 0, 0, 0);
 
             var submenu = new MenuItem();
             submenu.Icon = App.CreateMenuIcon("Icons.Branch");
             submenu.Header = name;
+            submenu.Margin = remoteIndent;
             var graphColor = GetCommitGraphColor(commitColorIndex);
             var color = decoratorColor != 0 ? decoratorColor : (graphColor != 0 ? graphColor : repo.GetBranchFilterColor(branch));
             var nameBackground = CreateBranchNameBackground(color, false);
             submenu.Background = nameBackground;
             var actionBackground = CreateBranchActionBackground(color, false);
-            var filterModeVm = new ViewModels.FilterModeInGraph(repo, branch);
+            var filterModeVm = new ViewModels.FilterModeInGraph(repo, branch, color);
             filterModeVm.BranchColorChanged += nextColor =>
             {
                 nameBackground.Color = CreateBranchNameBackground(nextColor, false).Color;
@@ -1672,28 +1674,32 @@ namespace SourceGit.Views
             };
             submenu.Items.Add(delete);
             menu.Items.Add(submenu);
-            AddLevel1BranchFilterModeMenuItem(menu, filterModeVm, actionBackground);
-            AddLevel1CheckoutBranchMenuItem(menu, repo, branch, name, actionBackground);
-            AddLevel1ExcludeBranchMenuItem(menu, repo, branch.Name, actionBackground);
-            AddLevel1CopyBranchNameMenuItem(menu, name, actionBackground);
+            AddLevel1BranchFilterModeMenuItem(menu, filterModeVm, actionBackground, remoteIndent);
+            AddLevel1CheckoutBranchMenuItem(menu, repo, branch, name, actionBackground, remoteIndent);
+            AddLevel1ExcludeBranchMenuItem(menu, repo, branch.Name, actionBackground, remoteIndent);
+            AddLevel1CopyBranchNameMenuItem(menu, name, actionBackground, remoteIndent);
         }
 
-        private static void AddLevel1BranchFilterModeMenuItem(ContextMenu menu, ViewModels.FilterModeInGraph filterModeVm, IBrush background)
+        private static void AddLevel1BranchFilterModeMenuItem(ContextMenu menu, ViewModels.FilterModeInGraph filterModeVm, IBrush background, Thickness? margin = null)
         {
             var filterMode = new MenuItem();
             filterMode.Classes.Add("filter_mode_switcher");
             filterMode.Header = filterModeVm;
             filterMode.Background = background;
+            if (margin.HasValue)
+                filterMode.Margin = margin.Value;
             menu.Items.Add(filterMode);
         }
 
-        private static void AddLevel1CheckoutBranchMenuItem(ContextMenu menu, ViewModels.Repository repo, Models.Branch branch, string displayName, IBrush background)
+        private static void AddLevel1CheckoutBranchMenuItem(ContextMenu menu, ViewModels.Repository repo, Models.Branch branch, string displayName, IBrush background, Thickness? margin = null)
         {
             var checkout = new MenuItem();
             checkout.Header = App.Text("BranchCM.Checkout", displayName);
             checkout.Icon = App.CreateMenuIcon("Icons.Check");
             checkout.IsEnabled = !repo.IsBare;
             checkout.Background = background;
+            if (margin.HasValue)
+                checkout.Margin = margin.Value;
             checkout.Click += async (_, e) =>
             {
                 await repo.CheckoutBranchAsync(branch);
@@ -1702,12 +1708,14 @@ namespace SourceGit.Views
             menu.Items.Add(checkout);
         }
 
-        private static void AddLevel1ExcludeBranchMenuItem(ContextMenu menu, ViewModels.Repository repo, string branchName, IBrush background)
+        private static void AddLevel1ExcludeBranchMenuItem(ContextMenu menu, ViewModels.Repository repo, string branchName, IBrush background, Thickness? margin = null)
         {
             var exclude = new MenuItem();
             exclude.Header = App.Text("Repository.BranchesVisibility.ExcludeThisBranch");
             exclude.Icon = App.CreateMenuIcon("Icons.Filter");
             exclude.Background = background;
+            if (margin.HasValue)
+                exclude.Margin = margin.Value;
             exclude.Click += (_, e) =>
             {
                 repo.ExcludeBranchInPresetFilter(branchName);
@@ -1734,13 +1742,39 @@ namespace SourceGit.Views
 
         private static void AddLevel1ForcePushBranchMenuItem(ContextMenu menu, ViewModels.Repository repo, Models.Branch branch, IBrush background)
         {
+            var accent = new SolidColorBrush(Color.Parse("#C62828"));
             var forcePush = new MenuItem();
-            forcePush.Header = $"Force Push {branch.Name}";
+            forcePush.Header = new TextBlock()
+            {
+                Text = $"Force Push {branch.Name}",
+                FontWeight = FontWeight.Bold,
+                Foreground = accent,
+            };
             forcePush.Icon = App.CreateMenuIcon("Icons.Push");
             forcePush.IsEnabled = repo.Remotes.Count > 0;
             forcePush.Background = background;
-            forcePush.Click += (_, e) =>
+            forcePush.StaysOpenOnClick = true;
+            ToolTip.SetTip(forcePush, "Double click is required");
+            ToolTip.SetPlacement(forcePush, PlacementMode.Right);
+            if (forcePush.Icon is PathIcon pathIcon)
+                pathIcon.Foreground = accent;
+            var armedAt = DateTime.MinValue;
+            forcePush.Click += async (_, e) =>
             {
+                var now = DateTime.UtcNow;
+                if ((now - armedAt).TotalMilliseconds > 1200)
+                {
+                    armedAt = now;
+                    ToolTip.SetIsOpen(forcePush, true);
+                    await Task.Delay(900);
+                    if ((DateTime.UtcNow - armedAt).TotalMilliseconds > 800)
+                        ToolTip.SetIsOpen(forcePush, false);
+                    e.Handled = true;
+                    return;
+                }
+
+                ToolTip.SetIsOpen(forcePush, false);
+                armedAt = DateTime.MinValue;
                 if (repo.CanCreatePopup())
                 {
                     var push = new ViewModels.Push(repo, branch)
@@ -1749,17 +1783,20 @@ namespace SourceGit.Views
                     };
                     repo.ShowPopup(push);
                 }
+
                 e.Handled = true;
             };
             menu.Items.Add(forcePush);
         }
 
-        private static void AddLevel1CopyBranchNameMenuItem(ContextMenu menu, string branchName, IBrush background)
+        private static void AddLevel1CopyBranchNameMenuItem(ContextMenu menu, string branchName, IBrush background, Thickness? margin = null)
         {
             var copy = new MenuItem();
             copy.Header = App.Text("BranchCM.CopyName");
             copy.Icon = App.CreateMenuIcon("Icons.Copy");
             copy.Background = background;
+            if (margin.HasValue)
+                copy.Margin = margin.Value;
             copy.Click += async (_, e) =>
             {
                 await App.CopyTextAsync(branchName);

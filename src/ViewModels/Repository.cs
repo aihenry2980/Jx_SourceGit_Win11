@@ -1823,6 +1823,47 @@ namespace SourceGit.ViewModels
             return Models.RepositorySettings.PRESET_BRANCH_EXACT_DEFAULT_COLOR;
         }
 
+        public uint GetEffectiveBranchDisplayColor(Models.Branch branch)
+        {
+            if (branch == null)
+                return Models.RepositorySettings.PRESET_BRANCH_EXACT_DEFAULT_COLOR;
+
+            EnsureIncludedBranchFiltersHaveColors();
+
+            var branchColors = new Dictionary<string, uint>(StringComparer.Ordinal);
+            var branchesByFullName = new Dictionary<string, Models.Branch>(StringComparer.Ordinal);
+            var localBranchesByUpstream = new Dictionary<string, Models.Branch>(StringComparer.Ordinal);
+
+            foreach (var one in _branches)
+            {
+                if (!string.IsNullOrWhiteSpace(one.FullName))
+                    branchesByFullName[one.FullName] = one;
+
+                if (one.IsLocal &&
+                    !string.IsNullOrWhiteSpace(one.Upstream) &&
+                    !localBranchesByUpstream.ContainsKey(one.Upstream))
+                {
+                    localBranchesByUpstream[one.Upstream] = one;
+                }
+            }
+
+            foreach (var filter in _uiStates.HistoryFilters)
+            {
+                if (filter.Mode == Models.FilterMode.Included &&
+                    filter.Type is Models.FilterType.LocalBranch or Models.FilterType.RemoteBranch)
+                {
+                    branchColors[filter.Pattern] = filter.Color == 0
+                        ? Models.RepositorySettings.PRESET_BRANCH_EXACT_DEFAULT_COLOR
+                        : filter.Color;
+                }
+            }
+
+            if (TryResolveBranchDisplayColor(branch.FullName, branch.IsLocal, branchColors, branchesByFullName, localBranchesByUpstream, out var color))
+                return color == 0 ? Models.RepositorySettings.PRESET_BRANCH_EXACT_DEFAULT_COLOR : color;
+
+            return GetBranchFilterColor(branch);
+        }
+
         public void SetBranchDisplayColor(Models.Branch branch, uint color)
         {
             if (branch == null)
