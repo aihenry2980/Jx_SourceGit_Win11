@@ -259,66 +259,60 @@
               </ListBoxItem>
 
               <ListBoxItem IsVisible="{Binding !IsBare}" Height="46">
-                <Grid Classes="view_mode" RowDefinitions="28,18" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto">
+                <Grid Classes="view_mode" RowDefinitions="28,18" ColumnDefinitions="Auto,*,Auto">
                   <Path Grid.Column="0" Classes="icon" Data="{StaticResource Icons.Changes}"/>
                   <TextBlock Grid.Column="1" Classes="header" Text="{DynamicResource Text.WorkingCopy}" IsVisible="{Binding !IsLeftSidebarCompact}"/>
-                  <Border Grid.Column="2"
-                          Height="18"
-                          Margin="6,0" Padding="9,0"
-                          CornerRadius="9"
-                          VerticalAlignment="Center"
-                          Background="{DynamicResource Brush.Badge}">
-                    <Border.IsVisible>
-                      <MultiBinding Converter="{x:Static BoolConverters.And}">
-                        <Binding Path="!IsLeftSidebarCompact"/>
+                  <StackPanel Grid.Column="2"
+                              Orientation="Horizontal"
+                              HorizontalAlignment="Right"
+                              Spacing="4"
+                              IsVisible="{Binding !IsLeftSidebarCompact}">
+                    <Border Height="18"
+                            Margin="6,0,0,0"
+                            Padding="9,0"
+                            CornerRadius="9"
+                            VerticalAlignment="Center"
+                            Background="{DynamicResource Brush.Badge}">
+                      <Border.IsVisible>
                         <Binding Path="LocalChangesCount" Converter="{x:Static c:IntConverters.IsGreaterThanZero}"/>
-                      </MultiBinding>
-                    </Border.IsVisible>
-                    <TextBlock Text="{Binding LocalChangesCount, Mode=OneWay}"
-                               Foreground="{DynamicResource Brush.BadgeFG}"
-                               FontFamily="{DynamicResource Fonts.Monospace}"
-                               FontSize="10"/>
-                  </Border>
-                  <Path Grid.Column="3"
-                        Width="12" Height="12"
-                        Margin="0,0,6,0"
-                        Data="{StaticResource Icons.Info}"
-                        Fill="DarkOrange">
-                    <Path.IsVisible>
-                      <MultiBinding Converter="{x:Static BoolConverters.And}">
-                        <Binding Path="!IsLeftSidebarCompact"/>
-                        <Binding Path="InProgressContext" Converter="{x:Static ObjectConverters.IsNotNull}"/>
-                      </MultiBinding>
-                    </Path.IsVisible>
-                  </Path>
-                  <Button Grid.Column="4"
-                          Classes="icon_button"
-                          Width="26" Height="26"
-                          IsVisible="{Binding !IsLeftSidebarCompact}"
-                          Click="OnOpenLocalIgnoreConfigure"
-                          ToolTip.Tip="Local Git Ignore">
-                    <Path Width="12" Height="12" Data="{StaticResource Icons.GitIgnore}"/>
-                  </Button>
-                  <Button Grid.Column="5"
-                          Classes="icon_button"
-                          Width="26" Height="26"
-                          IsVisible="{Binding !IsLeftSidebarCompact}"
-                          Click="OnApplyLocalIgnoreRules"
-                          ToolTip.Tip="Refresh Local Ignore">
-                    <Path Width="12" Height="12" Data="{StaticResource Icons.Refresh}"/>
-                  </Button>
-                  <Button Grid.Column="6"
-                          Classes="icon_button"
-                          Width="26" Height="26"
-                          Command="{Binding DiscardAllChanges}"
-                          IsVisible="{Binding !IsLeftSidebarCompact}"
-                          ToolTip.Tip="{DynamicResource Text.Repository.DiscardAll}">
-                    <Path Width="12" Height="12" Data="{StaticResource Icons.Undo}"/>
-                  </Button>
+                      </Border.IsVisible>
+                      <TextBlock Text="{Binding LocalChangesCount, Mode=OneWay}"
+                                 Foreground="{DynamicResource Brush.BadgeFG}"
+                                 FontFamily="{DynamicResource Fonts.Monospace}"
+                                 FontSize="10"/>
+                    </Border>
+                    <Path Width="12"
+                          Height="12"
+                          Margin="0,0,2,0"
+                          VerticalAlignment="Center"
+                          Data="{StaticResource Icons.Info}"
+                          Fill="DarkOrange"
+                          IsVisible="{Binding InProgressContext, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Classes="icon_button"
+                            Width="26"
+                            Height="26"
+                            Click="OnOpenLocalIgnoreConfigure"
+                            ToolTip.Tip="Local Git Ignore">
+                      <Path Width="12" Height="12" Data="{StaticResource Icons.GitIgnore}"/>
+                    </Button>
+                    <Button Classes="icon_button"
+                            Width="26"
+                            Height="26"
+                            Click="OnApplyLocalIgnoreRules"
+                            ToolTip.Tip="Refresh Local Ignore">
+                      <Path Width="12" Height="12" Data="{StaticResource Icons.Refresh}"/>
+                    </Button>
+                    <Button Classes="icon_button"
+                            Width="26"
+                            Height="26"
+                            Command="{Binding DiscardAllChanges}"
+                            ToolTip.Tip="{DynamicResource Text.Repository.DiscardAll}">
+                      <Path Width="12" Height="12" Data="{StaticResource Icons.Undo}"/>
+                    </Button>
+                  </StackPanel>
 
                   <Button Grid.Row="1"
                           Grid.Column="1"
-                          Grid.ColumnSpan="6"
                           Padding="0"
                           Background="Transparent"
                           BorderThickness="0"
@@ -338,6 +332,23 @@
                                  Foreground="{DynamicResource Brush.FG2}"
                                  Text="Local changes recursively"/>
                     </StackPanel>
+                  </Button>
+
+                  <Button Grid.Row="1"
+                          Grid.Column="2"
+                          Classes="icon_button"
+                          Width="24"
+                          Height="18"
+                          Margin="4,0,4,4"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Center"
+                          IsVisible="{Binding !IsLeftSidebarCompact}"
+                          Click="OnRestoreCleanStateRecursively"
+                          ToolTip.Tip="Restore clean state recursively">
+                    <Path Width="11"
+                          Height="11"
+                          Fill="#FF7F1D1D"
+                          Data="{StaticResource Icons.Clean}"/>
                   </Button>
                 </Grid>
               </ListBoxItem>

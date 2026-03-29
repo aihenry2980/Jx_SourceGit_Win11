@@ -17,6 +17,7 @@ namespace SourceGit.ViewModels
         FetchAndPruneRecursively,
         FetchRecursively,
         UpdateSubmodulesRecursively,
+        RestoreCleanStateRecursively,
     }
 
     public class ToolbarRecursiveOperation : Popup
@@ -212,6 +213,7 @@ namespace SourceGit.ViewModels
                     ToolbarRecursiveOperationKind.FetchAndPruneRecursively => App.Text("Repository.FetchAndPruneRecursively"),
                     ToolbarRecursiveOperationKind.FetchRecursively => App.Text("Repository.FetchRecursively"),
                     ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively => App.Text("Repository.UpdateSubmodulesRecursively"),
+                    ToolbarRecursiveOperationKind.RestoreCleanStateRecursively => "Restore Clean State",
                     _ => "Operation",
                 },
             };
@@ -219,7 +221,11 @@ namespace SourceGit.ViewModels
             Description = _mode switch
             {
                 ToolbarRecursiveOperationMode.ConfigureSelectionOnly => "Choose which submodules Sync All should update. This selection is remembered for this repository.",
-                _ => $"Live git output with syntax highlighting. Auto-closes in {GetAutoCloseCountdownSeconds()} seconds after success unless you stop countdown.",
+                _ => kind switch
+                {
+                    ToolbarRecursiveOperationKind.RestoreCleanStateRecursively => "Dangerous: discards all local, untracked, and ignored changes in the parent repository and initialized submodules, then restores submodules to the parent-recorded commits.",
+                    _ => $"Live git output with syntax highlighting. Auto-closes in {GetAutoCloseCountdownSeconds()} seconds after success unless you stop countdown.",
+                },
             };
             ResetCombinedPhaseStates();
 
@@ -338,6 +344,7 @@ namespace SourceGit.ViewModels
                     ToolbarRecursiveOperationKind.FetchAndPruneRecursively => await _repo.RunFetchRecursivelyAsync(true, log, false, selectedTargets, _runCancellation.Token, UpdateSubmoduleProgress),
                     ToolbarRecursiveOperationKind.FetchRecursively => await _repo.RunFetchRecursivelyAsync(false, log, false, selectedTargets, _runCancellation.Token, UpdateSubmoduleProgress),
                     ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively => await _repo.RunUpdateSubmodulesRecursivelyAsync(log, selectedTargets, false, _runCancellation.Token, UpdateSubmoduleProgress),
+                    ToolbarRecursiveOperationKind.RestoreCleanStateRecursively => await _repo.RunRestoreCleanStateRecursivelyAsync(log, _runCancellation.Token),
                     _ => false,
                 };
             }

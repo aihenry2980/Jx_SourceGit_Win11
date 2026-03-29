@@ -310,7 +310,12 @@
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
 
-          <DataGridTemplateColumn MinWidth="160" CanUserResize="False" IsReadOnly="True" IsVisible="{Binding IsDateTimeColumnVisible, Mode=OneWay}">
+          <DataGridTemplateColumn MinWidth="120" CanUserResize="True" IsReadOnly="True" IsVisible="{Binding IsDateTimeColumnVisible, Mode=OneWay}">
+            <DataGridTemplateColumn.Width>
+              <Binding Source="{x:Static vm:Preferences.Instance}"
+                       Path="Layout.DateTimeColumnWidth"
+                       Mode="TwoWay"/>
+            </DataGridTemplateColumn.Width>
             <DataGridTemplateColumn.Header>
               <Grid HorizontalAlignment="Center">
                 <TextBlock Classes="table_header"

@@ -112,6 +112,35 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
+        private async void OnRestoreCleanStateRecursively(object _, RoutedEventArgs e)
+        {
+            if (DataContext is not ViewModels.Repository repo || !repo.CanCreatePopup())
+                return;
+
+            var confirmed = await App.AskConfirmAsync(
+                "Restore the parent repository and all initialized submodules to a pristine clean state?\n\nThis will permanently discard tracked, untracked, and ignored changes.",
+                Models.ConfirmButtonType.YesNo);
+            if (!confirmed)
+            {
+                e.Handled = true;
+                return;
+            }
+
+            var operation = new ViewModels.ToolbarRecursiveOperation(
+                repo,
+                ViewModels.ToolbarRecursiveOperationKind.RestoreCleanStateRecursively)
+            {
+                ShowEmbeddedHeader = false,
+            };
+
+            App.ShowWindow(new ToolbarRecursiveOperationWindow
+            {
+                DataContext = operation,
+            });
+
+            e.Handled = true;
+        }
+
         private void OnLocalBranchTreeSelectionChanged(object _1, RoutedEventArgs _2)
         {
             RemoteBranchTree.UnselectAll();

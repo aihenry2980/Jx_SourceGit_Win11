@@ -33,6 +33,7 @@ namespace SourceGit.Views
             Refresh,
             UndoRecentCommands,
             UpdateSubmodulesRecursively,
+            CleanRecursively,
             StashAll,
         }
 
@@ -378,6 +379,26 @@ namespace SourceGit.Views
             }
         }
 
+        private async void RestoreCleanStateRecursively(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo && repo.CanCreatePopup())
+            {
+                var confirmed = await App.AskConfirmAsync(
+                    "Restore the parent repository and all initialized submodules to a pristine clean state?\n\nThis will permanently discard tracked, untracked, and ignored changes.",
+                    Models.ConfirmButtonType.YesNo);
+                if (!confirmed)
+                {
+                    e.Handled = true;
+                    return;
+                }
+
+                OpenToolbarRecursiveOperationWindow(new ViewModels.ToolbarRecursiveOperation(
+                    repo,
+                    ViewModels.ToolbarRecursiveOperationKind.RestoreCleanStateRecursively));
+                e.Handled = true;
+            }
+        }
+
         private async void SyncAll(object sender, TappedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo && repo.CanCreatePopup())
@@ -533,6 +554,7 @@ namespace SourceGit.Views
                 ToolbarGitButtonKind.Refresh => BuildRefreshCommandSpec(repo),
                 ToolbarGitButtonKind.UndoRecentCommands => BuildUndoRecentCommandsCommandSpec(repo),
                 ToolbarGitButtonKind.UpdateSubmodulesRecursively => BuildUpdateSubmodulesCommandSpec(repo),
+                ToolbarGitButtonKind.CleanRecursively => BuildCleanRecursivelyCommandSpec(repo),
                 ToolbarGitButtonKind.StashAll => BuildStashAllCommandSpec(repo),
                 _ => null,
             };
@@ -771,6 +793,21 @@ namespace SourceGit.Views
                 "Edit Update Submodules Command",
                 "Edit the recursive submodule update command. This runs in the repository logs window.",
                 builder.ToString(),
+                RefreshRepositoryAfterToolbarGitCommand);
+        }
+
+        private ToolbarGitCommandSpec BuildCleanRecursivelyCommandSpec(ViewModels.Repository repo)
+        {
+            return new ToolbarGitCommandSpec(
+                "Edit command...",
+                "Edit Clean R Command",
+                "Edit the destructive recursive clean sequence. Commands run top to bottom in the repository logs window.",
+                "# Danger: this discards tracked, untracked, and ignored changes.\n" +
+                "git clean -qfdx\n" +
+                "git reset --hard\n" +
+                "git submodule foreach --recursive \"git reset --hard\"\n" +
+                "git submodule foreach --recursive \"git clean -fdx\"\n" +
+                "git submodule update --recursive --init",
                 RefreshRepositoryAfterToolbarGitCommand);
         }
 

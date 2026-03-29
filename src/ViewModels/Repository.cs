@@ -3093,6 +3093,73 @@ namespace SourceGit.ViewModels
             return succ;
         }
 
+        public async Task<bool> RunRestoreCleanStateRecursivelyAsync(
+            Models.ICommandLog log,
+            CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return false;
+
+            using var lockWatcher = _watcher?.Lock();
+
+            log?.AppendLine("=== Step 1/4: Discard root repository changes (tracked, untracked, ignored) ===");
+            var cleanRoot = await RunRecursiveGitCommandAsync(
+                "clean -qfdx",
+                log,
+                cancellationToken).ConfigureAwait(false);
+            if (!cleanRoot)
+                return false;
+
+            var resetRoot = await RunRecursiveGitCommandAsync(
+                "reset --hard",
+                log,
+                cancellationToken).ConfigureAwait(false);
+            if (!resetRoot)
+                return false;
+            ClearCommitMessage();
+
+            if (cancellationToken.IsCancellationRequested)
+                return false;
+
+            log?.AppendLine("=== Step 2/4: Reset initialized submodules recursively ===");
+            var resetSubmodules = await RunRecursiveGitCommandAsync(
+                "submodule foreach --recursive \"git reset --hard\"",
+                log,
+                cancellationToken).ConfigureAwait(false);
+            if (!resetSubmodules)
+                return false;
+
+            if (cancellationToken.IsCancellationRequested)
+                return false;
+
+            log?.AppendLine("=== Step 3/4: Clean initialized submodules recursively ===");
+            var cleanSubmodules = await RunRecursiveGitCommandAsync(
+                "submodule foreach --recursive \"git clean -fdx\"",
+                log,
+                cancellationToken).ConfigureAwait(false);
+            if (!cleanSubmodules)
+                return false;
+
+            if (cancellationToken.IsCancellationRequested)
+                return false;
+
+            log?.AppendLine("=== Step 4/4: Restore submodules to parent-recorded commits ===");
+            var updateSubmodules = await new Commands.Submodule(FullPath)
+            {
+                RaiseError = true,
+                CancellationToken = cancellationToken,
+            }.Use(log).UpdateAsync([], true, false).ConfigureAwait(false);
+            if (!updateSubmodules)
+                return false;
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                RefreshAll();
+                RefreshSuperProjectSubmodulePointer();
+            });
+            return true;
+        }
+
         public async Task AutoUpdateSubmodulesAsync(Models.ICommandLog log)
         {
             var submodules = await new Commands.QueryUpdatableSubmodules(FullPath, false).GetResultAsync();
@@ -3156,6 +3223,22 @@ namespace SourceGit.ViewModels
             _superProjectSubmoduleSHA = normalized;
             OnPropertyChanged(nameof(HasSuperProjectPointer));
             RefreshCommits();
+        }
+
+        private async Task<bool> RunRecursiveGitCommandAsync(
+            string args,
+            Models.ICommandLog log,
+            CancellationToken cancellationToken)
+        {
+            return await new Commands.Command()
+            {
+                WorkingDirectory = FullPath,
+                Context = FullPath,
+                Args = args,
+                Log = log,
+                CancellationToken = cancellationToken,
+                RaiseError = true,
+            }.ExecAsync().ConfigureAwait(false);
         }
 
         public void NavigateToSuperProjectPointerCommit()

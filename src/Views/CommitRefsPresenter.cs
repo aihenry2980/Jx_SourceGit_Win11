@@ -35,6 +35,7 @@ namespace SourceGit.Views
             public bool CanFold { get; set; } = false;
             public bool IsFolded { get; set; } = false;
             public double LeadingWidth { get; set; } = 16.0;
+            public double Height { get; set; } = 16.0;
             public double Width { get; set; } = 0.0;
             public Models.Decorator Decorator { get; set; } = null;
         }
@@ -168,10 +169,13 @@ namespace SourceGit.Views
                 if (allowWrap && x > 1.5 && x + item.Width > Bounds.Width)
                 {
                     x = 1.5;
-                    y += 20.0;
+                    y += item.Height + 4.0;
                 }
 
-                var entireRect = new RoundedRect(new Rect(x, y, item.Width, 16), new CornerRadius(4));
+                var entireRect = new RoundedRect(new Rect(x, y, item.Width, item.Height), new CornerRadius(4));
+                var centerY = y + item.Height * 0.5;
+                var iconBackgroundY = y + (item.Height - 12.0) * 0.5;
+                var iconY = y + (item.Height - 10.0) * 0.5;
 
                 if (item.IsHead)
                 {
@@ -189,14 +193,14 @@ namespace SourceGit.Views
                     }
 
                     var labelX = x + item.LeadingWidth;
-                    DrawLabelHighlights(context, item, labelX, y + 8.0 - item.Label.Height * 0.5);
+                    DrawLabelHighlights(context, item, labelX, centerY - item.Label.Height * 0.5);
                     if (item.PrefixLabel != null)
                     {
-                        context.DrawText(item.PrefixLabel, new Point(labelX, y + 8.0 - item.PrefixLabel.Height * 0.5));
+                        context.DrawText(item.PrefixLabel, new Point(labelX, centerY - item.PrefixLabel.Height * 0.5));
                         labelX += item.PrefixLabel.WidthIncludingTrailingWhitespace;
                     }
 
-                    context.DrawText(item.Label, new Point(labelX, y + 8.0 - item.Label.Height * 0.5));
+                    context.DrawText(item.Label, new Point(labelX, centerY - item.Label.Height * 0.5));
                 }
                 else
                 {
@@ -210,22 +214,22 @@ namespace SourceGit.Views
                             context.DrawRectangle(bg, null, entireRect);
 
                         var fullLabelWidth = (item.PrefixLabel?.WidthIncludingTrailingWhitespace ?? 0.0) + item.Label.Width;
-                        var labelRect = new RoundedRect(new Rect(x + item.LeadingWidth, y, fullLabelWidth + 8, 16), new CornerRadius(0, 4, 4, 0));
+                        var labelRect = new RoundedRect(new Rect(x + item.LeadingWidth, y, fullLabelWidth + 8, item.Height), new CornerRadius(0, 4, 4, 0));
                         using (context.PushOpacity(.2))
                             context.DrawRectangle(item.Brush, null, labelRect);
 
-                        context.DrawLine(new Pen(item.Brush), new Point(x + item.LeadingWidth, y), new Point(x + item.LeadingWidth, y + 16));
+                        context.DrawLine(new Pen(item.Brush), new Point(x + item.LeadingWidth, y), new Point(x + item.LeadingWidth, y + item.Height));
                     }
 
                     var labelX = x + item.LeadingWidth + 4;
-                    DrawLabelHighlights(context, item, labelX, y + 8.0 - item.Label.Height * 0.5);
+                    DrawLabelHighlights(context, item, labelX, centerY - item.Label.Height * 0.5);
                     if (item.PrefixLabel != null)
                     {
-                        context.DrawText(item.PrefixLabel, new Point(labelX, y + 8.0 - item.PrefixLabel.Height * 0.5));
+                        context.DrawText(item.PrefixLabel, new Point(labelX, centerY - item.PrefixLabel.Height * 0.5));
                         labelX += item.PrefixLabel.WidthIncludingTrailingWhitespace;
                     }
 
-                    context.DrawText(item.Label, new Point(labelX, y + 8.0 - item.Label.Height * 0.5));
+                    context.DrawText(item.Label, new Point(labelX, centerY - item.Label.Height * 0.5));
                 }
 
                 var borderBrush = item.BorderBrush ?? item.Brush;
@@ -236,10 +240,10 @@ namespace SourceGit.Views
                     context.DrawRectangle(
                         item.PrimaryIconBackground,
                         null,
-                        new RoundedRect(new Rect(x + 2, y + 2, 10, 12), new CornerRadius(3)));
+                        new RoundedRect(new Rect(x + 2, iconBackgroundY, 10, 12), new CornerRadius(3)));
                 }
 
-                using (context.PushTransform(Matrix.CreateTranslation(x + 3, y + 3)))
+                using (context.PushTransform(Matrix.CreateTranslation(x + 3, iconY)))
                     context.DrawGeometry(item.IconBrush ?? fg, null, item.Icon);
 
                 if (item.SecondaryIcon != null)
@@ -249,22 +253,25 @@ namespace SourceGit.Views
                         context.DrawRectangle(
                             item.SecondaryIconBackground,
                             null,
-                            new RoundedRect(new Rect(x + 14, y + 2, 10, 12), new CornerRadius(3)));
+                            new RoundedRect(new Rect(x + 14, iconBackgroundY, 10, 12), new CornerRadius(3)));
                     }
 
                     context.DrawLine(
                         new Pen(item.BorderBrush ?? item.Brush, 1),
-                        new Point(x + 13, y + 3),
-                        new Point(x + 13, y + 13));
+                        new Point(x + 13, iconY),
+                        new Point(x + 13, iconY + 10));
 
-                    using (context.PushTransform(Matrix.CreateTranslation(x + 15, y + 3)))
+                    using (context.PushTransform(Matrix.CreateTranslation(x + 15, iconY)))
                         context.DrawGeometry(item.SecondaryIconBrush ?? fg, null, item.SecondaryIcon);
                 }
 
                 if (item.CanFold)
                 {
+                    var foldButtonWidth = 15.0;
+                    var foldButtonHeight = Math.Max(14.0, item.Height - 2.0);
                     var foldButtonX = x + item.Width - 17;
-                    var foldButtonRect = new RoundedRect(new Rect(foldButtonX, y + 1, 15, 14), new CornerRadius(3));
+                    var foldButtonY = y + (item.Height - foldButtonHeight) * 0.5;
+                    var foldButtonRect = new RoundedRect(new Rect(foldButtonX, foldButtonY, foldButtonWidth, foldButtonHeight), new CornerRadius(3));
 
                     context.DrawRectangle(
                         item.FoldButtonBackground ?? Brushes.LightGray,
@@ -274,10 +281,10 @@ namespace SourceGit.Views
                     context.DrawLine(
                         new Pen(borderBrush, 1.2),
                         new Point(foldButtonX - 2, y + 2),
-                        new Point(foldButtonX - 2, y + 14));
+                        new Point(foldButtonX - 2, y + item.Height - 2));
 
                     if (item.FoldLabel != null)
-                        context.DrawText(item.FoldLabel, new Point(foldButtonX + (15 - item.FoldLabel.Width) * 0.5, y + 8.0 - item.FoldLabel.Height * 0.5));
+                        context.DrawText(item.FoldLabel, new Point(foldButtonX + (foldButtonWidth - item.FoldLabel.Width) * 0.5, centerY - item.FoldLabel.Height * 0.5));
                 }
 
                 x += item.Width + 4;
@@ -306,6 +313,7 @@ namespace SourceGit.Views
                 var normalBG = UseGraphColor ? Models.CommitGraph.Pens[commit.Color].Brush : Brushes.Gray;
                 var labelSize = FontSize;
                 var requiredHeight = 16.0;
+                var currentLineHeight = 16.0;
                 var x = 0.0;
                 var allowWrap = AllowWrap;
                 var showTags = ShowTags;
@@ -430,7 +438,7 @@ namespace SourceGit.Views
                                          Models.DecoratorType.RemoteBranchHead)
                     {
                         item.Brush = new SolidColorBrush(Color.FromUInt32(decorator.Color));
-                        item.BorderBrush = item.Brush;
+                        item.BorderBrush = isMutedIncidentalBranch ? s_incidentalBranchBorderBrush : item.Brush;
                     }
 
                     if (isCurrentCommitHead)
@@ -443,6 +451,10 @@ namespace SourceGit.Views
                     switch (decorator.Type)
                     {
                         case Models.DecoratorType.CurrentBranchHead:
+                            geo = secondaryDecorator != null
+                                ? this.FindResource("Icons.Laptop") as StreamGeometry
+                                : this.FindResource("Icons.Head") as StreamGeometry;
+                            break;
                         case Models.DecoratorType.CurrentCommitHead:
                             geo = this.FindResource("Icons.Head") as StreamGeometry;
                             break;
@@ -464,7 +476,9 @@ namespace SourceGit.Views
                             geo = this.FindResource("Icons.Tag") as StreamGeometry;
                             break;
                         default:
-                            geo = this.FindResource("Icons.Branch") as StreamGeometry;
+                            geo = secondaryDecorator != null
+                                ? this.FindResource("Icons.Laptop") as StreamGeometry
+                                : this.FindResource("Icons.Branch") as StreamGeometry;
                             break;
                     }
 
@@ -484,18 +498,26 @@ namespace SourceGit.Views
                             item.FoldButtonForeground);
                     }
 
+                    var contentHeight = Math.Max(
+                        item.Label.Height,
+                        item.PrefixLabel?.Height ?? 0.0);
+                    item.Height = Math.Max(16.0, Math.Ceiling(contentHeight + 4.0));
+
                     var prefixWidth = prefixLabel?.WidthIncludingTrailingWhitespace ?? 0.0;
                     item.Width = item.LeadingWidth + (isHead ? 0 : 4) + prefixWidth + label.Width + 4;
                     if (item.CanFold)
                         item.Width += 18;
                     _items.Add(item);
+                    currentLineHeight = Math.Max(currentLineHeight, item.Height);
+                    requiredHeight = Math.Max(requiredHeight, currentLineHeight);
 
                     x += item.Width + 4;
                     if (allowWrap)
                     {
                         if (x > availableSize.Width)
                         {
-                            requiredHeight += 20.0;
+                            requiredHeight += currentLineHeight + 4.0;
+                            currentLineHeight = item.Height;
                             x = item.Width;
                         }
                     }
@@ -577,15 +599,15 @@ namespace SourceGit.Views
                 if (allowWrap && x > 1.5 && x + item.Width > Bounds.Width)
                 {
                     x = 1.5;
-                    y += 20.0;
+                    y += item.Height + 4.0;
                 }
 
-                var itemRect = new Rect(x, y, item.Width, 16);
+                var itemRect = new Rect(x, y, item.Width, item.Height);
                 if (itemRect.Contains(point))
                 {
                     found = item;
-                if (item.CanFold)
-                        foldRect = new Rect(x + item.Width - 18, y, 18, 16);
+                    if (item.CanFold)
+                        foldRect = new Rect(x + item.Width - 18, y, 18, item.Height);
 
                     return true;
                 }
@@ -671,6 +693,7 @@ namespace SourceGit.Views
         private static readonly IBrush s_highlightForeground = Brushes.Black;
         private static readonly IBrush s_remotePrefixAccentBrush = new SolidColorBrush(Color.Parse("#1565C0"));
         private static readonly IBrush s_incidentalBranchForegroundBrush = new SolidColorBrush(Color.Parse("#FF9AA0A6"));
+        private static readonly IBrush s_incidentalBranchBorderBrush = new SolidColorBrush(Color.Parse("#CC202124"));
         private static readonly IBrush s_compactLocalIconBrush = Brushes.White;
         private static readonly IBrush s_compactRemoteIconBrush = Brushes.White;
         private static readonly IBrush s_compactLocalIconBackgroundBrush = new SolidColorBrush(Color.Parse("#FF1E8E3E"));
