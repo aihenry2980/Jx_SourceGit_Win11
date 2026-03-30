@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -233,6 +234,51 @@ namespace SourceGit.Views
                 await App.ShowDialog(new ViewModels.Statistics(repo.FullPath));
                 e.Handled = true;
             }
+        }
+
+        private void CompareWithOtherRepo(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Control control || DataContext is not ViewModels.Repository repo)
+                return;
+
+            if (repo.CurrentBranch == null)
+            {
+                App.SendNotification("Compare With Other Repo", "Current branch is not available for this repository.");
+                e.Handled = true;
+                return;
+            }
+
+            var candidates = BuildCrossRepoCompareCandidates(repo);
+            if (candidates.Count == 0)
+            {
+                App.SendNotification("Compare With Other Repo", "No open repo with the same remote URL and a different current branch was found.");
+                e.Handled = true;
+                return;
+            }
+
+            var menu = new ContextMenu();
+            menu.Placement = PlacementMode.BottomEdgeAlignedLeft;
+
+            foreach (var candidate in candidates)
+            {
+                var otherRepo = candidate.Repository;
+                var item = new MenuItem();
+                item.Header = candidate.MenuText;
+                item.Icon = App.CreateMenuIcon("Icons.Compare");
+                item.Click += (_, ev) =>
+                {
+                    App.ShowWindow(new ViewModels.CrossRepositoryCompare(
+                        repo,
+                        ResolveRepoDisplayName(repo.FullPath),
+                        otherRepo,
+                        candidate.DisplayName));
+                    ev.Handled = true;
+                };
+                menu.Items.Add(item);
+            }
+
+            menu.Open(control);
+            e.Handled = true;
         }
 
         private async void OpenConfigure(object sender, RoutedEventArgs e)
@@ -828,6 +874,82 @@ namespace SourceGit.Views
         private static bool TryGetToolbarGitButtonKind(string tag, out ToolbarGitButtonKind kind)
         {
             return Enum.TryParse(tag, out kind);
+        }
+
+        private static List<(ViewModels.Repository Repository, string DisplayName, string MenuText)> BuildCrossRepoCompareCandidates(ViewModels.Repository current)
+        {
+            var currentRemoteKey = GetRepoCompareRemoteKey(current);
+            if (string.IsNullOrWhiteSpace(currentRemoteKey))
+                return [];
+
+            var currentBranch = current.CurrentBranch?.FriendlyName;
+            if (string.IsNullOrWhiteSpace(currentBranch))
+                return [];
+
+            var launcher = App.GetLauncher();
+            if (launcher == null)
+                return [];
+
+            var results = new List<(ViewModels.Repository Repository, string DisplayName, string MenuText)>();
+            foreach (var page in launcher.Pages)
+            {
+                if (page.Data is not ViewModels.Repository other)
+                    continue;
+
+                if (other == current || other.FullPath.Equals(current.FullPath, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (other.CurrentBranch == null)
+                    continue;
+
+                if (other.CurrentBranch.FriendlyName.Equals(currentBranch, StringComparison.Ordinal))
+                    continue;
+
+                var otherRemoteKey = GetRepoCompareRemoteKey(other);
+                if (!otherRemoteKey.Equals(currentRemoteKey, StringComparison.Ordinal))
+                    continue;
+
+                var displayName = ResolveRepoDisplayName(other.FullPath);
+                results.Add((other, displayName, $"{displayName} [{other.CurrentBranch.FriendlyName}]"));
+            }
+
+            results.Sort((a, b) => string.Compare(a.MenuText, b.MenuText, StringComparison.OrdinalIgnoreCase));
+            return results;
+        }
+
+        private static string ResolveRepoDisplayName(string repoPath)
+        {
+            if (string.IsNullOrWhiteSpace(repoPath))
+                return "(unknown)";
+
+            return Path.GetFileName(repoPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        }
+
+        private static string GetRepoCompareRemoteKey(ViewModels.Repository repo)
+        {
+            if (repo?.Remotes == null || repo.Remotes.Count == 0)
+                return string.Empty;
+
+            var preferred = repo.Settings?.DefaultRemote;
+            var remote = !string.IsNullOrWhiteSpace(preferred)
+                ? repo.Remotes.FirstOrDefault(x => x.Name.Equals(preferred, StringComparison.Ordinal))
+                : null;
+            remote ??= repo.Remotes[0];
+
+            var raw = remote.TryGetVisitURL(out var visit) ? visit : remote.URL;
+            return NormalizeRepoCompareRemoteKey(raw);
+        }
+
+        private static string NormalizeRepoCompareRemoteKey(string raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+                return string.Empty;
+
+            var normalized = raw.Trim().Replace('\\', '/').TrimEnd('/');
+            if (normalized.EndsWith(".git", StringComparison.OrdinalIgnoreCase))
+                normalized = normalized.Substring(0, normalized.Length - 4);
+
+            return normalized.ToLowerInvariant();
         }
 
         private static List<string> GetSelectedSubmoduleTargets(ViewModels.Repository repo)

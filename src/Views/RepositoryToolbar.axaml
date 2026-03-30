@@ -86,6 +86,20 @@
       </Button>
       <Button Width="0" Height="0" Click="OpenStatistics" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+I, macOS=⌘+⌥+I}"/>
 
+      <Button Classes="icon_button" Width="44" Click="CompareWithOtherRepo">
+        <ToolTip.Tip>
+          <StackPanel Orientation="Vertical">
+            <TextBlock Text="Compare this repo with another open repo on the same remote URL but a different checked-out branch." TextWrapping="Wrap" MaxWidth="420"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="Shows changed files plus submodule SHA differences between the two current branch tips." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="420"/>
+          </StackPanel>
+        </ToolTip.Tip>
+
+        <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
+          <Path Width="14" Height="14" HorizontalAlignment="Center" Data="{StaticResource Icons.Compare}"/>
+          <TextBlock Classes="toolbar_label" Text="Compare"/>
+        </StackPanel>
+      </Button>
+
       <Button Classes="icon_button" Width="44" Click="OpenConfigure">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">

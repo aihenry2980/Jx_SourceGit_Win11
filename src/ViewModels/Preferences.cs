@@ -204,6 +204,12 @@ namespace SourceGit.ViewModels
             set => SetProperty(ref _autoRevertPullConflictExtensions, value?.ReplaceLineEndings("\n") ?? string.Empty);
         }
 
+        public List<string> RecursiveLocalChangesRecentHiddenExtensions
+        {
+            get => _recursiveLocalChangesRecentHiddenExtensions;
+            set => SetProperty(ref _recursiveLocalChangesRecentHiddenExtensions, NormalizeFileExtensionList(value));
+        }
+
         public int MaxHistoryCommits
         {
             get => _maxHistoryCommits;
@@ -782,6 +788,56 @@ namespace SourceGit.ViewModels
             return configured.Exists(one => one.Equals(ext, StringComparison.OrdinalIgnoreCase));
         }
 
+        public List<string> GetRecursiveLocalChangesRecentHiddenExtensions()
+        {
+            return NormalizeFileExtensionList(_recursiveLocalChangesRecentHiddenExtensions);
+        }
+
+        public bool RecordRecursiveLocalChangesHiddenExtensions(IEnumerable<string> extensions)
+        {
+            var next = new List<string>();
+            var dedupe = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            if (extensions != null)
+            {
+                foreach (var raw in extensions)
+                {
+                    var normalized = NormalizeFileExtension(raw);
+                    if (!string.IsNullOrEmpty(normalized) && dedupe.Add(normalized))
+                        next.Add(normalized);
+                }
+            }
+
+            foreach (var existing in GetRecursiveLocalChangesRecentHiddenExtensions())
+            {
+                if (next.Count >= 10)
+                    break;
+
+                if (dedupe.Add(existing))
+                    next.Add(existing);
+            }
+
+            if (_recursiveLocalChangesRecentHiddenExtensions.Count == next.Count)
+            {
+                var same = true;
+                for (var i = 0; i < next.Count; i++)
+                {
+                    if (!_recursiveLocalChangesRecentHiddenExtensions[i].Equals(next[i], StringComparison.OrdinalIgnoreCase))
+                    {
+                        same = false;
+                        break;
+                    }
+                }
+
+                if (same)
+                    return false;
+            }
+
+            _recursiveLocalChangesRecentHiddenExtensions = next;
+            OnPropertyChanged(nameof(RecursiveLocalChangesRecentHiddenExtensions));
+            return true;
+        }
+
         public bool SetPresetBranchExactNameColor(string exactName, uint color)
         {
             if (string.IsNullOrWhiteSpace(exactName))
@@ -879,6 +935,7 @@ namespace SourceGit.ViewModels
         {
             _maxHistoryCommits = Math.Clamp(_maxHistoryCommits, MIN_HISTORY_COMMITS, MAX_HISTORY_COMMITS);
             _autoRevertPullConflictExtensions ??= DEFAULT_AUTO_REVERT_PULL_CONFLICT_EXTENSIONS;
+            _recursiveLocalChangesRecentHiddenExtensions = NormalizeFileExtensionList(_recursiveLocalChangesRecentHiddenExtensions);
         }
 
         private static List<string> ParsePresetBranchRules(string raw)
@@ -942,6 +999,26 @@ namespace SourceGit.ViewModels
                 ext = "." + ext;
 
             return ext.Length > 1 ? ext : string.Empty;
+        }
+
+        private static List<string> NormalizeFileExtensionList(IEnumerable<string> raw)
+        {
+            var outs = new List<string>();
+            if (raw == null)
+                return outs;
+
+            var dedupe = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var one in raw)
+            {
+                var normalized = NormalizeFileExtension(one);
+                if (!string.IsNullOrEmpty(normalized) && dedupe.Add(normalized))
+                    outs.Add(normalized);
+
+                if (outs.Count >= 10)
+                    break;
+            }
+
+            return outs;
         }
 
         private static string SerializePresetBranchRuleColors(Dictionary<string, uint> colors)
@@ -1080,6 +1157,7 @@ namespace SourceGit.ViewModels
         private string _presetBranchContainsPatterns = string.Empty;
         private string _presetBranchExactNameColors = string.Empty;
         private string _autoRevertPullConflictExtensions = DEFAULT_AUTO_REVERT_PULL_CONFLICT_EXTENSIONS;
+        private List<string> _recursiveLocalChangesRecentHiddenExtensions = [];
 
         private bool _check4UpdatesOnStartup = true;
         private double _lastCheckUpdateTime = 0;

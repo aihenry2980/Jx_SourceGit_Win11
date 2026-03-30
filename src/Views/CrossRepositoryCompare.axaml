@@ -1,0 +1,202 @@
+<v:ChromelessWindow xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                    xmlns:vm="using:SourceGit.ViewModels"
+                    xmlns:v="using:SourceGit.Views"
+                    xmlns:c="using:SourceGit.Converters"
+                    mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="720"
+                    x:Class="SourceGit.Views.CrossRepositoryCompare"
+                    x:DataType="vm:CrossRepositoryCompare"
+                    x:Name="ThisControl"
+                    Icon="/App.ico"
+                    Title="Compare With Other Repo"
+                    MinWidth="1100"
+                    MinHeight="680">
+  <Grid RowDefinitions="Auto,64,*">
+    <Grid Grid.Row="0" Height="28" IsVisible="{Binding !#ThisControl.UseSystemWindowFrame}">
+      <Border Background="{DynamicResource Brush.TitleBar}"
+              BorderThickness="0,0,0,1"
+              BorderBrush="{DynamicResource Brush.Border2}"
+              DoubleTapped="MaximizeOrRestoreWindow"
+              PointerPressed="BeginMoveWindow"/>
+
+      <Path Width="12" Height="12"
+            Margin="10,0,0,0"
+            HorizontalAlignment="Left"
+            Data="{StaticResource Icons.Compare}"
+            IsVisible="{OnPlatform True, macOS=False}"/>
+
+      <TextBlock Classes="bold"
+                 Text="Compare With Other Repo"
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Center"
+                 IsHitTestVisible="False"/>
+
+      <v:CaptionButtons HorizontalAlignment="Right" IsVisible="{OnPlatform True, macOS=False}"/>
+    </Grid>
+
+    <Border Grid.Row="1">
+      <Grid Margin="8" ColumnDefinitions="*,48,*">
+        <Border Grid.Column="0" BorderBrush="{DynamicResource Brush.Diff.DeletedHighlight}" BorderThickness="1" Background="{DynamicResource Brush.Contents}" CornerRadius="4" Padding="4">
+          <Grid RowDefinitions="Auto,*">
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto">
+              <v:Avatar Width="16" Height="16"
+                        VerticalAlignment="Center"
+                        IsHitTestVisible="False"
+                        User="{Binding LeftHead.Author}"/>
+              <TextBlock Grid.Column="1" Text="{Binding LeftRepoName}" Margin="8,0,0,0"/>
+              <Border Grid.Column="2" Background="{DynamicResource Brush.Accent}" CornerRadius="4">
+                <TextBlock Text="{Binding LeftBranchName}" Margin="6,0" Foreground="#FFF2F2F2"/>
+              </Border>
+              <TextBlock Grid.Column="3"
+                         Text="{Binding LeftHead.SHA, Converter={x:Static c:StringConverters.ToShortSHA}}"
+                         Foreground="DarkOrange"
+                         Margin="8,0,0,0"
+                         TextDecorations="Underline"
+                         Cursor="Hand"
+                         PointerPressed="OnPressedLeftSHA"/>
+            </Grid>
+
+            <StackPanel Grid.Row="1" Margin="0,4,0,0" Spacing="2">
+              <TextBlock Text="{Binding LeftRepoPath}" Foreground="{DynamicResource Brush.FG2}" FontSize="11" TextTrimming="CharacterEllipsis"/>
+              <TextBlock Text="{Binding LeftHead.Subject}" VerticalAlignment="Bottom"/>
+            </StackPanel>
+          </Grid>
+        </Border>
+
+        <Border Grid.Column="2" BorderBrush="{DynamicResource Brush.Diff.AddedHighlight}" BorderThickness="1" Background="{DynamicResource Brush.Contents}" CornerRadius="4" Padding="4">
+          <Grid RowDefinitions="Auto,*">
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto">
+              <v:Avatar Width="16" Height="16"
+                        VerticalAlignment="Center"
+                        IsHitTestVisible="False"
+                        User="{Binding RightHead.Author}"/>
+              <TextBlock Grid.Column="1" Text="{Binding RightRepoName}" Margin="8,0,0,0"/>
+              <Border Grid.Column="2" Background="{DynamicResource Brush.Accent}" CornerRadius="4">
+                <TextBlock Text="{Binding RightBranchName}" Margin="6,0" Foreground="#FFF2F2F2"/>
+              </Border>
+              <TextBlock Grid.Column="3"
+                         Text="{Binding RightHead.SHA, Converter={x:Static c:StringConverters.ToShortSHA}}"
+                         Foreground="DarkOrange"
+                         Margin="8,0,0,0"
+                         TextDecorations="Underline"
+                         Cursor="Hand"
+                         PointerPressed="OnPressedRightSHA"/>
+            </Grid>
+
+            <StackPanel Grid.Row="1" Margin="0,4,0,0" Spacing="2">
+              <TextBlock Text="{Binding RightRepoPath}" Foreground="{DynamicResource Brush.FG2}" FontSize="11" TextTrimming="CharacterEllipsis"/>
+              <TextBlock Text="{Binding RightHead.Subject}" VerticalAlignment="Bottom"/>
+            </StackPanel>
+          </Grid>
+        </Border>
+      </Grid>
+    </Border>
+
+    <Border Grid.Row="2">
+      <Grid Margin="8,0,8,8">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="320" MinWidth="220" MaxWidth="520"/>
+          <ColumnDefinition Width="4"/>
+          <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <Grid Grid.Column="0" RowDefinitions="26,*,26">
+          <Grid Grid.Row="0" ColumnDefinitions="*">
+            <TextBox Grid.Column="0"
+                     Height="26"
+                     BorderThickness="1"
+                     BorderBrush="{DynamicResource Brush.Border2}"
+                     Background="Transparent"
+                     CornerRadius="4"
+                     Watermark="Search changed files"
+                     Text="{Binding SearchFilter, Mode=TwoWay}">
+              <TextBox.InnerLeftContent>
+                <Path Width="14" Height="14" Margin="4,0,0,0" Fill="{DynamicResource Brush.FG2}" Data="{StaticResource Icons.Search}"/>
+              </TextBox.InnerLeftContent>
+            </TextBox>
+          </Grid>
+
+          <Border Grid.Row="1" Margin="0,4,0,0" BorderBrush="{DynamicResource Brush.Border2}" BorderThickness="1" Background="{DynamicResource Brush.Contents}">
+            <v:ChangeCollectionView ViewMode="List"
+                                    EnableCompactFolders="False"
+                                    Changes="{Binding VisibleChanges}"
+                                    SelectedChanges="{Binding SelectedChanges, Mode=TwoWay}"
+                                    ContextRequested="OnChangeContextRequested"
+                                    KeyDown="OnChangeCollectionViewKeyDown"/>
+          </Border>
+
+          <v:LoadingIcon Grid.Row="1"
+                         Width="48" Height="48"
+                         HorizontalAlignment="Center" VerticalAlignment="Center"
+                         IsVisible="{Binding IsLoading}"/>
+
+          <Border Grid.Row="2" BorderBrush="{DynamicResource Brush.Border2}" BorderThickness="1,0,1,1" Background="Transparent">
+            <TextBlock Margin="4,0,0,0"
+                       Foreground="{DynamicResource Brush.FG2}"
+                       HorizontalAlignment="Left" VerticalAlignment="Center">
+              <Run Text="{Binding TotalChanges, Mode=OneWay}" FontWeight="Bold"/>
+              <Run Text=" changed file(s)"/>
+            </TextBlock>
+          </Border>
+        </Grid>
+
+        <GridSplitter Grid.Column="1"
+                      MinWidth="1"
+                      HorizontalAlignment="Stretch"
+                      VerticalAlignment="Stretch"
+                      Background="Transparent"/>
+
+        <Grid Grid.Column="2">
+          <Border BorderThickness="1" BorderBrush="{DynamicResource Brush.Border2}" Padding="16">
+            <Grid>
+              <StackPanel Orientation="Vertical" VerticalAlignment="Center" HorizontalAlignment="Center" IsVisible="{Binding !HasSelectedChange}">
+                <Path Width="64" Height="64" Data="{StaticResource Icons.Compare}" Fill="{DynamicResource Brush.FG2}"/>
+                <TextBlock Margin="0,16,0,0"
+                           Text="Select a changed path"
+                           FontSize="18"
+                           FontWeight="Bold"
+                           Foreground="{DynamicResource Brush.FG2}"
+                           HorizontalAlignment="Center"/>
+                <TextBlock Margin="0,8,0,0"
+                           Text="This compare shows file differences plus submodule SHA changes between two open repos."
+                           Foreground="{DynamicResource Brush.FG2}"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap"
+                           MaxWidth="420"/>
+              </StackPanel>
+
+              <Grid IsVisible="{Binding HasSelectedChange}" RowDefinitions="Auto,Auto,Auto,Auto,*">
+              <TextBlock Classes="bold" FontSize="16" Text="{Binding SelectedChangePath}" TextWrapping="Wrap"/>
+              <TextBlock Grid.Row="1" Margin="0,8,0,0" Foreground="{DynamicResource Brush.FG2}" Text="{Binding SelectedChangeSummary}" TextWrapping="Wrap"/>
+
+              <Grid Grid.Row="2" Margin="0,16,0,0" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+                <TextBlock Grid.Row="0" Text="{Binding LeftRepoName, StringFormat='Left ({0})'}" FontWeight="SemiBold" Margin="0,0,12,0"/>
+                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedLeftValue}" FontFamily="{DynamicResource Fonts.Monospace}"/>
+                <TextBlock Grid.Row="1" Margin="0,8,12,0" Text="{Binding RightRepoName, StringFormat='Right ({0})'}" FontWeight="SemiBold"/>
+                <TextBlock Grid.Row="1" Grid.Column="1" Margin="0,8,0,0" Text="{Binding SelectedRightValue}" FontFamily="{DynamicResource Fonts.Monospace}"/>
+              </Grid>
+
+              <Border Grid.Row="3"
+                      Margin="0,16,0,0"
+                      Padding="10"
+                      CornerRadius="6"
+                      Background="{DynamicResource Brush.BG1}"
+                      BorderBrush="{DynamicResource Brush.Border1}"
+                      BorderThickness="1"
+                      IsVisible="{Binding SelectedChangeIsSubmodule}">
+                <StackPanel Spacing="4">
+                  <TextBlock Text="Submodule SHA change" FontWeight="SemiBold"/>
+                  <TextBlock Text="{Binding SelectedSubmoduleSHA}" FontFamily="{DynamicResource Fonts.Monospace}"/>
+                </StackPanel>
+              </Border>
+              </Grid>
+            </Grid>
+          </Border>
+        </Grid>
+      </Grid>
+    </Border>
+  </Grid>
+</v:ChromelessWindow>

@@ -49,8 +49,12 @@
             BorderBrush="{DynamicResource Brush.Border2}"
             BorderThickness="1"
             CornerRadius="6">
-      <Grid ColumnDefinitions="*,Auto">
-        <StackPanel Spacing="2">
+      <Grid RowDefinitions="Auto,Auto,Auto"
+            ColumnDefinitions="*,Auto"
+            RowSpacing="8">
+        <StackPanel Grid.Row="0"
+                    Grid.ColumnSpan="2"
+                    Spacing="2">
           <TextBlock Classes="bold"
                      Text="Parent repository + changed submodules recursively"/>
           <TextBlock Text="{Binding SummaryText}"
@@ -58,7 +62,15 @@
                      TextWrapping="Wrap"/>
         </StackPanel>
 
-        <Button Grid.Column="1"
+        <TextBox Grid.Row="1"
+                 Grid.Column="0"
+                 Watermark="Hide extensions like .pdb, .dll, .obj"
+                 Text="{Binding HiddenExtensionFilterText, Mode=TwoWay}"
+                 KeyDown="OnHiddenExtensionFilterKeyDown"
+                 LostFocus="OnHiddenExtensionFilterLostFocus"/>
+
+        <Button Grid.Row="1"
+                Grid.Column="1"
                 Classes="icon_button"
                 Width="28"
                 Height="28"
@@ -67,6 +79,35 @@
                 ToolTip.Tip="Refresh">
           <Path Width="12" Height="12" Data="{StaticResource Icons.Refresh}"/>
         </Button>
+
+        <StackPanel Grid.Row="2"
+                    Grid.ColumnSpan="2"
+                    Orientation="Vertical"
+                    Spacing="4"
+                    IsVisible="{Binding HasRecentHiddenExtensions}">
+          <TextBlock Text="Recent hidden types"
+                     FontSize="11"
+                     FontWeight="SemiBold"
+                     Foreground="{DynamicResource Brush.FG2}"/>
+          <ItemsControl ItemsSource="{Binding RecentHiddenExtensions}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel Orientation="Horizontal"/>
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Button Classes="flat"
+                        Margin="0,0,6,4"
+                        Padding="8,2"
+                        Click="OnAppendRecentHiddenExtension">
+                  <TextBlock Text="{Binding .}"
+                             FontSize="11"/>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
       </Grid>
     </Border>
 
@@ -90,7 +131,7 @@
                       BorderThickness="1"
                       CornerRadius="6">
                 <Grid RowDefinitions="Auto,*">
-                  <Grid ColumnDefinitions="Auto,*,Auto">
+                  <Grid ColumnDefinitions="Auto,*,Auto,Auto">
                     <Path Grid.Column="0"
                           Width="14"
                           Height="14"
@@ -117,7 +158,21 @@
                                  TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
 
-                    <Border Grid.Column="2"
+                    <Button Grid.Column="2"
+                            Classes="flat"
+                            MinWidth="48"
+                            Height="22"
+                            Margin="8,0,0,0"
+                            Padding="8,0"
+                            VerticalAlignment="Center"
+                            Click="OnToggleRepositoryEntryExpanded"
+                            IsVisible="{Binding CanToggleExpanded}">
+                      <TextBlock Text="{Binding ExpandToggleText}"
+                                 FontSize="10"
+                                 FontWeight="SemiBold"/>
+                    </Button>
+
+                    <Border Grid.Column="3"
                             Height="20"
                             Margin="8,0,0,0"
                             Padding="8,0"
@@ -132,9 +187,10 @@
                     </Border>
                   </Grid>
 
-                    <ItemsControl Grid.Row="1"
-                                  Margin="0,10,0,0"
-                                  ItemsSource="{Binding Changes}">
+                  <ItemsControl Grid.Row="1"
+                                Margin="0,10,0,0"
+                                ItemsSource="{Binding Changes}"
+                                IsVisible="{Binding IsExpanded}">
                     <ItemsControl.ItemsPanel>
                       <ItemsPanelTemplate>
                         <VirtualizingStackPanel Orientation="Vertical"/>
