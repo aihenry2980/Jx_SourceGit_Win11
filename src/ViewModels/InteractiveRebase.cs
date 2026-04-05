@@ -76,12 +76,6 @@ namespace SourceGit.ViewModels
             set => SetProperty(ref _showEditMessageButton, value);
         }
 
-        public bool IsFullMessageUsed
-        {
-            get => _isFullMessageUsed;
-            set => SetProperty(ref _isFullMessageUsed, value);
-        }
-
         public Thickness DropDirectionIndicator
         {
             get => _dropDirectionIndicator;
@@ -108,7 +102,6 @@ namespace SourceGit.ViewModels
         private string _fullMessage;
         private bool _canSquashOrFixup = true;
         private bool _showEditMessageButton = false;
-        private bool _isFullMessageUsed = true;
         private Thickness _dropDirectionIndicator = new Thickness(0);
     }
 
@@ -362,7 +355,6 @@ namespace SourceGit.ViewModels
 
                 if (item.Action == Models.InteractiveRebaseAction.Drop)
                 {
-                    item.IsFullMessageUsed = false;
                     item.ShowEditMessageButton = false;
                     item.PendingType = hasPending ? Models.InteractiveRebasePendingType.Ignore : Models.InteractiveRebasePendingType.None;
                     item.FullMessage = item.OriginalFullMessage;
@@ -373,7 +365,6 @@ namespace SourceGit.ViewModels
                 if (item.Action == Models.InteractiveRebaseAction.Fixup ||
                     item.Action == Models.InteractiveRebaseAction.Squash)
                 {
-                    item.IsFullMessageUsed = false;
                     item.ShowEditMessageButton = false;
                     item.PendingType = hasPending ? Models.InteractiveRebasePendingType.Pending : Models.InteractiveRebasePendingType.Last;
                     item.FullMessage = item.OriginalFullMessage;
@@ -390,7 +381,6 @@ namespace SourceGit.ViewModels
                     item.Action == Models.InteractiveRebaseAction.Edit)
                 {
                     var oldPendingType = item.PendingType;
-                    item.IsFullMessageUsed = true;
                     item.ShowEditMessageButton = true;
                     item.PendingType = hasPending ? Models.InteractiveRebasePendingType.Target : Models.InteractiveRebasePendingType.None;
 
@@ -420,7 +410,6 @@ namespace SourceGit.ViewModels
 
                 if (item.Action == Models.InteractiveRebaseAction.Pick)
                 {
-                    item.IsFullMessageUsed = true;
                     item.IsMessageUserEdited = false;
 
                     if (hasPending)

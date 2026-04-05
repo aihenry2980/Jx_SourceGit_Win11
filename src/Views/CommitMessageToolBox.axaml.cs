@@ -77,6 +77,15 @@ namespace SourceGit.Views
             set => SetValue(PlaceholderProperty, value);
         }
 
+        public static readonly StyledProperty<int> ColumnProperty =
+            AvaloniaProperty.Register<CommitMessageTextEditor, int>(nameof(Column), 1);
+
+        public int Column
+        {
+            get => GetValue(ColumnProperty);
+            set => SetValue(ColumnProperty, value);
+        }
+
         public static readonly StyledProperty<int> SubjectLengthProperty =
             AvaloniaProperty.Register<CommitMessageTextEditor, int>(nameof(SubjectLength));
 
@@ -128,7 +137,6 @@ namespace SourceGit.Views
             TextArea.TextView.ClipToBounds = false;
             TextArea.TextView.Options.EnableHyperlinks = false;
             TextArea.TextView.Options.EnableEmailHyperlinks = false;
-            TextArea.TextView.Options.AllowScrollBelowDocument = false;
         }
 
         public override void Render(DrawingContext context)
@@ -136,6 +144,7 @@ namespace SourceGit.Views
             base.Render(context);
 
             var w = Bounds.Width;
+            var pixelHeight = PixelSnapHelpers.GetPixelSize(this).Height;
             var pen = new Pen(SubjectLineBrush) { DashStyle = DashStyle.Dash };
 
             if (SubjectLength == 0)
@@ -152,9 +161,6 @@ namespace SourceGit.Views
                         Brushes.Gray);
 
                     context.DrawText(formatted, new Point(4, 2));
-
-                    var y = 6 + formatted.Height;
-                    context.DrawLine(pen, new Point(0, y), new Point(w, y));
                 }
 
                 return;
@@ -183,7 +189,17 @@ namespace SourceGit.Views
                 if (line.FirstDocumentLine.LineNumber == _subjectEndLine)
                 {
                     var y = line.GetTextLineVisualYPosition(line.TextLines[^1], VisualYPosition.LineBottom) - view.VerticalOffset + 4;
+                    y = PixelSnapHelpers.PixelAlign(y, pixelHeight);
                     context.DrawLine(pen, new Point(0, y), new Point(w, y));
+
+                    var subjectEndTip = new FormattedText(
+                        "SUBJECT END",
+                        CultureInfo.CurrentCulture,
+                        FlowDirection.LeftToRight,
+                        new Typeface(FontFamily, FontStyle.Italic),
+                        10,
+                        Brushes.Gray);
+                    context.DrawText(subjectEndTip, new Point(w - subjectEndTip.WidthIncludingTrailingWhitespace - 6, y + 1));
                     return;
                 }
             }
@@ -195,12 +211,14 @@ namespace SourceGit.Views
 
             TextArea.TextView.VisualLinesChanged += OnTextViewVisualLinesChanged;
             TextArea.TextView.ContextRequested += OnTextViewContextRequested;
+            TextArea.Caret.PositionChanged += OnCaretPositionChanged;
         }
 
         protected override void OnUnloaded(RoutedEventArgs e)
         {
             TextArea.TextView.ContextRequested -= OnTextViewContextRequested;
             TextArea.TextView.VisualLinesChanged -= OnTextViewVisualLinesChanged;
+            TextArea.Caret.PositionChanged -= OnCaretPositionChanged;
 
             base.OnUnloaded(e);
         }
@@ -267,10 +285,10 @@ namespace SourceGit.Views
             _isEditing = false;
 
             var caretOffset = CaretOffset;
-            var start = caretOffset;
-            for (; start > 0; start--)
+            var lineStart = caretOffset;
+            for (; lineStart > 0; lineStart--)
             {
-                var ch = Text[start - 1];
+                var ch = Text[lineStart - 1];
                 if (ch == '\n')
                     break;
 
@@ -278,18 +296,18 @@ namespace SourceGit.Views
                     return;
             }
 
-            if (caretOffset < start + 2)
+            if (lineStart == 0 || caretOffset < lineStart + 2)
             {
                 _completionWnd?.Close();
                 return;
             }
 
-            var word = Text.Substring(start, caretOffset - start);
+            var word = Text.Substring(lineStart, caretOffset - lineStart);
             var matches = new List<CommitMessageCodeCompletionData>();
-            foreach (var keyword in _keywords)
+            foreach (var t in _trailers)
             {
-                if (keyword.StartsWith(word, StringComparison.OrdinalIgnoreCase) && keyword.Length != word.Length)
-                    matches.Add(new(keyword));
+                if (t.StartsWith(word, StringComparison.OrdinalIgnoreCase) && t.Length != word.Length)
+                    matches.Add(new(t));
             }
 
             if (matches.Count > 0)
@@ -297,13 +315,13 @@ namespace SourceGit.Views
                 if (_completionWnd == null)
                 {
                     _completionWnd = new CompletionWindow(TextArea);
-                    _completionWnd.Closed += (_, __) => _completionWnd = null;
+                    _completionWnd.Closed += (_, _) => _completionWnd = null;
                     _completionWnd.Show();
                 }
 
                 _completionWnd.CompletionList.CompletionData.Clear();
                 _completionWnd.CompletionList.CompletionData.AddRange(matches);
-                _completionWnd.StartOffset = start;
+                _completionWnd.StartOffset = lineStart;
                 _completionWnd.EndOffset = caretOffset;
             }
             else
@@ -319,7 +337,7 @@ namespace SourceGit.Views
 
             var copy = new MenuItem();
             copy.Header = App.Text("Copy");
-            copy.Icon = App.CreateMenuIcon("Icons.Copy");
+            copy.Icon = this.CreateMenuIcon("Icons.Copy");
             copy.IsEnabled = hasSelected;
             copy.Click += (_, ev) =>
             {
@@ -329,7 +347,7 @@ namespace SourceGit.Views
 
             var cut = new MenuItem();
             cut.Header = App.Text("Cut");
-            cut.Icon = App.CreateMenuIcon("Icons.Cut");
+            cut.Icon = this.CreateMenuIcon("Icons.Cut");
             cut.IsEnabled = hasSelected;
             cut.Click += (_, ev) =>
             {
@@ -339,7 +357,7 @@ namespace SourceGit.Views
 
             var paste = new MenuItem();
             paste.Header = App.Text("Paste");
-            paste.Icon = App.CreateMenuIcon("Icons.Paste");
+            paste.Icon = this.CreateMenuIcon("Icons.Paste");
             paste.Click += (_, ev) =>
             {
                 Paste();
@@ -359,7 +377,29 @@ namespace SourceGit.Views
             InvalidateVisual();
         }
 
-        private readonly List<string> _keywords = ["Acked-by: ", "Co-authored-by: ", "Reviewed-by: ", "Signed-off-by: ", "on-behalf-of: @", "BREAKING CHANGE: ", "Refs: "];
+        private void OnCaretPositionChanged(object sender, EventArgs e)
+        {
+            var col = TextArea.Caret.Column;
+            SetCurrentValue(ColumnProperty, col);
+        }
+
+        private readonly List<string> _trailers =
+        [
+            "Acked-by: ",
+            "BREAKING CHANGE: ",
+            "Co-authored-by: ",
+            "Fixes: ",
+            "Helped-by: ",
+            "Issue: ",
+            "Milestone: ",
+            "on-behalf-of: @",
+            "Reference-to: ",
+            "Refs: ",
+            "Reviewed-by: ",
+            "See-also: ",
+            "Signed-off-by: ",
+        ];
+
         private bool _isEditing = false;
         private int _subjectEndLine = 0;
         private CompletionWindow _completionWnd = null;
@@ -407,7 +447,7 @@ namespace SourceGit.Views
                     menu.Items.Add(new MenuItem()
                     {
                         Header = App.Text("WorkingCopy.NoCommitTemplates"),
-                        Icon = App.CreateMenuIcon("Icons.Code"),
+                        Icon = this.CreateMenuIcon("Icons.Code"),
                         IsEnabled = false
                     });
                 }
@@ -415,7 +455,7 @@ namespace SourceGit.Views
                 {
                     for (int i = 0; i < templateCount; i++)
                     {
-                        var icon = App.CreateMenuIcon("Icons.Code");
+                        var icon = this.CreateMenuIcon("Icons.Code");
                         icon.Fill = foreground;
 
                         var template = repo.Settings.CommitTemplates[i];
@@ -444,7 +484,7 @@ namespace SourceGit.Views
                                 friendlyName = $"~{gitTemplate.AsSpan(prefixLen)}";
                         }
 
-                        var icon = App.CreateMenuIcon("Icons.Code");
+                        var icon = this.CreateMenuIcon("Icons.Code");
                         icon.Fill = foreground;
 
                         var gitTemplateItem = new MenuItem();
@@ -468,7 +508,7 @@ namespace SourceGit.Views
                     menu.Items.Add(new MenuItem()
                     {
                         Header = App.Text("WorkingCopy.NoCommitHistories"),
-                        Icon = App.CreateMenuIcon("Icons.Histories"),
+                        Icon = this.CreateMenuIcon("Icons.Histories"),
                         IsEnabled = false
                     });
                 }
@@ -484,7 +524,7 @@ namespace SourceGit.Views
                             TextTrimming = TextTrimming.CharacterEllipsis
                         };
 
-                        var icon = App.CreateMenuIcon("Icons.Histories");
+                        var icon = this.CreateMenuIcon("Icons.Histories");
                         icon.Fill = foreground;
 
                         var item = new MenuItem();
@@ -501,7 +541,7 @@ namespace SourceGit.Views
 
                     menu.Items.Add(new MenuItem() { Header = "-" });
 
-                    var clearIcon = App.CreateMenuIcon("Icons.Clear");
+                    var clearIcon = this.CreateMenuIcon("Icons.Clear");
                     clearIcon.Fill = foreground;
 
                     var clearHistoryItem = new MenuItem();
@@ -533,20 +573,23 @@ namespace SourceGit.Views
 
                 if (vm.Staged == null || vm.Staged.Count == 0)
                 {
-                    App.RaiseException(repo.FullPath, "No files added to commit!");
+                    repo.SendNotification("No files added to commit!", true);
+                    e.Handled = true;
                     return;
                 }
 
                 var services = repo.GetPreferredOpenAIServices();
                 if (services.Count == 0)
                 {
-                    App.RaiseException(repo.FullPath, "Bad configuration for OpenAI");
+                    repo.SendNotification("Bad configuration for OpenAI", true);
+                    e.Handled = true;
                     return;
                 }
 
                 if (services.Count == 1)
                 {
                     await App.ShowDialog(new ViewModels.AIAssistant(repo, services[0], vm.Staged));
+                    e.Handled = true;
                     return;
                 }
 

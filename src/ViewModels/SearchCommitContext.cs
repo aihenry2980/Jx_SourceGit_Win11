@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -107,6 +108,12 @@ namespace SourceGit.ViewModels
 
             IsQuerying = true;
 
+            if (_cancellation is { IsCancellationRequested: false })
+                _cancellation.Cancel();
+
+            _cancellation = new();
+            var token = _cancellation.Token;
+
             Task.Run(async () =>
             {
                 var result = new List<Models.Commit>();
@@ -160,17 +167,23 @@ namespace SourceGit.ViewModels
 
                 Dispatcher.UIThread.Post(() =>
                 {
-                    IsQuerying = false;
+                    if (token.IsCancellationRequested)
+                        return;
 
+                    IsQuerying = false;
                     if (_repo.IsSearchingCommits)
                         Results = result;
                 });
-            });
+            }, token);
         }
 
         public void EndSearch()
         {
+            if (_cancellation is { IsCancellationRequested: false })
+                _cancellation.Cancel();
+
             _worktreeFiles = null;
+            IsQuerying = false;
             Suggestions = null;
             Results = null;
             GC.Collect();
@@ -230,6 +243,7 @@ namespace SourceGit.ViewModels
         }
 
         private Repository _repo = null;
+        private CancellationTokenSource _cancellation = null;
         private int _method = (int)Models.CommitSearchMethod.ByMessage;
         private string _filter = string.Empty;
         private bool _onlySearchCurrentBranch = false;

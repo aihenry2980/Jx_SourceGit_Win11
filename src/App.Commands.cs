@@ -1,8 +1,9 @@
 using System;
 using System.Windows.Input;
-
-using Avalonia.Controls;
+using System.Threading.Tasks;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls.Shapes;
+using Avalonia.Media;
 
 namespace SourceGit
 {
@@ -45,16 +46,6 @@ namespace SourceGit
         public static readonly Command OpenAboutCommand = new Command(async _ => await ShowDialog(new Views.About()));
         public static readonly Command CheckForUpdateCommand = new Command(_ => (Current as App)?.Check4Update(true));
         public static readonly Command QuitCommand = new Command(_ => Quit(0));
-        public static readonly Command CopyTextBlockCommand = new Command(async p =>
-        {
-            if (p is not TextBlock textBlock)
-                return;
-
-            if (textBlock.Inlines is { Count: > 0 } inlines)
-                await CopyTextAsync(inlines.Text);
-            else if (!string.IsNullOrEmpty(textBlock.Text))
-                await CopyTextAsync(textBlock.Text);
-        });
 
         public static readonly Command HideAppCommand = new Command(_ =>
         {
@@ -67,5 +58,43 @@ namespace SourceGit
             if (Current is App app && app.TryGetFeature(typeof(IActivatableLifetime)) is IActivatableLifetime lifetime)
                 lifetime.TryLeaveBackground();
         });
+
+        public static Path CreateMenuIcon(string iconKey)
+        {
+            if (Current?.TryGetResource(iconKey, Current.ActualThemeVariant, out var resource) == true &&
+                resource is StreamGeometry geo)
+            {
+                return new Path()
+                {
+                    Data = geo,
+                    Width = 12,
+                    Height = 12,
+                    Stretch = Stretch.Uniform,
+                };
+            }
+
+            return null;
+        }
+
+        public static async Task CopyTextAsync(string text)
+        {
+            if (Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: { Clipboard: { } clipboard } })
+                await clipboard.SetTextAsync(text ?? string.Empty);
+        }
+
+        public static void SendNotification(string group, string message, bool isError = false)
+        {
+            Models.Notification.Send(group, message, isError);
+        }
+
+        public static void RaiseException(string group, string message)
+        {
+            Models.Notification.Send(string.IsNullOrEmpty(group) ? null : group, message, true);
+        }
+
+        public static void LogException(Exception ex)
+        {
+            Native.OS.LogException(ex);
+        }
     }
 }

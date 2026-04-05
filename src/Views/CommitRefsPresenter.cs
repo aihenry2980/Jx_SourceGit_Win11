@@ -524,7 +524,7 @@ namespace SourceGit.Views
                 }
 
                 var requiredWidth = allowWrap && requiredHeight > 16.0
-                    ? availableSize.Width
+                    ? (double.IsInfinity(availableSize.Width) ? x + 2 : availableSize.Width)
                     : x + 2;
                 return new Size(requiredWidth, requiredHeight);
             }

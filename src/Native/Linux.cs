@@ -106,7 +106,7 @@ namespace SourceGit.Native
             Process.Start(browser, url.Quoted());
         }
 
-        public void OpenInFileManager(string path, bool select)
+        public void OpenInFileManager(string path)
         {
             if (Directory.Exists(path))
             {
@@ -136,7 +136,7 @@ namespace SourceGit.Native
             }
             catch (Exception e)
             {
-                App.RaiseException(workdir, $"Failed to start '{OS.ShellOrTerminal}'. Reason: {e.Message}");
+                Models.Notification.Send(workdir, $"Failed to start '{OS.ShellOrTerminal}'. Reason: {e.Message}", true);
             }
         }
 
@@ -148,7 +148,7 @@ namespace SourceGit.Native
                 proc.WaitForExit();
 
                 if (proc.ExitCode != 0)
-                    App.RaiseException("", $"Failed to open: {file}");
+                    Models.Notification.Send("", $"Failed to open: {file}", true);
 
                 proc.Close();
             }

@@ -193,6 +193,25 @@ namespace SourceGit.ViewModels
             return OperatingSystem.IsWindows() ? _repo.FullPath.Replace("/", "\\") : _repo.FullPath;
         }
 
+        private void Run(string args)
+        {
+            var start = new ProcessStartInfo();
+            start.FileName = CustomAction.Executable;
+            start.Arguments = args;
+            start.UseShellExecute = false;
+            start.CreateNoWindow = true;
+            start.WorkingDirectory = _repo.FullPath;
+
+            try
+            {
+                Process.Start(start);
+            }
+            catch (Exception e)
+            {
+                _repo.SendNotification(e.Message, true);
+            }
+        }
+
         private async Task RunAsync(string args, CommandLog log)
         {
             var start = new ProcessStartInfo();

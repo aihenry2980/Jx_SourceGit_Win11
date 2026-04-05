@@ -57,7 +57,7 @@ namespace SourceGit.Commands
                 }
                 catch (Exception e)
                 {
-                    App.RaiseException(repo, "Save file failed: " + e.Message);
+                    Models.Notification.Send(repo, "Save file failed: " + e.Message, true);
                 }
             }
         }

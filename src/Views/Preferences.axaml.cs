@@ -96,10 +96,10 @@ namespace SourceGit.Views
             set;
         } = false;
 
-        public static readonly StyledProperty<Models.OpenAIService> SelectedOpenAIServiceProperty =
-            AvaloniaProperty.Register<Preferences, Models.OpenAIService>(nameof(SelectedOpenAIService));
+        public static readonly StyledProperty<AI.Service> SelectedOpenAIServiceProperty =
+            AvaloniaProperty.Register<Preferences, AI.Service>(nameof(SelectedOpenAIService));
 
-        public Models.OpenAIService SelectedOpenAIService
+        public AI.Service SelectedOpenAIService
         {
             get => GetValue(SelectedOpenAIServiceProperty);
             set => SetValue(SelectedOpenAIServiceProperty, value);
@@ -206,7 +206,9 @@ namespace SourceGit.Views
                     await new Commands.Config(null).SetAsync($"gpg.{GPGFormat.Value}.program", GPGExecutableFile);
             }
 
-            ViewModels.Preferences.Instance.Save();
+            var preferences = ViewModels.Preferences.Instance;
+            await preferences.UpdateAvailableAIModelsAsync();
+            preferences.Save();
         }
 
         private async void SelectThemeOverrideFile(object _, RoutedEventArgs e)
@@ -225,7 +227,7 @@ namespace SourceGit.Views
             }
             catch (Exception ex)
             {
-                App.RaiseException(string.Empty, $"Failed to select theme: {ex.Message}");
+                await new Alert().ShowAsync(this, $"Failed to select theme override file: {ex.Message}", true);
             }
 
             e.Handled = true;
@@ -251,7 +253,7 @@ namespace SourceGit.Views
             }
             catch (Exception ex)
             {
-                App.RaiseException(string.Empty, $"Failed to select git executable: {ex.Message}");
+                await new Alert().ShowAsync(this, $"Failed to select git executable: {ex.Message}", true);
             }
 
             e.Handled = true;
@@ -272,7 +274,7 @@ namespace SourceGit.Views
             }
             catch (Exception ex)
             {
-                App.RaiseException(string.Empty, $"Failed to select default clone directory: {ex.Message}");
+                await new Alert().ShowAsync(this, $"Failed to select default clone directory: {ex.Message}", true);
             }
 
             e.Handled = true;
@@ -300,7 +302,7 @@ namespace SourceGit.Views
             }
             catch (Exception ex)
             {
-                App.RaiseException(string.Empty, $"Failed to select gpg program: {ex.Message}");
+                await new Alert().ShowAsync(this, $"Failed to select gpg program: {ex.Message}", true);
             }
 
             e.Handled = true;
@@ -331,7 +333,7 @@ namespace SourceGit.Views
             }
             catch (Exception ex)
             {
-                App.RaiseException(string.Empty, $"Failed to select shell/terminal: {ex.Message}");
+                await new Alert().ShowAsync(this, $"Failed to select shell/terminal: {ex.Message}", true);
             }
 
             e.Handled = true;
@@ -362,7 +364,7 @@ namespace SourceGit.Views
             }
             catch (Exception ex)
             {
-                App.RaiseException(string.Empty, $"Failed to select merge tool: {ex.Message}");
+                await new Alert().ShowAsync(this, $"Failed to select merge tool: {ex.Message}", true);
             }
 
             e.Handled = true;
@@ -424,7 +426,7 @@ namespace SourceGit.Views
 
         private void OnAddOpenAIService(object sender, RoutedEventArgs e)
         {
-            var service = new Models.OpenAIService() { Name = "Unnamed Service" };
+            var service = new AI.Service() { Name = "Unnamed Service" };
             ViewModels.Preferences.Instance.OpenAIServices.Add(service);
             SelectedOpenAIService = service;
 
@@ -466,7 +468,7 @@ namespace SourceGit.Views
             }
             catch (Exception ex)
             {
-                App.RaiseException(string.Empty, $"Failed to select program for custom action: {ex.Message}");
+                await new Alert().ShowAsync(this, $"Failed to select executable for custom action: {ex.Message}", true);
             }
 
             e.Handled = true;

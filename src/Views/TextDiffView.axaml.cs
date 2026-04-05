@@ -203,6 +203,7 @@ namespace SourceGit.Views
 
                 var lines = _presenter.GetLines();
                 var width = textView.Bounds.Width;
+                var pixelHeight = PixelSnapHelpers.GetPixelSize(textView).Height;
                 foreach (var line in textView.VisualLines)
                 {
                     if (line.IsDisposed || line.FirstDocumentLine == null || line.FirstDocumentLine.IsDeleted)
@@ -265,10 +266,16 @@ namespace SourceGit.Views
                         continue;
 
                     if (index == changeBlock.Start)
-                        drawingContext.DrawLine(changeBlockBorder, new Point(0, startY), new Point(width, startY));
+                    {
+                        var alignedY = PixelSnapHelpers.PixelAlign(startY, pixelHeight);
+                        drawingContext.DrawLine(changeBlockBorder, new Point(0, alignedY), new Point(width, alignedY));
+                    }
 
                     if (index == changeBlock.End)
-                        drawingContext.DrawLine(changeBlockBorder, new Point(0, endY), new Point(width, endY));
+                    {
+                        var alignedY = PixelSnapHelpers.PixelAlign(endY, pixelHeight);
+                        drawingContext.DrawLine(changeBlockBorder, new Point(0, alignedY), new Point(width, alignedY));
+                    }
                 }
             }
 
@@ -488,10 +495,11 @@ namespace SourceGit.Views
             var brush = new SolidColorBrush(color, 0.1);
             var pen = new Pen(color.ToUInt32());
             var rect = new Rect(0, chunk.Y, Bounds.Width, chunk.Height);
+            var aligned = PixelSnapHelpers.PixelAlign(rect, PixelSnapHelpers.GetPixelSize(this));
 
-            context.DrawRectangle(brush, null, rect);
-            context.DrawLine(pen, rect.TopLeft, rect.TopRight);
-            context.DrawLine(pen, rect.BottomLeft, rect.BottomRight);
+            context.DrawRectangle(brush, null, aligned);
+            context.DrawLine(pen, aligned.TopLeft, aligned.TopRight);
+            context.DrawLine(pen, aligned.BottomLeft, aligned.BottomRight);
         }
 
         protected override void OnLoaded(RoutedEventArgs e)
@@ -639,7 +647,7 @@ namespace SourceGit.Views
 
             var copy = new MenuItem();
             copy.Header = App.Text("Copy");
-            copy.Icon = App.CreateMenuIcon("Icons.Copy");
+            copy.Icon = this.CreateMenuIcon("Icons.Copy");
             copy.Click += async (_, ev) =>
             {
                 await CopyWithoutIndicatorsAsync();
@@ -815,7 +823,7 @@ namespace SourceGit.Views
             var selection = TextArea.Selection;
             if (selection.IsEmpty)
             {
-                await App.CopyTextAsync(string.Empty);
+                await this.CopyTextAsync(string.Empty);
                 return;
             }
 
@@ -833,9 +841,9 @@ namespace SourceGit.Views
             if (startIdx == endIdx)
             {
                 if (lines[startIdx].Type is Models.TextDiffLineType.Indicator or Models.TextDiffLineType.None)
-                    await App.CopyTextAsync(string.Empty);
+                    await this.CopyTextAsync(string.Empty);
                 else
-                    await App.CopyTextAsync(SelectedText);
+                    await this.CopyTextAsync(SelectedText);
                 return;
             }
 
@@ -875,7 +883,7 @@ namespace SourceGit.Views
                 builder.Append(line.Content).Append('\n');
             }
 
-            await App.CopyTextAsync(builder.ToString());
+            await this.CopyTextAsync(builder.ToString());
         }
 
         private bool _execSizeChanged;
@@ -1554,7 +1562,7 @@ namespace SourceGit.Views
             using var lockWatcher = repo.LockWatcher();
 
             var tmpFile = Path.GetTempFileName();
-            if (change.Index == Models.ChangeState.Added)
+            if (change.WorkTree == Models.ChangeState.Untracked)
             {
                 diff.GenerateNewPatchFromSelection(change, null, selection, true, tmpFile);
             }

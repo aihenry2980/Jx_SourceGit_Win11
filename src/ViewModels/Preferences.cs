@@ -5,6 +5,7 @@ using System.IO;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 using Avalonia.Collections;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -232,6 +233,19 @@ namespace SourceGit.ViewModels
                     value < Models.DateTimeFormat.Supported.Count)
                 {
                     Models.DateTimeFormat.ActiveIndex = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public bool Use24Hours
+        {
+            get => Models.DateTimeFormat.Use24Hours;
+            set
+            {
+                if (value != Models.DateTimeFormat.Use24Hours)
+                {
+                    Models.DateTimeFormat.Use24Hours = value;
                     OnPropertyChanged();
                 }
             }
@@ -561,7 +575,7 @@ namespace SourceGit.ViewModels
             set;
         } = [];
 
-        public AvaloniaList<Models.OpenAIService> OpenAIServices
+        public AvaloniaList<AI.Service> OpenAIServices
         {
             get;
             set;
@@ -709,6 +723,21 @@ namespace SourceGit.ViewModels
         public void AutoRemoveInvalidNode()
         {
             RemoveInvalidRepositoriesRecursive(RepositoryNodes);
+        }
+
+        public async Task UpdateAvailableAIModelsAsync()
+        {
+            foreach (var service in OpenAIServices)
+            {
+                try
+                {
+                    await service.FetchAvailableModelsAsync();
+                }
+                catch
+                {
+                    // Ignore errors.
+                }
+            }
         }
 
         public void Save()

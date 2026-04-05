@@ -42,11 +42,16 @@ namespace SourceGit.ViewModels
             set => SetProperty(ref _selectedBranch, value, true);
         }
 
-        public bool DiscardLocalChanges
+        public bool HasLocalChanges
+        {
+            get => _repo.LocalChangesCount > 0;
+        }
+
+        public Models.DealWithLocalChanges DealWithLocalChanges
         {
             get;
             set;
-        } = false;
+        } = Models.DealWithLocalChanges.DoNothing;
 
         public bool UseRebase
         {
@@ -136,20 +141,29 @@ namespace SourceGit.ViewModels
             var needPopStash = false;
             if (changes > 0)
             {
-                if (DiscardLocalChanges)
+                if (DealWithLocalChanges == Models.DealWithLocalChanges.DoNothing)
                 {
-                    await Commands.Discard.AllAsync(_repo.FullPath, false, false, log);
+                    // Do nothing, just let the pull command fail and show the error to user
                 }
-                else
+                else if (DealWithLocalChanges == Models.DealWithLocalChanges.StashAndReapply)
                 {
                     var succ = await new Commands.Stash(_repo.FullPath)
                     {
                         CancellationToken = cancellationToken,
                     }.Use(log).PushAsync("PULL_AUTO_STASH", false);
                     if (!succ)
+                    {
+                        if (log is CommandLog commandLog)
+                            commandLog.Complete();
+                        _repo.MarkWorkingCopyDirtyManually();
                         return false;
+                    }
 
                     needPopStash = true;
+                }
+                else
+                {
+                    await Commands.Discard.AllAsync(_repo.FullPath, true, false, false, log);
                 }
             }
 
