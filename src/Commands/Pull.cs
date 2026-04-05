@@ -33,7 +33,7 @@ namespace SourceGit.Commands
             SSHKey = await new Config(WorkingDirectory).GetAsync($"remote.{_remote}.sshkey").ConfigureAwait(false);
 
             Log?.AppendLine($"$ git {Args}\n");
-            var result = await ReadToEndAsync().ConfigureAwait(false);
+            var result = await ReadToEndAndKillOnCancelAsync().ConfigureAwait(false);
 
             AppendOutput(result.StdOut);
             AppendOutput(result.StdErr);

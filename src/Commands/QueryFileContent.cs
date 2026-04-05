@@ -53,6 +53,7 @@ namespace SourceGit.Commands
                 await proc.StandardInput.WriteLineAsync("version https://git-lfs.github.com/spec/v1").ConfigureAwait(false);
                 await proc.StandardInput.WriteLineAsync($"oid sha256:{oid}").ConfigureAwait(false);
                 await proc.StandardInput.WriteLineAsync($"size {size}").ConfigureAwait(false);
+                proc.StandardInput.Close();
                 await proc.StandardOutput.BaseStream.CopyToAsync(stream).ConfigureAwait(false);
                 await proc.WaitForExitAsync().ConfigureAwait(false);
             }

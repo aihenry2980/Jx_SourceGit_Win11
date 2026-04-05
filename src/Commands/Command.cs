@@ -155,6 +155,60 @@ namespace SourceGit.Commands
             return rs;
         }
 
+        protected async Task<Result> ReadToEndAndKillOnCancelAsync()
+        {
+            using var proc = new Process();
+            proc.StartInfo = CreateGitStartInfo(true);
+
+            var captured = new CapturedProcess() { Process = proc };
+            var capturedLock = new object();
+            CancellationTokenRegistration registration = default;
+            try
+            {
+                proc.Start();
+
+                if (CancellationToken.CanBeCanceled)
+                {
+                    registration = CancellationToken.Register(() =>
+                    {
+                        lock (capturedLock)
+                        {
+                            if (captured is { Process: { HasExited: false } })
+                                captured.Process.Kill();
+                        }
+                    });
+                }
+            }
+            catch (Exception e)
+            {
+                return Result.Failed(e.Message);
+            }
+
+            try
+            {
+                var rs = new Result() { IsSuccess = true };
+                rs.StdOut = await proc.StandardOutput.ReadToEndAsync(CancellationToken).ConfigureAwait(false);
+                rs.StdErr = await proc.StandardError.ReadToEndAsync(CancellationToken).ConfigureAwait(false);
+                await proc.WaitForExitAsync(CancellationToken).ConfigureAwait(false);
+
+                rs.IsSuccess = proc.ExitCode == 0;
+                return rs;
+            }
+            catch (OperationCanceledException)
+            {
+                return Result.Failed("Command canceled.");
+            }
+            finally
+            {
+                registration.Dispose();
+
+                lock (capturedLock)
+                {
+                    captured.Process = null;
+                }
+            }
+        }
+
         protected ProcessStartInfo CreateGitStartInfo(bool redirect)
         {
             var start = new ProcessStartInfo();

@@ -4655,18 +4655,22 @@ namespace SourceGit.ViewModels
                 }
                 else if (_uiStates.FetchAllRemotes)
                 {
+                    var succ = true;
                     foreach (var remote in remotes)
-                        await new Commands.Fetch(FullPath, remote, false, _settings.AutoFetchPrune).Use(log).RunAsync();
-                    MarkFetched();
+                        succ &= await new Commands.Fetch(FullPath, remote, false, _settings.AutoFetchPrune).Use(log).RunAsync();
+
+                    if (succ)
+                        MarkFetched();
                 }
                 else
                 {
-                    var remote = string.IsNullOrEmpty(_settings.DefaultRemote) ?
-                        remotes.Find(x => x.Equals(_settings.DefaultRemote, StringComparison.Ordinal)) :
-                        remotes[0];
+                    var remote = GetPreferredRemoteName();
+                    if (string.IsNullOrEmpty(remote))
+                        return;
 
-                    await new Commands.Fetch(FullPath, remote, false, _settings.AutoFetchPrune).Use(log).RunAsync();
-                    MarkFetched();
+                    var succ = await new Commands.Fetch(FullPath, remote, false, _settings.AutoFetchPrune).Use(log).RunAsync();
+                    if (succ)
+                        MarkFetched();
                 }
             }
             catch
