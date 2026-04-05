@@ -137,7 +137,6 @@ namespace SourceGit.Commands
         {
             using var proc = new Process();
             proc.StartInfo = CreateGitStartInfo(true);
-
             try
             {
                 proc.Start();

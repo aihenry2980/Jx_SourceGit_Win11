@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.Versioning;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -294,6 +296,14 @@ namespace SourceGit.Views
         {
             if (DataContext is ViewModels.Repository repo)
             {
+                if (OperatingSystem.IsWindows() &&
+                    e.KeyModifiers.HasFlag(KeyModifiers.Alt) &&
+                    TryLaunchTortoiseGit(repo.FullPath, "fetch"))
+                {
+                    e.Handled = true;
+                    return;
+                }
+
                 await repo.FetchAsync(e.KeyModifiers is KeyModifiers.Control);
                 e.Handled = true;
             }
@@ -414,7 +424,31 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
-        private async void UpdateSubmodulesRecursively(object sender, RoutedEventArgs e)
+        private async void UpdateSubmodulesRecursively(object sender, TappedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo && repo.CanCreatePopup())
+            {
+                if (OperatingSystem.IsWindows() &&
+                    e.KeyModifiers.HasFlag(KeyModifiers.Alt) &&
+                    TryLaunchTortoiseGit(repo.FullPath, "subupdate"))
+                {
+                    e.Handled = true;
+                    return;
+                }
+
+                OpenToolbarRecursiveOperationWindow(new ViewModels.ToolbarRecursiveOperation(
+                    repo,
+                    ViewModels.ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively));
+                e.Handled = true;
+            }
+        }
+
+        private void UpdateSubmodulesRecursively(object sender, RoutedEventArgs e)
+        {
+            UpdateSubmodulesRecursivelyByHotKey(sender, e);
+        }
+
+        private async void UpdateSubmodulesRecursivelyByHotKey(object sender, RoutedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo && repo.CanCreatePopup())
             {
@@ -430,7 +464,7 @@ namespace SourceGit.Views
             if (DataContext is ViewModels.Repository repo && repo.CanCreatePopup())
             {
                 var confirmed = await App.AskConfirmAsync(
-                    "Restore the parent repository and all initialized submodules to a pristine clean state?\n\nThis will permanently discard tracked, untracked, and ignored changes.",
+                    "Restore the parent repository and all initialized submodules to a clean tracked state?\n\nThis will permanently discard tracked changes, but it will keep untracked files.",
                     Models.ConfirmButtonType.YesNo);
                 if (!confirmed)
                 {
@@ -847,12 +881,10 @@ namespace SourceGit.Views
             return new ToolbarGitCommandSpec(
                 "Edit command...",
                 "Edit Clean R Command",
-                "Edit the destructive recursive clean sequence. Commands run top to bottom in the repository logs window.",
-                "# Danger: this discards tracked, untracked, and ignored changes.\n" +
-                "git clean -qfdx\n" +
+                "Edit the destructive recursive tracked-reset sequence. Commands run top to bottom in the repository logs window.",
+                "# Danger: this discards tracked changes but keeps untracked files.\n" +
                 "git reset --hard\n" +
                 "git submodule foreach --recursive \"git reset --hard\"\n" +
-                "git submodule foreach --recursive \"git clean -fdx\"\n" +
                 "git submodule update --recursive --init",
                 RefreshRepositoryAfterToolbarGitCommand);
         }
@@ -979,6 +1011,83 @@ namespace SourceGit.Views
             repo.RefreshStashes();
         }
 
+        [SupportedOSPlatform("windows")]
+        private static bool TryLaunchTortoiseGit(string repoPath, string command)
+        {
+            if (!OperatingSystem.IsWindows())
+            {
+                App.SendNotification("TortoiseGit", "TortoiseGit handoff is only available on Windows.");
+                return false;
+            }
+
+            var proc = ResolveTortoiseGitProcPath();
+            if (string.IsNullOrWhiteSpace(proc))
+            {
+                App.SendNotification("TortoiseGit", "TortoiseGitProc.exe was not found. Please confirm that TortoiseGit is installed.");
+                return false;
+            }
+
+            try
+            {
+                Process.Start(new ProcessStartInfo()
+                {
+                    FileName = proc,
+                    Arguments = $"/command:{command} /path:{repoPath.Quoted()}",
+                    WorkingDirectory = repoPath,
+                    UseShellExecute = true,
+                });
+                return true;
+            }
+            catch (Exception ex)
+            {
+                App.SendNotification("TortoiseGit", $"Failed to launch TortoiseGit {command}: {ex.Message}");
+                return false;
+            }
+        }
+
+        [SupportedOSPlatform("windows")]
+        private static string ResolveTortoiseGitProcPath()
+        {
+            static string TryRegistry(Microsoft.Win32.RegistryHive hive, Microsoft.Win32.RegistryView view)
+            {
+                try
+                {
+                    var baseKey = Microsoft.Win32.RegistryKey.OpenBaseKey(hive, view);
+                    using var appPaths = baseKey.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\TortoiseGitProc.exe");
+                    if (appPaths?.GetValue(null) is string value && File.Exists(value))
+                        return value;
+                }
+                catch
+                {
+                    // Ignore registry lookup failures.
+                }
+
+                return string.Empty;
+            }
+
+            var proc = TryRegistry(Microsoft.Win32.RegistryHive.LocalMachine, Microsoft.Win32.RegistryView.Registry64);
+            if (!string.IsNullOrWhiteSpace(proc))
+                return proc;
+
+            proc = TryRegistry(Microsoft.Win32.RegistryHive.CurrentUser, Microsoft.Win32.RegistryView.Registry64);
+            if (!string.IsNullOrWhiteSpace(proc))
+                return proc;
+
+            var candidates = new[]
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "TortoiseGit", "bin", "TortoiseGitProc.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "TortoiseGit", "bin", "TortoiseGitProc.exe"),
+            };
+
+            foreach (var candidate in candidates)
+            {
+                if (File.Exists(candidate))
+                    return candidate;
+            }
+
+            return "TortoiseGitProc.exe";
+        }
+
         private async Task OpenUndoRecentCommandsMenuAsync(Control anchor)
         {
             if (DataContext is not ViewModels.Repository repo || !repo.CanCreatePopup())
@@ -1044,6 +1153,14 @@ namespace SourceGit.Views
         {
             if (DataContext is ViewModels.Repository repo)
             {
+                if (OperatingSystem.IsWindows() &&
+                    e.KeyModifiers.HasFlag(KeyModifiers.Alt) &&
+                    TryLaunchTortoiseGit(repo.FullPath, "pull"))
+                {
+                    e.Handled = true;
+                    return;
+                }
+
                 await repo.PullAsync(e.KeyModifiers is KeyModifiers.Control);
                 e.Handled = true;
             }

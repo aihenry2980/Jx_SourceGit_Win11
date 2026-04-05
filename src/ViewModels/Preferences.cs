@@ -273,6 +273,12 @@ namespace SourceGit.ViewModels
             set => SetProperty(ref _showChildren, value);
         }
 
+        public bool DisableBackgroundTasks
+        {
+            get => _disableBackgroundTasks;
+            set => SetProperty(ref _disableBackgroundTasks, value);
+        }
+
         public string IgnoreUpdateTag
         {
             get => _ignoreUpdateTag;
@@ -1153,6 +1159,7 @@ namespace SourceGit.ViewModels
         private bool _useGitHubStyleAvatar = true;
         private bool _showAuthorTimeInGraph = false;
         private bool _showChildren = false;
+        private bool _disableBackgroundTasks = false;
         private string _presetBranchExactNames = string.Empty;
         private string _presetBranchContainsPatterns = string.Empty;
         private string _presetBranchExactNameColors = string.Empty;

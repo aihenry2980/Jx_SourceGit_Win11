@@ -1,3 +1,5 @@
+using System;
+
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
@@ -9,11 +11,29 @@ namespace SourceGit.Views
     {
         public static readonly StyledProperty<string> DescriptionProperty =
             AvaloniaProperty.Register<PopupRunningStatus, string>(nameof(Description));
+        public static readonly StyledProperty<string> ActionButtonTextProperty =
+            AvaloniaProperty.Register<PopupRunningStatus, string>(nameof(ActionButtonText), string.Empty);
+        public static readonly StyledProperty<bool> IsActionButtonVisibleProperty =
+            AvaloniaProperty.Register<PopupRunningStatus, bool>(nameof(IsActionButtonVisible), false);
+
+        public event EventHandler<RoutedEventArgs> ActionButtonClick;
 
         public string Description
         {
             get => GetValue(DescriptionProperty);
             set => SetValue(DescriptionProperty, value);
+        }
+
+        public string ActionButtonText
+        {
+            get => GetValue(ActionButtonTextProperty);
+            set => SetValue(ActionButtonTextProperty, value);
+        }
+
+        public bool IsActionButtonVisible
+        {
+            get => GetValue(IsActionButtonVisibleProperty);
+            set => SetValue(IsActionButtonVisibleProperty, value);
         }
 
         public PopupRunningStatus()
@@ -61,6 +81,12 @@ namespace SourceGit.Views
                 path.Classes.Clear();
             Icon.Content = null;
             ProgressBar.IsIndeterminate = false;
+        }
+
+        private void OnActionButtonClick(object sender, RoutedEventArgs e)
+        {
+            ActionButtonClick?.Invoke(this, e);
+            e.Handled = true;
         }
 
         private bool _isUnloading = false;

@@ -185,6 +185,7 @@
             <TextBlock Classes="small" Margin="0,4,0,0" Text="Example: Fetch first, inspect incoming commits in graph, then decide whether to pull or rebase." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
             <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git fetch --progress --verbose --no-tags [&lt;selected-remote&gt; or all-remotes]"/>
             <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcut: Ctrl+Down (direct fetch)." Foreground="{DynamicResource Brush.FG2}"/>
+            <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Alt+click: hand off to TortoiseGit Fetch." Foreground="{DynamicResource Brush.FG2}"/>
             <TextBlock Classes="small italic" Margin="0,4,0,0" Text="{DynamicResource Text.CtrlClickTip}" Foreground="{DynamicResource Brush.FG2}"/>
           </StackPanel>
         </ToolTip.Tip>
@@ -240,6 +241,7 @@
             <TextBlock Classes="small" Margin="0,4,0,0" Text="Example: Pull origin/main to keep your local main aligned before starting new work." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
             <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git pull --verbose --progress --no-rebase &lt;remote&gt; &lt;branch&gt;"/>
             <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcut: Ctrl+Shift+Down (direct pull)." Foreground="{DynamicResource Brush.FG2}"/>
+            <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Alt+click: hand off to TortoiseGit Pull." Foreground="{DynamicResource Brush.FG2}"/>
             <TextBlock Classes="small italic" Margin="0,4,0,0" Text="{DynamicResource Text.CtrlClickTip}" Foreground="{DynamicResource Brush.FG2}"/>
           </StackPanel>
         </ToolTip.Tip>
@@ -380,7 +382,7 @@
               Classes="icon_button"
               Width="56"
               Margin="8,0,0,0"
-              Click="UpdateSubmodulesRecursively"
+              Tapped="UpdateSubmodulesRecursively"
               Tag="UpdateSubmodulesRecursively"
               ContextRequested="OnToolbarGitButtonContextRequested"
               PointerPressed="OnToolbarGitButtonPointerPressed"
@@ -392,6 +394,7 @@
             <TextBlock Classes="small" Margin="0,4,0,0" Text="Example: After pulling parent changes, run this to sync all submodules to expected commits." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
             <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git submodule update --recursive --init -- &lt;selected-submodules...&gt;"/>
             <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcut: Ctrl+Alt+U." Foreground="{DynamicResource Brush.FG2}"/>
+            <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Alt+click: hand off to TortoiseGit Submodule Update." Foreground="{DynamicResource Brush.FG2}"/>
           </StackPanel>
         </ToolTip.Tip>
 

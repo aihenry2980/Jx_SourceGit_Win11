@@ -15,11 +15,22 @@
       <TextBlock Margin="6,0,0,0" FontSize="14" FontWeight="Bold" Text="{DynamicResource Text.Running}"/>
     </StackPanel>
 
-    <TextBlock HorizontalAlignment="Stretch"
-               TextWrapping="Wrap"
-               FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=DefaultFontSize, Converter={x:Static c:DoubleConverters.Decrease}}"
-               FontStyle="Italic"
-               Text="{Binding #ThisControl.Description}"/>
+    <StackPanel Orientation="Horizontal"
+                Spacing="12">
+      <TextBlock VerticalAlignment="Center"
+                 TextWrapping="Wrap"
+                 FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=DefaultFontSize, Converter={x:Static c:DoubleConverters.Decrease}}"
+                 FontStyle="Italic"
+                 Text="{Binding #ThisControl.Description}"/>
+
+      <Button Classes="flat"
+              Height="28"
+              Padding="10,0"
+              VerticalAlignment="Center"
+              Content="{Binding #ThisControl.ActionButtonText}"
+              Click="OnActionButtonClick"
+              IsVisible="{Binding #ThisControl.IsActionButtonVisible}"/>
+    </StackPanel>
 
     <ProgressBar x:Name="ProgressBar"
                  Margin="0,8,0,0"

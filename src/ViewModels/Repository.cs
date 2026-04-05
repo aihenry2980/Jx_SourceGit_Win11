@@ -864,14 +864,7 @@ namespace SourceGit.ViewModels
             _shouldApplyPresetBranchFilterOnInitialBranchLoad = true;
             RebuildPresetBranchExactColorItems();
 
-            try
-            {
-                _watcher = new Models.Watcher(this, FullPath, _gitCommonDir);
-            }
-            catch (Exception ex)
-            {
-                App.RaiseException(string.Empty, $"Failed to start watcher for repository: '{FullPath}'. You may need to press 'F5' to refresh repository manually!\n\nReason: {ex.Message}");
-            }
+            EnsureWatcherState();
 
             _historyFilterMode = _uiStates.GetHistoryFilterMode();
             _histories = new Histories(this);
@@ -891,7 +884,7 @@ namespace SourceGit.ViewModels
             }
 
             _lastFetchTime = DateTime.Now;
-            EnsureAutoFetchTimerState();
+            EnsureBackgroundTaskState();
             RefreshAll();
             RefreshSuperProjectSubmodulePointer();
         }
@@ -3102,14 +3095,7 @@ namespace SourceGit.ViewModels
 
             using var lockWatcher = _watcher?.Lock();
 
-            log?.AppendLine("=== Step 1/4: Discard root repository changes (tracked, untracked, ignored) ===");
-            var cleanRoot = await RunRecursiveGitCommandAsync(
-                "clean -qfdx",
-                log,
-                cancellationToken).ConfigureAwait(false);
-            if (!cleanRoot)
-                return false;
-
+            log?.AppendLine("=== Step 1/3: Discard root repository tracked changes ===");
             var resetRoot = await RunRecursiveGitCommandAsync(
                 "reset --hard",
                 log,
@@ -3121,7 +3107,7 @@ namespace SourceGit.ViewModels
             if (cancellationToken.IsCancellationRequested)
                 return false;
 
-            log?.AppendLine("=== Step 2/4: Reset initialized submodules recursively ===");
+            log?.AppendLine("=== Step 2/3: Discard initialized submodule tracked changes recursively ===");
             var resetSubmodules = await RunRecursiveGitCommandAsync(
                 "submodule foreach --recursive \"git reset --hard\"",
                 log,
@@ -3132,18 +3118,7 @@ namespace SourceGit.ViewModels
             if (cancellationToken.IsCancellationRequested)
                 return false;
 
-            log?.AppendLine("=== Step 3/4: Clean initialized submodules recursively ===");
-            var cleanSubmodules = await RunRecursiveGitCommandAsync(
-                "submodule foreach --recursive \"git clean -fdx\"",
-                log,
-                cancellationToken).ConfigureAwait(false);
-            if (!cleanSubmodules)
-                return false;
-
-            if (cancellationToken.IsCancellationRequested)
-                return false;
-
-            log?.AppendLine("=== Step 4/4: Restore submodules to parent-recorded commits ===");
+            log?.AppendLine("=== Step 3/3: Restore submodules to parent-recorded commits ===");
             var updateSubmodules = await new Commands.Submodule(FullPath)
             {
                 RaiseError = true,
@@ -3742,6 +3717,36 @@ namespace SourceGit.ViewModels
         {
             if (e.PropertyName == nameof(Preferences.MainAccentColor))
                 NotifyAccentColorChanged();
+            else if (e.PropertyName == nameof(Preferences.DisableBackgroundTasks))
+                EnsureBackgroundTaskState();
+        }
+
+        private void EnsureBackgroundTaskState()
+        {
+            EnsureWatcherState();
+            EnsureAutoFetchTimerState();
+        }
+
+        private void EnsureWatcherState()
+        {
+            if (Preferences.Instance.DisableBackgroundTasks)
+            {
+                _watcher?.Dispose();
+                _watcher = null;
+                return;
+            }
+
+            if (_watcher != null)
+                return;
+
+            try
+            {
+                _watcher = new Models.Watcher(this, FullPath, _gitCommonDir);
+            }
+            catch (Exception ex)
+            {
+                App.RaiseException(string.Empty, $"Failed to start watcher for repository: '{FullPath}'. You may need to press 'F5' to refresh repository manually!\n\nReason: {ex.Message}");
+            }
         }
 
         private string GetPreferredRemoteName()
@@ -4678,7 +4683,9 @@ namespace SourceGit.ViewModels
 
         public void EnsureAutoFetchTimerState()
         {
-            if (_settings is not { } || (!_settings.EnableAutoFetch && !_settings.EnableAutoSyncAll))
+            if (Preferences.Instance.DisableBackgroundTasks ||
+                _settings is not { } ||
+                (!_settings.EnableAutoFetch && !_settings.EnableAutoSyncAll))
             {
                 _autoFetchTimer?.Dispose();
                 _autoFetchTimer = null;

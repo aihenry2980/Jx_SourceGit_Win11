@@ -172,7 +172,8 @@
               Padding="10,0"
               Cursor="Hand"
               Content="Close immediately"
-              Click="OnCloseImmediately"/>
+              Click="OnCloseImmediately"
+              IsVisible="{Binding CanStopCountdown, Converter={x:Static BoolConverters.Not}}"/>
 
       <Button Classes="flat"
               Height="28"
@@ -350,16 +351,20 @@
             BorderBrush="{DynamicResource Brush.Border2}"
             Background="{DynamicResource Brush.Contents}"
             IsVisible="{Binding IsOperationSummaryVisible}">
-      <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+      <Grid RowDefinitions="Auto,Auto"
+            ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto"
             ColumnSpacing="12"
+            RowSpacing="4"
             VerticalAlignment="Center">
         <TextBlock Grid.Column="0"
+                   Grid.Row="0"
                    VerticalAlignment="Center"
                    FontWeight="Bold"
                    Foreground="{DynamicResource Brush.FG2}"
                    Text="{Binding OperationSummaryTitle}"/>
 
         <Border Grid.Column="1"
+                Grid.Row="0"
                 Padding="10,3"
                 CornerRadius="999"
                 Background="{DynamicResource Brush.Popup}">
@@ -370,6 +375,7 @@
         </Border>
 
         <Border Grid.Column="2"
+                Grid.Row="0"
                 Padding="10,3"
                 CornerRadius="999"
                 Background="#142F855A"
@@ -381,7 +387,27 @@
                      Text="{Binding OperationSummarySucceededText}"/>
         </Border>
 
+        <ItemsControl Grid.Column="2"
+                      Grid.Row="1"
+                      HorizontalAlignment="Center"
+                      ItemsSource="{Binding OperationSummarySucceededDots}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Orientation="Horizontal" Spacing="4"/>
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Border Width="8"
+                      Height="8"
+                      CornerRadius="999"
+                      Background="#FF2F855A"/>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
         <Border Grid.Column="3"
+                Grid.Row="0"
                 Padding="10,3"
                 CornerRadius="999"
                 Background="#141D6FDD"
@@ -393,7 +419,27 @@
                      Text="{Binding OperationSummarySkippedByUserText}"/>
         </Border>
 
+        <ItemsControl Grid.Column="3"
+                      Grid.Row="1"
+                      HorizontalAlignment="Center"
+                      ItemsSource="{Binding OperationSummarySkippedByUserDots}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Orientation="Horizontal" Spacing="4"/>
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Border Width="8"
+                      Height="8"
+                      CornerRadius="999"
+                      Background="#FF1D6FDD"/>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
         <Border Grid.Column="4"
+                Grid.Row="0"
                 Padding="10,3"
                 CornerRadius="999"
                 Background="#14B7791F"
@@ -405,7 +451,27 @@
                      Text="{Binding OperationSummarySkippedAutomaticallyText}"/>
         </Border>
 
+        <ItemsControl Grid.Column="4"
+                      Grid.Row="1"
+                      HorizontalAlignment="Center"
+                      ItemsSource="{Binding OperationSummarySkippedAutomaticallyDots}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Orientation="Horizontal" Spacing="4"/>
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Border Width="8"
+                      Height="8"
+                      CornerRadius="999"
+                      Background="#FFB7791F"/>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
         <Border Grid.Column="5"
+                Grid.Row="0"
                 Padding="10,3"
                 CornerRadius="999"
                 Background="#143B82F6"
@@ -418,7 +484,28 @@
                      Text="{Binding OperationSummarySkippedNotInitializedText}"/>
         </Border>
 
+        <ItemsControl Grid.Column="5"
+                      Grid.Row="1"
+                      HorizontalAlignment="Center"
+                      IsVisible="{Binding IsNotInitializedSummaryVisible}"
+                      ItemsSource="{Binding OperationSummarySkippedNotInitializedDots}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Orientation="Horizontal" Spacing="4"/>
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Border Width="8"
+                      Height="8"
+                      CornerRadius="999"
+                      Background="#FF3B82F6"/>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
         <Border Grid.Column="6"
+                Grid.Row="0"
                 Padding="10,3"
                 CornerRadius="999"
                 Background="#14B91C1C"
@@ -429,6 +516,25 @@
                      Foreground="#FFB91C1C"
                      Text="{Binding OperationSummaryFailedText}"/>
         </Border>
+
+        <ItemsControl Grid.Column="6"
+                      Grid.Row="1"
+                      HorizontalAlignment="Center"
+                      ItemsSource="{Binding OperationSummaryFailedDots}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Orientation="Horizontal" Spacing="4"/>
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Border Width="8"
+                      Height="8"
+                      CornerRadius="999"
+                      Background="#FFB91C1C"/>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
       </Grid>
     </Border>
 

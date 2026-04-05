@@ -241,11 +241,14 @@ namespace SourceGit.Views
             if (rowsPresenter == null)
                 return;
 
-            UpdateCommitGraphMargin(rowsPresenter);
-
             var rowHeight = dataGrid.RowHeight;
             if (rowHeight <= 0 || double.IsNaN(rowHeight))
                 rowHeight = 24;
+
+            UpdateCommitGraphMargin(rowsPresenter);
+            
+            if (!TryGetGraphColumnLayout(dataGrid, out var graphOffsetX, out var clipWidth))
+                return;
 
             double startY = 0;
             foreach (var child in rowsPresenter.Children)
@@ -262,9 +265,6 @@ namespace SourceGit.Views
             }
 
             SetCurrentValue(IsScrollToTopVisibleProperty, startY >= rowHeight);
-
-            if (!TryGetGraphColumnLayout(dataGrid, out var graphOffsetX, out var clipWidth))
-                return;
 
             var graphOffsetY = CalculateGraphVerticalOffset(rowsPresenter, rowHeight, startY);
 

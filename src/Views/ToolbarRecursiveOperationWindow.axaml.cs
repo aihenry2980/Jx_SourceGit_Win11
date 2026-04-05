@@ -81,6 +81,12 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
+        private void OnCloseImmediately(object sender, RoutedEventArgs e)
+        {
+            Close();
+            e.Handled = true;
+        }
+
         private async Task ProcessAsync(ViewModels.ToolbarRecursiveOperation vm)
         {
             if (vm.InProgress || !vm.Check())

@@ -90,6 +90,9 @@
     <v:PopupRunningStatus Grid.Row="3"
                           Margin="12,8"
                           Description="{Binding ProgressDescription}"
+                          ActionButtonText="Close immediately"
+                          IsActionButtonVisible="{Binding CanStopCountdown}"
+                          ActionButtonClick="OnCloseImmediately"
                           IsVisible="{Binding InProgress}"/>
   </Grid>
 </v:ChromelessWindow>

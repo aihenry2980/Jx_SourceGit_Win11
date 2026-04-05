@@ -526,11 +526,9 @@ namespace SourceGit.Views
                 var requiredWidth = allowWrap && requiredHeight > 16.0
                     ? availableSize.Width
                     : x + 2;
-                InvalidateVisual();
                 return new Size(requiredWidth, requiredHeight);
             }
 
-            InvalidateVisual();
             return new Size(0, 0);
         }
 

@@ -118,7 +118,7 @@ namespace SourceGit.Views
                 return;
 
             var confirmed = await App.AskConfirmAsync(
-                "Restore the parent repository and all initialized submodules to a pristine clean state?\n\nThis will permanently discard tracked, untracked, and ignored changes.",
+                "Restore the parent repository and all initialized submodules to a clean tracked state?\n\nThis will permanently discard tracked changes, but it will keep untracked files.",
                 Models.ConfirmButtonType.YesNo);
             if (!confirmed)
             {

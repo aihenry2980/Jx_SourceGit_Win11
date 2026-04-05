@@ -139,15 +139,20 @@ namespace SourceGit.ViewModels
             : "Submodule summary";
         public string OperationSummaryTotalText => $"{_summaryTotal} selected";
         public string OperationSummarySucceededText => $"{_summarySucceeded} done";
+        public IReadOnlyList<int> OperationSummarySucceededDots => BuildSummaryDots(_summarySucceeded);
         public string OperationSummarySkippedByUserText => $"{_summarySkippedByUser} skipped by user";
+        public IReadOnlyList<int> OperationSummarySkippedByUserDots => BuildSummaryDots(_summarySkippedByUser);
         public string OperationSummarySkippedAutomaticallyText => $"{_summarySkippedAutomatically} skipped automatically";
+        public IReadOnlyList<int> OperationSummarySkippedAutomaticallyDots => BuildSummaryDots(_summarySkippedAutomatically);
         public bool IsNotInitializedSummaryVisible =>
             _kind == ToolbarRecursiveOperationKind.FetchRecursively ||
             _kind == ToolbarRecursiveOperationKind.FetchAndPruneRecursively ||
             _kind == ToolbarRecursiveOperationKind.PullUpdateAndFetchPruneRecursively ||
             _summarySkippedNotInitialized > 0;
         public string OperationSummarySkippedNotInitializedText => $"{_summarySkippedNotInitialized} not initialized";
+        public IReadOnlyList<int> OperationSummarySkippedNotInitializedDots => BuildSummaryDots(_summarySkippedNotInitialized);
         public string OperationSummaryFailedText => $"{_summaryFailed} failed";
+        public IReadOnlyList<int> OperationSummaryFailedDots => BuildSummaryDots(_summaryFailed);
 
         public IBrush PullPhaseBackground => GetPhaseBackground(CombinedSyncPhase.Pull);
         public IBrush PullPhaseBorderBrush => GetPhaseBorderBrush(CombinedSyncPhase.Pull);
@@ -223,7 +228,7 @@ namespace SourceGit.ViewModels
                 ToolbarRecursiveOperationMode.ConfigureSelectionOnly => "Choose which submodules Sync All should update. This selection is remembered for this repository.",
                 _ => kind switch
                 {
-                    ToolbarRecursiveOperationKind.RestoreCleanStateRecursively => "Dangerous: discards all local, untracked, and ignored changes in the parent repository and initialized submodules, then restores submodules to the parent-recorded commits.",
+                    ToolbarRecursiveOperationKind.RestoreCleanStateRecursively => "Dangerous: discards tracked changes in the parent repository and initialized submodules, keeps untracked files, and restores submodules to the parent-recorded commits.",
                     _ => $"Live git output with syntax highlighting. Auto-closes in {GetAutoCloseCountdownSeconds()} seconds after success unless you stop countdown.",
                 },
             };
@@ -636,11 +641,16 @@ namespace SourceGit.ViewModels
             OnPropertyChanged(nameof(OperationSummaryTitle));
             OnPropertyChanged(nameof(OperationSummaryTotalText));
             OnPropertyChanged(nameof(OperationSummarySucceededText));
+            OnPropertyChanged(nameof(OperationSummarySucceededDots));
             OnPropertyChanged(nameof(OperationSummarySkippedByUserText));
+            OnPropertyChanged(nameof(OperationSummarySkippedByUserDots));
             OnPropertyChanged(nameof(OperationSummarySkippedAutomaticallyText));
+            OnPropertyChanged(nameof(OperationSummarySkippedAutomaticallyDots));
             OnPropertyChanged(nameof(IsNotInitializedSummaryVisible));
             OnPropertyChanged(nameof(OperationSummarySkippedNotInitializedText));
+            OnPropertyChanged(nameof(OperationSummarySkippedNotInitializedDots));
             OnPropertyChanged(nameof(OperationSummaryFailedText));
+            OnPropertyChanged(nameof(OperationSummaryFailedDots));
             OnPropertyChanged(nameof(CurrentSubmoduleName));
             OnPropertyChanged(nameof(CurrentSubmoduleProgressText));
             OnPropertyChanged(nameof(IsSubmodulePhaseDetailsVisible));
@@ -670,11 +680,27 @@ namespace SourceGit.ViewModels
             OnPropertyChanged(nameof(OperationSummaryTitle));
             OnPropertyChanged(nameof(OperationSummaryTotalText));
             OnPropertyChanged(nameof(OperationSummarySucceededText));
+            OnPropertyChanged(nameof(OperationSummarySucceededDots));
             OnPropertyChanged(nameof(OperationSummarySkippedByUserText));
+            OnPropertyChanged(nameof(OperationSummarySkippedByUserDots));
             OnPropertyChanged(nameof(OperationSummarySkippedAutomaticallyText));
+            OnPropertyChanged(nameof(OperationSummarySkippedAutomaticallyDots));
             OnPropertyChanged(nameof(IsNotInitializedSummaryVisible));
             OnPropertyChanged(nameof(OperationSummarySkippedNotInitializedText));
+            OnPropertyChanged(nameof(OperationSummarySkippedNotInitializedDots));
             OnPropertyChanged(nameof(OperationSummaryFailedText));
+            OnPropertyChanged(nameof(OperationSummaryFailedDots));
+        }
+
+        private static IReadOnlyList<int> BuildSummaryDots(int count)
+        {
+            if (count <= 0)
+                return [];
+
+            var dots = new int[count];
+            for (var i = 0; i < count; i++)
+                dots[i] = i;
+            return dots;
         }
 
         private int GetAutoCloseCountdownSeconds()
