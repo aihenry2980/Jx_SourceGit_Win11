@@ -142,7 +142,12 @@ namespace SourceGit.ViewModels
         public IReadOnlyList<int> OperationSummarySucceededDots => BuildSummaryDots(_summarySucceeded);
         public string OperationSummarySkippedByUserText => $"{_summarySkippedByUser} skipped by user";
         public IReadOnlyList<int> OperationSummarySkippedByUserDots => BuildSummaryDots(_summarySkippedByUser);
-        public string OperationSummarySkippedAutomaticallyText => $"{_summarySkippedAutomatically} skipped automatically";
+        public string OperationSummarySkippedAutomaticallyText =>
+            _kind == ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively ||
+            _kind == ToolbarRecursiveOperationKind.PullAndUpdateSubmodulesRecursively ||
+            _kind == ToolbarRecursiveOperationKind.PullUpdateAndFetchPruneRecursively
+                ? $"{_summarySkippedAutomatically} no need to update"
+                : $"{_summarySkippedAutomatically} skipped automatically";
         public IReadOnlyList<int> OperationSummarySkippedAutomaticallyDots => BuildSummaryDots(_summarySkippedAutomatically);
         public bool IsNotInitializedSummaryVisible =>
             _kind == ToolbarRecursiveOperationKind.FetchRecursively ||

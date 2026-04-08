@@ -3084,8 +3084,8 @@ namespace SourceGit.ViewModels
             var succ = true;
             var anyUpdated = false;
             var totalTargets = targets.Count;
-            var completedTargets = 0;
             var succeededTargets = 0;
+            var skippedAutomaticallyTargets = 0;
             var failedTargets = 0;
 
             foreach (var target in targets)
@@ -3109,11 +3109,16 @@ namespace SourceGit.ViewModels
                     Total = totalTargets,
                     Succeeded = succeededTargets,
                     SkippedByUser = skippedByUserTargets,
+                    SkippedAutomatically = skippedAutomaticallyTargets,
                     Failed = failedTargets,
                     CurrentTarget = target,
                     CurrentState = Models.RecursiveOperationTargetState.Running,
                 });
+
                 log?.AppendLine($"=== Update submodule `{target}` ===");
+                var submoduleRoot = Native.OS.GetAbsPath(FullPath, target).Replace('\\', '/');
+                var beforeHead = await new Commands.QueryRevisionByRefName(submoduleRoot, "HEAD").GetResultAsync().ConfigureAwait(false);
+                var targetState = Models.RecursiveOperationTargetState.Running;
                 var one = await cmd.Use(log).UpdateAsync([target], true, false).ConfigureAwait(false);
                 if (cancellationToken.IsCancellationRequested)
                 {
@@ -3126,12 +3131,12 @@ namespace SourceGit.ViewModels
                     log?.AppendLine($"[timeout] Update `{target}` exceeded {SPLIT_SUBMODULE_UPDATE_TIMEOUT.TotalMinutes:0} min and was terminated.");
                     succ = false;
                     failedTargets++;
-                    completedTargets++;
                     onProgressChanged?.Invoke(new Models.RecursiveOperationProgress
                     {
                         Total = totalTargets,
                         Succeeded = succeededTargets,
                         SkippedByUser = skippedByUserTargets,
+                        SkippedAutomatically = skippedAutomaticallyTargets,
                         Failed = failedTargets,
                         CurrentTarget = target,
                         CurrentState = Models.RecursiveOperationTargetState.Failed,
@@ -3141,27 +3146,41 @@ namespace SourceGit.ViewModels
                         App.RaiseException(FullPath, $"Update `{target}` timed out.");
                         return false;
                     }
+
+                    targetState = Models.RecursiveOperationTargetState.Failed;
                     continue;
                 }
 
                 if (one)
                 {
-                    anyUpdated = true;
-                    succeededTargets++;
+                    var afterHead = await new Commands.QueryRevisionByRefName(submoduleRoot, "HEAD").GetResultAsync().ConfigureAwait(false);
+                    if (!string.IsNullOrEmpty(afterHead) && !string.Equals(beforeHead, afterHead, StringComparison.Ordinal))
+                    {
+                        anyUpdated = true;
+                        succeededTargets++;
+                        targetState = Models.RecursiveOperationTargetState.Succeeded;
+                    }
+                    else
+                    {
+                        log?.AppendLine($"[skip] Submodule `{target}` already matches the super-project pointer.");
+                        skippedAutomaticallyTargets++;
+                        targetState = Models.RecursiveOperationTargetState.Skipped;
+                    }
                 }
                 else
                 {
                     log?.AppendLine($"[failed] Update `{target}` failed.");
                     succ = false;
                     failedTargets++;
+                    targetState = Models.RecursiveOperationTargetState.Failed;
                     if (stopOnError)
                     {
-                        completedTargets++;
                         onProgressChanged?.Invoke(new Models.RecursiveOperationProgress
                         {
                             Total = totalTargets,
                             Succeeded = succeededTargets,
                             SkippedByUser = skippedByUserTargets,
+                            SkippedAutomatically = skippedAutomaticallyTargets,
                             Failed = failedTargets,
                             CurrentTarget = target,
                             CurrentState = Models.RecursiveOperationTargetState.Failed,
@@ -3170,15 +3189,15 @@ namespace SourceGit.ViewModels
                     }
                 }
 
-                completedTargets++;
                 onProgressChanged?.Invoke(new Models.RecursiveOperationProgress
                 {
                     Total = totalTargets,
                     Succeeded = succeededTargets,
                     SkippedByUser = skippedByUserTargets,
+                    SkippedAutomatically = skippedAutomaticallyTargets,
                     Failed = failedTargets,
                     CurrentTarget = target,
-                    CurrentState = one ? Models.RecursiveOperationTargetState.Succeeded : Models.RecursiveOperationTargetState.Failed,
+                    CurrentState = targetState,
                 });
             }
 
