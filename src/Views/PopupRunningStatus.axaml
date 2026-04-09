@@ -23,13 +23,25 @@
                  FontStyle="Italic"
                  Text="{Binding #ThisControl.Description}"/>
 
-      <Button Classes="flat"
-              Height="28"
-              Padding="10,0"
-              VerticalAlignment="Center"
-              Content="{Binding #ThisControl.ActionButtonText}"
-              Click="OnActionButtonClick"
-              IsVisible="{Binding #ThisControl.IsActionButtonVisible}"/>
+      <StackPanel Orientation="Horizontal"
+                  Spacing="8"
+                  VerticalAlignment="Center">
+        <Button Classes="flat"
+                Height="28"
+                Padding="10,0"
+                VerticalAlignment="Center"
+                Content="{Binding #ThisControl.SecondaryActionButtonText}"
+                Click="OnSecondaryActionButtonClick"
+                IsVisible="{Binding #ThisControl.IsSecondaryActionButtonVisible}"/>
+
+        <Button Classes="flat"
+                Height="28"
+                Padding="10,0"
+                VerticalAlignment="Center"
+                Content="{Binding #ThisControl.ActionButtonText}"
+                Click="OnActionButtonClick"
+                IsVisible="{Binding #ThisControl.IsActionButtonVisible}"/>
+      </StackPanel>
     </StackPanel>
 
     <ProgressBar x:Name="ProgressBar"

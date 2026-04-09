@@ -15,8 +15,13 @@ namespace SourceGit.Views
             AvaloniaProperty.Register<PopupRunningStatus, string>(nameof(ActionButtonText), string.Empty);
         public static readonly StyledProperty<bool> IsActionButtonVisibleProperty =
             AvaloniaProperty.Register<PopupRunningStatus, bool>(nameof(IsActionButtonVisible), false);
+        public static readonly StyledProperty<string> SecondaryActionButtonTextProperty =
+            AvaloniaProperty.Register<PopupRunningStatus, string>(nameof(SecondaryActionButtonText), string.Empty);
+        public static readonly StyledProperty<bool> IsSecondaryActionButtonVisibleProperty =
+            AvaloniaProperty.Register<PopupRunningStatus, bool>(nameof(IsSecondaryActionButtonVisible), false);
 
         public event EventHandler<RoutedEventArgs> ActionButtonClick;
+        public event EventHandler<RoutedEventArgs> SecondaryActionButtonClick;
 
         public string Description
         {
@@ -34,6 +39,18 @@ namespace SourceGit.Views
         {
             get => GetValue(IsActionButtonVisibleProperty);
             set => SetValue(IsActionButtonVisibleProperty, value);
+        }
+
+        public string SecondaryActionButtonText
+        {
+            get => GetValue(SecondaryActionButtonTextProperty);
+            set => SetValue(SecondaryActionButtonTextProperty, value);
+        }
+
+        public bool IsSecondaryActionButtonVisible
+        {
+            get => GetValue(IsSecondaryActionButtonVisibleProperty);
+            set => SetValue(IsSecondaryActionButtonVisibleProperty, value);
         }
 
         public PopupRunningStatus()
@@ -86,6 +103,12 @@ namespace SourceGit.Views
         private void OnActionButtonClick(object sender, RoutedEventArgs e)
         {
             ActionButtonClick?.Invoke(this, e);
+            e.Handled = true;
+        }
+
+        private void OnSecondaryActionButtonClick(object sender, RoutedEventArgs e)
+        {
+            SecondaryActionButtonClick?.Invoke(this, e);
             e.Handled = true;
         }
 

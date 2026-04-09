@@ -7,6 +7,7 @@
              xmlns:c="using:SourceGit.Converters"
              mc:Ignorable="d" d:DesignWidth="1040" d:DesignHeight="420"
              x:Class="SourceGit.Views.ToolbarRecursiveOperation"
+             x:Name="ThisControl"
              x:DataType="vm:ToolbarRecursiveOperation">
   <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*"
         Margin="8,0">
@@ -40,311 +41,9 @@
             BorderThickness="1"
             BorderBrush="{DynamicResource Brush.Border2}"
             Background="{DynamicResource Brush.Contents}"
-            IsVisible="{Binding IsSubmoduleSelectionVisible}">
-      <Border.IsVisible>
-        <MultiBinding Converter="{x:Static BoolConverters.And}">
-          <Binding Path="IsSubmoduleSelectionVisible"/>
-          <Binding Path="InProgress" Converter="{x:Static BoolConverters.Not}"/>
-        </MultiBinding>
-      </Border.IsVisible>
-      <StackPanel Orientation="Vertical">
-        <Grid ColumnDefinitions="*,Auto,Auto">
-          <TextBlock Grid.Column="0"
-                     VerticalAlignment="Center"
-                     FontWeight="Bold"
-                     Text="Select submodules to update recursively"/>
-          <Button Grid.Column="1"
-                  Classes="flat"
-                  Padding="8,2"
-                  Click="OnSelectAllSubmodules">
-            <TextBlock Text="Select all"/>
-          </Button>
-          <Button Grid.Column="2"
-                  Classes="flat"
-                  Margin="8,0,0,0"
-                  Padding="8,2"
-                  Click="OnClearSubmoduleSelection">
-            <TextBlock Text="Clear all"/>
-          </Button>
-        </Grid>
+            IsVisible="False"/>
 
-        <TextBlock Margin="0,6,0,0"
-                   Foreground="{DynamicResource Brush.FG2}"
-                   Text="Selection is remembered for this repository."/>
-
-        <ListBox x:Name="SubmoduleSelectionList"
-                 Margin="0,8,0,0"
-                 Height="250"
-                 MaxHeight="250"
-                 BorderThickness="0"
-                 Background="Transparent"
-                 Classes="static_scrollbar"
-                 ItemsSource="{Binding SubmoduleSelections}"
-                 SelectedItem="{Binding SelectedSubmoduleSelection, Mode=TwoWay}"
-                 SelectionMode="Single"
-                 IsVisible="{Binding HasSubmodulesToSelect}"
-                 KeyDown="OnSubmoduleSelectionListKeyDown"
-                 ScrollViewer.AllowAutoHide="False"
-                 ScrollViewer.VerticalScrollBarVisibility="Visible"
-                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-          <ListBox.Styles>
-            <Style Selector="ListBoxItem">
-              <Setter Property="Padding" Value="0"/>
-              <Setter Property="Margin" Value="0"/>
-              <Setter Property="MinHeight" Value="18"/>
-            </Style>
-          </ListBox.Styles>
-          <ListBox.ItemsPanel>
-            <ItemsPanelTemplate>
-              <UniformGrid Columns="2"/>
-            </ItemsPanelTemplate>
-          </ListBox.ItemsPanel>
-          <ListBox.ItemTemplate>
-            <DataTemplate>
-              <CheckBox Margin="0,0,12,0"
-                        MinHeight="18"
-                        Height="18"
-                        Padding="0"
-                        Focusable="False"
-                        VerticalAlignment="Center"
-                        VerticalContentAlignment="Center"
-                        Content="{Binding Path}"
-                        IsChecked="{Binding IsSelected, Mode=TwoWay}"/>
-            </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
-
-        <TextBlock Margin="0,8,0,0"
-                   Foreground="{DynamicResource Brush.FG2}"
-                   IsVisible="{Binding HasSubmodulesToSelect, Converter={x:Static BoolConverters.Not}}"
-                   Text="No submodules found in this repository."/>
-      </StackPanel>
-    </Border>
-
-    <Grid Grid.Row="3"
-          Margin="0,10,0,0"
-          ColumnDefinitions="Auto,*"
-          IsVisible="{Binding AreOperationButtonsVisible}">
-      <StackPanel Grid.Column="0"
-                  Orientation="Horizontal"
-                  Spacing="10"
-                  VerticalAlignment="Center">
-        <CheckBox VerticalAlignment="Center"
-                  Content="Pin window"
-                  IsChecked="{Binding KeepWindowOpen, Mode=TwoWay}"/>
-
-        <Border Padding="10,3"
-                CornerRadius="999"
-                BorderThickness="1"
-                Background="{Binding FetchModeBackground}"
-                BorderBrush="{Binding FetchModeBorderBrush}"
-                IsVisible="{Binding IsFetchModeIndicatorVisible}">
-          <TextBlock FontSize="12"
-                     FontWeight="Bold"
-                     Foreground="{Binding FetchModeForeground}"
-                     Text="{Binding FetchModeText}"/>
-        </Border>
-      </StackPanel>
-
-      <StackPanel Grid.Column="1"
-                  Orientation="Horizontal"
-                  HorizontalAlignment="Right">
-      <Button Classes="flat primary"
-              Height="28"
-              Padding="10,0"
-              Cursor="Hand"
-              Content="Cancel"
-              Click="OnCancelOperation"
-              IsEnabled="{Binding CanCancelOperation}"/>
-
-      <Button Classes="flat"
-              Height="28"
-              Margin="8,0,0,0"
-              Padding="10,0"
-              Cursor="Hand"
-              Content="Copy current command"
-              Click="OnCopyCurrentCommand"
-              IsEnabled="{Binding Log.LatestCommand, Converter={x:Static c:StringConverters.IsNotNullOrWhitespace}}"/>
-
-      <Button Classes="flat"
-              Height="28"
-              Margin="8,0,0,0"
-              Padding="10,0"
-              Cursor="Hand"
-              Content="Close immediately"
-              Click="OnCloseImmediately"
-              IsVisible="{Binding CanStopCountdown, Converter={x:Static BoolConverters.Not}}"/>
-
-      <Button Classes="flat"
-              Height="28"
-              Margin="8,0,0,0"
-              Padding="10,0"
-              Cursor="Hand"
-              Content="Copy message"
-              Click="OnCopyMessage"/>
-      </StackPanel>
-    </Grid>
-
-    <Border Grid.Row="4"
-            Margin="0,12,0,0"
-            Padding="12,10"
-            BorderThickness="1"
-            BorderBrush="{DynamicResource Brush.Border2}"
-            Background="{DynamicResource Brush.Contents}"
-            IsVisible="{Binding IsCombinedSyncPhaseVisible}">
-      <Grid RowDefinitions="Auto,Auto,Auto"
-            ColumnDefinitions="Auto,Auto,Auto,Auto,Auto"
-            HorizontalAlignment="Center">
-          <Border Padding="12,5"
-                  Grid.Row="0"
-                  Grid.Column="0"
-                  CornerRadius="999"
-                  BorderThickness="1"
-                  Opacity="{Binding PullPhaseOpacity}"
-                  Background="{Binding PullPhaseBackground}"
-                  BorderBrush="{Binding PullPhaseBorderBrush}">
-            <TextBlock FontWeight="SemiBold"
-                       Foreground="{Binding PullPhaseForeground}"
-                       Text="Pull"/>
-          </Border>
-
-          <TextBlock Grid.Row="0"
-                     Grid.Column="1"
-                     Margin="10,0"
-                     VerticalAlignment="Center"
-                     FontWeight="Bold"
-                     Foreground="{DynamicResource Brush.FG2}"
-                     Text=">"/>
-
-          <Border Padding="12,5"
-                  Grid.Row="0"
-                  Grid.Column="2"
-                  Width="270"
-                  CornerRadius="999"
-                  BorderThickness="1"
-                  Opacity="{Binding UpdateSubmodulesPhaseOpacity}"
-                  Background="{Binding UpdateSubmodulesPhaseBackground}"
-                  BorderBrush="{Binding UpdateSubmodulesPhaseBorderBrush}">
-            <TextBlock FontWeight="SemiBold"
-                       HorizontalAlignment="Center"
-                       TextAlignment="Center"
-                       Foreground="{Binding UpdateSubmodulesPhaseForeground}"
-                       Text="Update Submodules"/>
-          </Border>
-
-          <TextBlock Grid.Row="0"
-                     Grid.Column="3"
-                     Margin="10,0"
-                     VerticalAlignment="Center"
-                     FontWeight="Bold"
-                     Foreground="{DynamicResource Brush.FG2}"
-                     Text=">"/>
-
-          <Border Padding="12,5"
-                  Grid.Row="0"
-                  Grid.Column="4"
-                  CornerRadius="999"
-                  BorderThickness="1"
-                  Opacity="{Binding FetchAndPrunePhaseOpacity}"
-                  Background="{Binding FetchAndPrunePhaseBackground}"
-                  BorderBrush="{Binding FetchAndPrunePhaseBorderBrush}">
-            <TextBlock FontWeight="SemiBold"
-                       Foreground="{Binding FetchAndPrunePhaseForeground}"
-                       Text="Fetch + Prune"/>
-          </Border>
-
-        <TextBlock Grid.Row="1"
-                   Grid.Column="0"
-                   Margin="0,6,0,0"
-                   HorizontalAlignment="Center"
-                   FontSize="11"
-                   FontWeight="SemiBold"
-                   Foreground="{Binding PullPhaseStatusForeground}"
-                   Text="{Binding PullPhaseStatusText}"/>
-
-        <TextBlock Grid.Row="1"
-                   Grid.Column="2"
-                   Margin="0,6,0,0"
-                   HorizontalAlignment="Center"
-                   FontSize="11"
-                   FontWeight="SemiBold"
-                   Foreground="{Binding UpdateSubmodulesPhaseStatusForeground}"
-                   Text="{Binding UpdateSubmodulesPhaseStatusText}"/>
-
-        <TextBlock Grid.Row="1"
-                   Grid.Column="4"
-                   Margin="0,6,0,0"
-                   HorizontalAlignment="Center"
-                   FontSize="11"
-                   FontWeight="SemiBold"
-                   Foreground="{Binding FetchAndPrunePhaseStatusForeground}"
-                   Text="{Binding FetchAndPrunePhaseStatusText}"/>
-
-        <Grid Margin="0,10,0,0"
-              Grid.Row="2"
-              Grid.Column="2"
-              ColumnDefinitions="*,Auto"
-              HorizontalAlignment="Center"
-              IsVisible="{Binding IsSubmodulePhaseDetailsVisible}">
-          <TextBlock Grid.Column="0"
-                     FontSize="13"
-                     FontWeight="SemiBold"
-                     Text="{Binding CurrentSubmoduleName}"
-                     HorizontalAlignment="Center"
-                     TextAlignment="Center"
-                     TextTrimming="CharacterEllipsis"
-                     Foreground="{DynamicResource Brush.FG1}"/>
-
-          <Border Grid.Column="1"
-                  Margin="12,0,0,0"
-                  Padding="10,3"
-                  CornerRadius="999"
-                  BorderThickness="1"
-                  BorderBrush="{DynamicResource Brush.Border1}"
-                  Background="{DynamicResource Brush.Popup}">
-            <TextBlock FontSize="12"
-                       FontWeight="Bold"
-                       Foreground="{DynamicResource Brush.FG2}"
-                       Text="{Binding CurrentSubmoduleProgressText}"/>
-          </Border>
-        </Grid>
-      </Grid>
-    </Border>
-
-    <Border Grid.Row="4"
-            Margin="0,12,0,0"
-            Padding="12,10"
-            BorderThickness="1"
-            BorderBrush="{DynamicResource Brush.Border2}"
-            Background="{DynamicResource Brush.Contents}"
-            IsVisible="{Binding IsSingleOperationSubmoduleProgressVisible}">
-      <Grid ColumnDefinitions="*,Auto"
-            HorizontalAlignment="Center">
-        <TextBlock Grid.Column="0"
-                   FontSize="13"
-                   FontWeight="SemiBold"
-                   Text="{Binding CurrentSubmoduleName}"
-                   HorizontalAlignment="Center"
-                   TextAlignment="Center"
-                   TextTrimming="CharacterEllipsis"
-                   Foreground="{DynamicResource Brush.FG1}"/>
-
-        <Border Grid.Column="1"
-                Margin="12,0,0,0"
-                Padding="10,3"
-                CornerRadius="999"
-                BorderThickness="1"
-                BorderBrush="{DynamicResource Brush.Border1}"
-                Background="{DynamicResource Brush.Popup}">
-          <TextBlock FontSize="12"
-                     FontWeight="Bold"
-                     Foreground="{DynamicResource Brush.FG2}"
-                     Text="{Binding CurrentSubmoduleProgressText}"/>
-        </Border>
-      </Grid>
-    </Border>
-
-    <Border Grid.Row="5"
+    <Border Grid.Row="3"
             Margin="0,12,0,0"
             Padding="12,8"
             BorderThickness="1"
@@ -535,6 +234,507 @@
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
+      </Grid>
+    </Border>
+
+    <Border Grid.Row="4"
+            Grid.RowSpan="{Binding SubmoduleBoardRowSpan}"
+            Margin="0,12,0,0"
+            Padding="14,12"
+            BorderThickness="1"
+            BorderBrush="{DynamicResource Brush.Border2}"
+            Background="{DynamicResource Brush.Contents}"
+            IsVisible="{Binding IsSubmoduleProgressBoardVisible}">
+      <Grid RowDefinitions="Auto,Auto,*">
+        <Grid Grid.Row="0"
+              ColumnDefinitions="*,Auto,Auto"
+              ColumnSpacing="8"
+              IsVisible="{Binding CanEditSubmoduleSelection}">
+          <StackPanel Grid.Column="0"
+                      Orientation="Vertical"
+                      Spacing="4">
+            <TextBlock FontWeight="Bold"
+                       Foreground="{DynamicResource Brush.FG1}"
+                       Text="Select submodules to update recursively"/>
+            <TextBlock Foreground="{DynamicResource Brush.FG2}"
+                       Text="Selection is remembered for this repository."/>
+          </StackPanel>
+
+          <Button Grid.Column="1"
+                  Classes="flat"
+                  Padding="8,2"
+                  VerticalAlignment="Top"
+                  Click="OnSelectAllSubmodules">
+            <TextBlock Text="Select all"/>
+          </Button>
+
+          <Button Grid.Column="2"
+                  Classes="flat"
+                  Padding="8,2"
+                  VerticalAlignment="Top"
+                  Click="OnClearSubmoduleSelection">
+            <TextBlock Text="Clear all"/>
+          </Button>
+        </Grid>
+
+        <Border Grid.Row="0"
+                Padding="12,10"
+                BorderThickness="1"
+                BorderBrush="{DynamicResource Brush.Border1}"
+                Background="{DynamicResource Brush.Popup}"
+                CornerRadius="12"
+                IsVisible="{Binding IsCombinedSyncPhaseVisible}">
+          <Border.IsVisible>
+            <MultiBinding Converter="{x:Static BoolConverters.And}">
+              <Binding Path="IsCombinedSyncPhaseVisible"/>
+              <Binding Path="CanEditSubmoduleSelection" Converter="{x:Static BoolConverters.Not}"/>
+            </MultiBinding>
+          </Border.IsVisible>
+          <Grid RowDefinitions="Auto,Auto"
+                ColumnDefinitions="Auto,Auto,Auto,Auto,Auto"
+                HorizontalAlignment="Center">
+            <Border Padding="12,5"
+                    Grid.Row="0"
+                    Grid.Column="0"
+                    CornerRadius="999"
+                    BorderThickness="1"
+                    Opacity="{Binding PullPhaseOpacity}"
+                    Background="{Binding PullPhaseBackground}"
+                    BorderBrush="{Binding PullPhaseBorderBrush}">
+              <TextBlock FontWeight="SemiBold"
+                         Foreground="{Binding PullPhaseForeground}"
+                         Text="Pull"/>
+            </Border>
+
+            <TextBlock Grid.Row="0"
+                       Grid.Column="1"
+                       Margin="10,0"
+                       VerticalAlignment="Center"
+                       FontWeight="Bold"
+                       Foreground="{DynamicResource Brush.FG2}"
+                       Text=">"/>
+
+            <Border Padding="12,5"
+                    Grid.Row="0"
+                    Grid.Column="2"
+                    Width="270"
+                    CornerRadius="999"
+                    BorderThickness="1"
+                    Opacity="{Binding UpdateSubmodulesPhaseOpacity}"
+                    Background="{Binding UpdateSubmodulesPhaseBackground}"
+                    BorderBrush="{Binding UpdateSubmodulesPhaseBorderBrush}">
+              <TextBlock FontWeight="SemiBold"
+                         HorizontalAlignment="Center"
+                         TextAlignment="Center"
+                         Foreground="{Binding UpdateSubmodulesPhaseForeground}"
+                         Text="Update Submodules"/>
+            </Border>
+
+            <TextBlock Grid.Row="0"
+                       Grid.Column="3"
+                       Margin="10,0"
+                       VerticalAlignment="Center"
+                       FontWeight="Bold"
+                       Foreground="{DynamicResource Brush.FG2}"
+                       Text=">"/>
+
+            <Border Padding="12,5"
+                    Grid.Row="0"
+                    Grid.Column="4"
+                    CornerRadius="999"
+                    BorderThickness="1"
+                    Opacity="{Binding FetchAndPrunePhaseOpacity}"
+                    Background="{Binding FetchAndPrunePhaseBackground}"
+                    BorderBrush="{Binding FetchAndPrunePhaseBorderBrush}">
+              <TextBlock FontWeight="SemiBold"
+                         Foreground="{Binding FetchAndPrunePhaseForeground}"
+                         Text="Fetch + Prune"/>
+            </Border>
+
+            <TextBlock Grid.Row="1"
+                       Grid.Column="0"
+                       Margin="0,6,0,0"
+                       HorizontalAlignment="Center"
+                       FontSize="11"
+                       FontWeight="SemiBold"
+                       Foreground="{Binding PullPhaseStatusForeground}"
+                       Text="{Binding PullPhaseStatusText}"/>
+
+            <TextBlock Grid.Row="1"
+                       Grid.Column="2"
+                       Margin="0,6,0,0"
+                       HorizontalAlignment="Center"
+                       FontSize="11"
+                       FontWeight="SemiBold"
+                       Foreground="{Binding UpdateSubmodulesPhaseStatusForeground}"
+                       Text="{Binding UpdateSubmodulesPhaseStatusText}"/>
+
+            <TextBlock Grid.Row="1"
+                       Grid.Column="4"
+                       Margin="0,6,0,0"
+                       HorizontalAlignment="Center"
+                       FontSize="11"
+                       FontWeight="SemiBold"
+                       Foreground="{Binding FetchAndPrunePhaseStatusForeground}"
+                       Text="{Binding FetchAndPrunePhaseStatusText}"/>
+          </Grid>
+        </Border>
+
+        <Grid Grid.Row="1"
+              Margin="0,12,0,0"
+              ColumnDefinitions="*,Auto"
+              IsVisible="{Binding IsCombinedSyncPhaseVisible, Converter={x:Static BoolConverters.Not}}">
+          <TextBlock Grid.Column="0"
+                     VerticalAlignment="Center"
+                     FontWeight="Bold"
+                     Foreground="{DynamicResource Brush.FG2}"
+                     Text="Selected submodules">
+            <TextBlock.IsVisible>
+              <Binding Path="CanEditSubmoduleSelection" Converter="{x:Static BoolConverters.Not}"/>
+            </TextBlock.IsVisible>
+          </TextBlock>
+
+          <TextBlock Grid.Column="0"
+                     VerticalAlignment="Center"
+                     FontWeight="Bold"
+                     Foreground="{DynamicResource Brush.FG2}"
+                     Text="Choose submodules below">
+            <TextBlock.IsVisible>
+              <Binding Path="CanEditSubmoduleSelection"/>
+            </TextBlock.IsVisible>
+          </TextBlock>
+
+          <Border Grid.Column="1"
+                  Padding="10,3"
+                  CornerRadius="999"
+                  BorderThickness="1"
+                  BorderBrush="{DynamicResource Brush.Border1}"
+                  Background="{DynamicResource Brush.Popup}"
+                  IsVisible="{Binding CurrentSubmoduleProgressText, Converter={x:Static c:StringConverters.IsNotNullOrWhitespace}}">
+            <Border.IsVisible>
+              <MultiBinding Converter="{x:Static BoolConverters.And}">
+                <Binding Path="CurrentSubmoduleProgressText" Converter="{x:Static c:StringConverters.IsNotNullOrWhitespace}"/>
+                <Binding Path="CanEditSubmoduleSelection" Converter="{x:Static BoolConverters.Not}"/>
+              </MultiBinding>
+            </Border.IsVisible>
+            <TextBlock FontSize="12"
+                       FontWeight="Bold"
+                       Foreground="{DynamicResource Brush.FG2}"
+                       Text="{Binding CurrentSubmoduleProgressText}"/>
+          </Border>
+        </Grid>
+
+        <ScrollViewer Grid.Row="2"
+                      Margin="0,8,0,0"
+                      MaxHeight="{Binding SubmoduleBoardMaxHeight}"
+                      Classes="static_scrollbar"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+          <ItemsControl ItemsSource="{Binding SubmoduleRunItems}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border Margin="0,0,0,4"
+                        Padding="8,4"
+                        CornerRadius="10"
+                        BorderThickness="1"
+                        Background="{Binding RowBackground}"
+                        BorderBrush="{Binding RowBorderBrush}">
+                  <Grid ColumnDefinitions="20,*,220,Auto,Auto"
+                        ColumnSpacing="8">
+                    <CheckBox Width="16"
+                              Height="16"
+                              VerticalAlignment="Center"
+                              IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                              IsEnabled="{Binding #ThisControl.DataContext.CanEditSubmoduleSelection}"/>
+
+                    <TextBlock Grid.Column="1"
+                               VerticalAlignment="Center"
+                               FontSize="13"
+                               FontWeight="SemiBold"
+                               Foreground="{Binding PathForeground}"
+                               Text="{Binding Path}"
+                               TextTrimming="CharacterEllipsis"/>
+
+                    <ProgressBar Grid.Column="2"
+                                 Height="6"
+                                 MinWidth="160"
+                                 Maximum="100"
+                                 IsIndeterminate="True"
+                                 VerticalAlignment="Center"
+                                 Foreground="{DynamicResource Brush.Accent}"
+                                 Background="{DynamicResource Brush.Border1}">
+                      <ProgressBar.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                          <Binding Path="IsRunning"/>
+                          <Binding Path="#ThisControl.DataContext.AreSubmoduleStatusesVisible"/>
+                        </MultiBinding>
+                      </ProgressBar.IsVisible>
+                    </ProgressBar>
+
+                    <Path Grid.Column="3"
+                          Width="16"
+                          Height="16"
+                          Margin="0,0,2,0"
+                          VerticalAlignment="Center"
+                          Data="{StaticResource Icons.Loading}"
+                          Fill="{Binding RunningIndicatorBrush}">
+                      <Path.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                          <Binding Path="IsRunning"/>
+                          <Binding Path="#ThisControl.DataContext.AreSubmoduleStatusesVisible"/>
+                        </MultiBinding>
+                      </Path.IsVisible>
+                    </Path>
+
+                    <Border Grid.Column="4"
+                            MinWidth="104"
+                            Padding="10,3"
+                            HorizontalAlignment="Right"
+                            CornerRadius="9"
+                            BorderThickness="1"
+                            Background="{Binding StatusBackground}"
+                            BorderBrush="{Binding StatusBorderBrush}">
+                      <Border.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                          <Binding Path="IsStatusVisible"/>
+                          <Binding Path="#ThisControl.DataContext.AreSubmoduleStatusesVisible"/>
+                        </MultiBinding>
+                      </Border.IsVisible>
+                      <TextBlock HorizontalAlignment="Center"
+                                 FontSize="10"
+                                 FontWeight="Bold"
+                                 Foreground="{Binding StatusForeground}"
+                                 Text="{Binding StatusText}"/>
+                    </Border>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="5"
+          Margin="0,10,0,0"
+          ColumnDefinitions="Auto,*"
+          IsVisible="{Binding AreOperationButtonsVisible}">
+      <StackPanel Grid.Column="0"
+                  Orientation="Horizontal"
+                  Spacing="10"
+                  VerticalAlignment="Center">
+        <CheckBox VerticalAlignment="Center"
+                  Content="Pin window"
+                  IsChecked="{Binding KeepWindowOpen, Mode=TwoWay}"/>
+
+        <Border Padding="10,3"
+                CornerRadius="999"
+                BorderThickness="1"
+                Background="{Binding FetchModeBackground}"
+                BorderBrush="{Binding FetchModeBorderBrush}"
+                IsVisible="{Binding IsFetchModeIndicatorVisible}">
+          <TextBlock FontSize="12"
+                     FontWeight="Bold"
+                     Foreground="{Binding FetchModeForeground}"
+                     Text="{Binding FetchModeText}"/>
+        </Border>
+      </StackPanel>
+
+      <StackPanel Grid.Column="1"
+                  Orientation="Horizontal"
+                  HorizontalAlignment="Right">
+      <Button Classes="flat primary"
+              Height="28"
+              Padding="10,0"
+              Cursor="Hand"
+              Content="Cancel"
+              Click="OnCancelOperation"
+              IsEnabled="{Binding CanCancelOperation}"/>
+
+      <Button Classes="flat"
+              Height="28"
+              Margin="8,0,0,0"
+              Padding="10,0"
+              Cursor="Hand"
+              Content="Copy current command"
+              Click="OnCopyCurrentCommand"
+              IsEnabled="{Binding Log.LatestCommand, Converter={x:Static c:StringConverters.IsNotNullOrWhitespace}}"/>
+
+      <Button Classes="flat"
+              Height="28"
+              Margin="8,0,0,0"
+              Padding="10,0"
+              Cursor="Hand"
+              Content="Close immediately"
+              Click="OnCloseImmediately"
+              IsVisible="{Binding CanStopCountdown, Converter={x:Static BoolConverters.Not}}"/>
+
+      <Button Classes="flat"
+              Height="28"
+              Margin="8,0,0,0"
+              Padding="10,0"
+              Cursor="Hand"
+              Content="Copy message"
+              Click="OnCopyMessage"/>
+      </StackPanel>
+    </Grid>
+
+    <Border Grid.Row="4"
+            Margin="0,12,0,0"
+            Padding="12,10"
+            BorderThickness="1"
+            BorderBrush="{DynamicResource Brush.Border2}"
+            Background="{DynamicResource Brush.Contents}"
+            IsVisible="{Binding IsLegacyCombinedSyncPhaseVisible}">
+      <Grid RowDefinitions="Auto,Auto,Auto"
+            ColumnDefinitions="Auto,Auto,Auto,Auto,Auto"
+            HorizontalAlignment="Center">
+          <Border Padding="12,5"
+                  Grid.Row="0"
+                  Grid.Column="0"
+                  CornerRadius="999"
+                  BorderThickness="1"
+                  Opacity="{Binding PullPhaseOpacity}"
+                  Background="{Binding PullPhaseBackground}"
+                  BorderBrush="{Binding PullPhaseBorderBrush}">
+            <TextBlock FontWeight="SemiBold"
+                       Foreground="{Binding PullPhaseForeground}"
+                       Text="Pull"/>
+          </Border>
+
+          <TextBlock Grid.Row="0"
+                     Grid.Column="1"
+                     Margin="10,0"
+                     VerticalAlignment="Center"
+                     FontWeight="Bold"
+                     Foreground="{DynamicResource Brush.FG2}"
+                     Text=">"/>
+
+          <Border Padding="12,5"
+                  Grid.Row="0"
+                  Grid.Column="2"
+                  Width="270"
+                  CornerRadius="999"
+                  BorderThickness="1"
+                  Opacity="{Binding UpdateSubmodulesPhaseOpacity}"
+                  Background="{Binding UpdateSubmodulesPhaseBackground}"
+                  BorderBrush="{Binding UpdateSubmodulesPhaseBorderBrush}">
+            <TextBlock FontWeight="SemiBold"
+                       HorizontalAlignment="Center"
+                       TextAlignment="Center"
+                       Foreground="{Binding UpdateSubmodulesPhaseForeground}"
+                       Text="Update Submodules"/>
+          </Border>
+
+          <TextBlock Grid.Row="0"
+                     Grid.Column="3"
+                     Margin="10,0"
+                     VerticalAlignment="Center"
+                     FontWeight="Bold"
+                     Foreground="{DynamicResource Brush.FG2}"
+                     Text=">"/>
+
+          <Border Padding="12,5"
+                  Grid.Row="0"
+                  Grid.Column="4"
+                  CornerRadius="999"
+                  BorderThickness="1"
+                  Opacity="{Binding FetchAndPrunePhaseOpacity}"
+                  Background="{Binding FetchAndPrunePhaseBackground}"
+                  BorderBrush="{Binding FetchAndPrunePhaseBorderBrush}">
+            <TextBlock FontWeight="SemiBold"
+                       Foreground="{Binding FetchAndPrunePhaseForeground}"
+                       Text="Fetch + Prune"/>
+          </Border>
+
+        <TextBlock Grid.Row="1"
+                   Grid.Column="0"
+                   Margin="0,6,0,0"
+                   HorizontalAlignment="Center"
+                   FontSize="11"
+                   FontWeight="SemiBold"
+                   Foreground="{Binding PullPhaseStatusForeground}"
+                   Text="{Binding PullPhaseStatusText}"/>
+
+        <TextBlock Grid.Row="1"
+                   Grid.Column="2"
+                   Margin="0,6,0,0"
+                   HorizontalAlignment="Center"
+                   FontSize="11"
+                   FontWeight="SemiBold"
+                   Foreground="{Binding UpdateSubmodulesPhaseStatusForeground}"
+                   Text="{Binding UpdateSubmodulesPhaseStatusText}"/>
+
+        <TextBlock Grid.Row="1"
+                   Grid.Column="4"
+                   Margin="0,6,0,0"
+                   HorizontalAlignment="Center"
+                   FontSize="11"
+                   FontWeight="SemiBold"
+                   Foreground="{Binding FetchAndPrunePhaseStatusForeground}"
+                   Text="{Binding FetchAndPrunePhaseStatusText}"/>
+
+        <Grid Margin="0,10,0,0"
+              Grid.Row="2"
+              Grid.Column="2"
+              ColumnDefinitions="*,Auto"
+              HorizontalAlignment="Center"
+              IsVisible="{Binding IsSubmodulePhaseDetailsVisible}">
+          <TextBlock Grid.Column="0"
+                     FontSize="13"
+                     FontWeight="SemiBold"
+                     Text="{Binding CurrentSubmoduleName}"
+                     HorizontalAlignment="Center"
+                     TextAlignment="Center"
+                     TextTrimming="CharacterEllipsis"
+                     Foreground="{DynamicResource Brush.FG1}"/>
+
+          <Border Grid.Column="1"
+                  Margin="12,0,0,0"
+                  Padding="10,3"
+                  CornerRadius="999"
+                  BorderThickness="1"
+                  BorderBrush="{DynamicResource Brush.Border1}"
+                  Background="{DynamicResource Brush.Popup}">
+            <TextBlock FontSize="12"
+                       FontWeight="Bold"
+                       Foreground="{DynamicResource Brush.FG2}"
+                       Text="{Binding CurrentSubmoduleProgressText}"/>
+          </Border>
+        </Grid>
+      </Grid>
+    </Border>
+
+    <Border Grid.Row="4"
+            Margin="0,12,0,0"
+            Padding="12,10"
+            BorderThickness="1"
+            BorderBrush="{DynamicResource Brush.Border2}"
+            Background="{DynamicResource Brush.Contents}"
+            IsVisible="{Binding IsLegacySingleOperationSubmoduleProgressVisible}">
+      <Grid ColumnDefinitions="*,Auto"
+            HorizontalAlignment="Center">
+        <TextBlock Grid.Column="0"
+                   FontSize="13"
+                   FontWeight="SemiBold"
+                   Text="{Binding CurrentSubmoduleName}"
+                   HorizontalAlignment="Center"
+                   TextAlignment="Center"
+                   TextTrimming="CharacterEllipsis"
+                   Foreground="{DynamicResource Brush.FG1}"/>
+
+        <Border Grid.Column="1"
+                Margin="12,0,0,0"
+                Padding="10,3"
+                CornerRadius="999"
+                BorderThickness="1"
+                BorderBrush="{DynamicResource Brush.Border1}"
+                Background="{DynamicResource Brush.Popup}">
+          <TextBlock FontSize="12"
+                     FontWeight="Bold"
+                     Foreground="{DynamicResource Brush.FG2}"
+                     Text="{Binding CurrentSubmoduleProgressText}"/>
+        </Border>
       </Grid>
     </Border>
 

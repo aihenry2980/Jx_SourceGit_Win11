@@ -3,7 +3,6 @@ using System.Threading.Tasks;
 
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Input;
 using Avalonia.Interactivity;
 
 namespace SourceGit.Views
@@ -14,7 +13,6 @@ namespace SourceGit.Views
         {
             CloseOnESC = true;
             InitializeComponent();
-            AddHandler(KeyDownEvent, OnAnyKeyDown, RoutingStrategies.Tunnel);
 
             var layout = ViewModels.Preferences.Instance.Layout;
             Width = Math.Max(MinWidth, layout.ToolbarRecursiveOperationWindowWidth);
@@ -24,6 +22,8 @@ namespace SourceGit.Views
         protected override async void OnOpened(EventArgs e)
         {
             base.OnOpened(e);
+
+            AdjustWindowSizeForContent();
 
             if (_initialized)
                 return;
@@ -87,6 +87,14 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
+        private void OnStopCountdown(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.ToolbarRecursiveOperation vm)
+                vm.StopCountdown();
+
+            e.Handled = true;
+        }
+
         private async Task ProcessAsync(ViewModels.ToolbarRecursiveOperation vm)
         {
             if (vm.InProgress || !vm.Check())
@@ -119,9 +127,13 @@ namespace SourceGit.Views
                 layout.ToolbarRecursiveOperationWindowHeight = Height;
         }
 
-        private void OnAnyKeyDown(object sender, KeyEventArgs e)
+        private void AdjustWindowSizeForContent()
         {
-            OperationView?.HandleSubmoduleSelectionKey(e);
+            if (DataContext is not ViewModels.ToolbarRecursiveOperation vm || !vm.PreferTallWindow)
+                return;
+
+            MinHeight = Math.Max(MinHeight, 840);
+            Height = Math.Max(Height, 960);
         }
 
         private bool _initialized = false;

@@ -45,6 +45,18 @@ namespace SourceGit.ViewModels
             Canceled,
         }
 
+        internal enum SubmoduleRunState
+        {
+            Pending,
+            Running,
+            Succeeded,
+            SkippedByUser,
+            SkippedAutomatically,
+            SkippedNotInitialized,
+            Failed,
+            Canceled,
+        }
+
         public class SubmoduleSelectionItem : ObservableObject
         {
             public string Path
@@ -65,6 +77,111 @@ namespace SourceGit.ViewModels
             }
 
             private bool _isSelected;
+        }
+
+        public class SubmoduleRunItem : ObservableObject
+        {
+            public string Path
+            {
+                get;
+            }
+
+            public bool IsSelected
+            {
+                get => _isSelected;
+                set
+                {
+                    if (!SetProperty(ref _isSelected, value))
+                        return;
+
+                    if (!_hasFinalState)
+                        _state = value ? SubmoduleRunState.Pending : SubmoduleRunState.SkippedByUser;
+
+                    OnPropertyChanged(nameof(IsCheckedVisible));
+                    OnPropertyChanged(nameof(RowBackground));
+                    OnPropertyChanged(nameof(RowBorderBrush));
+                    OnPropertyChanged(nameof(PathForeground));
+                    OnPropertyChanged(nameof(SelectionBorderBrush));
+                    OnPropertyChanged(nameof(SelectionBackground));
+                }
+            }
+
+            public bool IsCheckedVisible => IsSelected;
+            public bool IsStatusVisible => _state is not SubmoduleRunState.Pending and not SubmoduleRunState.Running;
+            public bool IsRunning => _state == SubmoduleRunState.Running;
+            public IBrush RowBackground => IsSelected ? s_boardSelectedRowBackgroundBrush : s_boardSkippedRowBackgroundBrush;
+            public IBrush RowBorderBrush => IsSelected ? s_boardSelectedRowBorderBrush : s_boardSkippedRowBorderBrush;
+            public IBrush PathForeground => IsSelected ? s_boardSelectedPathForegroundBrush : s_boardSkippedPathForegroundBrush;
+            public IBrush SelectionBorderBrush => IsSelected ? s_selectionCheckedBorderBrush : s_selectionUncheckedBorderBrush;
+            public IBrush SelectionBackground => IsSelected ? s_selectionCheckedBackgroundBrush : s_selectionUncheckedBackgroundBrush;
+            public IBrush SelectionCheckBrush => s_selectionCheckBrush;
+            public IBrush RunningIndicatorBrush => s_runningIndicatorBrush;
+            public string StatusText => _state switch
+            {
+                SubmoduleRunState.Succeeded => "Done",
+                SubmoduleRunState.SkippedByUser => "Skipped",
+                SubmoduleRunState.SkippedAutomatically => "No need to update",
+                SubmoduleRunState.SkippedNotInitialized => "Not initialized",
+                SubmoduleRunState.Failed => "Failed",
+                SubmoduleRunState.Canceled => "Canceled",
+                _ => string.Empty,
+            };
+            public IBrush StatusBackground => _state switch
+            {
+                SubmoduleRunState.Succeeded => s_statusSucceededBackgroundBrush,
+                SubmoduleRunState.SkippedByUser => s_statusSkippedByUserBackgroundBrush,
+                SubmoduleRunState.SkippedAutomatically => s_statusSkippedAutomaticallyBackgroundBrush,
+                SubmoduleRunState.SkippedNotInitialized => s_statusNotInitializedBackgroundBrush,
+                SubmoduleRunState.Failed => s_statusFailedBackgroundBrush,
+                SubmoduleRunState.Canceled => s_statusCanceledBackgroundBrush,
+                _ => Brushes.Transparent,
+            };
+            public IBrush StatusBorderBrush => _state switch
+            {
+                SubmoduleRunState.Succeeded => s_statusSucceededBorderBrush,
+                SubmoduleRunState.SkippedByUser => s_statusSkippedByUserBorderBrush,
+                SubmoduleRunState.SkippedAutomatically => s_statusSkippedAutomaticallyBorderBrush,
+                SubmoduleRunState.SkippedNotInitialized => s_statusNotInitializedBorderBrush,
+                SubmoduleRunState.Failed => s_statusFailedBorderBrush,
+                SubmoduleRunState.Canceled => s_statusCanceledBorderBrush,
+                _ => Brushes.Transparent,
+            };
+            public IBrush StatusForeground => _state switch
+            {
+                SubmoduleRunState.Succeeded => s_statusSucceededForegroundBrush,
+                SubmoduleRunState.SkippedByUser => s_statusSkippedByUserForegroundBrush,
+                SubmoduleRunState.SkippedAutomatically => s_statusSkippedAutomaticallyForegroundBrush,
+                SubmoduleRunState.SkippedNotInitialized => s_statusNotInitializedForegroundBrush,
+                SubmoduleRunState.Failed => s_statusFailedForegroundBrush,
+                SubmoduleRunState.Canceled => s_statusCanceledForegroundBrush,
+                _ => Brushes.Transparent,
+            };
+
+            public SubmoduleRunItem(string path, bool isSelected)
+            {
+                Path = path;
+                _isSelected = isSelected;
+                _state = isSelected ? SubmoduleRunState.Pending : SubmoduleRunState.SkippedByUser;
+            }
+
+            internal void SetState(SubmoduleRunState state)
+            {
+                if (_state == state)
+                    return;
+
+                _state = state;
+                _hasFinalState = state is not SubmoduleRunState.Pending and not SubmoduleRunState.Running;
+                OnPropertyChanged(nameof(IsStatusVisible));
+                OnPropertyChanged(nameof(IsRunning));
+                OnPropertyChanged(nameof(StatusText));
+                OnPropertyChanged(nameof(StatusBackground));
+                OnPropertyChanged(nameof(StatusBorderBrush));
+                OnPropertyChanged(nameof(StatusForeground));
+            }
+
+            private bool _isSelected;
+            private bool _hasFinalState;
+            private SubmoduleRunState _state;
         }
 
         public string Title
@@ -90,8 +207,8 @@ namespace SourceGit.ViewModels
         }
 
         public bool CanCancelOperation => _runCancellation is { IsCancellationRequested: false };
-        public bool IsLogVisible => _mode == ToolbarRecursiveOperationMode.Run;
-        public bool AreOperationButtonsVisible => _mode == ToolbarRecursiveOperationMode.Run;
+        public bool IsLogVisible => _mode == ToolbarRecursiveOperationMode.Run && Log != null;
+        public bool AreOperationButtonsVisible => _mode == ToolbarRecursiveOperationMode.Run && Log != null;
         public bool KeepWindowOpen
         {
             get => _keepWindowOpen;
@@ -131,6 +248,18 @@ namespace SourceGit.ViewModels
             IsCombinedSyncPhaseVisible &&
             _currentCombinedPhase == CombinedSyncPhase.UpdateSubmodules &&
             !string.IsNullOrEmpty(_currentSubmoduleName);
+        public bool IsSubmoduleProgressBoardVisible =>
+            IsSubmoduleOperationKind &&
+            SubmoduleRunItems.Count > 0;
+        public bool PreferTallWindow => IsSubmoduleProgressBoardVisible;
+        public int SubmoduleBoardRowSpan => IsLogVisible ? 1 : 3;
+        public double SubmoduleBoardMaxHeight => IsLogVisible ? 380 : 720;
+        public bool IsLegacyCombinedSyncPhaseVisible => IsCombinedSyncPhaseVisible && !IsSubmoduleProgressBoardVisible;
+        public bool IsLegacySingleOperationSubmoduleProgressVisible =>
+            IsSingleOperationSubmoduleProgressVisible &&
+            !IsSubmoduleProgressBoardVisible;
+        public bool CanEditSubmoduleSelection => _showSubmoduleSelection && !_submoduleSelectionLocked;
+        public bool AreSubmoduleStatusesVisible => _submoduleSelectionLocked;
         public bool IsOperationSummaryVisible => _mode == ToolbarRecursiveOperationMode.Run && _summaryTotal > 0;
         public string CurrentSubmoduleName => _currentSubmoduleName;
         public string CurrentSubmoduleProgressText => _currentSubmoduleTotal <= 0 ? string.Empty : $"{_currentSubmoduleDone}/{_currentSubmoduleTotal}";
@@ -183,6 +312,11 @@ namespace SourceGit.ViewModels
             get;
         } = [];
 
+        public AvaloniaList<SubmoduleRunItem> SubmoduleRunItems
+        {
+            get;
+        } = [];
+
         public SubmoduleSelectionItem SelectedSubmoduleSelection
         {
             get => _selectedSubmoduleSelection;
@@ -198,6 +332,11 @@ namespace SourceGit.ViewModels
         {
             return !_showSubmoduleSelection;
         }
+
+        private bool IsSubmoduleOperationKind =>
+            _kind == ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively ||
+            _kind == ToolbarRecursiveOperationKind.PullAndUpdateSubmodulesRecursively ||
+            _kind == ToolbarRecursiveOperationKind.PullUpdateAndFetchPruneRecursively;
 
         public ToolbarRecursiveOperation(Repository repo, ToolbarRecursiveOperationKind kind, bool forceChooseSubmodules = false, bool configureSelectionOnly = false)
         {
@@ -246,7 +385,10 @@ namespace SourceGit.ViewModels
                 var defaultSelectAll = savedSet.Count == 0;
 
                 foreach (var submodule in _repo.Submodules)
+                {
                     SubmoduleSelections.Add(new SubmoduleSelectionItem(submodule.Path, defaultSelectAll || savedSet.Contains(submodule.Path)));
+                    SubmoduleRunItems.Add(new SubmoduleRunItem(submodule.Path, defaultSelectAll || savedSet.Contains(submodule.Path)));
+                }
 
                 if (SubmoduleSelections.Count > 0)
                     SelectedSubmoduleSelection = SubmoduleSelections[0];
@@ -257,11 +399,17 @@ namespace SourceGit.ViewModels
         {
             foreach (var item in SubmoduleSelections)
                 item.IsSelected = true;
+
+            foreach (var item in SubmoduleRunItems)
+                item.IsSelected = true;
         }
 
         public void ClearSubmoduleSelection()
         {
             foreach (var item in SubmoduleSelections)
+                item.IsSelected = false;
+
+            foreach (var item in SubmoduleRunItems)
                 item.IsSelected = false;
         }
 
@@ -294,6 +442,9 @@ namespace SourceGit.ViewModels
             _runCancellation?.Dispose();
             _runCancellation = new CancellationTokenSource();
             OnPropertyChanged(nameof(CanCancelOperation));
+            _submoduleSelectionLocked = true;
+            OnPropertyChanged(nameof(CanEditSubmoduleSelection));
+            OnPropertyChanged(nameof(AreSubmoduleStatusesVisible));
             ResetSubmodulePhaseProgress();
             ResetOperationSummary();
             ResetCombinedPhaseStates();
@@ -309,6 +460,10 @@ namespace SourceGit.ViewModels
             {
                 log = _repo.CreateLog(Title);
                 Log = log;
+                OnPropertyChanged(nameof(IsLogVisible));
+                OnPropertyChanged(nameof(AreOperationButtonsVisible));
+                OnPropertyChanged(nameof(SubmoduleBoardRowSpan));
+                OnPropertyChanged(nameof(SubmoduleBoardMaxHeight));
                 Use(log);
             }
 
@@ -319,7 +474,7 @@ namespace SourceGit.ViewModels
                 if (_showSubmoduleSelection)
                 {
                     selectedTargets = [];
-                    foreach (var item in SubmoduleSelections)
+                    foreach (var item in SubmoduleRunItems)
                     {
                         if (item.IsSelected)
                             selectedTargets.Add(item.Path);
@@ -347,6 +502,8 @@ namespace SourceGit.ViewModels
                     return true;
                 }
 
+                InitializeSubmoduleRunItems(selectedTargets);
+
                 succ = _kind switch
                 {
                     ToolbarRecursiveOperationKind.PullAndUpdateSubmodulesRecursively => await _repo.RunPullAndUpdateSubmodulesRecursivelyAsync(log, SetCombinedPhase, selectedTargets, _runCancellation.Token, UpdateSubmoduleProgress),
@@ -370,6 +527,7 @@ namespace SourceGit.ViewModels
 
             if (_cancelRequested)
             {
+                MarkRunningSubmoduleCanceled();
                 if (IsCombinedSyncPhaseVisible)
                     SetPhaseState(_currentCombinedPhase, CombinedSyncPhaseState.Canceled);
 
@@ -517,6 +675,7 @@ namespace SourceGit.ViewModels
             OnPropertyChanged(nameof(FetchAndPrunePhaseStatusText));
             OnPropertyChanged(nameof(FetchAndPrunePhaseStatusForeground));
             OnPropertyChanged(nameof(IsSubmodulePhaseDetailsVisible));
+            OnPropertyChanged(nameof(IsLegacyCombinedSyncPhaseVisible));
         }
 
         private IBrush GetPhaseBackground(CombinedSyncPhase phase)
@@ -633,15 +792,18 @@ namespace SourceGit.ViewModels
 
         private void ApplySubmoduleProgress(Models.RecursiveOperationProgress progress)
         {
+            var previousSkippedAutomatically = _summarySkippedAutomatically;
+            var previousSkippedNotInitialized = _summarySkippedNotInitialized;
             _summaryTotal = progress.Total;
             _summarySucceeded = progress.Succeeded;
             _summarySkippedByUser = progress.SkippedByUser;
             _summarySkippedAutomatically = progress.SkippedAutomatically;
             _summarySkippedNotInitialized = progress.SkippedNotInitialized;
             _summaryFailed = progress.Failed;
-            _currentSubmoduleDone = progress.Succeeded + progress.SkippedAutomatically + progress.Failed;
+            _currentSubmoduleDone = progress.Succeeded + progress.SkippedAutomatically + progress.SkippedNotInitialized + progress.Failed;
             _currentSubmoduleTotal = progress.Total;
             _currentSubmoduleName = progress.CurrentTarget ?? string.Empty;
+            ApplySubmoduleRunItemState(progress, previousSkippedAutomatically, previousSkippedNotInitialized);
             OnPropertyChanged(nameof(IsOperationSummaryVisible));
             OnPropertyChanged(nameof(OperationSummaryTitle));
             OnPropertyChanged(nameof(OperationSummaryTotalText));
@@ -660,6 +822,7 @@ namespace SourceGit.ViewModels
             OnPropertyChanged(nameof(CurrentSubmoduleProgressText));
             OnPropertyChanged(nameof(IsSubmodulePhaseDetailsVisible));
             OnPropertyChanged(nameof(IsSingleOperationSubmoduleProgressVisible));
+            OnPropertyChanged(nameof(IsLegacySingleOperationSubmoduleProgressVisible));
         }
 
         private void ResetSubmodulePhaseProgress()
@@ -671,6 +834,7 @@ namespace SourceGit.ViewModels
             OnPropertyChanged(nameof(CurrentSubmoduleProgressText));
             OnPropertyChanged(nameof(IsSubmodulePhaseDetailsVisible));
             OnPropertyChanged(nameof(IsSingleOperationSubmoduleProgressVisible));
+            OnPropertyChanged(nameof(IsLegacySingleOperationSubmoduleProgressVisible));
         }
 
         private void ResetOperationSummary()
@@ -714,10 +878,80 @@ namespace SourceGit.ViewModels
             return Math.Clamp(seconds, 1, 60);
         }
 
+        private void InitializeSubmoduleRunItems(List<string> selectedTargets)
+        {
+            SubmoduleRunItems.Clear();
+
+            if (!IsSubmoduleOperationKind)
+            {
+                OnPropertyChanged(nameof(IsSubmoduleProgressBoardVisible));
+                return;
+            }
+
+            HashSet<string> selectedSet = null;
+            if (selectedTargets != null)
+                selectedSet = new HashSet<string>(selectedTargets, StringComparer.Ordinal);
+
+            foreach (var submodule in _repo.Submodules)
+            {
+                var isSelected = selectedSet == null || selectedSet.Contains(submodule.Path);
+                SubmoduleRunItems.Add(new SubmoduleRunItem(submodule.Path, isSelected));
+            }
+
+            OnPropertyChanged(nameof(IsSubmoduleProgressBoardVisible));
+            OnPropertyChanged(nameof(IsLegacyCombinedSyncPhaseVisible));
+            OnPropertyChanged(nameof(IsLegacySingleOperationSubmoduleProgressVisible));
+        }
+
+        private void ApplySubmoduleRunItemState(
+            Models.RecursiveOperationProgress progress,
+            int previousSkippedAutomatically,
+            int previousSkippedNotInitialized)
+        {
+            if (string.IsNullOrEmpty(progress.CurrentTarget))
+                return;
+
+            foreach (var item in SubmoduleRunItems)
+            {
+                if (!string.Equals(item.Path, progress.CurrentTarget, StringComparison.Ordinal))
+                    continue;
+
+                switch (progress.CurrentState)
+                {
+                    case Models.RecursiveOperationTargetState.Running:
+                        item.SetState(SubmoduleRunState.Running);
+                        break;
+                    case Models.RecursiveOperationTargetState.Succeeded:
+                        item.SetState(SubmoduleRunState.Succeeded);
+                        break;
+                    case Models.RecursiveOperationTargetState.Failed:
+                        item.SetState(SubmoduleRunState.Failed);
+                        break;
+                    default:
+                        item.SetState(progress.SkippedNotInitialized > previousSkippedNotInitialized
+                            ? SubmoduleRunState.SkippedNotInitialized
+                            : SubmoduleRunState.SkippedAutomatically);
+                        break;
+                }
+
+                break;
+            }
+        }
+
+        private void MarkRunningSubmoduleCanceled()
+        {
+            foreach (var item in SubmoduleRunItems)
+            {
+                if (item.IsRunning)
+                    item.SetState(SubmoduleRunState.Canceled);
+            }
+        }
+
         private readonly Repository _repo = null;
         private readonly ToolbarRecursiveOperationKind _kind;
         private readonly ToolbarRecursiveOperationMode _mode;
         private readonly bool _showSubmoduleSelection;
+        private bool _submoduleSelectionLocked = false;
         private CommandLog _log = null;
         private bool _canStopCountdown = false;
         private CancellationTokenSource _countdownCts = null;
@@ -788,5 +1022,35 @@ namespace SourceGit.ViewModels
         private static readonly IBrush s_pruneDisabledBackgroundBrush = new SolidColorBrush(Color.Parse("#140078D7"));
         private static readonly IBrush s_pruneDisabledBorderBrush = new SolidColorBrush(Color.Parse("#FF0078D7"));
         private static readonly IBrush s_pruneDisabledForegroundBrush = new SolidColorBrush(Color.Parse("#FF0078D7"));
+        private static readonly IBrush s_boardSelectedRowBackgroundBrush = new SolidColorBrush(Color.Parse("#FFF8FBFF"));
+        private static readonly IBrush s_boardSelectedRowBorderBrush = new SolidColorBrush(Color.Parse("#FFD7E7F6"));
+        private static readonly IBrush s_boardSkippedRowBackgroundBrush = new SolidColorBrush(Color.Parse("#FFF7F7F7"));
+        private static readonly IBrush s_boardSkippedRowBorderBrush = new SolidColorBrush(Color.Parse("#FFE5E7EB"));
+        private static readonly IBrush s_boardSelectedPathForegroundBrush = new SolidColorBrush(Color.Parse("#FF0D5D86"));
+        private static readonly IBrush s_boardSkippedPathForegroundBrush = new SolidColorBrush(Color.Parse("#FF7A7A7A"));
+        private static readonly IBrush s_selectionCheckedBorderBrush = new SolidColorBrush(Color.Parse("#FF0D6E99"));
+        private static readonly IBrush s_selectionCheckedBackgroundBrush = new SolidColorBrush(Color.Parse("#FFF4FBFF"));
+        private static readonly IBrush s_selectionUncheckedBorderBrush = new SolidColorBrush(Color.Parse("#FF9CA3AF"));
+        private static readonly IBrush s_selectionUncheckedBackgroundBrush = new SolidColorBrush(Color.Parse("#00FFFFFF"));
+        private static readonly IBrush s_selectionCheckBrush = new SolidColorBrush(Color.Parse("#FF0D6E99"));
+        private static readonly IBrush s_runningIndicatorBrush = new SolidColorBrush(Color.Parse("#FF0E7490"));
+        private static readonly IBrush s_statusSucceededBackgroundBrush = new SolidColorBrush(Color.Parse("#FF49A728"));
+        private static readonly IBrush s_statusSucceededBorderBrush = new SolidColorBrush(Color.Parse("#FF266E12"));
+        private static readonly IBrush s_statusSucceededForegroundBrush = Brushes.White;
+        private static readonly IBrush s_statusSkippedByUserBackgroundBrush = new SolidColorBrush(Color.Parse("#FF1F9BCB"));
+        private static readonly IBrush s_statusSkippedByUserBorderBrush = new SolidColorBrush(Color.Parse("#FF116B8D"));
+        private static readonly IBrush s_statusSkippedByUserForegroundBrush = Brushes.White;
+        private static readonly IBrush s_statusSkippedAutomaticallyBackgroundBrush = new SolidColorBrush(Color.Parse("#FFF3C4A6"));
+        private static readonly IBrush s_statusSkippedAutomaticallyBorderBrush = new SolidColorBrush(Color.Parse("#FF91512A"));
+        private static readonly IBrush s_statusSkippedAutomaticallyForegroundBrush = Brushes.White;
+        private static readonly IBrush s_statusNotInitializedBackgroundBrush = new SolidColorBrush(Color.Parse("#FFBFDBFE"));
+        private static readonly IBrush s_statusNotInitializedBorderBrush = new SolidColorBrush(Color.Parse("#FF2563EB"));
+        private static readonly IBrush s_statusNotInitializedForegroundBrush = new SolidColorBrush(Color.Parse("#FF123B9A"));
+        private static readonly IBrush s_statusFailedBackgroundBrush = new SolidColorBrush(Color.Parse("#FFFF1B11"));
+        private static readonly IBrush s_statusFailedBorderBrush = new SolidColorBrush(Color.Parse("#FF9C1510"));
+        private static readonly IBrush s_statusFailedForegroundBrush = Brushes.White;
+        private static readonly IBrush s_statusCanceledBackgroundBrush = new SolidColorBrush(Color.Parse("#FFFFF2DE"));
+        private static readonly IBrush s_statusCanceledBorderBrush = new SolidColorBrush(Color.Parse("#FFB7791F"));
+        private static readonly IBrush s_statusCanceledForegroundBrush = new SolidColorBrush(Color.Parse("#FF8A5A12"));
     }
 }
