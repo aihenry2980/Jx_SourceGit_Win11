@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 
 using Avalonia;
 using Avalonia.Controls;
@@ -310,6 +311,16 @@ namespace SourceGit.Views
                     };
                     menu.Items.Add(copyPath);
                     menu.Items.Add(new MenuItem() { Header = "-" });
+
+                    var edit = new MenuItem();
+                    edit.Header = App.Text("PageTabBar.Tab.Edit");
+                    edit.Icon = App.CreateMenuIcon("Icons.Edit");
+                    edit.Click += (_, ev) =>
+                    {
+                        page.Node.Edit();
+                        ev.Handled = true;
+                    };
+                    menu.Items.Add(edit);
 
                     var bookmark = new MenuItem();
                     bookmark.Header = App.Text("PageTabBar.Tab.Bookmark");
