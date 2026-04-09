@@ -66,6 +66,11 @@
     <ProjectReference Include="../depends/AvaloniaEdit/src/AvaloniaEdit.TextMate/AvaloniaEdit.TextMate.csproj" />
   </ItemGroup>
 
+  <!-- Override transitive vulnerable package to a patched version -->
+  <ItemGroup>
+    <PackageReference Update="Tmds.DBus.Protocol" Version="0.21.3" />
+  </ItemGroup>
+
   <ItemGroup>
     <TrimmerRootAssembly Include="SourceGit" />
     <TrimmerRootAssembly Include="Avalonia.Themes.Fluent" />
