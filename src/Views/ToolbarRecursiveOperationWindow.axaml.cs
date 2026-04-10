@@ -25,13 +25,16 @@ namespace SourceGit.Views
 
             AdjustWindowSizeForContent();
 
+            ViewModels.ToolbarRecursiveOperation operation = DataContext as ViewModels.ToolbarRecursiveOperation;
+            operation?.PropertyChanged += OnViewModelPropertyChanged;
+
             if (_initialized)
                 return;
 
             _initialized = true;
 
-            if (DataContext is ViewModels.ToolbarRecursiveOperation vm && vm.CanStartDirectly())
-                await ProcessAsync(vm);
+            if (operation != null && operation.CanStartDirectly())
+                await ProcessAsync(operation);
         }
 
         protected override void OnClosed(EventArgs e)
@@ -40,7 +43,10 @@ namespace SourceGit.Views
             ViewModels.Preferences.Instance.Save();
 
             if (DataContext is ViewModels.ToolbarRecursiveOperation vm)
+            {
+                vm.PropertyChanged -= OnViewModelPropertyChanged;
                 vm.Cleanup();
+            }
 
             base.OnClosed(e);
         }
@@ -95,6 +101,14 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
+        private async void OnRetry(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.ToolbarRecursiveOperation vm)
+                await ProcessAsync(vm);
+
+            e.Handled = true;
+        }
+
         private async Task ProcessAsync(ViewModels.ToolbarRecursiveOperation vm)
         {
             if (vm.InProgress || !vm.Check())
@@ -132,8 +146,25 @@ namespace SourceGit.Views
             if (DataContext is not ViewModels.ToolbarRecursiveOperation vm || !vm.PreferTallWindow)
                 return;
 
-            MinHeight = Math.Max(MinHeight, 840);
-            Height = Math.Max(Height, 960);
+            if (vm.CanEditSubmoduleSelection)
+            {
+                MinHeight = 520;
+                Height = Math.Min(Math.Max(MinHeight, Height), 640);
+            }
+            else
+            {
+                MinHeight = Math.Max(MinHeight, 840);
+                Height = Math.Max(Height, 960);
+            }
+        }
+
+        private void OnViewModelPropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName is nameof(ViewModels.ToolbarRecursiveOperation.CanEditSubmoduleSelection) or
+                nameof(ViewModels.ToolbarRecursiveOperation.IsLogVisible))
+            {
+                AdjustWindowSizeForContent();
+            }
         }
 
         private bool _initialized = false;

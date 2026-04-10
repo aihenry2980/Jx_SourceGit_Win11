@@ -254,6 +254,9 @@ namespace SourceGit.ViewModels
         public bool PreferTallWindow => IsSubmoduleProgressBoardVisible;
         public int SubmoduleBoardRowSpan => IsLogVisible ? 1 : 3;
         public double SubmoduleBoardMaxHeight => IsLogVisible ? 380 : 720;
+        public bool ShowSelectionActionButtons => _showSubmoduleSelection && Log == null;
+        public bool ShowCloseAfterCompletion => _mode == ToolbarRecursiveOperationMode.Run && Log != null && _summaryFailed == 0;
+        public bool ShowRetryAfterCompletion => _mode == ToolbarRecursiveOperationMode.Run && Log != null && _summaryFailed > 0;
         public bool IsLegacyCombinedSyncPhaseVisible => IsCombinedSyncPhaseVisible && !IsSubmoduleProgressBoardVisible;
         public bool IsLegacySingleOperationSubmoduleProgressVisible =>
             IsSingleOperationSubmoduleProgressVisible &&
@@ -464,6 +467,9 @@ namespace SourceGit.ViewModels
                 OnPropertyChanged(nameof(AreOperationButtonsVisible));
                 OnPropertyChanged(nameof(SubmoduleBoardRowSpan));
                 OnPropertyChanged(nameof(SubmoduleBoardMaxHeight));
+                OnPropertyChanged(nameof(ShowSelectionActionButtons));
+                OnPropertyChanged(nameof(ShowCloseAfterCompletion));
+                OnPropertyChanged(nameof(ShowRetryAfterCompletion));
                 Use(log);
             }
 
@@ -818,6 +824,8 @@ namespace SourceGit.ViewModels
             OnPropertyChanged(nameof(OperationSummarySkippedNotInitializedDots));
             OnPropertyChanged(nameof(OperationSummaryFailedText));
             OnPropertyChanged(nameof(OperationSummaryFailedDots));
+            OnPropertyChanged(nameof(ShowCloseAfterCompletion));
+            OnPropertyChanged(nameof(ShowRetryAfterCompletion));
             OnPropertyChanged(nameof(CurrentSubmoduleName));
             OnPropertyChanged(nameof(CurrentSubmoduleProgressText));
             OnPropertyChanged(nameof(IsSubmodulePhaseDetailsVisible));
@@ -859,6 +867,8 @@ namespace SourceGit.ViewModels
             OnPropertyChanged(nameof(OperationSummarySkippedNotInitializedDots));
             OnPropertyChanged(nameof(OperationSummaryFailedText));
             OnPropertyChanged(nameof(OperationSummaryFailedDots));
+            OnPropertyChanged(nameof(ShowCloseAfterCompletion));
+            OnPropertyChanged(nameof(ShowRetryAfterCompletion));
         }
 
         private static IReadOnlyList<int> BuildSummaryDots(int count)
@@ -1034,21 +1044,21 @@ namespace SourceGit.ViewModels
         private static readonly IBrush s_selectionUncheckedBackgroundBrush = new SolidColorBrush(Color.Parse("#00FFFFFF"));
         private static readonly IBrush s_selectionCheckBrush = new SolidColorBrush(Color.Parse("#FF0D6E99"));
         private static readonly IBrush s_runningIndicatorBrush = new SolidColorBrush(Color.Parse("#FF0E7490"));
-        private static readonly IBrush s_statusSucceededBackgroundBrush = new SolidColorBrush(Color.Parse("#FF49A728"));
-        private static readonly IBrush s_statusSucceededBorderBrush = new SolidColorBrush(Color.Parse("#FF266E12"));
-        private static readonly IBrush s_statusSucceededForegroundBrush = Brushes.White;
-        private static readonly IBrush s_statusSkippedByUserBackgroundBrush = new SolidColorBrush(Color.Parse("#FF1F9BCB"));
-        private static readonly IBrush s_statusSkippedByUserBorderBrush = new SolidColorBrush(Color.Parse("#FF116B8D"));
-        private static readonly IBrush s_statusSkippedByUserForegroundBrush = Brushes.White;
-        private static readonly IBrush s_statusSkippedAutomaticallyBackgroundBrush = new SolidColorBrush(Color.Parse("#FFF3C4A6"));
-        private static readonly IBrush s_statusSkippedAutomaticallyBorderBrush = new SolidColorBrush(Color.Parse("#FF91512A"));
-        private static readonly IBrush s_statusSkippedAutomaticallyForegroundBrush = Brushes.White;
-        private static readonly IBrush s_statusNotInitializedBackgroundBrush = new SolidColorBrush(Color.Parse("#FFBFDBFE"));
-        private static readonly IBrush s_statusNotInitializedBorderBrush = new SolidColorBrush(Color.Parse("#FF2563EB"));
-        private static readonly IBrush s_statusNotInitializedForegroundBrush = new SolidColorBrush(Color.Parse("#FF123B9A"));
-        private static readonly IBrush s_statusFailedBackgroundBrush = new SolidColorBrush(Color.Parse("#FFFF1B11"));
-        private static readonly IBrush s_statusFailedBorderBrush = new SolidColorBrush(Color.Parse("#FF9C1510"));
-        private static readonly IBrush s_statusFailedForegroundBrush = Brushes.White;
+        private static readonly IBrush s_statusSucceededBackgroundBrush = new SolidColorBrush(Color.Parse("#142F855A"));
+        private static readonly IBrush s_statusSucceededBorderBrush = new SolidColorBrush(Color.Parse("#662F855A"));
+        private static readonly IBrush s_statusSucceededForegroundBrush = new SolidColorBrush(Color.Parse("#FF2F855A"));
+        private static readonly IBrush s_statusSkippedByUserBackgroundBrush = new SolidColorBrush(Color.Parse("#141D6FDD"));
+        private static readonly IBrush s_statusSkippedByUserBorderBrush = new SolidColorBrush(Color.Parse("#661D6FDD"));
+        private static readonly IBrush s_statusSkippedByUserForegroundBrush = new SolidColorBrush(Color.Parse("#FF1D6FDD"));
+        private static readonly IBrush s_statusSkippedAutomaticallyBackgroundBrush = new SolidColorBrush(Color.Parse("#14B7791F"));
+        private static readonly IBrush s_statusSkippedAutomaticallyBorderBrush = new SolidColorBrush(Color.Parse("#66B7791F"));
+        private static readonly IBrush s_statusSkippedAutomaticallyForegroundBrush = new SolidColorBrush(Color.Parse("#FF8A5A12"));
+        private static readonly IBrush s_statusNotInitializedBackgroundBrush = new SolidColorBrush(Color.Parse("#143B82F6"));
+        private static readonly IBrush s_statusNotInitializedBorderBrush = new SolidColorBrush(Color.Parse("#663B82F6"));
+        private static readonly IBrush s_statusNotInitializedForegroundBrush = new SolidColorBrush(Color.Parse("#FF2563EB"));
+        private static readonly IBrush s_statusFailedBackgroundBrush = new SolidColorBrush(Color.Parse("#14B91C1C"));
+        private static readonly IBrush s_statusFailedBorderBrush = new SolidColorBrush(Color.Parse("#66B91C1C"));
+        private static readonly IBrush s_statusFailedForegroundBrush = new SolidColorBrush(Color.Parse("#FFB91C1C"));
         private static readonly IBrush s_statusCanceledBackgroundBrush = new SolidColorBrush(Color.Parse("#FFFFF2DE"));
         private static readonly IBrush s_statusCanceledBorderBrush = new SolidColorBrush(Color.Parse("#FFB7791F"));
         private static readonly IBrush s_statusCanceledForegroundBrush = new SolidColorBrush(Color.Parse("#FF8A5A12"));

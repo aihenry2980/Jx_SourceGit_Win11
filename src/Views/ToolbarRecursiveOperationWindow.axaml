@@ -49,7 +49,7 @@
               Height="0"
               Click="OnSureByHotKey"
               HotKey="Enter"
-              IsVisible="{Binding InProgress, Converter={x:Static BoolConverters.Not}}"/>
+              IsVisible="{Binding ShowSelectionActionButtons}"/>
 
       <Button Classes="flat primary"
               Width="100"
@@ -59,7 +59,7 @@
               VerticalContentAlignment="Center"
               Content="{DynamicResource Text.Sure}"
               Click="OnSure"
-              IsVisible="{Binding InProgress, Converter={x:Static BoolConverters.Not}}"
+              IsVisible="{Binding ShowSelectionActionButtons}"
               ToolTip.Tip="Enter"/>
 
       <Button Classes="flat"
@@ -71,7 +71,7 @@
               VerticalContentAlignment="Center"
               Content="{DynamicResource Text.Cancel}"
               Click="OnCancel"
-              IsVisible="{Binding InProgress, Converter={x:Static BoolConverters.Not}}"
+              IsVisible="{Binding ShowSelectionActionButtons}"
               ToolTip.Tip="ESC"/>
 
       <Button Classes="flat primary"
@@ -84,6 +84,41 @@
               Click="OnCancelOperation"
               IsVisible="{Binding InProgress}"
               IsEnabled="{Binding CanCancelOperation}"
+              ToolTip.Tip="ESC"/>
+
+      <Button Classes="flat"
+              Width="100"
+              Height="28"
+              Padding="0"
+              HorizontalContentAlignment="Center"
+              VerticalContentAlignment="Center"
+              Content="{DynamicResource Text.Close}"
+              Click="OnCancel"
+              IsVisible="{Binding ShowCloseAfterCompletion}"
+              ToolTip.Tip="ESC"/>
+
+      <Button Width="100"
+              Height="28"
+              Padding="0"
+              Margin="0,0,8,0"
+              HorizontalContentAlignment="Center"
+              VerticalContentAlignment="Center"
+              Content="Retry"
+              Click="OnRetry"
+              IsVisible="{Binding ShowRetryAfterCompletion}"
+              Background="#FFB91C1C"
+              BorderBrush="#FF8B1111"
+              Foreground="White"/>
+
+      <Button Classes="flat"
+              Width="100"
+              Height="28"
+              Padding="0"
+              HorizontalContentAlignment="Center"
+              VerticalContentAlignment="Center"
+              Content="{DynamicResource Text.Close}"
+              Click="OnCancel"
+              IsVisible="{Binding ShowRetryAfterCompletion}"
               ToolTip.Tip="ESC"/>
     </StackPanel>
 
