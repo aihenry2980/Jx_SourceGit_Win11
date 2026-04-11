@@ -435,7 +435,7 @@
             <TextBlock Classes="tab_header" Text="{DynamicResource Text.Preferences.Git}"/>
           </TabItem.Header>
 
-          <Grid Margin="8" RowDefinitions="32,32,32,32,32,32,32,32,Auto,32" ColumnDefinitions="Auto,*">
+          <Grid Margin="8" RowDefinitions="32,32,32,32,32,32,32,32,Auto,32,32" ColumnDefinitions="Auto,*">
             <TextBlock Grid.Row="0" Grid.Column="0"
                        Text="{DynamicResource Text.Preferences.Git.Path}"
                        HorizontalAlignment="Right"
@@ -551,6 +551,24 @@
                          Margin="5,0,0,0"
                          Text="{DynamicResource Text.Configure.Git.AutoFetchIntervalSuffix}" />
             </StackPanel>
+
+            <TextBlock Grid.Row="10" Grid.Column="0"
+                       Text="Recursive submodule depth"
+                       HorizontalAlignment="Right"
+                       Margin="0,0,16,0"/>
+            <NumericUpDown Grid.Row="10" Grid.Column="1"
+                           Minimum="1"
+                           Maximum="20"
+                           Increment="1"
+                           Height="26" Width="110"
+                           Padding="4"
+                           BorderThickness="1" BorderBrush="{DynamicResource Brush.Border1}"
+                           CornerRadius="3"
+                           ParsingNumberStyle="Integer"
+                           FormatString="0"
+                           HorizontalAlignment="Left"
+                           ToolTip.Tip="Maximum nested submodule levels to show in the sidebar. Default is 5."
+                           Value="{Binding RecursiveSubmoduleDisplayDepth, Mode=TwoWay}"/>
           </Grid>
         </TabItem>
 

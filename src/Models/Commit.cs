@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
 
 namespace SourceGit.Models
 {
@@ -23,6 +24,7 @@ namespace SourceGit.Models
         public User Committer { get; set; } = User.Invalid;
         public ulong CommitterTime { get; set; } = 0;
         public string Subject { get; set; } = string.Empty;
+        public string Body { get; set; } = string.Empty;
         public List<string> Parents { get; set; } = new();
         public List<Decorator> Decorators { get; set; } = new();
 
@@ -44,7 +46,18 @@ namespace SourceGit.Models
         public bool HasDecorators => Decorators.Count > 0;
         public string CommitterTimeShortStr => DateTimeFormat.Format(CommitterTime, true);
         public string CommitterTimeStr => DateTimeFormat.Format(CommitterTime);
-        public string HistoryDisplaySubject => ChangedFileCount >= 0 ? $"({ChangedFileCount}) {Subject}" : Subject;
+        public string HistoryDisplaySubject
+        {
+            get
+            {
+                var subject = NormalizeHistoryDisplaySubject(Subject);
+                var body = NormalizeHistoryDisplaySubject(Body);
+                if (!string.IsNullOrEmpty(body))
+                    subject = string.IsNullOrEmpty(subject) ? body : $"{subject} {body}";
+
+                return ChangedFileCount >= 0 ? $"({ChangedFileCount}) {subject}" : subject;
+            }
+        }
 
         public bool MatchesHistoryQuickFind(string query)
         {
@@ -181,6 +194,44 @@ namespace SourceGit.Models
                 DecoratorType.Tag => 6,
                 _ => 100,
             };
+        }
+
+        private static string NormalizeHistoryDisplaySubject(string subject)
+        {
+            if (string.IsNullOrEmpty(subject))
+                return string.Empty;
+
+            var hasControlWhitespace = false;
+            foreach (var c in subject)
+            {
+                if (c is '\r' or '\n' or '\t')
+                {
+                    hasControlWhitespace = true;
+                    break;
+                }
+            }
+
+            if (!hasControlWhitespace)
+                return subject;
+
+            var builder = new StringBuilder(subject.Length);
+            var pendingSpace = false;
+            foreach (var c in subject)
+            {
+                if (c is '\r' or '\n' or '\t')
+                {
+                    pendingSpace = builder.Length > 0;
+                    continue;
+                }
+
+                if (pendingSpace && c != ' ')
+                    builder.Append(' ');
+
+                builder.Append(c);
+                pendingSpace = false;
+            }
+
+            return builder.ToString();
         }
     }
 

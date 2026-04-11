@@ -1242,6 +1242,32 @@
   <Style Selector="ToggleButton.group_expander:pointerover /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="Transparent"/>
   </Style>
+  <Style Selector="ToggleButton.group_expander.primary_group">
+    <Setter Property="Margin" Value="4,3,4,2"/>
+    <Setter Property="Height" Value="30"/>
+    <Setter Property="Background" Value="#1F0078D7"/>
+    <Setter Property="BorderBrush" Value="#550078D7"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="7"/>
+  </Style>
+  <Style Selector="ToggleButton.group_expander.primary_group /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="#1F0078D7"/>
+    <Setter Property="BorderBrush" Value="#550078D7"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="7"/>
+  </Style>
+  <Style Selector="ToggleButton.group_expander.primary_group:checked /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="#260078D7"/>
+  </Style>
+  <Style Selector="ToggleButton.group_expander.primary_group:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="#330078D7"/>
+  </Style>
+  <Style Selector="ToggleButton.group_expander.primary_group Path">
+    <Setter Property="Fill" Value="{DynamicResource Brush.Accent}"/>
+  </Style>
+  <Style Selector="ToggleButton.group_expander.primary_group TextBlock.group_header_label">
+    <Setter Property="Foreground" Value="{DynamicResource Brush.FG1}"/>
+  </Style>
 
   <Style Selector="ToggleButton.tree_expander">
     <Setter Property="Margin" Value="0" />
@@ -1359,10 +1385,10 @@
                 Width="11" Height="11"
                 Margin="0,1,0,0"
                 Data="{StaticResource Icons.Tree}"
-                Fill="{DynamicResource Brush.FG1}"
+                Fill="{DynamicResource Brush.FG2}"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
-                Opacity="0.8"/>
+                Opacity="0.55"/>
         </Border>
       </ControlTemplate>
     </Setter>
@@ -1373,7 +1399,6 @@
     </Style>
 
     <Style Selector="^:pointerover /template/ Path#ChevronPath">
-      <Setter Property="Fill" Value="{DynamicResource Brush.Accent}" />
       <Setter Property="Opacity" Value="1"/>
     </Style>
   </Style>

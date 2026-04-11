@@ -50,6 +50,14 @@ namespace SourceGit.Views
                 e.Handled = true;
         }
 
+        private void OnRefreshSubmodules(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+                repo.RefreshSubmodules();
+
+            e.Handled = true;
+        }
+
         private void OnSearchKeyDown(object _, KeyEventArgs e)
         {
             if (DataContext is not ViewModels.Repository repo)
@@ -271,25 +279,28 @@ namespace SourceGit.Views
             if (!IsLoaded)
                 return;
 
-            var leftHeight = LeftSidebarGroups.Bounds.Height - 28.0 * 5 - 4;
+            var visibleHeaderHeight = 28.0 + 35.0 * 2 + (vm.IsInfrequentGroupExpanded ? 28.0 * 3 : 0);
+            var leftHeight = LeftSidebarGroups.Bounds.Height - visibleHeaderHeight - 4;
             if (leftHeight <= 0)
                 return;
 
             var localBranchRows = vm.IsLocalBranchGroupExpanded ? LocalBranchTree.Rows.Count : 0;
-            var remoteBranchRows = vm.IsRemoteGroupExpanded ? RemoteBranchTree.Rows.Count : 0;
-            var desiredBranches = (localBranchRows + remoteBranchRows) * 24.0;
-            var desiredTag = vm.IsTagGroupExpanded ? 24.0 * TagsList.Rows : 0;
+            var remoteBranchRows = vm.IsInfrequentGroupExpanded && vm.IsRemoteGroupExpanded ? RemoteBranchTree.Rows.Count : 0;
+            var desiredLocalBranches = localBranchRows * 24.0;
             var desiredSubmodule = vm.IsSubmoduleGroupExpanded ? 24.0 * SubmoduleList.Rows : 0;
-            var desiredWorktree = vm.IsWorktreeGroupExpanded ? 24.0 * vm.Worktrees.Count : 0;
-            var desiredOthers = desiredTag + desiredSubmodule + desiredWorktree;
-            var hasOverflow = (desiredBranches + desiredOthers > leftHeight);
+            var desiredRemoteBranches = remoteBranchRows * 24.0;
+            var desiredTag = vm.IsInfrequentGroupExpanded && vm.IsTagGroupExpanded ? 24.0 * TagsList.Rows : 0;
+            var desiredWorktree = vm.IsInfrequentGroupExpanded && vm.IsWorktreeGroupExpanded ? 24.0 * vm.Worktrees.Count : 0;
+            var desiredFrequent = desiredLocalBranches + desiredSubmodule;
+            var desiredInfrequent = desiredRemoteBranches + desiredTag + desiredWorktree;
+            var hasOverflow = (desiredFrequent + desiredInfrequent > leftHeight);
 
-            if (vm.IsWorktreeGroupExpanded)
+            if (vm.IsInfrequentGroupExpanded && vm.IsWorktreeGroupExpanded)
             {
                 var height = desiredWorktree;
                 if (hasOverflow)
                 {
-                    var test = leftHeight - desiredBranches - desiredTag - desiredSubmodule;
+                    var test = leftHeight - desiredFrequent - desiredRemoteBranches - desiredTag;
                     if (test < 0)
                         height = Math.Min(120, height);
                     else
@@ -298,32 +309,15 @@ namespace SourceGit.Views
 
                 leftHeight -= height;
                 WorktreeList.Height = height;
-                hasOverflow = (desiredBranches + desiredTag + desiredSubmodule) > leftHeight;
+                hasOverflow = (desiredFrequent + desiredRemoteBranches + desiredTag) > leftHeight;
             }
 
-            if (vm.IsSubmoduleGroupExpanded)
-            {
-                var height = desiredSubmodule;
-                if (hasOverflow)
-                {
-                    var test = leftHeight - desiredBranches - desiredTag;
-                    if (test < 0)
-                        height = Math.Min(120, height);
-                    else
-                        height = Math.Max(120, test);
-                }
-
-                leftHeight -= height;
-                SubmoduleList.Height = height;
-                hasOverflow = (desiredBranches + desiredTag) > leftHeight;
-            }
-
-            if (vm.IsTagGroupExpanded)
+            if (vm.IsInfrequentGroupExpanded && vm.IsTagGroupExpanded)
             {
                 var height = desiredTag;
                 if (hasOverflow)
                 {
-                    var test = leftHeight - desiredBranches;
+                    var test = leftHeight - desiredFrequent - desiredRemoteBranches;
                     if (test < 0)
                         height = Math.Min(120, height);
                     else
@@ -332,31 +326,47 @@ namespace SourceGit.Views
 
                 leftHeight -= height;
                 TagsList.Height = height;
+                hasOverflow = (desiredFrequent + desiredRemoteBranches) > leftHeight;
             }
 
-            if (leftHeight > 0 && desiredBranches > leftHeight)
+            if (vm.IsInfrequentGroupExpanded && vm.IsRemoteGroupExpanded)
             {
-                var local = localBranchRows * 24.0;
-                var remote = remoteBranchRows * 24.0;
+                var height = desiredRemoteBranches;
+                if (hasOverflow)
+                {
+                    var test = leftHeight - desiredFrequent;
+                    if (test < 0)
+                        height = Math.Min(120, height);
+                    else
+                        height = Math.Max(120, test);
+                }
+
+                leftHeight -= height;
+                RemoteBranchTree.Height = height;
+            }
+
+            var desiredPrimary = desiredLocalBranches + desiredSubmodule;
+            if (leftHeight > 0 && desiredPrimary > leftHeight)
+            {
                 var half = leftHeight / 2;
                 if (vm.IsLocalBranchGroupExpanded)
                 {
-                    if (vm.IsRemoteGroupExpanded)
+                    if (vm.IsSubmoduleGroupExpanded)
                     {
-                        if (local < half)
+                        if (desiredLocalBranches < half)
                         {
-                            LocalBranchTree.Height = local;
-                            RemoteBranchTree.Height = leftHeight - local;
+                            LocalBranchTree.Height = desiredLocalBranches;
+                            SubmoduleList.Height = leftHeight - desiredLocalBranches;
                         }
-                        else if (remote < half)
+                        else if (desiredSubmodule < half)
                         {
-                            RemoteBranchTree.Height = remote;
-                            LocalBranchTree.Height = leftHeight - remote;
+                            SubmoduleList.Height = desiredSubmodule;
+                            LocalBranchTree.Height = leftHeight - desiredSubmodule;
                         }
                         else
                         {
                             LocalBranchTree.Height = half;
-                            RemoteBranchTree.Height = half;
+                            SubmoduleList.Height = half;
                         }
                     }
                     else
@@ -364,23 +374,21 @@ namespace SourceGit.Views
                         LocalBranchTree.Height = leftHeight;
                     }
                 }
-                else if (vm.IsRemoteGroupExpanded)
+                else if (vm.IsSubmoduleGroupExpanded)
                 {
-                    RemoteBranchTree.Height = leftHeight;
+                    SubmoduleList.Height = leftHeight;
                 }
             }
             else
             {
                 if (vm.IsLocalBranchGroupExpanded)
                 {
-                    var height = localBranchRows * 24;
-                    LocalBranchTree.Height = height;
+                    LocalBranchTree.Height = desiredLocalBranches;
                 }
 
-                if (vm.IsRemoteGroupExpanded)
+                if (vm.IsSubmoduleGroupExpanded)
                 {
-                    var height = remoteBranchRows * 24;
-                    RemoteBranchTree.Height = height;
+                    SubmoduleList.Height = desiredSubmodule;
                 }
             }
         }

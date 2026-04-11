@@ -76,5 +76,13 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
+        private void OnOpenSubmoduleUpdateDiff(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.ToolbarRecursiveOperation vm &&
+                sender is Control { DataContext: ViewModels.ToolbarRecursiveOperation.SubmoduleRunItem item })
+                vm.OpenSubmoduleUpdateDiff(item);
+
+            e.Handled = true;
+        }
     }
 }

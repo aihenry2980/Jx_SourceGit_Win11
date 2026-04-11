@@ -108,6 +108,8 @@ namespace SourceGit.ViewModels
 
             public bool IsCheckedVisible => IsSelected;
             public bool IsStatusVisible => _state is not SubmoduleRunState.Pending and not SubmoduleRunState.Running;
+            public bool CanOpenUpdateDiff => _state == SubmoduleRunState.Succeeded;
+            public bool IsReadOnlyStatusVisible => IsStatusVisible && !CanOpenUpdateDiff;
             public bool IsRunning => _state == SubmoduleRunState.Running;
             public IBrush RowBackground => IsSelected ? s_boardSelectedRowBackgroundBrush : s_boardSkippedRowBackgroundBrush;
             public IBrush RowBorderBrush => IsSelected ? s_boardSelectedRowBorderBrush : s_boardSkippedRowBorderBrush;
@@ -156,6 +158,10 @@ namespace SourceGit.ViewModels
                 SubmoduleRunState.Canceled => s_statusCanceledForegroundBrush,
                 _ => Brushes.Transparent,
             };
+            public string StatusToolTip => CanOpenUpdateDiff ? "Show diff from before update" : null;
+            public string RepositoryPath { get; private set; } = string.Empty;
+            public string BeforeRevision { get; private set; } = string.Empty;
+            public string AfterRevision { get; private set; } = string.Empty;
 
             public SubmoduleRunItem(string path, bool isSelected)
             {
@@ -171,17 +177,37 @@ namespace SourceGit.ViewModels
 
                 _state = state;
                 _hasFinalState = state is not SubmoduleRunState.Pending and not SubmoduleRunState.Running;
+                if (state != SubmoduleRunState.Succeeded)
+                    ClearUpdateDiff();
+
                 OnPropertyChanged(nameof(IsStatusVisible));
+                OnPropertyChanged(nameof(CanOpenUpdateDiff));
+                OnPropertyChanged(nameof(IsReadOnlyStatusVisible));
                 OnPropertyChanged(nameof(IsRunning));
                 OnPropertyChanged(nameof(StatusText));
                 OnPropertyChanged(nameof(StatusBackground));
                 OnPropertyChanged(nameof(StatusBorderBrush));
                 OnPropertyChanged(nameof(StatusForeground));
+                OnPropertyChanged(nameof(StatusToolTip));
+            }
+
+            internal void SetUpdateDiff(string repositoryPath, string beforeRevision, string afterRevision)
+            {
+                RepositoryPath = repositoryPath ?? string.Empty;
+                BeforeRevision = beforeRevision ?? string.Empty;
+                AfterRevision = afterRevision ?? string.Empty;
             }
 
             private bool _isSelected;
             private bool _hasFinalState;
             private SubmoduleRunState _state;
+
+            private void ClearUpdateDiff()
+            {
+                RepositoryPath = string.Empty;
+                BeforeRevision = string.Empty;
+                AfterRevision = string.Empty;
+            }
         }
 
         public string Title
@@ -334,6 +360,33 @@ namespace SourceGit.ViewModels
         public override bool CanStartDirectly()
         {
             return !_showSubmoduleSelection;
+        }
+
+        public void OpenSubmoduleUpdateDiff(SubmoduleRunItem item)
+        {
+            if (item == null || !item.CanOpenUpdateDiff)
+                return;
+
+            if (string.IsNullOrWhiteSpace(item.RepositoryPath) ||
+                string.IsNullOrWhiteSpace(item.BeforeRevision) ||
+                string.IsNullOrWhiteSpace(item.AfterRevision))
+            {
+                _repo.SendNotification($"No previous checkout is available to compare for `{item.Path}`.");
+                return;
+            }
+
+            if (string.Equals(item.BeforeRevision, item.AfterRevision, StringComparison.OrdinalIgnoreCase))
+            {
+                _repo.SendNotification($"No revision difference is available for `{item.Path}`.");
+                return;
+            }
+
+            App.ShowWindow(new Compare(
+                item.RepositoryPath,
+                item.BeforeRevision,
+                item.AfterRevision,
+                $"Before {ShortRevision(item.BeforeRevision)}",
+                $"After {ShortRevision(item.AfterRevision)}"));
         }
 
         private bool IsSubmoduleOperationKind =>
@@ -933,6 +986,7 @@ namespace SourceGit.ViewModels
                         break;
                     case Models.RecursiveOperationTargetState.Succeeded:
                         item.SetState(SubmoduleRunState.Succeeded);
+                        item.SetUpdateDiff(progress.CurrentRepositoryPath, progress.CurrentBeforeRevision, progress.CurrentAfterRevision);
                         break;
                     case Models.RecursiveOperationTargetState.Failed:
                         item.SetState(SubmoduleRunState.Failed);
@@ -946,6 +1000,14 @@ namespace SourceGit.ViewModels
 
                 break;
             }
+        }
+
+        private static string ShortRevision(string revision)
+        {
+            if (string.IsNullOrEmpty(revision))
+                return string.Empty;
+
+            return revision.Length > 10 ? revision.Substring(0, 10) : revision;
         }
 
         private void MarkRunningSubmoduleCanceled()

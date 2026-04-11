@@ -386,7 +386,26 @@ namespace SourceGit.ViewModels
         public List<Models.Submodule> Submodules
         {
             get => _submodules;
-            private set => SetProperty(ref _submodules, value);
+            private set
+            {
+                if (SetProperty(ref _submodules, value))
+                    OnPropertyChanged(nameof(SubmodulesHeaderCountText));
+            }
+        }
+
+        public bool IsSubmodulesLoading
+        {
+            get => _isSubmodulesLoading;
+            private set
+            {
+                if (SetProperty(ref _isSubmodulesLoading, value))
+                    OnPropertyChanged(nameof(SubmodulesHeaderCountText));
+            }
+        }
+
+        public string SubmodulesHeaderCountText
+        {
+            get => IsSubmodulesLoading ? "(loading...)" : $"({_submodules.Count})";
         }
 
         public bool ShowSubmodulesAsTree
@@ -712,6 +731,19 @@ namespace SourceGit.ViewModels
                 if (value != _uiStates.IsWorktreeExpandedInSideBar)
                 {
                     _uiStates.IsWorktreeExpandedInSideBar = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public bool IsInfrequentGroupExpanded
+        {
+            get => _uiStates.IsInfrequentExpandedInSideBar;
+            set
+            {
+                if (value != _uiStates.IsInfrequentExpandedInSideBar)
+                {
+                    _uiStates.IsInfrequentExpandedInSideBar = value;
                     OnPropertyChanged();
                 }
             }
@@ -2414,63 +2446,90 @@ namespace SourceGit.ViewModels
 
         public void RefreshSubmodules()
         {
+            var refreshVersion = Interlocked.Increment(ref _refreshSubmodulesVersion);
+
             if (!MayHaveSubmodules())
             {
-                if (_submodules.Count > 0)
+                Dispatcher.UIThread.Invoke(() =>
                 {
-                    Dispatcher.UIThread.Invoke(() =>
+                    IsSubmodulesLoading = false;
+
+                    if (_submodules.Count > 0)
                     {
                         var hadParentDecorator = ShouldAttachParentRepositoryDecorator();
                         Submodules = [];
                         VisibleSubmodules = BuildVisibleSubmodules();
                         if (hadParentDecorator != ShouldAttachParentRepositoryDecorator())
                             RefreshCommits();
-                    });
-                }
+                    }
+                });
 
                 return;
             }
 
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (refreshVersion == _refreshSubmodulesVersion)
+                    IsSubmodulesLoading = true;
+            });
+
             Task.Run(async () =>
             {
-                var submodules = await new Commands.QuerySubmodules(FullPath).GetResultAsync().ConfigureAwait(false);
-
-                Dispatcher.UIThread.Invoke(() =>
+                try
                 {
-                    var hadParentDecorator = ShouldAttachParentRepositoryDecorator();
-                    bool hasChanged = _submodules.Count != submodules.Count;
-                    if (!hasChanged)
-                    {
-                        var old = new Dictionary<string, Models.Submodule>();
-                        foreach (var module in _submodules)
-                            old.Add(module.Path, module);
+                    var depth = Preferences.Instance.RecursiveSubmoduleDisplayDepth;
+                    var submodules = await new Commands.QuerySubmodules(FullPath, depth).GetResultAsync().ConfigureAwait(false);
 
-                        foreach (var module in submodules)
+                    Dispatcher.UIThread.Invoke(() =>
+                    {
+                        if (refreshVersion != _refreshSubmodulesVersion)
+                            return;
+
+                        var hadParentDecorator = ShouldAttachParentRepositoryDecorator();
+                        bool hasChanged = _submodules.Count != submodules.Count;
+                        if (!hasChanged)
                         {
-                            if (!old.TryGetValue(module.Path, out var exist))
+                            var old = new Dictionary<string, Models.Submodule>();
+                            foreach (var module in _submodules)
+                                old.Add(module.Path, module);
+
+                            foreach (var module in submodules)
                             {
-                                hasChanged = true;
-                                break;
-                            }
+                                if (!old.TryGetValue(module.Path, out var exist))
+                                {
+                                    hasChanged = true;
+                                    break;
+                                }
 
                             hasChanged = !exist.SHA.Equals(module.SHA, StringComparison.Ordinal) ||
                                          !exist.Branch.Equals(module.Branch, StringComparison.Ordinal) ||
                                          !exist.URL.Equals(module.URL, StringComparison.Ordinal) ||
-                                         exist.Status != module.Status;
+                                         exist.Status != module.Status ||
+                                         exist.HasFileChanges != module.HasFileChanges ||
+                                         exist.HasSubmoduleChanges != module.HasSubmoduleChanges;
 
-                            if (hasChanged)
-                                break;
+                                if (hasChanged)
+                                    break;
+                            }
                         }
-                    }
 
-                    if (hasChanged)
+                        if (hasChanged)
+                        {
+                            Submodules = submodules;
+                            VisibleSubmodules = BuildVisibleSubmodules();
+                            if (hadParentDecorator != ShouldAttachParentRepositoryDecorator())
+                                RefreshCommits();
+                        }
+                    });
+                }
+                finally
+                {
+                    Dispatcher.UIThread.Post(() =>
                     {
-                        Submodules = submodules;
-                        VisibleSubmodules = BuildVisibleSubmodules();
-                        if (hadParentDecorator != ShouldAttachParentRepositoryDecorator())
-                            RefreshCommits();
-                    }
-                });
+                        if (refreshVersion == _refreshSubmodulesVersion)
+                            IsSubmodulesLoading = false;
+                    });
+                }
             });
         }
 
@@ -3118,6 +3177,9 @@ namespace SourceGit.ViewModels
                 log?.AppendLine($"=== Update submodule `{target}` ===");
                 var submoduleRoot = Native.OS.GetAbsPath(FullPath, target).Replace('\\', '/');
                 var beforeHead = await new Commands.QueryRevisionByRefName(submoduleRoot, "HEAD").GetResultAsync().ConfigureAwait(false);
+                var superProjectPointer = await new Commands.QuerySubmoduleSuperProjectPointer(FullPath, target).GetResultAsync().ConfigureAwait(false);
+                var beforeMatchesPointer = IsSameRevision(beforeHead, superProjectPointer);
+                var afterHead = string.Empty;
                 var targetState = Models.RecursiveOperationTargetState.Running;
                 var one = await cmd.Use(log).UpdateAsync([target], true, false).ConfigureAwait(false);
                 if (cancellationToken.IsCancellationRequested)
@@ -3153,8 +3215,13 @@ namespace SourceGit.ViewModels
 
                 if (one)
                 {
-                    var afterHead = await new Commands.QueryRevisionByRefName(submoduleRoot, "HEAD").GetResultAsync().ConfigureAwait(false);
-                    if (!string.IsNullOrEmpty(afterHead) && !string.Equals(beforeHead, afterHead, StringComparison.Ordinal))
+                    afterHead = await new Commands.QueryRevisionByRefName(submoduleRoot, "HEAD").GetResultAsync().ConfigureAwait(false);
+                    var afterMatchesPointer = IsSameRevision(afterHead, superProjectPointer);
+                    var becameInitialized = string.IsNullOrEmpty(beforeHead) && !string.IsNullOrEmpty(afterHead);
+                    var movedToSuperProjectPointer = !beforeMatchesPointer && afterMatchesPointer;
+                    var headChanged = !string.IsNullOrEmpty(afterHead) && !string.Equals(beforeHead, afterHead, StringComparison.Ordinal);
+
+                    if (becameInitialized || movedToSuperProjectPointer || headChanged)
                     {
                         anyUpdated = true;
                         succeededTargets++;
@@ -3197,6 +3264,9 @@ namespace SourceGit.ViewModels
                     SkippedAutomatically = skippedAutomaticallyTargets,
                     Failed = failedTargets,
                     CurrentTarget = target,
+                    CurrentRepositoryPath = submoduleRoot,
+                    CurrentBeforeRevision = beforeHead ?? string.Empty,
+                    CurrentAfterRevision = afterHead ?? string.Empty,
                     CurrentState = targetState,
                 });
             }
@@ -3205,6 +3275,13 @@ namespace SourceGit.ViewModels
                 MarkSubmodulesDirtyManually();
 
             return succ;
+        }
+
+        private static bool IsSameRevision(string left, string right)
+        {
+            return !string.IsNullOrEmpty(left) &&
+                !string.IsNullOrEmpty(right) &&
+                string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
         }
 
         public async Task<bool> RunRestoreCleanStateRecursivelyAsync(
@@ -3843,6 +3920,8 @@ namespace SourceGit.ViewModels
                 NotifyAccentColorChanged();
             else if (e.PropertyName == nameof(Preferences.DisableBackgroundTasks))
                 EnsureBackgroundTaskState();
+            else if (e.PropertyName == nameof(Preferences.RecursiveSubmoduleDisplayDepth))
+                RefreshSubmodules();
         }
 
         private void EnsureBackgroundTaskState()
@@ -4961,6 +5040,8 @@ namespace SourceGit.ViewModels
         private object _visibleTags = null;
         private List<Models.Submodule> _submodules = [];
         private object _visibleSubmodules = null;
+        private bool _isSubmodulesLoading = false;
+        private int _refreshSubmodulesVersion = 0;
         private string _navigateToCommitDelayed = string.Empty;
         private string _superProjectSubmoduleSHA = string.Empty;
 

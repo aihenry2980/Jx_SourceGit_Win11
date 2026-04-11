@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 
 using Avalonia.Collections;
 
@@ -17,6 +17,81 @@ namespace SourceGit.ViewModels
         public bool IsFolder
         {
             get => Module == null;
+        }
+
+        public bool HasChildren
+        {
+            get => Children.Count > 0;
+        }
+
+        public bool HasModule
+        {
+            get => Module != null;
+        }
+
+        public bool CanShowStatusBadge
+        {
+            get => Module != null;
+        }
+
+        public bool IsInitializedClean
+        {
+            get => Module?.IsInitializedClean ?? false;
+        }
+
+        public bool HasWarningStatusBadge
+        {
+            get => Module?.HasWarningStatusBadge ?? false;
+        }
+
+        public bool HasUnavailableStatusBadge
+        {
+            get => Module?.HasUnavailableStatusBadge ?? false;
+        }
+
+        public bool HasFileChangeStatusBadge
+        {
+            get => Module?.HasFileChangeStatusBadge ?? false;
+        }
+
+        public bool HasSubmoduleChangeStatusBadge
+        {
+            get => Module?.HasSubmoduleChangeStatusBadge ?? false;
+        }
+
+        public bool HasErrorStatusBadge
+        {
+            get => Module?.HasErrorStatusBadge ?? false;
+        }
+
+        public string StatusBadgeText
+        {
+            get => Module?.StatusBadgeText ?? string.Empty;
+        }
+
+        public string StatusBadgeToolTip
+        {
+            get => Module?.StatusBadgeToolTip ?? string.Empty;
+        }
+
+        public string FileChangeStatusBadgeText
+        {
+            get => Module?.FileChangeStatusBadgeText ?? string.Empty;
+        }
+
+        public string SubmoduleChangeStatusBadgeText
+        {
+            get => Module?.SubmoduleChangeStatusBadgeText ?? string.Empty;
+        }
+
+        public string FileChangeStatusBadgeToolTip
+        {
+            get => Module?.FileChangeStatusBadgeToolTip ?? string.Empty;
+        }
+
+        public string SubmoduleChangeStatusBadgeToolTip
+        {
+            get => Module?.SubmoduleChangeStatusBadgeToolTip ?? string.Empty;
         }
 
         public bool IsExpanded
@@ -43,77 +118,118 @@ namespace SourceGit.ViewModels
             IsExpanded = false;
         }
 
-        public SubmoduleTreeNode(string path, int depth, bool isExpanded)
+        public SubmoduleTreeNode(string path, int depth)
         {
             FullPath = path;
             Depth = depth;
-            IsExpanded = isExpanded;
-            Counter = 1;
+            IsExpanded = false;
+            Counter = 0;
         }
 
-        public static List<SubmoduleTreeNode> Build(IList<Models.Submodule> submodules, HashSet<string> expanded)
+        public static List<SubmoduleTreeNode> Build(
+            IList<Models.Submodule> submodules,
+            HashSet<string> oldExpanded,
+            HashSet<string> oldExpandable)
         {
             var nodes = new List<SubmoduleTreeNode>();
-            var folders = new Dictionary<string, SubmoduleTreeNode>();
+            var nodeMap = new Dictionary<string, SubmoduleTreeNode>();
 
             foreach (var module in submodules)
             {
-                var sepIdx = module.Path.IndexOf('/');
-                if (sepIdx == -1)
-                {
-                    nodes.Add(new SubmoduleTreeNode(module, 0));
-                }
-                else
-                {
-                    SubmoduleTreeNode lastFolder = null;
-                    int depth = 0;
+                var parts = module.Path.Split('/');
+                SubmoduleTreeNode parent = null;
+                var fullPath = string.Empty;
 
-                    while (sepIdx != -1)
+                for (int i = 0; i < parts.Length; i++)
+                {
+                    var part = parts[i];
+                    if (string.IsNullOrEmpty(part))
+                        continue;
+
+                    fullPath = string.IsNullOrEmpty(fullPath) ? part : $"{fullPath}/{part}";
+                    var isLeaf = i == parts.Length - 1;
+
+                    if (!nodeMap.TryGetValue(fullPath, out var node))
                     {
-                        var folder = module.Path.Substring(0, sepIdx);
-                        if (folders.TryGetValue(folder, out var value))
-                        {
-                            lastFolder = value;
-                            lastFolder.Counter++;
-                        }
-                        else if (lastFolder == null)
-                        {
-                            lastFolder = new SubmoduleTreeNode(folder, depth, expanded.Contains(folder));
-                            folders.Add(folder, lastFolder);
-                            InsertFolder(nodes, lastFolder);
-                        }
-                        else
-                        {
-                            var cur = new SubmoduleTreeNode(folder, depth, expanded.Contains(folder));
-                            folders.Add(folder, cur);
-                            InsertFolder(lastFolder.Children, cur);
-                            lastFolder = cur;
-                        }
+                        node = isLeaf ? new SubmoduleTreeNode(module, i) : new SubmoduleTreeNode(fullPath, i);
+                        nodeMap.Add(fullPath, node);
 
-                        depth++;
-                        sepIdx = module.Path.IndexOf('/', sepIdx + 1);
+                        if (parent == null)
+                            InsertNode(nodes, node);
+                        else
+                            InsertNode(parent.Children, node);
+                    }
+                    else
+                    {
+                        if (isLeaf && node.Module == null)
+                            node.Module = module;
                     }
 
-                    lastFolder?.Children.Add(new SubmoduleTreeNode(module, depth));
+                    if (!isLeaf)
+                        node.Counter++;
+
+                    parent = node;
                 }
             }
 
-            folders.Clear();
+            ApplyExpansionDefaults(nodes, oldExpanded, oldExpandable);
             return nodes;
         }
 
-        private static void InsertFolder(List<SubmoduleTreeNode> collection, SubmoduleTreeNode subFolder)
+        public static void CollectExpandableState(
+            IEnumerable<SubmoduleTreeNode> nodes,
+            HashSet<string> expanded,
+            HashSet<string> expandable)
         {
+            foreach (var node in nodes)
+            {
+                if (node.HasChildren)
+                {
+                    expandable.Add(node.FullPath);
+                    if (node.IsExpanded)
+                        expanded.Add(node.FullPath);
+                }
+
+                CollectExpandableState(node.Children, expanded, expandable);
+            }
+        }
+
+        private static void ApplyExpansionDefaults(
+            IEnumerable<SubmoduleTreeNode> nodes,
+            HashSet<string> oldExpanded,
+            HashSet<string> oldExpandable)
+        {
+            foreach (var node in nodes)
+            {
+                if (node.HasChildren)
+                {
+                    node.IsExpanded = oldExpandable.Contains(node.FullPath) ?
+                        oldExpanded.Contains(node.FullPath) :
+                        true;
+                }
+
+                ApplyExpansionDefaults(node.Children, oldExpanded, oldExpandable);
+            }
+        }
+
+        private static void InsertNode(List<SubmoduleTreeNode> collection, SubmoduleTreeNode node)
+        {
+            if (!node.IsFolder)
+            {
+                collection.Add(node);
+                return;
+            }
+
             for (int i = 0; i < collection.Count; i++)
             {
                 if (!collection[i].IsFolder)
                 {
-                    collection.Insert(i, subFolder);
+                    collection.Insert(i, node);
                     return;
                 }
             }
 
-            collection.Add(subFolder);
+            collection.Add(node);
         }
 
         private bool _isExpanded = false;
@@ -136,17 +252,12 @@ namespace SourceGit.ViewModels
         public static SubmoduleCollectionAsTree Build(List<Models.Submodule> submodules, SubmoduleCollectionAsTree old)
         {
             var oldExpanded = new HashSet<string>();
+            var oldExpandable = new HashSet<string>();
             if (old != null)
-            {
-                foreach (var row in old.Rows)
-                {
-                    if (row.IsFolder && row.IsExpanded)
-                        oldExpanded.Add(row.FullPath);
-                }
-            }
+                SubmoduleTreeNode.CollectExpandableState(old.Tree, oldExpanded, oldExpandable);
 
             var collection = new SubmoduleCollectionAsTree();
-            collection.Tree = SubmoduleTreeNode.Build(submodules, oldExpanded);
+            collection.Tree = SubmoduleTreeNode.Build(submodules, oldExpanded, oldExpandable);
 
             var rows = new List<SubmoduleTreeNode>();
             MakeTreeRows(rows, collection.Tree);
@@ -157,6 +268,9 @@ namespace SourceGit.ViewModels
 
         public void ToggleExpand(SubmoduleTreeNode node)
         {
+            if (!node.HasChildren)
+                return;
+
             node.IsExpanded = !node.IsExpanded;
 
             var rows = Rows;
@@ -192,7 +306,7 @@ namespace SourceGit.ViewModels
             {
                 rows.Add(node);
 
-                if (!node.IsExpanded || !node.IsFolder)
+                if (!node.IsExpanded || !node.HasChildren)
                     continue;
 
                 MakeTreeRows(rows, node.Children);

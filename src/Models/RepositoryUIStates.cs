@@ -207,6 +207,12 @@ namespace SourceGit.Models
             set;
         } = false;
 
+        public bool IsInfrequentExpandedInSideBar
+        {
+            get;
+            set;
+        } = false;
+
         public bool IsLeftSidebarCompact
         {
             get;

@@ -62,24 +62,9 @@
                           Background="DarkOrange"
                           CornerRadius="4"
                           IsVisible="{Binding Status, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static m:SubmoduleStatus.Normal}}">
-                    <Grid>
-                      <TextBlock VerticalAlignment="Center"
-                                 Text="{DynamicResource Text.Submodule.Status.NotInited}"
-                                 Foreground="White"
-                                 IsVisible="{Binding Status, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:SubmoduleStatus.NotInited}}"/>
-                      <TextBlock VerticalAlignment="Center"
-                                 Text="{DynamicResource Text.Submodule.Status.Modified}"
-                                 Foreground="White"
-                                 IsVisible="{Binding Status, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:SubmoduleStatus.Modified}}"/>
-                      <TextBlock VerticalAlignment="Center"
-                                 Text="{DynamicResource Text.Submodule.Status.RevisionChanged}"
-                                 Foreground="White"
-                                 IsVisible="{Binding Status, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:SubmoduleStatus.RevisionChanged}}"/>
-                      <TextBlock VerticalAlignment="Center"
-                                 Text="{DynamicResource Text.Submodule.Status.Unmerged}"
-                                 Foreground="White"
-                                 IsVisible="{Binding Status, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:SubmoduleStatus.Unmerged}}"/>
-                    </Grid>
+                    <TextBlock VerticalAlignment="Center"
+                               Text="{Binding StatusTooltipBadgeText}"
+                               Foreground="White"/>
                   </Border>
                 </StackPanel>
 
@@ -113,7 +98,7 @@
                                                  Focusable="False"
                                                  HorizontalAlignment="Center"
                                                  IsChecked="{Binding IsExpanded, Mode=OneWay}"
-                                                 IsVisible="{Binding IsFolder}"/>
+                                                 IsVisible="{Binding HasChildren}"/>
 
                 <v:SubmoduleTreeNodeIcon Grid.Column="1"
                                          IsExpanded="{Binding IsExpanded, Mode=OneWay}"/>
@@ -125,12 +110,82 @@
                   <Run Text="{Binding ChildCounter}" Foreground="{DynamicResource Brush.FG2}"/>
                 </TextBlock>
 
-                <Path Grid.Column="3"
-                      Width="8" Height="8"
-                      Margin="0,0,8,0"
-                      Fill="Goldenrod"
-                      Data="{StaticResource Icons.Modified}"
-                      IsVisible="{Binding IsDirty}"/>
+                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="3" Margin="0,0,8,0">
+                  <Border MinWidth="14"
+                          Height="14"
+                          Padding="3,0"
+                          CornerRadius="7"
+                          Background="#FF3FA65A"
+                          ToolTip.Tip="{Binding StatusBadgeToolTip}"
+                          IsVisible="{Binding IsInitializedClean}">
+                    <TextBlock HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               FontSize="9"
+                               FontWeight="Bold"
+                               Foreground="White"
+                               Text="{Binding StatusBadgeText}"/>
+                  </Border>
+
+                  <Border MinWidth="14"
+                          Height="14"
+                          Padding="3,0"
+                          CornerRadius="7"
+                          Background="#FF8A8A8A"
+                          ToolTip.Tip="{Binding StatusBadgeToolTip}"
+                          IsVisible="{Binding HasUnavailableStatusBadge}">
+                    <TextBlock HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               FontSize="9"
+                               FontWeight="Bold"
+                               Foreground="White"
+                               Text="{Binding StatusBadgeText}"/>
+                  </Border>
+
+                  <Border MinWidth="14"
+                          Height="14"
+                          Padding="3,0"
+                          CornerRadius="7"
+                          Background="#FFE05252"
+                          ToolTip.Tip="{Binding StatusBadgeToolTip}"
+                          IsVisible="{Binding HasErrorStatusBadge}">
+                    <TextBlock HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               FontSize="9"
+                               FontWeight="Bold"
+                               Foreground="White"
+                               Text="{Binding StatusBadgeText}"/>
+                  </Border>
+
+                  <Border MinWidth="14"
+                          Height="14"
+                          Padding="3,0"
+                          CornerRadius="7"
+                          Background="#FFF7630C"
+                          ToolTip.Tip="{Binding FileChangeStatusBadgeToolTip}"
+                          IsVisible="{Binding HasFileChangeStatusBadge}">
+                    <TextBlock HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               FontSize="9"
+                               FontWeight="Bold"
+                               Foreground="White"
+                               Text="{Binding FileChangeStatusBadgeText}"/>
+                  </Border>
+
+                  <Border MinWidth="14"
+                          Height="14"
+                          Padding="3,0"
+                          CornerRadius="7"
+                          Background="#FFE6A700"
+                          ToolTip.Tip="{Binding SubmoduleChangeStatusBadgeToolTip}"
+                          IsVisible="{Binding HasSubmoduleChangeStatusBadge}">
+                    <TextBlock HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               FontSize="9"
+                               FontWeight="Bold"
+                               Foreground="#FF2F2500"
+                               Text="{Binding SubmoduleChangeStatusBadgeText}"/>
+                  </Border>
+                </StackPanel>
               </Grid>
             </Border>
           </DataTemplate>
@@ -197,24 +252,9 @@
                               Background="DarkOrange"
                               CornerRadius="4"
                               IsVisible="{Binding Status, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static m:SubmoduleStatus.Normal}}">
-                        <Grid>
-                          <TextBlock VerticalAlignment="Center"
-                                     Text="{DynamicResource Text.Submodule.Status.NotInited}"
-                                     Foreground="White"
-                                     IsVisible="{Binding Status, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:SubmoduleStatus.NotInited}}"/>
-                          <TextBlock VerticalAlignment="Center"
-                                     Text="{DynamicResource Text.Submodule.Status.Modified}"
-                                     Foreground="White"
-                                     IsVisible="{Binding Status, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:SubmoduleStatus.Modified}}"/>
-                          <TextBlock VerticalAlignment="Center"
-                                     Text="{DynamicResource Text.Submodule.Status.RevisionChanged}"
-                                     Foreground="White"
-                                     IsVisible="{Binding Status, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:SubmoduleStatus.RevisionChanged}}"/>
-                          <TextBlock VerticalAlignment="Center"
-                                     Text="{DynamicResource Text.Submodule.Status.Unmerged}"
-                                     Foreground="White"
-                                     IsVisible="{Binding Status, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:SubmoduleStatus.Unmerged}}"/>
-                        </Grid>
+                        <TextBlock VerticalAlignment="Center"
+                                   Text="{Binding StatusTooltipBadgeText}"
+                                   Foreground="White"/>
                       </Border>
                     </StackPanel>
 
@@ -233,12 +273,82 @@
               <Grid ColumnDefinitions="16,*,Auto" Margin="8,0,0,0" VerticalAlignment="Center">
                 <Path Grid.Column="0" Width="10" Height="10" Margin="8,0" Data="{StaticResource Icons.Submodule}"/>
                 <TextBlock Grid.Column="1" Text="{Binding Path}" ClipToBounds="True" TextTrimming="CharacterEllipsis"/>
-                <Path Grid.Column="2"
-                      Width="8" Height="8"
-                      Margin="8,0,8,0"
-                      Fill="Goldenrod"
-                      Data="{StaticResource Icons.Modified}"
-                      IsVisible="{Binding IsDirty}"/>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="3" Margin="8,0,8,0">
+                  <Border MinWidth="14"
+                          Height="14"
+                          Padding="3,0"
+                          CornerRadius="7"
+                          Background="#FF3FA65A"
+                          ToolTip.Tip="{Binding StatusBadgeToolTip}"
+                          IsVisible="{Binding IsInitializedClean}">
+                    <TextBlock HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               FontSize="9"
+                               FontWeight="Bold"
+                               Foreground="White"
+                               Text="{Binding StatusBadgeText}"/>
+                  </Border>
+
+                  <Border MinWidth="14"
+                          Height="14"
+                          Padding="3,0"
+                          CornerRadius="7"
+                          Background="#FF8A8A8A"
+                          ToolTip.Tip="{Binding StatusBadgeToolTip}"
+                          IsVisible="{Binding HasUnavailableStatusBadge}">
+                    <TextBlock HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               FontSize="9"
+                               FontWeight="Bold"
+                               Foreground="White"
+                               Text="{Binding StatusBadgeText}"/>
+                  </Border>
+
+                  <Border MinWidth="14"
+                          Height="14"
+                          Padding="3,0"
+                          CornerRadius="7"
+                          Background="#FFE05252"
+                          ToolTip.Tip="{Binding StatusBadgeToolTip}"
+                          IsVisible="{Binding HasErrorStatusBadge}">
+                    <TextBlock HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               FontSize="9"
+                               FontWeight="Bold"
+                               Foreground="White"
+                               Text="{Binding StatusBadgeText}"/>
+                  </Border>
+
+                  <Border MinWidth="14"
+                          Height="14"
+                          Padding="3,0"
+                          CornerRadius="7"
+                          Background="#FFF7630C"
+                          ToolTip.Tip="{Binding FileChangeStatusBadgeToolTip}"
+                          IsVisible="{Binding HasFileChangeStatusBadge}">
+                    <TextBlock HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               FontSize="9"
+                               FontWeight="Bold"
+                               Foreground="White"
+                               Text="{Binding FileChangeStatusBadgeText}"/>
+                  </Border>
+
+                  <Border MinWidth="14"
+                          Height="14"
+                          Padding="3,0"
+                          CornerRadius="7"
+                          Background="#FFE6A700"
+                          ToolTip.Tip="{Binding SubmoduleChangeStatusBadgeToolTip}"
+                          IsVisible="{Binding HasSubmoduleChangeStatusBadge}">
+                    <TextBlock HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               FontSize="9"
+                               FontWeight="Bold"
+                               Foreground="#FF2F2500"
+                               Text="{Binding SubmoduleChangeStatusBadgeText}"/>
+                  </Border>
+                </StackPanel>
               </Grid>
             </Border>
           </DataTemplate>

@@ -17,6 +17,9 @@ namespace SourceGit.Models
         public int SkippedNotInitialized { get; set; } = 0;
         public int Failed { get; set; } = 0;
         public string CurrentTarget { get; set; } = string.Empty;
+        public string CurrentRepositoryPath { get; set; } = string.Empty;
+        public string CurrentBeforeRevision { get; set; } = string.Empty;
+        public string CurrentAfterRevision { get; set; } = string.Empty;
         public RecursiveOperationTargetState CurrentState { get; set; } = RecursiveOperationTargetState.Running;
     }
 }

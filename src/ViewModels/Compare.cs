@@ -99,6 +99,18 @@ namespace SourceGit.ViewModels
             Refresh();
         }
 
+        public Compare(string repo, string based, string to, string baseName, string toName, bool canResetFiles = false)
+        {
+            _repo = repo;
+            _canResetFiles = canResetFiles;
+            _based = based;
+            _to = to;
+            _baseName = baseName;
+            _toName = toName;
+
+            Refresh();
+        }
+
         public void NavigateTo(string commitSHA)
         {
             var launcher = App.GetLauncher();

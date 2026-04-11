@@ -12,14 +12,14 @@ namespace SourceGit.Commands
         {
             WorkingDirectory = repo;
             Context = repo;
-            Args = $"log --no-show-signature --decorate=full --format=%H%x00%P%x00%D%x00%aN±%aE%x00%at%x00%cN±%cE%x00%ct%x00%s {limits}";
+            Args = $"log --no-show-signature --decorate=full --format=%x1E%H%x1F%P%x1F%D%x1F%aN±%aE%x1F%at%x1F%cN±%cE%x1F%ct%x1F%s%x1F%b {limits}";
             _markMerged = markMerged;
         }
 
         public QueryCommits(string repo, string filter, Models.CommitSearchMethod method, bool onlyCurrentBranch)
         {
             var builder = new StringBuilder();
-            builder.Append("log -1000 --date-order --no-show-signature --decorate=full --format=%H%x00%P%x00%D%x00%aN±%aE%x00%at%x00%cN±%cE%x00%ct%x00%s ");
+            builder.Append("log -1000 --date-order --no-show-signature --decorate=full --format=%x1E%H%x1F%P%x1F%D%x1F%aN±%aE%x1F%at%x1F%cN±%cE%x1F%ct%x1F%s%x1F%b ");
 
             if (!onlyCurrentBranch)
                 builder.Append("--branches --remotes ");
@@ -63,11 +63,16 @@ namespace SourceGit.Commands
                 proc.StartInfo = CreateGitStartInfo(true);
                 proc.Start();
 
+                var output = await proc.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+                await proc.WaitForExitAsync().ConfigureAwait(false);
+
                 var findHead = false;
-                while (await proc.StandardOutput.ReadLineAsync().ConfigureAwait(false) is { } line)
+                var records = output.Split(RecordSeparator, StringSplitOptions.RemoveEmptyEntries);
+                foreach (var rawRecord in records)
                 {
-                    var parts = line.Split('\0');
-                    if (parts.Length != 8)
+                    var record = rawRecord.TrimEnd('\r', '\n');
+                    var parts = record.Split([FieldSeparator], 9);
+                    if (parts.Length != 9)
                         continue;
 
                     var commit = new Models.Commit() { SHA = parts[0] };
@@ -78,12 +83,11 @@ namespace SourceGit.Commands
                     commit.Committer = Models.User.FindOrAdd(parts[5]);
                     commit.CommitterTime = ulong.Parse(parts[6]);
                     commit.Subject = parts[7];
+                    commit.Body = parts[8];
                     commits.Add(commit);
 
                     findHead |= commit.IsMerged;
                 }
-
-                await proc.WaitForExitAsync().ConfigureAwait(false);
 
                 if (_markMerged && !findHead && commits.Count > 0)
                 {
@@ -110,5 +114,7 @@ namespace SourceGit.Commands
         }
 
         private bool _markMerged = false;
+        private const char FieldSeparator = '\x1F';
+        private const char RecordSeparator = '\x1E';
     }
 }

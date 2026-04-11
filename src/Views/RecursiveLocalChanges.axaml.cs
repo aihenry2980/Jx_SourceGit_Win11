@@ -49,7 +49,7 @@ namespace SourceGit.Views
             }
             else if (e.Key == Key.Escape)
             {
-                vm.HiddenExtensionFilterText = string.Empty;
+                vm.HiddenExtensionInputText = string.Empty;
                 e.Handled = true;
             }
         }
@@ -63,9 +63,29 @@ namespace SourceGit.Views
         private void OnAppendRecentHiddenExtension(object sender, RoutedEventArgs e)
         {
             if (DataContext is ViewModels.RecursiveLocalChanges vm &&
-                sender is Control { DataContext: string ext })
+                sender is Control { DataContext: ViewModels.RecursiveLocalChanges.HiddenExtensionTag tag })
             {
-                vm.AppendHiddenExtensionFilter(ext);
+                vm.AppendHiddenExtensionFilter(tag.Extension);
+                e.Handled = true;
+            }
+        }
+
+        private void OnRemoveRecentHiddenExtension(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.RecursiveLocalChanges vm &&
+                sender is Control { DataContext: ViewModels.RecursiveLocalChanges.HiddenExtensionTag tag })
+            {
+                vm.ForgetRecentHiddenExtension(tag.Extension);
+                e.Handled = true;
+            }
+        }
+
+        private void OnRemoveHiddenExtensionFilter(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.RecursiveLocalChanges vm &&
+                sender is Control { DataContext: ViewModels.RecursiveLocalChanges.HiddenExtensionTag tag })
+            {
+                vm.RemoveHiddenExtensionFilter(tag.Extension);
                 e.Handled = true;
             }
         }

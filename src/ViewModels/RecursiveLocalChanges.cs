@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using Avalonia.Collections;
+using Avalonia.Media;
 using Avalonia.Threading;
 
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -52,6 +53,23 @@ namespace SourceGit.ViewModels
             private bool _isExpanded = true;
         }
 
+        public class HiddenExtensionTag
+        {
+            public string Extension { get; }
+            public IBrush Background { get; }
+            public IBrush BorderBrush { get; }
+            public IBrush Foreground { get; }
+
+            public HiddenExtensionTag(string extension)
+            {
+                Extension = extension;
+                var palette = s_tagPalettes[Math.Abs(StringComparer.OrdinalIgnoreCase.GetHashCode(extension)) % s_tagPalettes.Length];
+                Background = new SolidColorBrush(Color.Parse(palette.Background));
+                BorderBrush = new SolidColorBrush(Color.Parse(palette.Border));
+                Foreground = new SolidColorBrush(Color.Parse(palette.Foreground));
+            }
+        }
+
         public string Title => "Local Changes Recursively";
 
         public string SummaryText
@@ -84,20 +102,33 @@ namespace SourceGit.ViewModels
             set
             {
                 if (SetProperty(ref _hiddenExtensionFilterText, value))
+                {
+                    ReloadActiveHiddenExtensions();
                     ApplyExtensionFilter();
+                }
             }
         }
 
+        public string HiddenExtensionInputText
+        {
+            get => _hiddenExtensionInputText;
+            set => SetProperty(ref _hiddenExtensionInputText, value);
+        }
+
+        public bool HasActiveHiddenExtensions => ActiveHiddenExtensions.Count > 0;
         public bool HasRecentHiddenExtensions => RecentHiddenExtensions.Count > 0;
 
         public AvaloniaList<RepositoryEntry> Repositories { get; } = [];
-        public AvaloniaList<string> RecentHiddenExtensions { get; } = [];
+        public AvaloniaList<HiddenExtensionTag> ActiveHiddenExtensions { get; } = [];
+        public AvaloniaList<HiddenExtensionTag> RecentHiddenExtensions { get; } = [];
 
         public RecursiveLocalChanges(Repository repo)
         {
             _repo = repo;
             _summaryText = "Shows parent-repository changes and changed submodules recursively.";
             ReloadRecentHiddenExtensions();
+            _hiddenExtensionFilterText = string.Join(' ', Preferences.Instance.GetRecursiveLocalChangesRecentHiddenExtensions());
+            ReloadActiveHiddenExtensions();
         }
 
         public async Task RefreshAsync()
@@ -140,14 +171,20 @@ namespace SourceGit.ViewModels
 
         public void CommitHiddenExtensionFilterUsage()
         {
-            var parsed = ParseHiddenExtensions(_hiddenExtensionFilterText);
-            if (parsed.Count == 0)
+            var additions = ParseHiddenExtensions(_hiddenExtensionInputText);
+            if (additions.Count == 0)
                 return;
 
-            if (Preferences.Instance.RecordRecursiveLocalChangesHiddenExtensions(parsed))
-                Preferences.Instance.Save();
+            var parsed = ParseHiddenExtensions(_hiddenExtensionFilterText);
+            foreach (var extension in additions)
+            {
+                if (!parsed.Contains(extension, StringComparer.OrdinalIgnoreCase))
+                    parsed.Add(extension);
+            }
 
-            ReloadRecentHiddenExtensions();
+            HiddenExtensionInputText = string.Empty;
+            HiddenExtensionFilterText = string.Join(' ', parsed);
+            RecordActiveHiddenExtensionFilterUsage(parsed);
         }
 
         public void AppendHiddenExtensionFilter(string extension)
@@ -161,7 +198,32 @@ namespace SourceGit.ViewModels
                 parsed.Add(normalized);
 
             HiddenExtensionFilterText = string.Join(' ', parsed);
-            CommitHiddenExtensionFilterUsage();
+            RecordActiveHiddenExtensionFilterUsage(parsed);
+        }
+
+        public void RemoveHiddenExtensionFilter(string extension)
+        {
+            var normalized = NormalizeExtension(extension);
+            if (string.IsNullOrEmpty(normalized))
+                return;
+
+            var parsed = ParseHiddenExtensions(_hiddenExtensionFilterText);
+            parsed.RemoveAll(x => x.Equals(normalized, StringComparison.OrdinalIgnoreCase));
+            HiddenExtensionFilterText = string.Join(' ', parsed);
+        }
+
+        public void ForgetRecentHiddenExtension(string extension)
+        {
+            RemoveHiddenExtensionFilter(extension);
+
+            var normalized = NormalizeExtension(extension);
+            if (string.IsNullOrEmpty(normalized))
+                return;
+
+            if (Preferences.Instance.RemoveRecursiveLocalChangesHiddenExtension(normalized))
+                Preferences.Instance.Save();
+
+            ReloadRecentHiddenExtensions();
         }
 
         private async Task CollectRepoChangesAsync(string repoPath, bool isRoot, List<RepositoryEntry> entries)
@@ -246,9 +308,29 @@ namespace SourceGit.ViewModels
         {
             RecentHiddenExtensions.Clear();
             foreach (var ext in Preferences.Instance.GetRecursiveLocalChangesRecentHiddenExtensions())
-                RecentHiddenExtensions.Add(ext);
+                RecentHiddenExtensions.Add(new HiddenExtensionTag(ext));
 
             OnPropertyChanged(nameof(HasRecentHiddenExtensions));
+        }
+
+        private void ReloadActiveHiddenExtensions()
+        {
+            ActiveHiddenExtensions.Clear();
+            foreach (var ext in ParseHiddenExtensions(_hiddenExtensionFilterText))
+                ActiveHiddenExtensions.Add(new HiddenExtensionTag(ext));
+
+            OnPropertyChanged(nameof(HasActiveHiddenExtensions));
+        }
+
+        private void RecordActiveHiddenExtensionFilterUsage(List<string> parsed)
+        {
+            if (parsed.Count == 0)
+                return;
+
+            if (Preferences.Instance.RecordRecursiveLocalChangesHiddenExtensions(parsed))
+                Preferences.Instance.Save();
+
+            ReloadRecentHiddenExtensions();
         }
 
         private void ApplyExtensionFilter()
@@ -341,5 +423,18 @@ namespace SourceGit.ViewModels
         private bool _hasRepositories = false;
         private bool _showEmptyState = false;
         private string _hiddenExtensionFilterText = string.Empty;
+        private string _hiddenExtensionInputText = string.Empty;
+
+        private static readonly (string Background, string Border, string Foreground)[] s_tagPalettes =
+        [
+            ("#1A1D6FDD", "#661D6FDD", "#FF1D4ED8"),
+            ("#1A2F855A", "#662F855A", "#FF276749"),
+            ("#1AB7791F", "#66B7791F", "#FF8A5A12"),
+            ("#1AB91C1C", "#66B91C1C", "#FFB91C1C"),
+            ("#1A7C3AED", "#667C3AED", "#FF6D28D9"),
+            ("#1A0891B2", "#660891B2", "#FF0E7490"),
+            ("#1AC2410C", "#66C2410C", "#FF9A3412"),
+            ("#1A0F766E", "#660F766E", "#FF0F766E"),
+        ];
     }
 }

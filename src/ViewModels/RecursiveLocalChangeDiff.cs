@@ -3,6 +3,7 @@ namespace SourceGit.ViewModels
     public class RecursiveLocalChangeDiff
     {
         public string Title => Diff.Title;
+        public double InitialWindowWidth => Preferences.Instance.UseSideBySideDiff ? 2200 : 1100;
 
         public DiffContext Diff
         {

@@ -16,6 +16,9 @@ namespace SourceGit.ViewModels
         public const int MIN_HISTORY_COMMITS = 1000;
         public const int MAX_HISTORY_COMMITS = 50000;
         public const int DEFAULT_HISTORY_COMMITS = 10000;
+        public const int MIN_RECURSIVE_SUBMODULE_DISPLAY_DEPTH = 1;
+        public const int MAX_RECURSIVE_SUBMODULE_DISPLAY_DEPTH = 20;
+        public const int DEFAULT_RECURSIVE_SUBMODULE_DISPLAY_DEPTH = 5;
 
         [JsonIgnore]
         public static Preferences Instance
@@ -215,6 +218,12 @@ namespace SourceGit.ViewModels
         {
             get => _maxHistoryCommits;
             set => SetProperty(ref _maxHistoryCommits, Math.Clamp(value, MIN_HISTORY_COMMITS, MAX_HISTORY_COMMITS));
+        }
+
+        public int RecursiveSubmoduleDisplayDepth
+        {
+            get => _recursiveSubmoduleDisplayDepth;
+            set => SetProperty(ref _recursiveSubmoduleDisplayDepth, Math.Clamp(value, MIN_RECURSIVE_SUBMODULE_DISPLAY_DEPTH, MAX_RECURSIVE_SUBMODULE_DISPLAY_DEPTH));
         }
 
         public int SubjectGuideLength
@@ -885,6 +894,22 @@ namespace SourceGit.ViewModels
             return true;
         }
 
+        public bool RemoveRecursiveLocalChangesHiddenExtension(string extension)
+        {
+            var normalized = NormalizeFileExtension(extension);
+            if (string.IsNullOrEmpty(normalized))
+                return false;
+
+            var next = GetRecursiveLocalChangesRecentHiddenExtensions();
+            var removed = next.RemoveAll(x => x.Equals(normalized, StringComparison.OrdinalIgnoreCase)) > 0;
+            if (!removed)
+                return false;
+
+            _recursiveLocalChangesRecentHiddenExtensions = next;
+            OnPropertyChanged(nameof(RecursiveLocalChangesRecentHiddenExtensions));
+            return true;
+        }
+
         public bool SetPresetBranchExactNameColor(string exactName, uint color)
         {
             if (string.IsNullOrWhiteSpace(exactName))
@@ -981,6 +1006,7 @@ namespace SourceGit.ViewModels
         private void Normalize()
         {
             _maxHistoryCommits = Math.Clamp(_maxHistoryCommits, MIN_HISTORY_COMMITS, MAX_HISTORY_COMMITS);
+            _recursiveSubmoduleDisplayDepth = Math.Clamp(_recursiveSubmoduleDisplayDepth, MIN_RECURSIVE_SUBMODULE_DISPLAY_DEPTH, MAX_RECURSIVE_SUBMODULE_DISPLAY_DEPTH);
             _autoRevertPullConflictExtensions ??= DEFAULT_AUTO_REVERT_PULL_CONFLICT_EXTENSIONS;
             _recursiveLocalChangesRecentHiddenExtensions = NormalizeFileExtensionList(_recursiveLocalChangesRecentHiddenExtensions);
         }
@@ -1194,6 +1220,7 @@ namespace SourceGit.ViewModels
         private LayoutInfo _layout = new();
 
         private int _maxHistoryCommits = DEFAULT_HISTORY_COMMITS;
+        private int _recursiveSubmoduleDisplayDepth = DEFAULT_RECURSIVE_SUBMODULE_DISPLAY_DEPTH;
         private int _subjectGuideLength = 50;
         private bool _useFixedTabWidth = true;
         private bool _useAutoHideScrollBars = true;

@@ -62,12 +62,66 @@
                      TextWrapping="Wrap"/>
         </StackPanel>
 
-        <TextBox Grid.Row="1"
-                 Grid.Column="0"
-                 Watermark="Hide extensions like .pdb, .dll, .obj"
-                 Text="{Binding HiddenExtensionFilterText, Mode=TwoWay}"
-                 KeyDown="OnHiddenExtensionFilterKeyDown"
-                 LostFocus="OnHiddenExtensionFilterLostFocus"/>
+        <Border Grid.Row="1"
+                Grid.Column="0"
+                MinHeight="28"
+                Padding="6,3"
+                BorderThickness="1"
+                BorderBrush="{DynamicResource Brush.Border2}"
+                Background="{DynamicResource Brush.Contents}">
+          <Grid ColumnDefinitions="Auto,*">
+            <ItemsControl Grid.Column="0"
+                          ItemsSource="{Binding ActiveHiddenExtensions}"
+                          IsVisible="{Binding HasActiveHiddenExtensions}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <WrapPanel Orientation="Horizontal"/>
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Margin="0,0,6,0"
+                          Padding="0"
+                          CornerRadius="4"
+                          BorderThickness="1"
+                          BorderBrush="{Binding BorderBrush}"
+                          Background="{Binding Background}">
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock Margin="8,0,4,0"
+                                 VerticalAlignment="Center"
+                                 Text="{Binding Extension}"
+                                 FontSize="11"
+                                 FontWeight="SemiBold"
+                                 Foreground="{Binding Foreground}"/>
+
+                      <Button Classes="icon_button"
+                              Width="18"
+                              Height="18"
+                              Margin="0,0,2,0"
+                              Click="OnRemoveHiddenExtensionFilter"
+                              ToolTip.Tip="Remove this filter">
+                        <Path Width="7"
+                              Height="7"
+                              Fill="{Binding Foreground}"
+                              Data="{StaticResource Icons.Close}"/>
+                      </Button>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBox Grid.Column="1"
+                     MinWidth="180"
+                     Padding="0"
+                     BorderThickness="0"
+                     Background="Transparent"
+                     Watermark="Hide extensions like .pdb, .dll, .obj"
+                     Text="{Binding HiddenExtensionInputText, Mode=TwoWay}"
+                     KeyDown="OnHiddenExtensionFilterKeyDown"
+                     LostFocus="OnHiddenExtensionFilterLostFocus"/>
+          </Grid>
+        </Border>
 
         <Button Grid.Row="1"
                 Grid.Column="1"
@@ -97,13 +151,35 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate>
-                <Button Classes="flat"
-                        Margin="0,0,6,4"
-                        Padding="8,2"
-                        Click="OnAppendRecentHiddenExtension">
-                  <TextBlock Text="{Binding .}"
-                             FontSize="11"/>
-                </Button>
+                <Border Margin="0,0,6,4"
+                        Padding="0"
+                        CornerRadius="4"
+                        BorderThickness="1"
+                        BorderBrush="{Binding BorderBrush}"
+                        Background="{Binding Background}">
+                  <StackPanel Orientation="Horizontal">
+                    <Button Classes="flat"
+                            Padding="8,2"
+                            Click="OnAppendRecentHiddenExtension">
+                      <TextBlock Text="{Binding Extension}"
+                                 FontSize="11"
+                                 FontWeight="SemiBold"
+                                 Foreground="{Binding Foreground}"/>
+                    </Button>
+
+                    <Button Classes="icon_button"
+                            Width="20"
+                            Height="20"
+                            Margin="0,0,2,0"
+                            Click="OnRemoveRecentHiddenExtension"
+                            ToolTip.Tip="Remove this filter">
+                      <Path Width="8"
+                            Height="8"
+                            Fill="{Binding Foreground}"
+                            Data="{StaticResource Icons.Close}"/>
+                    </Button>
+                  </StackPanel>
+                </Border>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>

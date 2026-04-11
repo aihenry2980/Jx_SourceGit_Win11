@@ -10,7 +10,7 @@
                     x:Name="ThisControl"
                     Title="{Binding Title}"
                     Icon="/App.ico"
-                    Width="1100"
+                    Width="{Binding InitialWindowWidth}"
                     Height="760"
                     MinWidth="720"
                     MinHeight="420"

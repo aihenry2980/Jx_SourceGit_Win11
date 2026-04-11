@@ -18,7 +18,7 @@ namespace SourceGit.Views
         protected override void OnPointerPressed(PointerPressedEventArgs e)
         {
             if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed &&
-                DataContext is ViewModels.SubmoduleTreeNode { IsFolder: true } node)
+                DataContext is ViewModels.SubmoduleTreeNode { HasChildren: true } node)
             {
                 var view = this.FindAncestorOfType<SubmodulesView>();
                 view?.ToggleNodeIsExpanded(node);

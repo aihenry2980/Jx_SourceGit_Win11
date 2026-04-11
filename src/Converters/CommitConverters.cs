@@ -17,7 +17,7 @@ namespace SourceGit.Converters
             });
 
         public static readonly FuncValueConverter<Models.Commit, FontWeight> SHAFontWeight =
-            new(commit => commit is { HasSubmodulePointerChange: true } ? FontWeight.Bold : FontWeight.Regular);
+            new(_ => FontWeight.Regular);
 
         public static readonly FuncValueConverter<Models.Commit, string> SHAToolTip =
             new(commit => commit is { HasSubmodulePointerChange: true } ? "Contains SPP change" : string.Empty);
