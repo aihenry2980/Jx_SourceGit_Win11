@@ -201,6 +201,20 @@ namespace SourceGit.Views
                         ev.Handled = true;
                     };
 
+                    MenuItem revertChanges = null;
+                    if (submodule.Status != Models.SubmoduleStatus.NotInited && submodule.IsDirty)
+                    {
+                        revertChanges = new MenuItem();
+                        revertChanges.Header = "Revert All Changes";
+                        revertChanges.Icon = this.CreateMenuIcon("Icons.Undo");
+                        revertChanges.Click += (_, ev) =>
+                        {
+                            if (repo.CanCreatePopup())
+                                repo.ShowPopup(new ViewModels.RevertSubmoduleChanges(repo, submodule));
+                            ev.Handled = true;
+                        };
+                    }
+
                     var move = new MenuItem();
                     move.Header = App.Text("Submodule.Move");
                     move.Icon = this.CreateMenuIcon("Icons.MoveTo");
@@ -309,6 +323,11 @@ namespace SourceGit.Views
                     menu.Items.Add(open);
                     menu.Items.Add(new MenuItem() { Header = "-" });
                     menu.Items.Add(update);
+                    if (revertChanges != null)
+                    {
+                        menu.Items.Add(revertChanges);
+                        menu.Items.Add(new MenuItem() { Header = "-" });
+                    }
                     menu.Items.Add(setURL);
                     menu.Items.Add(setBranch);
                     menu.Items.Add(move);

@@ -35,6 +35,12 @@ namespace SourceGit.ViewModels
             public bool ShouldNotifyFoldControlChange { get; set; } = false;
         }
 
+        private class PrunedRemoteBranch(string scope, string remoteRef)
+        {
+            public string Scope { get; } = scope;
+            public string RemoteRef { get; } = remoteRef;
+        }
+
         public bool IsBare
         {
             get;
@@ -1191,12 +1197,10 @@ namespace SourceGit.ViewModels
                 return;
             }
 
-            var stopwatch = Stopwatch.StartNew();
             var refspecs = onlyFilteredBranches ? await BuildQuickFetchFilteredRefSpecsAsync(remote).ConfigureAwait(false) : null;
             if (onlyFilteredBranches && (refspecs == null || refspecs.Count == 0))
             {
                 App.SendNotification(FullPath, $"Quick Fetch (Filtered) skipped because no included branch filters match remote '{remote}'.");
-                ShowFetchDurationToast(stopwatch.Elapsed.TotalSeconds);
                 return;
             }
 
@@ -1205,6 +1209,7 @@ namespace SourceGit.ViewModels
             var succ = false;
             AutoBackgroundOperationText = operationName;
             IsQuickFetching = true;
+            var gitStopwatch = Stopwatch.StartNew();
 
             try
             {
@@ -1216,14 +1221,15 @@ namespace SourceGit.ViewModels
             }
             finally
             {
+                gitStopwatch.Stop();
                 IsQuickFetching = false;
                 log.Complete();
             }
 
             if (succ)
             {
-                MarkFetched();
-                ShowFetchDurationToast(stopwatch.Elapsed.TotalSeconds);
+                var refreshDuration = await MarkFetchedAndMeasureRefreshAsync();
+                ShowFetchDurationToast(gitStopwatch.Elapsed, refreshDuration);
             }
             else
                 App.SendNotification(FullPath, $"{operationName} failed. Review the repository log for details.");
@@ -1802,6 +1808,27 @@ namespace SourceGit.ViewModels
             RefreshCommits(true);
         }
 
+        public async Task<TimeSpan> MarkFetchedAndMeasureRefreshAsync()
+        {
+            _lastFetchTime = DateTime.Now;
+
+            var stopwatch = Stopwatch.StartNew();
+            try
+            {
+                await Task.WhenAll(
+                    RefreshBranchesAsync(),
+                    RefreshCommitsAsync(true)).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // Another refresh request won the race; fetch still completed successfully.
+            }
+
+            stopwatch.Stop();
+
+            return stopwatch.Elapsed;
+        }
+
         public void NavigateToCommit(string sha, bool isDelayMode = false)
         {
             if (isDelayMode)
@@ -2180,18 +2207,23 @@ namespace SourceGit.ViewModels
 
         public void RefreshBranches()
         {
+            _ = RefreshBranchesAsync();
+        }
+
+        private Task RefreshBranchesAsync()
+        {
             if (_cancellationRefreshBranches is { IsCancellationRequested: false })
                 _cancellationRefreshBranches.Cancel();
 
             _cancellationRefreshBranches = new CancellationTokenSource();
             var token = _cancellationRefreshBranches.Token;
 
-            Task.Run(async () =>
+            return Task.Run(async () =>
             {
                 var branches = await new Commands.QueryBranches(FullPath).GetResultAsync().ConfigureAwait(false);
                 var remotes = await new Commands.QueryRemotes(FullPath).GetResultAsync().ConfigureAwait(false);
 
-                Dispatcher.UIThread.Invoke(() =>
+                await Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     if (token.IsCancellationRequested)
                         return;
@@ -2250,6 +2282,11 @@ namespace SourceGit.ViewModels
 
         public void RefreshCommits(bool fastAfterFetch)
         {
+            _ = RefreshCommitsAsync(fastAfterFetch);
+        }
+
+        private Task RefreshCommitsAsync(bool fastAfterFetch)
+        {
             if (_cancellationRefreshCommits is { IsCancellationRequested: false })
                 _cancellationRefreshCommits.Cancel();
 
@@ -2257,7 +2294,7 @@ namespace SourceGit.ViewModels
             var token = _cancellationRefreshCommits.Token;
             var refreshMode = fastAfterFetch ? HistoryRefreshMode.FastAfterFetch : HistoryRefreshMode.Full;
 
-            Task.Run(async () =>
+            return Task.Run(async () =>
             {
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
@@ -2860,6 +2897,8 @@ namespace SourceGit.ViewModels
             var skippedByUserTargets = 0;
             var skippedNotInitializedTargets = 0;
             var failedTargets = 0;
+            var prunedBranches = prune ? new List<PrunedRemoteBranch>() : null;
+            var prunedBranchKeys = prune ? new HashSet<string>(StringComparer.Ordinal) : null;
             var targets = new List<string>();
             if (selectedTargets == null)
             {
@@ -2906,7 +2945,9 @@ namespace SourceGit.ViewModels
                     log,
                     "root",
                     stopOnError,
-                    cancellationToken);
+                    cancellationToken,
+                    prunedBranches,
+                    prunedBranchKeys);
                 if (!one)
                 {
                     succ = false;
@@ -2988,7 +3029,9 @@ namespace SourceGit.ViewModels
                         log,
                         $"submodule:{submodulePath}",
                         stopOnError,
-                        cancellationToken);
+                        cancellationToken,
+                        prunedBranches,
+                        prunedBranchKeys);
                     if (!one)
                     {
                         submoduleSucceeded = false;
@@ -3031,6 +3074,9 @@ namespace SourceGit.ViewModels
                 });
             }
 
+            if (prune)
+                AppendPrunedRemoteBranchesSummary(log, prunedBranches);
+
             if (succ)
                 MarkFetched();
 
@@ -3067,7 +3113,9 @@ namespace SourceGit.ViewModels
             Models.ICommandLog log,
             string scope,
             bool stopOnError,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            List<PrunedRemoteBranch> prunedBranches = null,
+            HashSet<string> prunedBranchKeys = null)
         {
             if (string.IsNullOrEmpty(remoteName) || cancellationToken.IsCancellationRequested)
                 return false;
@@ -3079,6 +3127,19 @@ namespace SourceGit.ViewModels
                 RaiseError = stopOnError,
                 CancellationToken = linked.Token,
             };
+            if (prune && prunedBranches != null && prunedBranchKeys != null)
+            {
+                cmd.OnOutputLine = line =>
+                {
+                    var remoteRef = TryParsePrunedRemoteBranch(line);
+                    if (string.IsNullOrEmpty(remoteRef))
+                        return;
+
+                    var key = $"{scope}\n{remoteRef}";
+                    if (prunedBranchKeys.Add(key))
+                        prunedBranches.Add(new PrunedRemoteBranch(scope, remoteRef));
+                };
+            }
 
             var ok = await cmd.Use(log).RunAsync().ConfigureAwait(false);
             if (cancellationToken.IsCancellationRequested)
@@ -3099,6 +3160,52 @@ namespace SourceGit.ViewModels
                 log?.AppendLine($"[failed] Fetch `{remoteName}` in `{scope}` failed.");
 
             return ok;
+        }
+
+        private static string TryParsePrunedRemoteBranch(string line)
+        {
+            if (string.IsNullOrWhiteSpace(line))
+                return null;
+
+            var deletedIdx = line.IndexOf("[deleted]", StringComparison.Ordinal);
+            if (deletedIdx < 0)
+                return null;
+
+            var arrowIdx = line.IndexOf("->", deletedIdx, StringComparison.Ordinal);
+            if (arrowIdx < 0)
+                return null;
+
+            var remoteRef = line.Substring(arrowIdx + 2).Trim();
+            if (string.IsNullOrEmpty(remoteRef) ||
+                remoteRef.StartsWith("tag ", StringComparison.OrdinalIgnoreCase) ||
+                remoteRef.StartsWith("refs/tags/", StringComparison.Ordinal))
+                return null;
+
+            return remoteRef;
+        }
+
+        private static void AppendPrunedRemoteBranchesSummary(Models.ICommandLog log, List<PrunedRemoteBranch> prunedBranches)
+        {
+            log?.AppendLine("=== Pruned remote branches ===");
+            if (prunedBranches == null || prunedBranches.Count == 0)
+            {
+                log?.AppendLine("No remote branches were pruned.");
+                return;
+            }
+
+            foreach (var branch in prunedBranches)
+                log?.AppendLine($"- {FormatFetchScope(branch.Scope)}: {branch.RemoteRef}");
+        }
+
+        private static string FormatFetchScope(string scope)
+        {
+            const string submodulePrefix = "submodule:";
+            if (string.IsNullOrEmpty(scope) || scope.Equals("root", StringComparison.Ordinal))
+                return "root";
+
+            return scope.StartsWith(submodulePrefix, StringComparison.Ordinal)
+                ? scope.Substring(submodulePrefix.Length)
+                : scope;
         }
 
         public async Task<bool> RunUpdateSubmodulesRecursivelyAsync(
@@ -4089,7 +4196,7 @@ namespace SourceGit.ViewModels
                 fullName[folderPattern.Length] == '/';
         }
 
-        private void ShowFetchDurationToast(double seconds)
+        public void ShowFetchDurationToast(TimeSpan gitDuration, TimeSpan guiRefreshDuration)
         {
             _fetchDurationToastCancellation?.Cancel();
             _fetchDurationToastCancellation?.Dispose();
@@ -4097,7 +4204,7 @@ namespace SourceGit.ViewModels
             var cts = new CancellationTokenSource();
             _fetchDurationToastCancellation = cts;
 
-            FetchDurationToastText = $"The last fetch costs {seconds:0.0} seconds";
+            FetchDurationToastText = $"Fetch finished: Git {gitDuration.TotalSeconds:0.0}s, GUI refresh {guiRefreshDuration.TotalSeconds:0.0}s";
             FetchDurationToastOpacity = 1.0;
             IsFetchDurationToastVisible = true;
 

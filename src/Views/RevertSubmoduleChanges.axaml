@@ -1,0 +1,58 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:SourceGit.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="520" d:DesignHeight="260"
+             x:Class="SourceGit.Views.RevertSubmoduleChanges"
+             x:DataType="vm:RevertSubmoduleChanges">
+  <StackPanel Orientation="Vertical" Margin="8,0,0,0">
+    <StackPanel Orientation="Horizontal">
+      <Path Width="16" Height="16"
+            Data="{StaticResource Icons.Undo}"/>
+
+      <TextBlock FontSize="18"
+                 Margin="8,0,0,0"
+                 Classes="bold"
+                 Text="Revert Submodule Changes"/>
+    </StackPanel>
+
+    <Grid Margin="0,16,8,0" RowDefinitions="32,32,32,32,32,Auto" ColumnDefinitions="120,*">
+      <TextBlock Grid.Row="0" Grid.Column="0"
+                 Margin="0,0,8,0"
+                 HorizontalAlignment="Right"
+                 Text="Submodule"/>
+      <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal">
+        <Path Width="14" Height="14" Margin="0,0,6,0" Data="{StaticResource Icons.Submodule}"/>
+        <TextBlock Text="{Binding Submodule}"/>
+      </StackPanel>
+
+      <CheckBox Grid.Row="1" Grid.Column="1"
+                Content="Revert tracked changes and recorded commit pointer"
+                IsChecked="{Binding IncludeModified, Mode=TwoWay}"/>
+
+      <CheckBox Grid.Row="2" Grid.Column="1"
+                Content="Remove untracked files"
+                IsChecked="{Binding IncludeUntracked, Mode=TwoWay}"/>
+
+      <CheckBox Grid.Row="3" Grid.Column="1"
+                Content="Also remove ignored files"
+                IsChecked="{Binding IncludeIgnored, Mode=TwoWay}"/>
+
+      <CheckBox Grid.Row="4" Grid.Column="1"
+                Content="Also revert nested submodules"
+                IsChecked="{Binding IncludeNestedSubmodules, Mode=TwoWay}"/>
+
+      <Grid Grid.Row="5" Grid.Column="1" ColumnDefinitions="Auto,*" Margin="0,8,0,0">
+        <Path Grid.Column="0"
+              Width="14" Height="14"
+              Data="{StaticResource Icons.Error}"
+              Fill="DarkOrange"/>
+        <TextBlock Grid.Column="1" Margin="8,0,0,0"
+                   Text="This permanently discards selected local changes in the submodule."
+                   TextWrapping="Wrap"
+                   Foreground="DarkOrange"/>
+      </Grid>
+    </Grid>
+  </StackPanel>
+</UserControl>

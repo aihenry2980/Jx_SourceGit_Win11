@@ -99,6 +99,11 @@ namespace SourceGit.Views
             Tabs.SelectedIndex = 1;
         }
 
+        public void OpenCustomActionTab()
+        {
+            Tabs.SelectedIndex = 4;
+        }
+
         protected override async void OnClosing(WindowClosingEventArgs e)
         {
             base.OnClosing(e);

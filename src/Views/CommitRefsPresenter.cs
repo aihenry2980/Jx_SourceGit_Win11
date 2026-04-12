@@ -174,8 +174,11 @@ namespace SourceGit.Views
 
                 var entireRect = new RoundedRect(new Rect(x, y, item.Width, item.Height), new CornerRadius(4));
                 var centerY = y + item.Height * 0.5;
-                var iconBackgroundY = y + (item.Height - 12.0) * 0.5;
-                var iconY = y + (item.Height - 10.0) * 0.5;
+                var hasCompactTrackingBadge = item.SecondaryIcon != null;
+                var badgeSize = hasCompactTrackingBadge ? 15.0 : 12.0;
+                var iconSize = hasCompactTrackingBadge ? 11.0 : 10.0;
+                var iconBackgroundY = y + (item.Height - badgeSize) * 0.5;
+                var iconY = y + (item.Height - iconSize) * 0.5;
 
                 if (item.IsHead)
                 {
@@ -239,30 +242,33 @@ namespace SourceGit.Views
                 {
                     context.DrawRectangle(
                         item.PrimaryIconBackground,
-                        null,
-                        new RoundedRect(new Rect(x + 2, iconBackgroundY, 10, 12), new CornerRadius(3)));
+                        new Pen(item.IconBrush ?? fg, hasCompactTrackingBadge ? 1.0 : 0.0),
+                        new RoundedRect(new Rect(x + 2, iconBackgroundY, badgeSize, badgeSize), new CornerRadius(4)));
                 }
 
-                using (context.PushTransform(Matrix.CreateTranslation(x + 3, iconY)))
-                    context.DrawGeometry(item.IconBrush ?? fg, null, item.Icon);
+                var primaryIconX = x + 2 + (badgeSize - iconSize) * 0.5;
+                using (context.PushTransform(Matrix.CreateTranslation(primaryIconX, iconY)))
+                    context.DrawGeometry(item.IconBrush ?? fg, hasCompactTrackingBadge ? new Pen(s_compactIconOutlineBrush, 0.8) : null, item.Icon);
 
                 if (item.SecondaryIcon != null)
                 {
+                    var secondaryBadgeX = x + 19;
                     if (item.SecondaryIconBackground != null)
                     {
                         context.DrawRectangle(
                             item.SecondaryIconBackground,
-                            null,
-                            new RoundedRect(new Rect(x + 14, iconBackgroundY, 10, 12), new CornerRadius(3)));
+                            new Pen(item.SecondaryIconBrush ?? fg, 1.0),
+                            new RoundedRect(new Rect(secondaryBadgeX, iconBackgroundY, badgeSize, badgeSize), new CornerRadius(4)));
                     }
 
                     context.DrawLine(
                         new Pen(item.BorderBrush ?? item.Brush, 1),
-                        new Point(x + 13, iconY),
-                        new Point(x + 13, iconY + 10));
+                        new Point(x + 18, y + 2),
+                        new Point(x + 18, y + item.Height - 2));
 
-                    using (context.PushTransform(Matrix.CreateTranslation(x + 15, iconY)))
-                        context.DrawGeometry(item.SecondaryIconBrush ?? fg, null, item.SecondaryIcon);
+                    var secondaryIconX = secondaryBadgeX + (badgeSize - iconSize) * 0.5;
+                    using (context.PushTransform(Matrix.CreateTranslation(secondaryIconX, iconY)))
+                        context.DrawGeometry(item.SecondaryIconBrush ?? fg, new Pen(s_compactIconOutlineBrush, 0.8), item.SecondaryIcon);
                 }
 
                 if (item.CanFold)
@@ -412,7 +418,7 @@ namespace SourceGit.Views
 
                     if (secondaryDecorator != null)
                     {
-                        item.SecondaryIcon = CreateIcon(this.FindResource("Icons.Remote") as StreamGeometry, 10.0);
+                        item.SecondaryIcon = CreateIcon(this.FindResource("Icons.Remote") as StreamGeometry, 11.0);
                         item.IconBrush = isCurrentCommitHead
                             ? s_headTagForegroundBrush
                             : isSuperProjectPointer
@@ -423,7 +429,7 @@ namespace SourceGit.Views
                         item.SecondaryIconBrush = s_compactRemoteIconBrush;
                         item.PrimaryIconBackground = s_compactLocalIconBackgroundBrush;
                         item.SecondaryIconBackground = s_compactRemoteIconBackgroundBrush;
-                        item.LeadingWidth = 29.0;
+                        item.LeadingWidth = 38.0;
                     }
 
                     item.CanFold = decorator.IsBranchFoldable &&
@@ -482,7 +488,7 @@ namespace SourceGit.Views
                             break;
                     }
 
-                    item.Icon = CreateIcon(geo, 10.0);
+                    item.Icon = CreateIcon(geo, secondaryDecorator != null ? 11.0 : 10.0);
                     if (item.CanFold)
                     {
                         item.FoldButtonBackground = item.IsFolded
@@ -694,8 +700,21 @@ namespace SourceGit.Views
         private static readonly IBrush s_incidentalBranchBorderBrush = new SolidColorBrush(Color.Parse("#CC202124"));
         private static readonly IBrush s_compactLocalIconBrush = Brushes.White;
         private static readonly IBrush s_compactRemoteIconBrush = Brushes.White;
-        private static readonly IBrush s_compactLocalIconBackgroundBrush = new SolidColorBrush(Color.Parse("#FF1E8E3E"));
-        private static readonly IBrush s_compactRemoteIconBackgroundBrush = new SolidColorBrush(Color.Parse("#FF1565C0"));
+        private static readonly IBrush s_compactIconOutlineBrush = new SolidColorBrush(Color.Parse("#AA202124"));
+        private static readonly IBrush s_compactLocalIconBackgroundBrush = new LinearGradientBrush()
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
+            GradientStops = new GradientStops()
+            {
+                new GradientStop(Color.Parse("#FFE53935"), 0.00),
+                new GradientStop(Color.Parse("#FFFFB300"), 0.24),
+                new GradientStop(Color.Parse("#FF43A047"), 0.48),
+                new GradientStop(Color.Parse("#FF1E88E5"), 0.72),
+                new GradientStop(Color.Parse("#FF8E24AA"), 1.00),
+            },
+        };
+        private static readonly IBrush s_compactRemoteIconBackgroundBrush = new SolidColorBrush(Color.Parse("#FF0B57D0"));
 
         private static bool IsMutedIncidentalBranch(Models.Decorator decorator)
         {

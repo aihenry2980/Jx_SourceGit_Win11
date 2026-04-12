@@ -36,6 +36,7 @@ namespace SourceGit.Commands
         public CancellationToken CancellationToken { get; set; } = CancellationToken.None;
         public bool RaiseError { get; set; } = true;
         public Models.ICommandLog Log { get; set; } = null;
+        public Action<string> OnOutputLine { get; set; } = null;
 
         public async Task<bool> ExecAsync()
         {
@@ -283,6 +284,14 @@ namespace SourceGit.Commands
                 return;
 
             Log?.AppendLine(line);
+            try
+            {
+                OnOutputLine?.Invoke(line);
+            }
+            catch
+            {
+                // Output observers are best-effort and should never break the command.
+            }
 
             // Lines to hide in error message.
             if (line.Length > 0)

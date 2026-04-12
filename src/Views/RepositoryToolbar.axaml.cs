@@ -292,6 +292,106 @@ namespace SourceGit.Views
             }
         }
 
+        private async Task OpenCustomActionsConfigureAsync(ViewModels.Repository repo, bool addNewAction)
+        {
+            var vm = new ViewModels.RepositoryConfigure(repo);
+            if (addNewAction)
+                vm.AddNewCustomAction();
+
+            var dialog = new RepositoryConfigure()
+            {
+                DataContext = vm,
+            };
+            dialog.OpenCustomActionTab();
+            await App.ShowDialog(dialog);
+        }
+
+        private Control CreateCustomActionMenuHeader(ViewModels.CustomActionContextMenuLabel label, EventHandler<RoutedEventArgs> onDelete)
+        {
+            var grid = new Grid()
+            {
+                ColumnDefinitions = new ColumnDefinitions("*,Auto"),
+                MinWidth = 240,
+            };
+
+            var name = new TextBlock()
+            {
+                Text = label.Name,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+
+            var content = new StackPanel()
+            {
+                Orientation = Orientation.Horizontal,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            content.Children.Add(name);
+
+            if (label.IsGlobal)
+            {
+                content.Children.Add(new Border()
+                {
+                    Margin = new Thickness(4, 0, 0, 0),
+                    Height = 16,
+                    Background = Brushes.Green,
+                    CornerRadius = new CornerRadius(8),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Child = new TextBlock()
+                    {
+                        Text = "GLOBAL",
+                        Margin = new Thickness(8, 0),
+                        FontSize = 10,
+                        Foreground = Brushes.White,
+                    },
+                });
+            }
+
+            var deleteIcon = this.CreateMenuIcon("Icons.Close");
+            if (deleteIcon != null)
+            {
+                deleteIcon.Width = 8;
+                deleteIcon.Height = 8;
+                deleteIcon.Fill = Brushes.Gray;
+            }
+
+            var delete = new Button()
+            {
+                Width = 20,
+                Height = 20,
+                Margin = new Thickness(12, 0, 0, 0),
+                Padding = new Thickness(0),
+                Content = deleteIcon,
+                Focusable = false,
+                HorizontalContentAlignment = HorizontalAlignment.Center,
+                VerticalContentAlignment = VerticalAlignment.Center,
+            };
+            delete.Classes.Add("icon_button");
+            ToolTip.SetTip(delete, label.IsGlobal ? "Delete global action" : "Delete repository action");
+            delete.Click += onDelete;
+
+            Grid.SetColumn(content, 0);
+            Grid.SetColumn(delete, 1);
+            grid.Children.Add(content);
+            grid.Children.Add(delete);
+
+            return grid;
+        }
+
+        private async Task DeleteCustomActionAsync(ViewModels.Repository repo, Models.CustomAction action, bool isGlobal)
+        {
+            if (isGlobal)
+            {
+                ViewModels.Preferences.Instance.CustomActions.Remove(action);
+                ViewModels.Preferences.Instance.Save();
+            }
+            else
+            {
+                repo.Settings.RemoveCustomAction(action);
+                await repo.Settings.SaveAsync();
+            }
+        }
+
         private async void Fetch(object sender, TappedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo)
@@ -1465,20 +1565,40 @@ namespace SourceGit.Views
                         var (dup, label) = action;
                         var item = new MenuItem();
                         item.Icon = this.CreateMenuIcon("Icons.Action");
-                        item.Header = label;
+                        item.Header = CreateCustomActionMenuHeader(label, async (_, e) =>
+                        {
+                            await DeleteCustomActionAsync(repo, dup, label.IsGlobal);
+                            menu.Close();
+                            e.Handled = true;
+                        });
                         item.Click += async (_, e) =>
                         {
+                            if (e.Source is Button)
+                            {
+                                e.Handled = true;
+                                return;
+                            }
+
                             await repo.ExecCustomActionAsync(dup, null);
                             e.Handled = true;
                         };
 
                         menu.Items.Add(item);
                     }
+
+                    menu.Items.Add(new Separator());
                 }
-                else
+
+                var add = new MenuItem();
+                add.Icon = this.CreateMenuIcon("Icons.Plus");
+                add.Header = "Add actions";
+                add.Click += async (_, e) =>
                 {
-                    menu.Items.Add(new MenuItem() { Header = App.Text("Repository.CustomActions.Empty") });
-                }
+                    await OpenCustomActionsConfigureAsync(repo, true);
+                    e.Handled = true;
+                };
+
+                menu.Items.Add(add);
 
                 menu.Open(control);
             }

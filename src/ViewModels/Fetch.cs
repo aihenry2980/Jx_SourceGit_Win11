@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading.Tasks;
 
 namespace SourceGit.ViewModels
@@ -74,6 +75,7 @@ namespace SourceGit.ViewModels
             var force = _repo.UIStates.EnableForceOnFetch;
             var log = _repo.CreateLog("Fetch");
             Use(log);
+            var gitStopwatch = Stopwatch.StartNew();
 
             if (FetchAllRemotes)
             {
@@ -89,6 +91,7 @@ namespace SourceGit.ViewModels
                     .RunAsync();
             }
 
+            gitStopwatch.Stop();
             log.Complete();
 
             if (navigateToUpstreamHEAD)
@@ -101,7 +104,8 @@ namespace SourceGit.ViewModels
                 }
             }
 
-            _repo.MarkFetched();
+            var refreshDuration = await _repo.MarkFetchedAndMeasureRefreshAsync();
+            _repo.ShowFetchDurationToast(gitStopwatch.Elapsed, refreshDuration);
             return true;
         }
 
