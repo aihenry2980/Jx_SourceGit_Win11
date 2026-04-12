@@ -10,8 +10,8 @@
                     x:Name="ThisControl"
                     Icon="/App.ico"
                     Title="{Binding Title}"
-                    Width="1200"
-                    Height="760"
+                    Width="{Binding InitialWindowWidth}"
+                    Height="{Binding InitialWindowHeight}"
                     MinWidth="960"
                     MinHeight="600">
   <Grid RowDefinitions="Auto,*">

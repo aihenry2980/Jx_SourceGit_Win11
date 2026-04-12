@@ -71,5 +71,20 @@ namespace SourceGit.Views
                 e.Handled = true;
             }
         }
+
+        private void OnChangeDoubleTapped(object sender, Avalonia.Interactivity.RoutedEventArgs e)
+        {
+            if (DataContext is not ViewModels.CommitDetail vm ||
+                sender is not ChangeCollectionView { SelectedChanges: [var change] } view)
+                return;
+
+            var cmdKey = OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control;
+            if (view.LastDoubleTappedKeyModifiers.HasFlag(cmdKey))
+                vm.OpenChangeInMergeTool(change);
+            else
+                vm.OpenChangeInDiffWindow(change);
+
+            e.Handled = true;
+        }
     }
 }

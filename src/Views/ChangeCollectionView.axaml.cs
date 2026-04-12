@@ -97,6 +97,12 @@ namespace SourceGit.Views
             set => SetValue(SelectedChangesProperty, value);
         }
 
+        public KeyModifiers LastDoubleTappedKeyModifiers
+        {
+            get;
+            private set;
+        } = KeyModifiers.None;
+
         public static readonly RoutedEvent<RoutedEventArgs> ChangeDoubleTappedEvent =
             RoutedEvent.Register<ChangeCollectionView, RoutedEventArgs>(nameof(ChangeDoubleTapped), RoutingStrategies.Tunnel | RoutingStrategies.Bubble);
 
@@ -255,6 +261,8 @@ namespace SourceGit.Views
         {
             if (sender is not Control { DataContext: { } ctx })
                 return;
+
+            LastDoubleTappedKeyModifiers = e.KeyModifiers;
 
             if (ctx is ViewModels.ChangeTreeNode node)
             {

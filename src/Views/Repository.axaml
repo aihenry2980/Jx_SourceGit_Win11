@@ -524,6 +524,7 @@
                          Margin="0,4,0,0"
                          CornerRadius="3"
                          Watermark="{DynamicResource Text.Repository.BranchesVisibility.ExactNames.Placeholder}"
+                         ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.EditorHint}"
                          TextChanged="OnPresetBranchInputTextChanged"
                          KeyDown="OnPresetBranchExactNameInputKeyDown"/>
               </StackPanel>
@@ -596,6 +597,7 @@
                          Margin="0,4,0,0"
                          CornerRadius="3"
                          Watermark="{DynamicResource Text.Repository.BranchesVisibility.ContainsPatterns.Placeholder}"
+                         ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.EditorHint}"
                          TextChanged="OnPresetBranchInputTextChanged"
                          KeyDown="OnPresetBranchContainsPatternInputKeyDown"/>
               </StackPanel>
@@ -668,15 +670,11 @@
                          Margin="0,4,0,0"
                          CornerRadius="3"
                          Watermark="{DynamicResource Text.Repository.BranchesVisibility.ExcludeNames.Placeholder}"
+                         ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.EditorHint}"
                          TextChanged="OnPresetBranchInputTextChanged"
                          KeyDown="OnPresetBranchExcludeNameInputKeyDown"/>
               </StackPanel>
             </Border>
-
-            <TextBlock Margin="0,6,0,0"
-                       Classes="small"
-                       Foreground="{DynamicResource Brush.FG2}"
-                       Text="{DynamicResource Text.Repository.BranchesVisibility.EditorHint}"/>
 
             <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
               <Button Classes="flat primary"

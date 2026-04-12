@@ -14,7 +14,7 @@ namespace SourceGit.Commands
             public string NewSHA { get; set; } = string.Empty;
         }
 
-        [GeneratedRegex(@"^:(\d{6}) (\d{6}) ([0-9a-f]{40}) ([0-9a-f]{40}) [A-Z]\d*\t(.+)$")]
+        [GeneratedRegex(@"^:(\d{6}) (\d{6}) ([0-9a-f]+) ([0-9a-f]+) [A-Z]\d*\t(.+)$")]
         private static partial Regex REG_FORMAT();
 
         public QuerySubmodulePointerChanges(string repo, bool cached, IEnumerable<string> paths)
@@ -23,7 +23,7 @@ namespace SourceGit.Commands
             Context = repo;
 
             var builder = new StringBuilder();
-            builder.Append("diff --raw ");
+            builder.Append("diff --raw --no-abbrev ");
             if (cached)
                 builder.Append("--cached ");
 
@@ -40,7 +40,7 @@ namespace SourceGit.Commands
             Context = repo;
 
             var builder = new StringBuilder();
-            builder.Append("diff --raw ");
+            builder.Append("diff --raw --no-abbrev ");
             if (!string.IsNullOrWhiteSpace(oldRevision))
                 builder.Append(oldRevision).Append(' ');
             if (!string.IsNullOrWhiteSpace(newRevision))

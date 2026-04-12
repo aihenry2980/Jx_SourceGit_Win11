@@ -280,6 +280,14 @@ namespace SourceGit.ViewModels
             new Commands.DiffTool(_repo.FullPath, new Models.DiffOption(_commit, c)).Open();
         }
 
+        public void OpenChangeInDiffWindow(Models.Change c)
+        {
+            if (_commit == null || c == null)
+                return;
+
+            App.ShowWindow(new SubmoduleFileChange(_repo.FullPath, _commit.FirstParentToCompare, _commit.SHA, c));
+        }
+
         public async Task SaveChangesAsPatchAsync(List<Models.Change> changes, string saveTo)
         {
             if (_commit == null)

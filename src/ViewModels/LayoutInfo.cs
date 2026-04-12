@@ -47,6 +47,30 @@ namespace SourceGit.ViewModels
             set;
         } = 520;
 
+        public double RecursiveLocalChangeDiffWindowWidth
+        {
+            get;
+            set;
+        } = 0;
+
+        public double RecursiveLocalChangeDiffWindowHeight
+        {
+            get;
+            set;
+        } = 760;
+
+        public double SubmoduleFileChangeDiffWindowWidth
+        {
+            get;
+            set;
+        } = 1200;
+
+        public double SubmoduleFileChangeDiffWindowHeight
+        {
+            get;
+            set;
+        } = 760;
+
         public GridLength RepositorySidebarWidth
         {
             get => _repositorySidebarWidth;

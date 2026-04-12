@@ -11,7 +11,7 @@
                     Title="{Binding Title}"
                     Icon="/App.ico"
                     Width="{Binding InitialWindowWidth}"
-                    Height="760"
+                    Height="{Binding InitialWindowHeight}"
                     MinWidth="720"
                     MinHeight="420"
                     CanResize="True"

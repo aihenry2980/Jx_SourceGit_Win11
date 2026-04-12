@@ -14,6 +14,24 @@ namespace SourceGit.ViewModels
             get;
         }
 
+        public double InitialWindowWidth
+        {
+            get
+            {
+                var saved = Preferences.Instance.Layout.SubmoduleFileChangeDiffWindowWidth;
+                return saved >= 960 ? saved : 1200;
+            }
+        }
+
+        public double InitialWindowHeight
+        {
+            get
+            {
+                var saved = Preferences.Instance.Layout.SubmoduleFileChangeDiffWindowHeight;
+                return saved >= 600 ? saved : 760;
+            }
+        }
+
         public SubmoduleFileChange(string repo, string based, string target, Models.Change change)
         {
             Title = change?.Path ?? "Submodule File Change";

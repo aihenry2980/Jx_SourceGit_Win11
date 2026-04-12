@@ -16,18 +16,20 @@ namespace SourceGit.Commands
         {
             WorkingDirectory = repo;
             Context = repo;
+            _start = string.IsNullOrEmpty(start) ? "-R" : start;
+            _end = end;
 
-            var based = string.IsNullOrEmpty(start) ? "-R" : start;
-            Args = $"diff --name-status {based} {end}";
+            Args = $"diff --name-status {_start} {_end}";
         }
 
         public CompareRevisions(string repo, string start, string end, string path)
         {
             WorkingDirectory = repo;
             Context = repo;
+            _start = string.IsNullOrEmpty(start) ? "-R" : start;
+            _end = end;
 
-            var based = string.IsNullOrEmpty(start) ? "-R" : start;
-            Args = $"diff --name-status {based} {end} -- {path.Quoted()}";
+            Args = $"diff --name-status {_start} {_end} -- {path.Quoted()}";
         }
 
         public async Task<List<Models.Change>> ReadAsync()
@@ -78,6 +80,7 @@ namespace SourceGit.Commands
 
                 await proc.WaitForExitAsync().ConfigureAwait(false);
 
+                await MarkSubmodulePointerChangesAsync(changes).ConfigureAwait(false);
                 changes.Sort((l, r) => Models.NumericSort.Compare(l.Path, r.Path));
             }
             catch
@@ -87,5 +90,30 @@ namespace SourceGit.Commands
 
             return changes;
         }
+
+        private async Task MarkSubmodulePointerChangesAsync(List<Models.Change> changes)
+        {
+            if (changes.Count == 0)
+                return;
+
+            var pointerChanges = await new QuerySubmodulePointerChanges(WorkingDirectory, _start, _end)
+                .GetResultAsync()
+                .ConfigureAwait(false);
+            if (pointerChanges.Count == 0)
+                return;
+
+            foreach (var change in changes)
+            {
+                if (!pointerChanges.TryGetValue(change.Path, out var pointer))
+                    continue;
+
+                change.IsSubmodulePointerChange = true;
+                change.IndexSubmodulePointerOldSHA = pointer.OldSHA;
+                change.IndexSubmodulePointerNewSHA = pointer.NewSHA;
+            }
+        }
+
+        private readonly string _start;
+        private readonly string _end;
     }
 }
