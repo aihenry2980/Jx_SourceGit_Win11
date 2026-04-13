@@ -59,6 +59,18 @@ namespace SourceGit.ViewModels
             set;
         } = 760;
 
+        public int RecursiveLocalChangeDiffWindowPositionX
+        {
+            get;
+            set;
+        } = int.MinValue;
+
+        public int RecursiveLocalChangeDiffWindowPositionY
+        {
+            get;
+            set;
+        } = int.MinValue;
+
         public double SubmoduleFileChangeDiffWindowWidth
         {
             get;
@@ -70,6 +82,18 @@ namespace SourceGit.ViewModels
             get;
             set;
         } = 760;
+
+        public int SubmoduleFileChangeDiffWindowPositionX
+        {
+            get;
+            set;
+        } = int.MinValue;
+
+        public int SubmoduleFileChangeDiffWindowPositionY
+        {
+            get;
+            set;
+        } = int.MinValue;
 
         public GridLength RepositorySidebarWidth
         {

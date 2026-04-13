@@ -3218,17 +3218,31 @@ namespace SourceGit.ViewModels
             if (cancellationToken.IsCancellationRequested)
                 return false;
 
+            var sourceSubmodules = _submodules;
+            if (sourceSubmodules.Count == 0 && MayHaveSubmodules())
+            {
+                try
+                {
+                    var depth = Preferences.Instance.RecursiveSubmoduleDisplayDepth;
+                    sourceSubmodules = await new Commands.QuerySubmodules(FullPath, depth).GetResultAsync().ConfigureAwait(false);
+                }
+                catch
+                {
+                    sourceSubmodules = _submodules;
+                }
+            }
+
             var targets = new List<string>();
             var skippedByUserTargets = 0;
             if (selectedTargets == null)
             {
-                foreach (var submodule in _submodules)
+                foreach (var submodule in sourceSubmodules)
                     targets.Add(submodule.Path);
             }
             else
             {
                 var available = new HashSet<string>(StringComparer.Ordinal);
-                foreach (var submodule in _submodules)
+                foreach (var submodule in sourceSubmodules)
                     available.Add(submodule.Path);
 
                 foreach (var target in selectedTargets)
@@ -3253,14 +3267,60 @@ namespace SourceGit.ViewModels
             var succeededTargets = 0;
             var skippedAutomaticallyTargets = 0;
             var failedTargets = 0;
+            var progressLock = new object();
+            var maxParallelism = stopOnError ? 1 : Math.Min(SPLIT_SUBMODULE_UPDATE_MAX_PARALLELISM, Math.Max(1, totalTargets));
 
-            foreach (var target in targets)
+            Models.RecursiveOperationProgress CreateProgress(
+                string target,
+                Models.RecursiveOperationTargetState state,
+                string repositoryPath = null,
+                string beforeRevision = null,
+                string afterRevision = null)
             {
-                if (string.IsNullOrWhiteSpace(target))
-                    continue;
+                lock (progressLock)
+                {
+                    return new Models.RecursiveOperationProgress
+                    {
+                        Total = totalTargets,
+                        Succeeded = succeededTargets,
+                        SkippedByUser = skippedByUserTargets,
+                        SkippedAutomatically = skippedAutomaticallyTargets,
+                        Failed = failedTargets,
+                        CurrentTarget = target,
+                        CurrentRepositoryPath = repositoryPath ?? string.Empty,
+                        CurrentBeforeRevision = beforeRevision ?? string.Empty,
+                        CurrentAfterRevision = afterRevision ?? string.Empty,
+                        CurrentState = state,
+                    };
+                }
+            }
 
+            void ApplyResult(Models.RecursiveOperationTargetState state, bool updated)
+            {
+                lock (progressLock)
+                {
+                    switch (state)
+                    {
+                        case Models.RecursiveOperationTargetState.Succeeded:
+                            succeededTargets++;
+                            if (updated)
+                                anyUpdated = true;
+                            break;
+                        case Models.RecursiveOperationTargetState.Skipped:
+                            skippedAutomaticallyTargets++;
+                            break;
+                        case Models.RecursiveOperationTargetState.Failed:
+                            failedTargets++;
+                            succ = false;
+                            break;
+                    }
+                }
+            }
+
+            async Task<Models.RecursiveOperationTargetState> RunOneAsync(string target)
+            {
                 if (cancellationToken.IsCancellationRequested)
-                    return false;
+                    return Models.RecursiveOperationTargetState.Failed;
 
                 using var timeout = new CancellationTokenSource(SPLIT_SUBMODULE_UPDATE_TIMEOUT);
                 using var linked = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token, cancellationToken);
@@ -3270,16 +3330,7 @@ namespace SourceGit.ViewModels
                     CancellationToken = linked.Token,
                 };
 
-                onProgressChanged?.Invoke(new Models.RecursiveOperationProgress
-                {
-                    Total = totalTargets,
-                    Succeeded = succeededTargets,
-                    SkippedByUser = skippedByUserTargets,
-                    SkippedAutomatically = skippedAutomaticallyTargets,
-                    Failed = failedTargets,
-                    CurrentTarget = target,
-                    CurrentState = Models.RecursiveOperationTargetState.Running,
-                });
+                onProgressChanged?.Invoke(CreateProgress(target, Models.RecursiveOperationTargetState.Running));
 
                 log?.AppendLine($"=== Update submodule `{target}` ===");
                 var submoduleRoot = Native.OS.GetAbsPath(FullPath, target).Replace('\\', '/');
@@ -3292,32 +3343,18 @@ namespace SourceGit.ViewModels
                 if (cancellationToken.IsCancellationRequested)
                 {
                     log?.AppendLine($"[canceled] Update `{target}` was canceled.");
-                    return false;
+                    return Models.RecursiveOperationTargetState.Failed;
                 }
 
                 if (timeout.IsCancellationRequested)
                 {
                     log?.AppendLine($"[timeout] Update `{target}` exceeded {SPLIT_SUBMODULE_UPDATE_TIMEOUT.TotalMinutes:0} min and was terminated.");
-                    succ = false;
-                    failedTargets++;
-                    onProgressChanged?.Invoke(new Models.RecursiveOperationProgress
-                    {
-                        Total = totalTargets,
-                        Succeeded = succeededTargets,
-                        SkippedByUser = skippedByUserTargets,
-                        SkippedAutomatically = skippedAutomaticallyTargets,
-                        Failed = failedTargets,
-                        CurrentTarget = target,
-                        CurrentState = Models.RecursiveOperationTargetState.Failed,
-                    });
+                    ApplyResult(Models.RecursiveOperationTargetState.Failed, false);
+                    onProgressChanged?.Invoke(CreateProgress(target, Models.RecursiveOperationTargetState.Failed));
                     if (stopOnError)
-                    {
                         App.RaiseException(FullPath, $"Update `{target}` timed out.");
-                        return false;
-                    }
 
-                    targetState = Models.RecursiveOperationTargetState.Failed;
-                    continue;
+                    return Models.RecursiveOperationTargetState.Failed;
                 }
 
                 if (one)
@@ -3330,58 +3367,135 @@ namespace SourceGit.ViewModels
 
                     if (becameInitialized || movedToSuperProjectPointer || headChanged)
                     {
-                        anyUpdated = true;
-                        succeededTargets++;
                         targetState = Models.RecursiveOperationTargetState.Succeeded;
                     }
                     else
                     {
                         log?.AppendLine($"[skip] Submodule `{target}` already matches the super-project pointer.");
-                        skippedAutomaticallyTargets++;
                         targetState = Models.RecursiveOperationTargetState.Skipped;
                     }
                 }
                 else
                 {
                     log?.AppendLine($"[failed] Update `{target}` failed.");
-                    succ = false;
-                    failedTargets++;
                     targetState = Models.RecursiveOperationTargetState.Failed;
-                    if (stopOnError)
-                    {
-                        onProgressChanged?.Invoke(new Models.RecursiveOperationProgress
-                        {
-                            Total = totalTargets,
-                            Succeeded = succeededTargets,
-                            SkippedByUser = skippedByUserTargets,
-                            SkippedAutomatically = skippedAutomaticallyTargets,
-                            Failed = failedTargets,
-                            CurrentTarget = target,
-                            CurrentState = Models.RecursiveOperationTargetState.Failed,
-                        });
-                        return false;
-                    }
                 }
 
-                onProgressChanged?.Invoke(new Models.RecursiveOperationProgress
+                ApplyResult(targetState, targetState == Models.RecursiveOperationTargetState.Succeeded);
+                onProgressChanged?.Invoke(CreateProgress(target, targetState, submoduleRoot, beforeHead, afterHead));
+                return targetState;
+            }
+
+            log?.AppendLine($"Running up to {maxParallelism} submodule update(s) in parallel.");
+            foreach (var batch in BuildIndependentSubmoduleTargetBatches(targets))
+            {
+                if (cancellationToken.IsCancellationRequested)
+                    return false;
+
+                if (stopOnError)
                 {
-                    Total = totalTargets,
-                    Succeeded = succeededTargets,
-                    SkippedByUser = skippedByUserTargets,
-                    SkippedAutomatically = skippedAutomaticallyTargets,
-                    Failed = failedTargets,
-                    CurrentTarget = target,
-                    CurrentRepositoryPath = submoduleRoot,
-                    CurrentBeforeRevision = beforeHead ?? string.Empty,
-                    CurrentAfterRevision = afterHead ?? string.Empty,
-                    CurrentState = targetState,
-                });
+                    foreach (var target in batch)
+                    {
+                        if (string.IsNullOrWhiteSpace(target))
+                            continue;
+
+                        var state = await RunOneAsync(target).ConfigureAwait(false);
+                        if (state == Models.RecursiveOperationTargetState.Failed)
+                            return false;
+                    }
+
+                    continue;
+                }
+
+                using var parallelLimiter = new SemaphoreSlim(maxParallelism);
+                var tasks = new List<Task>();
+                foreach (var target in batch)
+                {
+                    if (string.IsNullOrWhiteSpace(target))
+                        continue;
+
+                    tasks.Add(Task.Run(async () =>
+                    {
+                        await parallelLimiter.WaitAsync(cancellationToken).ConfigureAwait(false);
+                        try
+                        {
+                            await RunOneAsync(target).ConfigureAwait(false);
+                        }
+                        finally
+                        {
+                            parallelLimiter.Release();
+                        }
+                    }, CancellationToken.None));
+                }
+
+                try
+                {
+                    await Task.WhenAll(tasks).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    return false;
+                }
             }
 
             if (anyUpdated)
                 MarkSubmodulesDirtyManually();
 
             return succ;
+        }
+
+        private static List<List<string>> BuildIndependentSubmoduleTargetBatches(List<string> targets)
+        {
+            var comparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+            var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+            var remaining = new List<string>();
+            var seen = new HashSet<string>(comparer);
+            foreach (var target in targets)
+            {
+                if (!string.IsNullOrWhiteSpace(target) && seen.Add(target))
+                    remaining.Add(target);
+            }
+
+            var batches = new List<List<string>>();
+            while (remaining.Count > 0)
+            {
+                var batch = new List<string>();
+                foreach (var target in remaining)
+                {
+                    var hasSelectedAncestor = false;
+                    foreach (var other in remaining)
+                    {
+                        if (IsSubmodulePathAncestor(other, target, comparison))
+                        {
+                            hasSelectedAncestor = true;
+                            break;
+                        }
+                    }
+
+                    if (!hasSelectedAncestor)
+                        batch.Add(target);
+                }
+
+                if (batch.Count == 0)
+                    batch.Add(remaining[0]);
+
+                batches.Add(batch);
+                foreach (var target in batch)
+                    remaining.Remove(target);
+            }
+
+            return batches;
+        }
+
+        private static bool IsSubmodulePathAncestor(string maybeAncestor, string path, StringComparison comparison)
+        {
+            if (string.IsNullOrWhiteSpace(maybeAncestor) ||
+                string.IsNullOrWhiteSpace(path) ||
+                string.Equals(maybeAncestor, path, comparison))
+                return false;
+
+            var prefix = maybeAncestor.EndsWith("/", StringComparison.Ordinal) ? maybeAncestor : $"{maybeAncestor}/";
+            return path.StartsWith(prefix, comparison);
         }
 
         private static bool IsSameRevision(string left, string right)
@@ -5221,6 +5335,7 @@ namespace SourceGit.ViewModels
 
         private static readonly TimeSpan SPLIT_FETCH_TIMEOUT = TimeSpan.FromMinutes(5);
         private static readonly TimeSpan SPLIT_SUBMODULE_UPDATE_TIMEOUT = TimeSpan.FromMinutes(5);
+        private static readonly int SPLIT_SUBMODULE_UPDATE_MAX_PARALLELISM = Math.Max(1, Math.Min(4, Environment.ProcessorCount));
         private static readonly uint[] s_autoHistoryFilterBranchColors =
         [
             0xFF10893E, // green

@@ -111,6 +111,8 @@ namespace SourceGit.ViewModels
             public bool CanOpenUpdateDiff => _state == SubmoduleRunState.Succeeded;
             public bool IsReadOnlyStatusVisible => IsStatusVisible && !CanOpenUpdateDiff;
             public bool IsRunning => _state == SubmoduleRunState.Running;
+            public double HierarchyIndentWidth => Math.Min(36, _hierarchyDepth * 14);
+            public Thickness HierarchyIndentMargin => new Thickness(HierarchyIndentWidth, 0, 0, 0);
             public IBrush RowBackground => IsSelected ? s_boardSelectedRowBackgroundBrush : s_boardSkippedRowBackgroundBrush;
             public IBrush RowBorderBrush => IsSelected ? s_boardSelectedRowBorderBrush : s_boardSkippedRowBorderBrush;
             public IBrush PathForeground => IsSelected ? s_boardSelectedPathForegroundBrush : s_boardSkippedPathForegroundBrush;
@@ -163,9 +165,10 @@ namespace SourceGit.ViewModels
             public string BeforeRevision { get; private set; } = string.Empty;
             public string AfterRevision { get; private set; } = string.Empty;
 
-            public SubmoduleRunItem(string path, bool isSelected)
+            public SubmoduleRunItem(string path, bool isSelected, int hierarchyDepth = 0)
             {
                 Path = path;
+                _hierarchyDepth = Math.Max(0, hierarchyDepth);
                 _isSelected = isSelected;
                 _state = isSelected ? SubmoduleRunState.Pending : SubmoduleRunState.SkippedByUser;
             }
@@ -201,6 +204,7 @@ namespace SourceGit.ViewModels
             private bool _isSelected;
             private bool _hasFinalState;
             private SubmoduleRunState _state;
+            private readonly int _hierarchyDepth;
 
             private void ClearUpdateDiff()
             {
@@ -439,11 +443,14 @@ namespace SourceGit.ViewModels
                 var saved = _repo.Settings?.GetRecursiveSubmoduleUpdateTargets() ?? [];
                 var savedSet = new HashSet<string>(saved, StringComparer.Ordinal);
                 var defaultSelectAll = savedSet.Count == 0;
+                var submodules = GetSubmodulesForSelection();
+                var hierarchyDepths = BuildSubmoduleHierarchyDepths(submodules);
 
-                foreach (var submodule in _repo.Submodules)
+                foreach (var submodule in submodules)
                 {
+                    hierarchyDepths.TryGetValue(submodule.Path, out var depth);
                     SubmoduleSelections.Add(new SubmoduleSelectionItem(submodule.Path, defaultSelectAll || savedSet.Contains(submodule.Path)));
-                    SubmoduleRunItems.Add(new SubmoduleRunItem(submodule.Path, defaultSelectAll || savedSet.Contains(submodule.Path)));
+                    SubmoduleRunItems.Add(new SubmoduleRunItem(submodule.Path, defaultSelectAll || savedSet.Contains(submodule.Path), depth));
                 }
 
                 if (SubmoduleSelections.Count > 0)
@@ -954,11 +961,14 @@ namespace SourceGit.ViewModels
             HashSet<string> selectedSet = null;
             if (selectedTargets != null)
                 selectedSet = new HashSet<string>(selectedTargets, StringComparer.Ordinal);
+            var submodules = GetSubmodulesForSelection();
+            var hierarchyDepths = BuildSubmoduleHierarchyDepths(submodules);
 
-            foreach (var submodule in _repo.Submodules)
+            foreach (var submodule in submodules)
             {
                 var isSelected = selectedSet == null || selectedSet.Contains(submodule.Path);
-                SubmoduleRunItems.Add(new SubmoduleRunItem(submodule.Path, isSelected));
+                hierarchyDepths.TryGetValue(submodule.Path, out var depth);
+                SubmoduleRunItems.Add(new SubmoduleRunItem(submodule.Path, isSelected, depth));
             }
 
             OnPropertyChanged(nameof(IsSubmoduleProgressBoardVisible));
@@ -1008,6 +1018,54 @@ namespace SourceGit.ViewModels
                 return string.Empty;
 
             return revision.Length > 10 ? revision.Substring(0, 10) : revision;
+        }
+
+        private List<Models.Submodule> GetSubmodulesForSelection()
+        {
+            if (_repo.Submodules.Count > 0 || !_repo.MayHaveSubmodules())
+                return _repo.Submodules;
+
+            try
+            {
+                var depth = Preferences.Instance.RecursiveSubmoduleDisplayDepth;
+                return new Commands.QuerySubmodules(_repo.FullPath, depth).GetResultAsync().GetAwaiter().GetResult();
+            }
+            catch
+            {
+                return _repo.Submodules;
+            }
+        }
+
+        private static Dictionary<string, int> BuildSubmoduleHierarchyDepths(IReadOnlyList<Models.Submodule> submodules)
+        {
+            var comparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+            var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+            var depths = new Dictionary<string, int>(comparer);
+
+            foreach (var submodule in submodules)
+            {
+                var depth = 0;
+                foreach (var candidate in submodules)
+                {
+                    if (IsSubmodulePathAncestor(candidate.Path, submodule.Path, comparison))
+                        depth++;
+                }
+
+                depths[submodule.Path] = depth;
+            }
+
+            return depths;
+        }
+
+        private static bool IsSubmodulePathAncestor(string maybeAncestor, string path, StringComparison comparison)
+        {
+            if (string.IsNullOrWhiteSpace(maybeAncestor) ||
+                string.IsNullOrWhiteSpace(path) ||
+                string.Equals(maybeAncestor, path, comparison))
+                return false;
+
+            var prefix = maybeAncestor.EndsWith("/", StringComparison.Ordinal) ? maybeAncestor : $"{maybeAncestor}/";
+            return path.StartsWith(prefix, comparison);
         }
 
         private void MarkRunningSubmoduleCanceled()
