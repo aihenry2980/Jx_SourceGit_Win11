@@ -14,12 +14,13 @@ namespace SourceGit.Commands
         [GeneratedRegex(@"^submodule\.(\S*)\.(\w+)=(.*)$")]
         private static partial Regex REG_FORMAT_MODULE_INFO();
 
-        public QuerySubmodules(string repo, int maxDepth = 1)
+        public QuerySubmodules(string repo, int maxDepth = 1, bool queryStatus = true)
         {
             WorkingDirectory = repo;
             Context = repo;
-            Args = "submodule status";
+            Args = queryStatus ? "submodule status" : "config --file .gitmodules --list";
             _maxDepth = Math.Max(1, maxDepth);
+            _queryStatus = queryStatus;
         }
 
         public async Task<List<Models.Submodule>> GetResultAsync()
@@ -27,20 +28,21 @@ namespace SourceGit.Commands
             var comparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
             var visited = new HashSet<string>(comparer);
             var root = NormalizeRepositoryPath(WorkingDirectory);
-            return await QueryRecursivelyAsync(root, string.Empty, _maxDepth, visited).ConfigureAwait(false);
+            return await QueryRecursivelyAsync(root, string.Empty, _maxDepth, visited, _queryStatus).ConfigureAwait(false);
         }
 
         private static async Task<List<Models.Submodule>> QueryRecursivelyAsync(
             string repo,
             string displayPrefix,
             int remainingDepth,
-            HashSet<string> visited)
+            HashSet<string> visited,
+            bool queryStatus)
         {
             var normalizedRepo = NormalizeRepositoryPath(repo);
             if (string.IsNullOrEmpty(normalizedRepo) || !Directory.Exists(normalizedRepo) || !visited.Add(normalizedRepo))
                 return [];
 
-            var current = await new QuerySubmodules(normalizedRepo).GetCurrentLevelAsync().ConfigureAwait(false);
+            var current = await new QuerySubmodules(normalizedRepo, 1, queryStatus).GetCurrentLevelAsync().ConfigureAwait(false);
             var outs = new List<Models.Submodule>();
             foreach (var module in current)
             {
@@ -57,7 +59,7 @@ namespace SourceGit.Commands
                 if (!Directory.Exists(submoduleRepo))
                     continue;
 
-                var children = await QueryRecursivelyAsync(submoduleRepo, module.Path, remainingDepth - 1, visited).ConfigureAwait(false);
+                var children = await QueryRecursivelyAsync(submoduleRepo, module.Path, remainingDepth - 1, visited, queryStatus).ConfigureAwait(false);
                 if (children.Exists(x => x.IsDirty))
                 {
                     module.HasSubmoduleChanges = true;
@@ -72,6 +74,9 @@ namespace SourceGit.Commands
 
         private async Task<List<Models.Submodule>> GetCurrentLevelAsync()
         {
+            if (!_queryStatus)
+                return await GetCurrentLevelDefinitionsAsync().ConfigureAwait(false);
+
             var submodules = new List<Models.Submodule>();
             var rs = await ReadToEndAsync().ConfigureAwait(false);
 
@@ -194,6 +199,56 @@ namespace SourceGit.Commands
             return submodules;
         }
 
+        private async Task<List<Models.Submodule>> GetCurrentLevelDefinitionsAsync()
+        {
+            var submodules = new List<Models.Submodule>();
+            var rs = await ReadToEndAsync().ConfigureAwait(false);
+            if (!rs.IsSuccess)
+                return submodules;
+
+            var modules = new Dictionary<string, ModuleInfo>();
+            var lines = rs.StdOut.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
+            foreach (var line in lines)
+            {
+                var match = REG_FORMAT_MODULE_INFO().Match(line);
+                if (!match.Success)
+                    continue;
+
+                var name = match.Groups[1].Value;
+                var key = match.Groups[2].Value;
+                var val = match.Groups[3].Value;
+
+                if (!modules.TryGetValue(name, out var module))
+                {
+                    module = new ModuleInfo();
+                    modules.Add(name, module);
+                }
+
+                if (key.Equals("path", StringComparison.Ordinal))
+                    module.Path = val;
+                else if (key.Equals("url", StringComparison.Ordinal))
+                    module.URL = val;
+                else if (key.Equals("branch", StringComparison.Ordinal))
+                    module.Branch = val;
+            }
+
+            foreach (var module in modules.Values)
+            {
+                if (!string.IsNullOrWhiteSpace(module.Path))
+                {
+                    submodules.Add(new Models.Submodule
+                    {
+                        Path = module.Path,
+                        URL = module.URL,
+                        Branch = module.Branch,
+                        Status = Models.SubmoduleStatus.Unknown,
+                    });
+                }
+            }
+
+            return submodules;
+        }
+
         private static string NormalizeRepositoryPath(string repo)
         {
             if (string.IsNullOrWhiteSpace(repo))
@@ -286,5 +341,6 @@ namespace SourceGit.Commands
         }
 
         private readonly int _maxDepth = 1;
+        private readonly bool _queryStatus = true;
     }
 }

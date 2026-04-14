@@ -53,7 +53,7 @@ namespace SourceGit.Views
         private void OnRefreshSubmodules(object sender, RoutedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo)
-                repo.RefreshSubmodules();
+                repo.RefreshSubmodules(true);
 
             e.Handled = true;
         }

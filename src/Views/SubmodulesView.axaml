@@ -115,6 +115,21 @@
                           Height="14"
                           Padding="3,0"
                           CornerRadius="7"
+                          Background="#FF8A8A8A"
+                          ToolTip.Tip="{Binding StatusBadgeToolTip}"
+                          IsVisible="{Binding IsStatusUnknown}">
+                    <TextBlock HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               FontSize="9"
+                               FontWeight="Bold"
+                               Foreground="White"
+                               Text="{Binding StatusBadgeText}"/>
+                  </Border>
+
+                  <Border MinWidth="14"
+                          Height="14"
+                          Padding="3,0"
+                          CornerRadius="7"
                           Background="#FF3FA65A"
                           ToolTip.Tip="{Binding StatusBadgeToolTip}"
                           IsVisible="{Binding IsInitializedClean}">
@@ -274,6 +289,21 @@
                 <Path Grid.Column="0" Width="10" Height="10" Margin="8,0" Data="{StaticResource Icons.Submodule}"/>
                 <TextBlock Grid.Column="1" Text="{Binding Path}" ClipToBounds="True" TextTrimming="CharacterEllipsis"/>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="3" Margin="8,0,8,0">
+                  <Border MinWidth="14"
+                          Height="14"
+                          Padding="3,0"
+                          CornerRadius="7"
+                          Background="#FF8A8A8A"
+                          ToolTip.Tip="{Binding StatusBadgeToolTip}"
+                          IsVisible="{Binding IsStatusUnknown}">
+                    <TextBlock HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               FontSize="9"
+                               FontWeight="Bold"
+                               Foreground="White"
+                               Text="{Binding StatusBadgeText}"/>
+                  </Border>
+
                   <Border MinWidth="14"
                           Height="14"
                           Padding="3,0"

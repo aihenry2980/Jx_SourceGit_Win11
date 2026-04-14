@@ -226,6 +226,22 @@ namespace SourceGit.ViewModels
             ReloadRecentHiddenExtensions();
         }
 
+        public async Task RevertRepositoryChangesAsync(RepositoryEntry entry)
+        {
+            if (entry == null || entry.Changes.Count == 0)
+                return;
+
+            await RevertChangesAsync(entry.RepositoryPath, entry.DisplayName, entry.Changes).ConfigureAwait(false);
+        }
+
+        public async Task RevertSingleChangeAsync(RepositoryEntry entry, Models.Change change)
+        {
+            if (entry == null || change == null)
+                return;
+
+            await RevertChangesAsync(entry.RepositoryPath, entry.DisplayName, [change]).ConfigureAwait(false);
+        }
+
         private async Task CollectRepoChangesAsync(string repoPath, bool isRoot, List<RepositoryEntry> entries)
         {
             var changes = await new Commands.QueryLocalChanges(repoPath, _repo.IncludeUntracked, true, true)
@@ -264,6 +280,84 @@ namespace SourceGit.ViewModels
 
                 await CollectRepoChangesAsync(submodulePath, false, entries).ConfigureAwait(false);
             }
+        }
+
+        private async Task RevertChangesAsync(string repoPath, string displayName, List<Models.Change> changes)
+        {
+            if (changes.Count == 0)
+                return;
+
+            using var lockWatcher = _repo.LockWatcher();
+            var log = _repo.CreateLog($"Revert Changes in '{displayName}'");
+
+            try
+            {
+                await RevertSelectedChangesToHeadAsync(repoPath, changes, log).ConfigureAwait(false);
+            }
+            finally
+            {
+                log.Complete();
+            }
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                _repo.MarkWorkingCopyDirtyManually();
+                _repo.MarkSubmodulesDirtyManually();
+            });
+
+            await RefreshAsync().ConfigureAwait(false);
+        }
+
+        private static async Task RevertSelectedChangesToHeadAsync(string repoPath, List<Models.Change> changes, Models.ICommandLog log)
+        {
+            var targetPaths = new HashSet<string>(StringComparer.Ordinal);
+            var hasStagedChanges = false;
+
+            foreach (var change in changes)
+            {
+                if (!string.IsNullOrWhiteSpace(change.Path))
+                    targetPaths.Add(change.Path);
+
+                if (!string.IsNullOrWhiteSpace(change.OriginalPath))
+                    targetPaths.Add(change.OriginalPath);
+
+                hasStagedChanges |= change.Index != Models.ChangeState.None;
+            }
+
+            if (targetPaths.Count == 0)
+                return;
+
+            if (hasStagedChanges)
+            {
+                var pathSpecFile = Path.GetTempFileName();
+                try
+                {
+                    await File.WriteAllLinesAsync(pathSpecFile, targetPaths).ConfigureAwait(false);
+                    await new Commands.Reset(repoPath, pathSpecFile)
+                        .Use(log)
+                        .ExecAsync()
+                        .ConfigureAwait(false);
+                }
+                finally
+                {
+                    File.Delete(pathSpecFile);
+                }
+            }
+
+            // Query again after unstaging. Staged additions/renames become normal
+            // worktree changes, so the existing discard helper can safely clean them.
+            var refreshed = await new Commands.QueryLocalChanges(repoPath, true, true, true)
+                .GetResultAsync()
+                .ConfigureAwait(false);
+
+            var matched = refreshed
+                .Where(change =>
+                    targetPaths.Contains(change.Path) ||
+                    (!string.IsNullOrWhiteSpace(change.OriginalPath) && targetPaths.Contains(change.OriginalPath)))
+                .ToList();
+
+            if (matched.Count > 0)
+                await Commands.Discard.ChangesAsync(repoPath, matched, log).ConfigureAwait(false);
         }
 
         private static async Task MarkSubmodulePointerChangesAsync(string repoPath, List<Models.Change> changes)

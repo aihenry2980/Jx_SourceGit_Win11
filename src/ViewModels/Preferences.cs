@@ -302,6 +302,12 @@ namespace SourceGit.ViewModels
             set => SetProperty(ref _disableBackgroundTasks, value);
         }
 
+        public bool RefreshSubmoduleStatusByDefault
+        {
+            get => _refreshSubmoduleStatusByDefault;
+            set => SetProperty(ref _refreshSubmoduleStatusByDefault, value);
+        }
+
         public string IgnoreUpdateTag
         {
             get => _ignoreUpdateTag;
@@ -1228,6 +1234,7 @@ namespace SourceGit.ViewModels
         private bool _showAuthorTimeInGraph = false;
         private bool _showChildren = false;
         private bool _disableBackgroundTasks = false;
+        private bool _refreshSubmoduleStatusByDefault = true;
         private string _presetBranchExactNames = string.Empty;
         private string _presetBranchContainsPatterns = string.Empty;
         private string _presetBranchExactNameColors = string.Empty;

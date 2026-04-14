@@ -39,6 +39,11 @@ namespace SourceGit.ViewModels
             get => Module?.IsInitializedClean ?? false;
         }
 
+        public bool IsStatusUnknown
+        {
+            get => Module?.IsStatusUnknown ?? false;
+        }
+
         public bool HasWarningStatusBadge
         {
             get => Module?.HasWarningStatusBadge ?? false;

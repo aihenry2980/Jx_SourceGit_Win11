@@ -8,7 +8,7 @@
         void RefreshWorktrees();
         void RefreshTags();
         void RefreshCommits();
-        void RefreshSubmodules();
+        void RefreshSubmodules(bool force = false);
         void RefreshWorkingCopyChanges();
         void RefreshStashes();
     }

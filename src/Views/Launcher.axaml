@@ -19,9 +19,9 @@
     </Grid.RowDefinitions>
 
     <!-- Custom TitleBar -->
-    <Grid Grid.Row="0" ColumnDefinitions="Auto,32,32,*,Auto">
+    <Grid Grid.Row="0" ColumnDefinitions="Auto,32,32,*,Auto,Auto">
       <!-- Bottom border -->
-      <Border Grid.Column="0" Grid.ColumnSpan="5"
+      <Border Grid.Column="0" Grid.ColumnSpan="6"
               x:Name="TitleBarBG"
               Background="{Binding ActivePageTitleBarBackground}"
               BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Brush.Border0}"
@@ -109,8 +109,29 @@
       <!-- Pages Tabs -->
       <v:LauncherTabBar Grid.Column="3" Height="30" Margin="0,0,16,0" VerticalAlignment="Bottom"/>
 
+      <!-- Machine Name -->
+      <Border Grid.Column="4"
+              Height="24"
+              MinWidth="64"
+              MaxWidth="220"
+              Margin="0,0,4,3"
+              Padding="10,0"
+              HorizontalAlignment="Right"
+              VerticalAlignment="Bottom"
+              Background="{DynamicResource Brush.Popup}"
+              BorderBrush="{DynamicResource Brush.Border0}"
+              BorderThickness="1"
+              CornerRadius="6">
+        <TextBlock Text="{Binding MachineName}"
+                   FontWeight="Bold"
+                   Foreground="{DynamicResource Brush.FG1}"
+                   VerticalAlignment="Center"
+                   TextAlignment="Center"
+                   TextTrimming="CharacterEllipsis"/>
+      </Border>
+
       <!-- Caption Buttons (Windows/Linux) -->
-      <Border Grid.Column="4" Margin="16,0,0,0" IsVisible="{Binding #ThisControl.HasRightCaptionButton}">
+      <Border Grid.Column="5" Margin="16,0,0,0" IsVisible="{Binding #ThisControl.HasRightCaptionButton}">
         <v:CaptionButtons Height="30" VerticalAlignment="Top"/>
       </Border>
     </Grid>

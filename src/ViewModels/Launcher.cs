@@ -20,6 +20,8 @@ namespace SourceGit.ViewModels
             private set => SetProperty(ref _title, value);
         }
 
+        public string MachineName { get; } = Environment.MachineName;
+
         public AvaloniaList<LauncherPage> Pages
         {
             get;

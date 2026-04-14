@@ -47,7 +47,7 @@
           <TabItem.Header>
             <TextBlock Classes="tab_header" Text="{DynamicResource Text.Preferences.General}"/>
           </TabItem.Header>
-          <Grid Margin="8" RowDefinitions="32,32,32,32,32,32,32,32,32,32,32,32,32,32,Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*">
+          <Grid Margin="8" RowDefinitions="32,32,32,32,32,32,32,32,32,32,32,32,32,64,Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*">
             <TextBlock Grid.Row="0" Grid.Column="0"
                        Text="{DynamicResource Text.Preferences.General.Locale}"
                        HorizontalAlignment="Right"
@@ -182,11 +182,17 @@
                       Content="{DynamicResource Text.Preferences.General.UseGitHubStyleAvatar}"
                       IsChecked="{Binding UseGitHubStyleAvatar, Mode=TwoWay}"/>
 
-            <CheckBox Grid.Row="13" Grid.Column="1"
-                      Height="32"
-                      Content="Disable background tasks"
-                      ToolTip.Tip="Turns off background auto-fetch/sync and repository watcher refreshes. Use manual refresh when needed."
-                      IsChecked="{Binding DisableBackgroundTasks, Mode=TwoWay}"/>
+            <StackPanel Grid.Row="13" Grid.Column="1" Orientation="Vertical">
+              <CheckBox Height="32"
+                        Content="Disable background tasks"
+                        ToolTip.Tip="Turns off background auto-fetch/sync and repository watcher refreshes. Use manual refresh when needed."
+                        IsChecked="{Binding DisableBackgroundTasks, Mode=TwoWay}"/>
+
+              <CheckBox Height="32"
+                        Content="Refresh submodule status by default"
+                        ToolTip.Tip="Refreshes submodule status automatically when opening a repository or when repository changes are detected. Turn this off to avoid background submodule status work; the sidebar refresh button still refreshes manually."
+                        IsChecked="{Binding RefreshSubmoduleStatusByDefault, Mode=TwoWay}"/>
+            </StackPanel>
 
             <CheckBox Grid.Row="14" Grid.Column="1"
                       Height="32"

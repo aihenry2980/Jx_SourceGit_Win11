@@ -99,20 +99,83 @@ namespace SourceGit.Views
             }
         }
 
+        private async void OnRevertRepositoryEntryChanges(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is not ViewModels.RecursiveLocalChanges vm ||
+                sender is not Control { DataContext: ViewModels.RecursiveLocalChanges.RepositoryEntry entry } ||
+                entry.Changes.Count == 0)
+                return;
+
+            var confirmed = await App.AskConfirmAsync(
+                $"Revert all {entry.Changes.Count} listed change{(entry.Changes.Count == 1 ? string.Empty : "s")} in '{entry.DisplayName}'?\n\nThis cannot be undone.",
+                Models.ConfirmButtonType.YesNo);
+            if (!confirmed)
+                return;
+
+            await RevertChangesAsync(vm, () => vm.RevertRepositoryChangesAsync(entry));
+            e.Handled = true;
+        }
+
         private void OnOpenChangeDiff(object sender, PointerPressedEventArgs e)
         {
             if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed ||
                 sender is not Control { DataContext: Models.Change change } control)
                 return;
 
+            if (FindRepositoryEntry(control) is { } entry)
+                App.ShowWindow(new ViewModels.RecursiveLocalChangeDiff(entry.RepositoryPath, change));
+
+            e.Handled = true;
+        }
+
+        private void OnChangeContextRequested(object sender, ContextRequestedEventArgs e)
+        {
+            if (DataContext is not ViewModels.RecursiveLocalChanges vm ||
+                sender is not Control { DataContext: Models.Change change } control ||
+                FindRepositoryEntry(control) is not { } entry)
+                return;
+
+            var menu = new ContextMenu();
+
+            var revert = new MenuItem();
+            revert.Header = "Revert this file";
+            revert.Icon = this.CreateMenuIcon("Icons.Undo");
+            revert.Click += async (_, ev) =>
+            {
+                var confirmed = await App.AskConfirmAsync(
+                    $"Revert '{change.Path}' in '{entry.DisplayName}'?\n\nThis cannot be undone.",
+                    Models.ConfirmButtonType.YesNo);
+                if (confirmed)
+                    await RevertChangesAsync(vm, () => vm.RevertSingleChangeAsync(entry, change));
+
+                ev.Handled = true;
+            };
+            menu.Items.Add(revert);
+
+            menu.Open(control);
+            e.Handled = true;
+        }
+
+        private static ViewModels.RecursiveLocalChanges.RepositoryEntry FindRepositoryEntry(StyledElement control)
+        {
             StyledElement current = control;
             while (current != null && current.DataContext is not ViewModels.RecursiveLocalChanges.RepositoryEntry)
                 current = current.Parent as StyledElement;
 
-            if (current?.DataContext is ViewModels.RecursiveLocalChanges.RepositoryEntry entry)
-                App.ShowWindow(new ViewModels.RecursiveLocalChangeDiff(entry.RepositoryPath, change));
+            return current?.DataContext as ViewModels.RecursiveLocalChanges.RepositoryEntry;
+        }
 
-            e.Handled = true;
+        private async Task RevertChangesAsync(ViewModels.RecursiveLocalChanges vm, Func<Task> action)
+        {
+            try
+            {
+                await action();
+            }
+            catch (Exception ex)
+            {
+                App.LogException(ex);
+                await RefreshAsync(vm);
+            }
         }
 
         private static async Task RefreshAsync(ViewModels.RecursiveLocalChanges vm)

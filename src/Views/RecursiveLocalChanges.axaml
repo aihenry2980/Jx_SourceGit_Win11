@@ -207,7 +207,7 @@
                       BorderThickness="1"
                       CornerRadius="6">
                 <Grid RowDefinitions="Auto,*">
-                  <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                  <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto">
                     <Path Grid.Column="0"
                           Width="14"
                           Height="14"
@@ -236,6 +236,29 @@
 
                     <Button Grid.Column="2"
                             Classes="flat"
+                            MinWidth="72"
+                            Height="22"
+                            Margin="8,0,0,0"
+                            Padding="8,0"
+                            VerticalAlignment="Center"
+                            Click="OnRevertRepositoryEntryChanges"
+                            ToolTip.Tip="Revert all listed changes in this repository">
+                      <StackPanel Orientation="Horizontal">
+                        <Path Width="10"
+                              Height="10"
+                              Margin="0,0,5,0"
+                              VerticalAlignment="Center"
+                              Fill="Tomato"
+                              Data="{StaticResource Icons.Undo}"/>
+                        <TextBlock Text="Revert all"
+                                   Foreground="Tomato"
+                                   FontSize="10"
+                                   FontWeight="SemiBold"/>
+                      </StackPanel>
+                    </Button>
+
+                    <Button Grid.Column="3"
+                            Classes="flat"
                             MinWidth="48"
                             Height="22"
                             Margin="8,0,0,0"
@@ -248,7 +271,7 @@
                                  FontWeight="SemiBold"/>
                     </Button>
 
-                    <Border Grid.Column="3"
+                    <Border Grid.Column="4"
                             Height="20"
                             Margin="8,0,0,0"
                             Padding="8,0"
@@ -280,6 +303,7 @@
                                 ColumnDefinitions="Auto,*,Auto"
                                 Margin="0,0,0,2"
                                 Cursor="Hand"
+                                ContextRequested="OnChangeContextRequested"
                                 PointerPressed="OnOpenChangeDiff">
                             <v:ChangeStatusIcon Grid.Column="0"
                                                 Width="16"

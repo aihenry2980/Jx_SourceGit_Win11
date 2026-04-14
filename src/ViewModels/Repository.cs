@@ -1798,7 +1798,7 @@ namespace SourceGit.ViewModels
         public void MarkSubmodulesDirtyManually()
         {
             _watcher?.MarkSubmodulesUpdated();
-            RefreshSubmodules();
+            RefreshSubmodules(true);
         }
 
         public void MarkFetched()
@@ -2481,9 +2481,10 @@ namespace SourceGit.ViewModels
             });
         }
 
-        public void RefreshSubmodules()
+        public void RefreshSubmodules(bool force = false)
         {
             var refreshVersion = Interlocked.Increment(ref _refreshSubmodulesVersion);
+            var queryStatus = force || Preferences.Instance.RefreshSubmoduleStatusByDefault;
 
             if (!MayHaveSubmodules())
             {
@@ -2515,7 +2516,7 @@ namespace SourceGit.ViewModels
                 try
                 {
                     var depth = Preferences.Instance.RecursiveSubmoduleDisplayDepth;
-                    var submodules = await new Commands.QuerySubmodules(FullPath, depth).GetResultAsync().ConfigureAwait(false);
+                    var submodules = await new Commands.QuerySubmodules(FullPath, depth, queryStatus).GetResultAsync().ConfigureAwait(false);
 
                     Dispatcher.UIThread.Invoke(() =>
                     {
@@ -4142,6 +4143,8 @@ namespace SourceGit.ViewModels
             else if (e.PropertyName == nameof(Preferences.DisableBackgroundTasks))
                 EnsureBackgroundTaskState();
             else if (e.PropertyName == nameof(Preferences.RecursiveSubmoduleDisplayDepth))
+                RefreshSubmodules();
+            else if (e.PropertyName == nameof(Preferences.RefreshSubmoduleStatusByDefault))
                 RefreshSubmodules();
         }
 
