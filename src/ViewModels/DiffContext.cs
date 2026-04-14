@@ -243,6 +243,7 @@ namespace SourceGit.ViewModels
             {
                 var start = string.IsNullOrWhiteSpace(oldSHA) ? Models.Commit.EmptyTreeSHA1 : oldSHA;
                 var end = string.IsNullOrWhiteSpace(newSHA) ? Models.Commit.EmptyTreeSHA1 : newSHA;
+                submoduleDiff.FullPath = submoduleRoot;
                 submoduleDiff.RepositoryPath = submoduleRoot;
                 submoduleDiff.BaseRevision = start;
                 submoduleDiff.TargetRevision = end;

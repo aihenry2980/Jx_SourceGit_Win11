@@ -464,7 +464,7 @@ namespace SourceGit.Views
                     else if (global::System.IO.Directory.Exists(folderPath))
                     {
                         var test = await new Commands.QueryRepositoryRootPath(folderPath).GetResultAsync();
-                        ViewModels.Welcome.Instance.InitRepository(folderPath, null, test.StdErr);
+                        activePage.Popup = new ViewModels.Init(activePage.Node.Id, folderPath, null, test.StdErr);
                     }
                 }
             }

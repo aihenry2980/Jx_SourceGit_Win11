@@ -948,9 +948,9 @@ namespace SourceGit.Views
 
                 if (services.Count == 1)
                 {
-                    ai.Click += async (_, e) =>
+                    ai.Click += (_, e) =>
                     {
-                        await App.ShowDialog(new ViewModels.AIAssistant(repo, services[0], selectedStaged));
+                        DoOpenAIAssistant(repo, services[0], selectedStaged);
                         e.Handled = true;
                     };
                 }
@@ -962,9 +962,9 @@ namespace SourceGit.Views
 
                         var item = new MenuItem();
                         item.Header = service.Name;
-                        item.Click += async (_, e) =>
+                        item.Click += (_, e) =>
                         {
-                            await App.ShowDialog(new ViewModels.AIAssistant(repo, dup, selectedStaged));
+                            DoOpenAIAssistant(repo, dup, selectedStaged);
                             e.Handled = true;
                         };
 
@@ -1571,6 +1571,17 @@ namespace SourceGit.Views
 
             menu.Items.Add(custom);
             menu.Items.Add(new MenuItem() { Header = "-" });
+        }
+
+        private void DoOpenAIAssistant(ViewModels.Repository repo, AI.Service serivce, List<Models.Change> changes)
+        {
+            var owner = TopLevel.GetTopLevel(this) as Window;
+            if (owner == null)
+                return;
+
+            var assistant = new ViewModels.AIAssistant(repo, serivce, changes);
+            var view = new AIAssistant() { DataContext = assistant };
+            view.Show(owner);
         }
     }
 }

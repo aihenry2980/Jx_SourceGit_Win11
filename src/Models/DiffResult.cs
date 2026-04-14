@@ -23,6 +23,7 @@ namespace SourceGit.Models
     public class TextDiffLine
     {
         public TextDiffLineType Type { get; set; } = TextDiffLineType.None;
+        public byte[] RawContent { get; set; } = [];
         public string Content { get; set; } = "";
         public int OldLineNumber { get; set; } = 0;
         public int NewLineNumber { get; set; } = 0;
@@ -33,10 +34,11 @@ namespace SourceGit.Models
         public string NewLine => NewLineNumber == 0 ? string.Empty : NewLineNumber.ToString();
 
         public TextDiffLine() { }
-        public TextDiffLine(TextDiffLineType type, string content, int oldLine, int newLine)
+        public TextDiffLine(TextDiffLineType type, string line, byte[] rawContent, int oldLine, int newLine)
         {
             Type = type;
-            Content = content;
+            Content = line;
+            RawContent = rawContent;
             OldLineNumber = oldLine;
             NewLineNumber = newLine;
         }
@@ -158,7 +160,7 @@ namespace SourceGit.Models
             writer.WriteLine($"+++ b/{change.Path}");
 
             // If last line of selection is a change. Find one more line.
-            string tail = null;
+            TextDiffLine tail = null;
             if (selection.EndLine < Lines.Count)
             {
                 var lastLine = Lines[selection.EndLine - 1];
@@ -173,7 +175,7 @@ namespace SourceGit.Models
                             (revert && line.Type == TextDiffLineType.Added) ||
                             (!revert && line.Type == TextDiffLineType.Deleted))
                         {
-                            tail = line.Content;
+                            tail = line;
                             break;
                         }
                     }
@@ -256,8 +258,8 @@ namespace SourceGit.Models
                 }
             }
 
-            if (!string.IsNullOrEmpty(tail))
-                writer.WriteLine($" {tail}");
+            if (tail != null)
+                WriteLine(writer, ' ', tail);
             writer.Flush();
         }
 
@@ -273,7 +275,7 @@ namespace SourceGit.Models
             writer.WriteLine($"+++ b/{change.Path}");
 
             // If last line of selection is a change. Find one more line.
-            string tail = null;
+            TextDiffLine tail = null;
             if (selection.EndLine < Lines.Count)
             {
                 var lastLine = Lines[selection.EndLine - 1];
@@ -288,7 +290,7 @@ namespace SourceGit.Models
                         {
                             if (line.Type == TextDiffLineType.Normal || line.Type == TextDiffLineType.Added)
                             {
-                                tail = line.Content;
+                                tail = line;
                                 break;
                             }
                         }
@@ -296,7 +298,7 @@ namespace SourceGit.Models
                         {
                             if (line.Type == TextDiffLineType.Normal || line.Type == TextDiffLineType.Deleted)
                             {
-                                tail = line.Content;
+                                tail = line;
                                 break;
                             }
                         }
@@ -408,8 +410,8 @@ namespace SourceGit.Models
                 }
             }
 
-            if (!string.IsNullOrEmpty(tail))
-                writer.WriteLine($" {tail}");
+            if (tail != null)
+                WriteLine(writer, ' ', tail);
             writer.Flush();
         }
 
@@ -564,7 +566,11 @@ namespace SourceGit.Models
 
         private static void WriteLine(StreamWriter writer, char prefix, TextDiffLine line)
         {
-            writer.WriteLine($"{prefix}{line.Content}");
+            writer.Flush();
+
+            writer.BaseStream.WriteByte((byte)prefix);
+            writer.BaseStream.Write(line.RawContent);
+            writer.BaseStream.WriteByte((byte)'\n');
 
             if (line.NoNewLineEndOfFile)
                 writer.WriteLine("\\ No newline at end of file");
@@ -602,6 +608,7 @@ namespace SourceGit.Models
 
     public class SubmoduleDiff
     {
+        public string FullPath { get; set; } = string.Empty;
         public RevisionSubmodule Old { get; set; } = null;
         public RevisionSubmodule New { get; set; } = null;
         public List<Change> Changes { get; set; } = [];
@@ -617,6 +624,10 @@ namespace SourceGit.Models
         public string NewPointerAuthor => FormatAuthor(New?.Commit?.Author?.Name);
         public string OldPointerSubject => FormatSubject(Old?.Commit?.Subject);
         public string NewPointerSubject => FormatSubject(New?.Commit?.Subject);
+
+        public bool CanOpenDetails => File.Exists(Path.Combine(FullPath, ".git")) &&
+            Old?.Commit?.Author != User.Invalid &&
+            New?.Commit?.Author != User.Invalid;
 
         private static string FormatSHA(string sha)
         {
