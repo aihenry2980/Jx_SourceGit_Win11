@@ -72,6 +72,8 @@ namespace SourceGit.ViewModels
             set;
         } = new();
 
+        public string MachineName { get; } = Environment.MachineName;
+
         public Models.FilterMode HistoryFilterMode
         {
             get => _historyFilterMode;

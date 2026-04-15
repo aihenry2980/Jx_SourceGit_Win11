@@ -1234,7 +1234,7 @@ namespace SourceGit.ViewModels
         private bool _showAuthorTimeInGraph = false;
         private bool _showChildren = false;
         private bool _disableBackgroundTasks = false;
-        private bool _refreshSubmoduleStatusByDefault = true;
+        private bool _refreshSubmoduleStatusByDefault = false;
         private string _presetBranchExactNames = string.Empty;
         private string _presetBranchContainsPatterns = string.Empty;
         private string _presetBranchExactNameColors = string.Empty;
