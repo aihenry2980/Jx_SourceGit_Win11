@@ -233,7 +233,7 @@ namespace SourceGit.Views
         {
             if (DataContext is ViewModels.Repository repo)
             {
-                await App.ShowDialog(new ViewModels.Statistics(repo.FullPath));
+                await this.ShowDialogAsync(new ViewModels.Statistics(repo.FullPath));
                 e.Handled = true;
             }
         }
@@ -287,7 +287,7 @@ namespace SourceGit.Views
         {
             if (DataContext is ViewModels.Repository repo)
             {
-                await App.ShowDialog(new ViewModels.RepositoryConfigure(repo));
+                await this.ShowDialogAsync(new ViewModels.RepositoryConfigure(repo));
                 e.Handled = true;
             }
         }
@@ -1483,7 +1483,7 @@ namespace SourceGit.Views
                     {
                         locks.Click += async (_, e) =>
                         {
-                            await App.ShowDialog(new ViewModels.LFSLocks(repo, repo.Remotes[0].Name));
+                            await this.ShowDialogAsync(new ViewModels.LFSLocks(repo, repo.Remotes[0].Name));
                             e.Handled = true;
                         };
                     }
@@ -1496,7 +1496,7 @@ namespace SourceGit.Views
                             lockRemote.Header = remoteName;
                             lockRemote.Click += async (_, e) =>
                             {
-                                await App.ShowDialog(new ViewModels.LFSLocks(repo, remoteName));
+                                await this.ShowDialogAsync(new ViewModels.LFSLocks(repo, remoteName));
                                 e.Handled = true;
                             };
                             locks.Items.Add(lockRemote);
@@ -1684,7 +1684,7 @@ namespace SourceGit.Views
         {
             if (DataContext is ViewModels.Repository repo)
             {
-                await App.ShowDialog(new ViewModels.ViewLogs(repo));
+                await this.ShowDialogAsync(new ViewModels.ViewLogs(repo));
                 e.Handled = true;
             }
         }

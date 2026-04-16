@@ -1199,7 +1199,7 @@ namespace SourceGit.Views
                         manually.Icon = App.CreateMenuIcon("Icons.InteractiveRebase");
                         manually.Click += async (_, e) =>
                         {
-                            await App.ShowDialog(new ViewModels.InteractiveRebase(repo, commit));
+                            await this.ShowDialogAsync(new ViewModels.InteractiveRebase(repo, commit));
                             e.Handled = true;
                         };
 
@@ -1208,7 +1208,7 @@ namespace SourceGit.Views
                         reword.Icon = App.CreateMenuIcon("Icons.Rename");
                         reword.Click += async (_, e) =>
                         {
-                            await vm.InteractiveRebaseAsync(commit, Models.InteractiveRebaseAction.Reword);
+                            await InteractiveRebaseWithPrefillActionAsync(repo, commit, Models.InteractiveRebaseAction.Reword);
                             e.Handled = true;
                         };
 
@@ -1217,7 +1217,7 @@ namespace SourceGit.Views
                         edit.Icon = App.CreateMenuIcon("Icons.Edit");
                         edit.Click += async (_, e) =>
                         {
-                            await vm.InteractiveRebaseAsync(commit, Models.InteractiveRebaseAction.Edit);
+                            await InteractiveRebaseWithPrefillActionAsync(repo, commit, Models.InteractiveRebaseAction.Edit);
                             e.Handled = true;
                         };
 
@@ -1226,7 +1226,7 @@ namespace SourceGit.Views
                         squash.Icon = App.CreateMenuIcon("Icons.SquashIntoParent");
                         squash.Click += async (_, e) =>
                         {
-                            await vm.InteractiveRebaseAsync(commit, Models.InteractiveRebaseAction.Squash);
+                            await InteractiveRebaseWithPrefillActionAsync(repo, commit, Models.InteractiveRebaseAction.Squash);
                             e.Handled = true;
                         };
 
@@ -1235,7 +1235,7 @@ namespace SourceGit.Views
                         fixup.Icon = App.CreateMenuIcon("Icons.Fix");
                         fixup.Click += async (_, e) =>
                         {
-                            await vm.InteractiveRebaseAsync(commit, Models.InteractiveRebaseAction.Fixup);
+                            await InteractiveRebaseWithPrefillActionAsync(repo, commit, Models.InteractiveRebaseAction.Fixup);
                             e.Handled = true;
                         };
 
@@ -1244,7 +1244,7 @@ namespace SourceGit.Views
                         drop.Icon = App.CreateMenuIcon("Icons.Clear");
                         drop.Click += async (_, e) =>
                         {
-                            await vm.InteractiveRebaseAsync(commit, Models.InteractiveRebaseAction.Drop);
+                            await InteractiveRebaseWithPrefillActionAsync(repo, commit, Models.InteractiveRebaseAction.Drop);
                             e.Handled = true;
                         };
 
@@ -1269,7 +1269,7 @@ namespace SourceGit.Views
                         interactiveRebase.Icon = App.CreateMenuIcon("Icons.InteractiveRebase");
                         interactiveRebase.Click += async (_, e) =>
                         {
-                            await App.ShowDialog(new ViewModels.InteractiveRebase(repo, commit));
+                            await this.ShowDialogAsync(new ViewModels.InteractiveRebase(repo, commit));
                             e.Handled = true;
                         };
 
@@ -2334,6 +2334,22 @@ namespace SourceGit.Views
             submenu.Items.Add(copy);
 
             menu.Items.Add(submenu);
+        }
+
+        private async Task InteractiveRebaseWithPrefillActionAsync(ViewModels.Repository repo, Models.Commit target, Models.InteractiveRebaseAction action)
+        {
+            var prefill = new ViewModels.InteractiveRebasePrefill(target.SHA, action);
+            var start = action switch
+            {
+                Models.InteractiveRebaseAction.Squash or Models.InteractiveRebaseAction.Fixup => $"{target.SHA}~~",
+                _ => $"{target.SHA}~",
+            };
+
+            var on = await new Commands.QuerySingleCommit(repo.FullPath, start).GetResultAsync();
+            if (on == null)
+                repo.SendNotification($"Commit '{start}' is not a valid revision for `git rebase -i`!", true);
+            else
+                await this.ShowDialogAsync(new ViewModels.InteractiveRebase(repo, on, prefill));
         }
 
         private double _lastGraphStartY = 0;
