@@ -59,6 +59,40 @@ if errorlevel 1 (
   exit /b 1
 )
 
+echo [INFO] Adding Windows updater...
+copy /y build\scripts\update-sourcegit.win.ps1 "%OUTPUT_DIR%\update-sourcegit.win.ps1" >nul
+if errorlevel 1 (
+  echo [ERROR] Failed to copy updater PowerShell script.
+  popd
+  pause
+  exit /b 1
+)
+
+copy /y build\scripts\update-sourcegit.win.cmd "%OUTPUT_DIR%\update-sourcegit.win.cmd" >nul
+if errorlevel 1 (
+  echo [ERROR] Failed to copy updater command script.
+  popd
+  pause
+  exit /b 1
+)
+
+copy /y build\scripts\install-sourcegit.win.cmd "%OUTPUT_DIR%\install-sourcegit.win.cmd" >nul
+if errorlevel 1 (
+  echo [ERROR] Failed to copy installer command script.
+  popd
+  pause
+  exit /b 1
+)
+
+echo [INFO] Writing release marker...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$marker = [ordered]@{ PackageVersion = $env:VERSION; Runtime = $env:RUNTIME; AssetName = ('sourcegit_{0}.{1}.zip' -f $env:VERSION, $env:RUNTIME); CreatedAt = (Get-Date).ToString('o') }; $marker | ConvertTo-Json | Set-Content -Path '%OUTPUT_DIR%\sourcegit-release.json' -Encoding UTF8"
+if errorlevel 1 (
+  echo [ERROR] Failed to write release marker.
+  popd
+  pause
+  exit /b 1
+)
+
 echo [INFO] Packaging zip...
 powershell -NoProfile -ExecutionPolicy Bypass -File build\scripts\package.win.ps1
 if errorlevel 1 (

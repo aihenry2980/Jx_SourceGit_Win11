@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Windows.Input;
 using System.Threading.Tasks;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -40,6 +41,8 @@ namespace SourceGit
             }
         }
 
+        public static bool IsInstallLatestVersionCommandVisible => OperatingSystem.IsWindows();
+
         public static readonly Command OpenPreferencesCommand = new Command(async _ =>
         {
             if (Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: { } owner })
@@ -75,6 +78,45 @@ namespace SourceGit
         public static readonly Command CheckForUpdateCommand = new Command(_ =>
         {
             (Current as App)?.Check4Update(true);
+        });
+
+        public static readonly Command InstallLatestVersionCommand = new Command(_ =>
+        {
+            if (!OperatingSystem.IsWindows())
+                return;
+
+            var installDir = AppContext.BaseDirectory;
+            var updater = System.IO.Path.Combine(installDir, "update-sourcegit.win.ps1");
+            if (!System.IO.File.Exists(updater))
+            {
+                RaiseException(null, Text("SelfUpdate.InstallLatest.Missing"));
+                return;
+            }
+
+            try
+            {
+                var start = new ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    UseShellExecute = true,
+                    WorkingDirectory = installDir,
+                };
+
+                start.ArgumentList.Add("-NoProfile");
+                start.ArgumentList.Add("-ExecutionPolicy");
+                start.ArgumentList.Add("Bypass");
+                start.ArgumentList.Add("-File");
+                start.ArgumentList.Add(updater);
+                start.ArgumentList.Add("-InstallDir");
+                start.ArgumentList.Add(installDir);
+
+                Process.Start(start);
+            }
+            catch (Exception ex)
+            {
+                LogException(ex);
+                RaiseException(null, Text("SelfUpdate.InstallLatest.Failed"));
+            }
         });
 
         public static readonly Command QuitCommand = new Command(_ =>

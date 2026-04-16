@@ -860,6 +860,9 @@
   <x:String x:Key="Text.SelfUpdate.Error" xml:space="preserve">Check for updates failed!</x:String>
   <x:String x:Key="Text.SelfUpdate.GotoDownload" xml:space="preserve">Download</x:String>
   <x:String x:Key="Text.SelfUpdate.IgnoreThisVersion" xml:space="preserve">Skip This Version</x:String>
+  <x:String x:Key="Text.SelfUpdate.InstallLatest" xml:space="preserve">Update to latest version...</x:String>
+  <x:String x:Key="Text.SelfUpdate.InstallLatest.Failed" xml:space="preserve">Failed to start the SourceGit updater.</x:String>
+  <x:String x:Key="Text.SelfUpdate.InstallLatest.Missing" xml:space="preserve">Updater script was not found. Please install SourceGit from a release zip that includes update-sourcegit.win.ps1.</x:String>
   <x:String x:Key="Text.SelfUpdate.ReleaseDate" xml:space="preserve">New Version Release Date: </x:String>
   <x:String x:Key="Text.SelfUpdate.Title" xml:space="preserve">Software Update</x:String>
   <x:String x:Key="Text.SelfUpdate.UpToDate" xml:space="preserve">There are currently no updates available.</x:String>

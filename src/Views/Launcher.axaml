@@ -56,6 +56,11 @@
                 <Path Width="14" Height="14" Data="{StaticResource Icons.SoftwareUpdate}"/>
               </MenuItem.Icon>
             </MenuItem>
+            <MenuItem Header="{DynamicResource Text.SelfUpdate.InstallLatest}" Command="{x:Static s:App.InstallLatestVersionCommand}" IsVisible="{x:Static s:App.IsInstallLatestVersionCommandVisible}">
+              <MenuItem.Icon>
+                <Path Width="14" Height="14" Data="{StaticResource Icons.Pull}"/>
+              </MenuItem.Icon>
+            </MenuItem>
             <MenuItem Header="-" IsVisible="{x:Static s:App.IsCheckForUpdateCommandVisible}"/>
             <MenuItem Header="{DynamicResource Text.About}" Command="{x:Static s:App.OpenAboutCommand}">
               <MenuItem.Icon>
