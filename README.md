@@ -25,6 +25,10 @@
 [![downloads](https://img.shields.io/github/downloads/sourcegit-scm/sourcegit/total)](https://github.com/sourcegit-scm/sourcegit/releases)
 
 ## Screenshots
+* screenshot (2026.04.18)
+<img width="1277" height="664" alt="image" src="https://github.com/user-attachments/assets/ede9a45a-0dfc-4ce0-acff-527a6392cfd0" />
+
+
 * latest screenshot (2026.03.02)
 <img width="2540" height="1403" alt="image" src="https://github.com/user-attachments/assets/2db1b07b-dd16-4fa7-a6da-0fdbe0801ca2" />
 
