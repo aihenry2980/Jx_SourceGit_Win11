@@ -32,6 +32,12 @@ namespace SourceGit.Models
         public bool HasSubmodulePointerChange { get; set; } = false;
         public bool IsQuickFindMatched { get; set; } = false;
         public int ChangedFileCount { get; set; } = -1;
+        public int RegularFileChangeCount { get; set; } = 0;
+        public int AddedFileChangeCount { get; set; } = 0;
+        public int ModifiedFileChangeCount { get; set; } = 0;
+        public int SubmodulePointerChangeCount { get; set; } = 0;
+        public bool HasRenameOrCopyChange { get; set; } = false;
+        public bool HasTypeChange { get; set; } = false;
         public int Color { get; set; } = 0;
         public double LeftMargin { get; set; } = 0;
         public int FoldedCommitsBelow { get; set; } = 0;
@@ -43,6 +49,44 @@ namespace SourceGit.Models
             HasSubmodulePointerChange ||
             Subject.Contains("submodule", StringComparison.OrdinalIgnoreCase) ||
             Subject.Contains("spp", StringComparison.OrdinalIgnoreCase);
+        public bool HasRegularFileChange => RegularFileChangeCount > 0;
+        public bool HasAddedFileChange => AddedFileChangeCount > 0;
+        public bool HasModifiedFileChange => ModifiedFileChangeCount > 0;
+        public int OtherRegularFileChangeCount => Math.Max(0, RegularFileChangeCount - AddedFileChangeCount - ModifiedFileChangeCount);
+        public bool HasOtherRegularFileChange => OtherRegularFileChangeCount > 0;
+        public bool HasChangeBadges => HasRegularFileChange || HasSubmodulePointerChange || HasRenameOrCopyChange || HasTypeChange;
+        public string AddedFileChangeBadgeText => AddedFileChangeCount.ToString();
+        public string ModifiedFileChangeBadgeText => ModifiedFileChangeCount.ToString();
+        public string OtherRegularFileChangeBadgeText => OtherRegularFileChangeCount == 1 ? "1 other" : $"{OtherRegularFileChangeCount} other";
+        public string SubmodulePointerChangeBadgeText => SubmodulePointerChangeCount <= 1 ? "spp" : $"{SubmodulePointerChangeCount} spp";
+        public string HistoryChangeSummaryToolTip
+        {
+            get
+            {
+                if (ChangedFileCount <= 0 && !HasChangeBadges)
+                    return string.Empty;
+
+                var builder = new StringBuilder();
+                if (ChangedFileCount > 0)
+                    builder.Append(ChangedFileCount == 1 ? "1 changed path" : $"{ChangedFileCount} changed paths");
+                if (AddedFileChangeCount > 0)
+                    AppendToolTipLine(builder, AddedFileChangeCount == 1 ? "1 added file" : $"{AddedFileChangeCount} added files");
+                if (ModifiedFileChangeCount > 0)
+                    AppendToolTipLine(builder, ModifiedFileChangeCount == 1 ? "1 modified file" : $"{ModifiedFileChangeCount} modified files");
+                if (OtherRegularFileChangeCount > 0)
+                    AppendToolTipLine(builder, OtherRegularFileChangeCount == 1 ? "1 other regular file change" : $"{OtherRegularFileChangeCount} other regular file changes");
+                if (SubmodulePointerChangeCount > 0)
+                    AppendToolTipLine(builder, SubmodulePointerChangeCount == 1 ? "1 submodule pointer change" : $"{SubmodulePointerChangeCount} submodule pointer changes");
+                else if (HasSubmodulePointerChange)
+                    AppendToolTipLine(builder, "Contains submodule pointer change");
+                if (HasRenameOrCopyChange)
+                    AppendToolTipLine(builder, "Contains rename or copy change");
+                if (HasTypeChange)
+                    AppendToolTipLine(builder, "Contains file type or mode change");
+
+                return builder.ToString();
+            }
+        }
         public bool HasDecorators => Decorators.Count > 0;
         public string CommitterTimeShortStr => DateTimeFormat.Format(CommitterTime, true);
         public string CommitterTimeStr => DateTimeFormat.Format(CommitterTime);
@@ -232,6 +276,14 @@ namespace SourceGit.Models
             }
 
             return builder.ToString();
+        }
+
+        private static void AppendToolTipLine(StringBuilder builder, string text)
+        {
+            if (builder.Length > 0)
+                builder.AppendLine();
+
+            builder.Append(text);
         }
     }
 

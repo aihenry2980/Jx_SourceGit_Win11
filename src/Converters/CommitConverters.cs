@@ -20,7 +20,7 @@ namespace SourceGit.Converters
             new(_ => FontWeight.Regular);
 
         public static readonly FuncValueConverter<Models.Commit, string> SHAToolTip =
-            new(commit => commit is { HasSubmodulePointerChange: true } ? "Contains SPP change" : string.Empty);
+            new(commit => commit?.HistoryChangeSummaryToolTip ?? string.Empty);
 
         public static readonly FuncValueConverter<Models.Commit, IBrush> SubjectToBrush =
             new(commit =>

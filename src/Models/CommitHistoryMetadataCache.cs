@@ -10,8 +10,15 @@ namespace SourceGit.Models
 {
     public class CommitHistoryMetadata
     {
+        public int Version { get; set; } = 0;
         public int ChangedFileCount { get; set; } = 0;
         public bool HasSubmodulePointerChange { get; set; } = false;
+        public int RegularFileChangeCount { get; set; } = 0;
+        public int AddedFileChangeCount { get; set; } = 0;
+        public int ModifiedFileChangeCount { get; set; } = 0;
+        public int SubmodulePointerChangeCount { get; set; } = 0;
+        public bool HasRenameOrCopyChange { get; set; } = false;
+        public bool HasTypeChange { get; set; } = false;
     }
 
     public class CommitHistoryMetadataCacheData
@@ -46,7 +53,12 @@ namespace SourceGit.Models
         public bool TryGet(string sha, out CommitHistoryMetadata metadata)
         {
             lock (_lock)
-                return _data.Entries.TryGetValue(sha, out metadata);
+            {
+                if (!_data.Entries.TryGetValue(sha, out metadata))
+                    return false;
+
+                return metadata.Version >= CURRENT_VERSION;
+            }
         }
 
         public void UpdateRange(Dictionary<string, CommitHistoryMetadata> updates)
@@ -62,9 +74,17 @@ namespace SourceGit.Models
                     if (string.IsNullOrWhiteSpace(sha) || metadata == null)
                         continue;
 
+                    metadata.Version = CURRENT_VERSION;
                     if (_data.Entries.TryGetValue(sha, out var exists) &&
+                        exists.Version == metadata.Version &&
                         exists.ChangedFileCount == metadata.ChangedFileCount &&
-                        exists.HasSubmodulePointerChange == metadata.HasSubmodulePointerChange)
+                        exists.HasSubmodulePointerChange == metadata.HasSubmodulePointerChange &&
+                        exists.RegularFileChangeCount == metadata.RegularFileChangeCount &&
+                        exists.AddedFileChangeCount == metadata.AddedFileChangeCount &&
+                        exists.ModifiedFileChangeCount == metadata.ModifiedFileChangeCount &&
+                        exists.SubmodulePointerChangeCount == metadata.SubmodulePointerChangeCount &&
+                        exists.HasRenameOrCopyChange == metadata.HasRenameOrCopyChange &&
+                        exists.HasTypeChange == metadata.HasTypeChange)
                         continue;
 
                     _data.Entries[sha] = metadata;
@@ -123,5 +143,6 @@ namespace SourceGit.Models
         private readonly object _lock = new();
         private readonly CommitHistoryMetadataCacheData _data = null;
         private string _contentHash = string.Empty;
+        private const int CURRENT_VERSION = 3;
     }
 }

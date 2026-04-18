@@ -209,25 +209,125 @@
                                             Bisect="{Binding $parent[v:Histories].Bisect}"
                                             VerticalAlignment="Center"/>
 
-                    <Border Grid.Column="2"
-                            Width="16"
-                            Height="16"
-                            Margin="4,0,6,0"
-                            CornerRadius="8"
-                            Background="#FF7C3AED"
-                            BorderBrush="#FF5B21B6"
-                            BorderThickness="1"
-                            VerticalAlignment="Center"
-                            IsVisible="{Binding HasSubmodulePointerChange}"
-                            ToolTip.Tip="Contains SPP change"
-                            Opacity="{Binding IsMerged, Converter={x:Static c:BoolConverters.IsMergedToOpacity}}">
-                      <Path Width="9"
-                            Height="9"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            Data="{StaticResource Icons.Submodule}"
-                            Fill="#FFF7D047"/>
-                    </Border>
+                    <StackPanel Grid.Column="2"
+                                Orientation="Horizontal"
+                                Spacing="4"
+                                Margin="4,0,6,0"
+                                VerticalAlignment="Center"
+                                IsVisible="{Binding HasChangeBadges}"
+                                ToolTip.Tip="{Binding HistoryChangeSummaryToolTip}"
+                                Opacity="{Binding IsMerged, Converter={x:Static c:BoolConverters.IsMergedToOpacity}}">
+                      <Border Height="16"
+                              MinWidth="28"
+                              Padding="6,0"
+                              CornerRadius="8"
+                              Background="#FFDFF7E7"
+                              BorderBrush="#FF35B86B"
+                              BorderThickness="1"
+                              IsVisible="{Binding HasAddedFileChange}">
+                        <StackPanel Orientation="Horizontal" Spacing="3">
+                          <TextBlock FontSize="11"
+                                     FontWeight="Bold"
+                                     Foreground="#FF15803D"
+                                     VerticalAlignment="Center"
+                                     Text="+"/>
+                          <TextBlock FontSize="10"
+                                     FontWeight="Bold"
+                                     Foreground="#FF15803D"
+                                     VerticalAlignment="Center"
+                                     Text="{Binding AddedFileChangeBadgeText}"/>
+                        </StackPanel>
+                      </Border>
+
+                      <Border Height="16"
+                              MinWidth="30"
+                              Padding="6,0"
+                              CornerRadius="8"
+                              Background="#FFFFEDD5"
+                              BorderBrush="#FFF97316"
+                              BorderThickness="1"
+                              IsVisible="{Binding HasModifiedFileChange}">
+                        <StackPanel Orientation="Horizontal" Spacing="3">
+                          <TextBlock FontSize="10"
+                                     FontWeight="Bold"
+                                     Foreground="#FFC2410C"
+                                     VerticalAlignment="Center"
+                                     Text="m"/>
+                          <TextBlock FontSize="10"
+                                     FontWeight="Bold"
+                                     Foreground="#FFC2410C"
+                                     VerticalAlignment="Center"
+                                     Text="{Binding ModifiedFileChangeBadgeText}"/>
+                        </StackPanel>
+                      </Border>
+
+                      <Border Height="16"
+                              MinWidth="34"
+                              Padding="6,0"
+                              CornerRadius="8"
+                              Background="#FFFFF1B8"
+                              BorderBrush="#FFE0A800"
+                              BorderThickness="1"
+                              IsVisible="{Binding HasOtherRegularFileChange}">
+                        <TextBlock FontSize="10"
+                                   FontWeight="Bold"
+                                   Foreground="#FF6A4100"
+                                   VerticalAlignment="Center"
+                                   Text="{Binding OtherRegularFileChangeBadgeText}"/>
+                      </Border>
+
+                      <Border Height="16"
+                              MinWidth="30"
+                              Padding="6,0"
+                              CornerRadius="8"
+                              Background="#FFB794F4"
+                              BorderBrush="#FF7C3AED"
+                              BorderThickness="1"
+                              IsVisible="{Binding HasSubmodulePointerChange}">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                          <Path Width="8"
+                                Height="8"
+                                VerticalAlignment="Center"
+                                Data="{StaticResource Icons.Submodule}"
+                                Fill="#FF3B126C"/>
+                          <TextBlock FontSize="10"
+                                     FontWeight="Bold"
+                                     Foreground="#FF2D0A57"
+                                     VerticalAlignment="Center"
+                                     Text="{Binding SubmodulePointerChangeBadgeText}"/>
+                        </StackPanel>
+                      </Border>
+
+                      <Border Width="16"
+                              Height="16"
+                              CornerRadius="8"
+                              Background="#FFE9D5FF"
+                              BorderBrush="#FFB45CFF"
+                              BorderThickness="1"
+                              IsVisible="{Binding HasRenameOrCopyChange}">
+                        <TextBlock FontSize="10"
+                                   FontWeight="Bold"
+                                   Foreground="#FF6C1FB1"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Text="R"/>
+                      </Border>
+
+                      <Border Width="16"
+                              Height="16"
+                              CornerRadius="8"
+                              Background="#FFD6E4FF"
+                              BorderBrush="#FF5B8DEF"
+                              BorderThickness="1"
+                              IsVisible="{Binding HasTypeChange}">
+                        <TextBlock FontSize="10"
+                                   FontWeight="Bold"
+                                   Foreground="#FF244F9E"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Text="T"/>
+                      </Border>
+                    </StackPanel>
 
                     <v:CommitRefsPresenter Grid.Column="3"
                                            Background="{DynamicResource Brush.Contents}"

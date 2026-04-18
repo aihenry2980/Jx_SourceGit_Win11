@@ -2379,6 +2379,12 @@ namespace SourceGit.ViewModels
                     {
                         ChangedFileCount = cached.ChangedFileCount,
                         HasSubmodulePointerChange = cached.HasSubmodulePointerChange,
+                        RegularFileChangeCount = cached.RegularFileChangeCount,
+                        AddedFileChangeCount = cached.AddedFileChangeCount,
+                        ModifiedFileChangeCount = cached.ModifiedFileChangeCount,
+                        SubmodulePointerChangeCount = cached.SubmodulePointerChangeCount,
+                        HasRenameOrCopyChange = cached.HasRenameOrCopyChange,
+                        HasTypeChange = cached.HasTypeChange,
                     };
                 }
                 else
@@ -2401,6 +2407,12 @@ namespace SourceGit.ViewModels
                             {
                                 ChangedFileCount = stat.ChangedFileCount,
                                 HasSubmodulePointerChange = stat.HasSubmodulePointerChange,
+                                RegularFileChangeCount = stat.RegularFileChangeCount,
+                                AddedFileChangeCount = stat.AddedFileChangeCount,
+                                ModifiedFileChangeCount = stat.ModifiedFileChangeCount,
+                                SubmodulePointerChangeCount = stat.SubmodulePointerChangeCount,
+                                HasRenameOrCopyChange = stat.HasRenameOrCopyChange,
+                                HasTypeChange = stat.HasTypeChange,
                             };
                         }
                         else
@@ -2417,13 +2429,33 @@ namespace SourceGit.ViewModels
             {
                 if (commitDiffStats.TryGetValue(commit.SHA, out var stat))
                 {
+                    var submodulePointerChangeCount = stat.SubmodulePointerChangeCount;
+                    if (stat.HasSubmodulePointerChange && submodulePointerChangeCount == 0)
+                        submodulePointerChangeCount = 1;
+
+                    var regularFileChangeCount = stat.RegularFileChangeCount;
+                    if (stat.ChangedFileCount > 0 && regularFileChangeCount == 0 && stat.SubmodulePointerChangeCount == 0)
+                        regularFileChangeCount = Math.Max(0, stat.ChangedFileCount - submodulePointerChangeCount);
+
                     commit.HasSubmodulePointerChange = stat.HasSubmodulePointerChange;
                     commit.ChangedFileCount = stat.ChangedFileCount;
+                    commit.RegularFileChangeCount = regularFileChangeCount;
+                    commit.AddedFileChangeCount = stat.AddedFileChangeCount;
+                    commit.ModifiedFileChangeCount = stat.ModifiedFileChangeCount;
+                    commit.SubmodulePointerChangeCount = submodulePointerChangeCount;
+                    commit.HasRenameOrCopyChange = stat.HasRenameOrCopyChange;
+                    commit.HasTypeChange = stat.HasTypeChange;
                 }
                 else
                 {
                     commit.HasSubmodulePointerChange = false;
                     commit.ChangedFileCount = 0;
+                    commit.RegularFileChangeCount = 0;
+                    commit.AddedFileChangeCount = 0;
+                    commit.ModifiedFileChangeCount = 0;
+                    commit.SubmodulePointerChangeCount = 0;
+                    commit.HasRenameOrCopyChange = false;
+                    commit.HasTypeChange = false;
                 }
             }
 

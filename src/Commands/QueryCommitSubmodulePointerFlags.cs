@@ -11,11 +11,17 @@ namespace SourceGit.Commands
     {
         public int ChangedFileCount { get; set; } = 0;
         public bool HasSubmodulePointerChange { get; set; } = false;
+        public int RegularFileChangeCount { get; set; } = 0;
+        public int AddedFileChangeCount { get; set; } = 0;
+        public int ModifiedFileChangeCount { get; set; } = 0;
+        public int SubmodulePointerChangeCount { get; set; } = 0;
+        public bool HasRenameOrCopyChange { get; set; } = false;
+        public bool HasTypeChange { get; set; } = false;
     }
 
     public partial class QueryCommitSubmodulePointerFlags : Command
     {
-        [GeneratedRegex(@"^:(\d{6}) (\d{6}) ([0-9a-f]+) ([0-9a-f]+) [A-Z]\d*\t(.+)$")]
+        [GeneratedRegex(@"^:(\d{6}) (\d{6}) ([0-9a-f]+) ([0-9a-f]+) ([A-Z])\d*\t(.+)$")]
         private static partial Regex REG_RAW_FORMAT();
 
         public QueryCommitSubmodulePointerFlags(string repo, string limits)
@@ -65,8 +71,26 @@ namespace SourceGit.Commands
 
                     var oldMode = match.Groups[1].Value;
                     var newMode = match.Groups[2].Value;
+                    var status = match.Groups[5].Value;
                     if (oldMode == "160000" || newMode == "160000")
+                    {
                         stat.HasSubmodulePointerChange = true;
+                        stat.SubmodulePointerChangeCount++;
+                    }
+                    else
+                    {
+                        stat.RegularFileChangeCount++;
+                        if (status == "A")
+                            stat.AddedFileChangeCount++;
+                        else if (status == "M")
+                            stat.ModifiedFileChangeCount++;
+                    }
+
+                    if (status is "R" or "C")
+                        stat.HasRenameOrCopyChange = true;
+
+                    if (oldMode != newMode && oldMode != "000000" && newMode != "000000")
+                        stat.HasTypeChange = true;
                 }
 
                 await proc.WaitForExitAsync().ConfigureAwait(false);
