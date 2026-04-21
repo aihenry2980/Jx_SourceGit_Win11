@@ -506,7 +506,7 @@
                        TextChanged="OnPresetBranchInputTextChanged"
                        KeyDown="OnPresetBranchExactNameInputKeyDown">
                 <TextBox.InnerLeftContent>
-                  <ScrollViewer MaxWidth="180"
+                  <ScrollViewer MaxWidth="320"
                                 VerticalScrollBarVisibility="Disabled"
                                 HorizontalScrollBarVisibility="Hidden">
                     <ItemsControl Margin="6,0,2,0"
@@ -581,7 +581,7 @@
                        TextChanged="OnPresetBranchInputTextChanged"
                        KeyDown="OnPresetBranchContainsPatternInputKeyDown">
                 <TextBox.InnerLeftContent>
-                  <ScrollViewer MaxWidth="180"
+                  <ScrollViewer MaxWidth="320"
                                 VerticalScrollBarVisibility="Disabled"
                                 HorizontalScrollBarVisibility="Hidden">
                     <ItemsControl Margin="6,0,2,0"
@@ -656,7 +656,7 @@
                        TextChanged="OnPresetBranchInputTextChanged"
                        KeyDown="OnPresetBranchExcludeNameInputKeyDown">
                 <TextBox.InnerLeftContent>
-                  <ScrollViewer MaxWidth="180"
+                  <ScrollViewer MaxWidth="320"
                                 VerticalScrollBarVisibility="Disabled"
                                 HorizontalScrollBarVisibility="Hidden">
                     <ItemsControl Margin="6,0,2,0"

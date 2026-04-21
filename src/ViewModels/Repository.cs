@@ -3421,11 +3421,17 @@ namespace SourceGit.ViewModels
                 return targetState;
             }
 
+            var batches = BuildOrderedSubmoduleTargetBatches(targets);
             log?.AppendLine($"Running up to {maxParallelism} submodule update(s) in parallel.");
-            foreach (var batch in BuildIndependentSubmoduleTargetBatches(targets))
+            log?.AppendLine("Execution order is parent-first. A selected submodule is updated before its selected nested submodules.");
+            for (var batchIndex = 0; batchIndex < batches.Count; batchIndex++)
             {
+                var batch = batches[batchIndex];
                 if (cancellationToken.IsCancellationRequested)
                     return false;
+
+                if (batch.Count > 0)
+                    log?.AppendLine($"--- Submodule update wave {batchIndex + 1}/{batches.Count}: {string.Join(", ", batch)} ---");
 
                 if (stopOnError)
                 {
@@ -3479,47 +3485,44 @@ namespace SourceGit.ViewModels
             return succ;
         }
 
-        private static List<List<string>> BuildIndependentSubmoduleTargetBatches(List<string> targets)
+        private static List<List<string>> BuildOrderedSubmoduleTargetBatches(List<string> targets)
         {
             var comparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
             var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-            var remaining = new List<string>();
             var seen = new HashSet<string>(comparer);
+            var uniqueTargets = new List<string>();
             foreach (var target in targets)
             {
                 if (!string.IsNullOrWhiteSpace(target) && seen.Add(target))
-                    remaining.Add(target);
+                    uniqueTargets.Add(target);
             }
 
-            var batches = new List<List<string>>();
-            while (remaining.Count > 0)
-            {
-                var batch = new List<string>();
-                foreach (var target in remaining)
-                {
-                    var hasSelectedAncestor = false;
-                    foreach (var other in remaining)
-                    {
-                        if (IsSubmodulePathAncestor(other, target, comparison))
-                        {
-                            hasSelectedAncestor = true;
-                            break;
-                        }
-                    }
+            uniqueTargets.Sort((left, right) => comparer.Compare(left, right));
 
-                    if (!hasSelectedAncestor)
-                        batch.Add(target);
+            var levels = new SortedDictionary<int, List<string>>();
+            foreach (var target in uniqueTargets)
+            {
+                var selectedAncestorDepth = 0;
+                foreach (var other in uniqueTargets)
+                {
+                    if (IsSubmodulePathAncestor(other, target, comparison))
+                        selectedAncestorDepth++;
                 }
 
-                if (batch.Count == 0)
-                    batch.Add(remaining[0]);
+                if (!levels.TryGetValue(selectedAncestorDepth, out var batch))
+                {
+                    batch = [];
+                    levels[selectedAncestorDepth] = batch;
+                }
 
-                batches.Add(batch);
-                foreach (var target in batch)
-                    remaining.Remove(target);
+                batch.Add(target);
             }
 
-            return batches;
+            var ordered = new List<List<string>>(levels.Count);
+            foreach (var (_, batch) in levels)
+                ordered.Add(batch);
+
+            return ordered;
         }
 
         private static bool IsSubmodulePathAncestor(string maybeAncestor, string path, StringComparison comparison)
