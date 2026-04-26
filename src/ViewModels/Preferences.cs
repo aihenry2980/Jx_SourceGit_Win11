@@ -775,9 +775,12 @@ namespace SourceGit.ViewModels
             if (_isLoading || _isReadonly)
                 return;
 
-            var file = Path.Combine(Native.OS.DataDir, "preference.json");
-            using var stream = File.Create(file);
-            JsonSerializer.Serialize(stream, this, JsonCodeGen.Default.Preferences);
+            var tmpfile = Path.Combine(Native.OS.DataDir, "preference_tmp.json");
+            var content = JsonSerializer.Serialize(this, JsonCodeGen.Default.Preferences);
+            File.WriteAllText(tmpfile, content);
+
+            var finalFile = Path.Combine(Native.OS.DataDir, "preference.json");
+            File.Move(tmpfile, finalFile, true);
         }
 
         public HashSet<string> GetPresetBranchExactNameSet()

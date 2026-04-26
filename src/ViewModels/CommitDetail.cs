@@ -25,7 +25,7 @@ namespace SourceGit.ViewModels
         }
     }
 
-    public partial class CommitDetail : ObservableObject, IDisposable
+    public partial class CommitDetail : ObservableObject
     {
         public Repository Repository
         {
@@ -235,7 +235,6 @@ namespace SourceGit.ViewModels
             _revisionFiles = null;
             _revisionFileSearchSuggestion = null;
         }
-
         public void NavigateTo(string commitSHA)
         {
             _repo?.NavigateToCommit(commitSHA);

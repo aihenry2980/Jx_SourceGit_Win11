@@ -1079,6 +1079,26 @@ namespace SourceGit.Views
                 e.Handled = true;
             };
 
+            menu.Items.Add(fetch);
+            menu.Items.Add(prune);
+            menu.Items.Add(new MenuItem() { Header = "-" });
+
+            if (ViewModels.Preferences.Instance.EnableAutoFetch)
+            {
+                var toggleAutoFetch = new MenuItem();
+                toggleAutoFetch.Header = App.Text("RemoteCM.EnableAutoFetch");
+                toggleAutoFetch.Icon = this.CreateMenuIcon("Icons.AutoFetch");
+                toggleAutoFetch.Tag = remote.DisableAutoFetch ? "OFF" : "ON";
+                toggleAutoFetch.Click += async (_, e) =>
+                {
+                    await repo.ToggleAutoFetchOnRemoteAsync(remote);
+                    e.Handled = true;
+                };
+
+                menu.Items.Add(toggleAutoFetch);
+                menu.Items.Add(new MenuItem() { Header = "-" });
+            }
+
             var edit = new MenuItem();
             edit.Header = App.Text("RemoteCM.Edit");
             edit.Icon = App.CreateMenuIcon("Icons.Edit");
@@ -1108,9 +1128,6 @@ namespace SourceGit.Views
                 e.Handled = true;
             };
 
-            menu.Items.Add(fetch);
-            menu.Items.Add(prune);
-            menu.Items.Add(new MenuItem() { Header = "-" });
             menu.Items.Add(edit);
             menu.Items.Add(delete);
             menu.Items.Add(new MenuItem() { Header = "-" });

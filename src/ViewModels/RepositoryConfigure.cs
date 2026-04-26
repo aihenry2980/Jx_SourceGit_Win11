@@ -360,6 +360,8 @@ namespace SourceGit.ViewModels
 
         public async Task SaveAsync()
         {
+            _repo.Settings.Save();
+
             await SetIfChangedAsync("user.name", UserName, "");
             await SetIfChangedAsync("user.email", UserEmail, "");
             await SetIfChangedAsync("commit.gpgsign", GPGCommitSigningEnabled ? "true" : "false", "false");

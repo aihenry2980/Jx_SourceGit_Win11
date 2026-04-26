@@ -8,7 +8,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace SourceGit.ViewModels
 {
-    public class RevisionCompare : ObservableObject, IDisposable
+    public class RevisionCompare : ObservableObject
     {
         public bool IsLoading
         {
@@ -107,18 +107,6 @@ namespace SourceGit.ViewModels
             _startPoint = (object)startPoint ?? new Models.Null();
             _endPoint = (object)endPoint ?? new Models.Null();
             Refresh();
-        }
-
-        public void Dispose()
-        {
-            _repo = null;
-            _startPoint = null;
-            _endPoint = null;
-            _changes?.Clear();
-            _visibleChanges?.Clear();
-            _selectedChanges?.Clear();
-            _searchFilter = null;
-            _diffContext = null;
         }
 
         public void OpenChangeWithExternalDiffTool(Models.Change change)

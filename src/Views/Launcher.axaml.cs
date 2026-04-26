@@ -5,7 +5,6 @@ using Avalonia.Controls;
 using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 using Avalonia.Platform;
 using Avalonia.VisualTree;
@@ -70,7 +69,6 @@ namespace SourceGit.Views
             }
 
             TitleBarBG.Bind(BackgroundProperty, new Binding("ActivePageTitleBarBackground"));
-
             var layout = ViewModels.Preferences.Instance.Layout;
             Width = layout.LauncherWidth;
             Height = layout.LauncherHeight;

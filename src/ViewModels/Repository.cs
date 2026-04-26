@@ -933,14 +933,18 @@ namespace SourceGit.ViewModels
 
         public void Close()
         {
-            SelectedView = null; // Do NOT modify. Used to remove exists widgets for GC.Collect
-            Logs.Clear();
+            SelectedView = new Models.Null();
 
             _historyQuickFindDebounce?.Cancel();
             _historyQuickFindDebounce?.Dispose();
             _historyQuickFindDebounce = null;
 
-            _uiStates.Unload(_workingCopy.CommitMessage);
+            var commitMessage = _workingCopy.CommitMessage;
+            if (!string.IsNullOrEmpty(commitMessage) && _workingCopy.InProgressContext != null)
+                File.WriteAllText(Path.Combine(GitDir, "MERGE_MSG"), commitMessage);
+
+            _uiStates.LastCommitMessage = commitMessage;
+            _uiStates.Save();
 
             if (_cancellationRefreshBranches is { IsCancellationRequested: false })
                 _cancellationRefreshBranches.Cancel();
@@ -973,9 +977,6 @@ namespace SourceGit.ViewModels
 
             _watcher?.Dispose();
             _histories.Dispose();
-            _workingCopy.Dispose();
-            _stashesPage.Dispose();
-            _searchCommitContext.Dispose();
 
             _watcher = null;
             _histories = null;
@@ -2799,6 +2800,14 @@ namespace SourceGit.ViewModels
         {
             if (CanCreatePopup())
                 ShowPopup(new DeleteRemote(this, remote));
+        }
+
+        public async Task ToggleAutoFetchOnRemoteAsync(Models.Remote remote)
+        {
+            var val = remote.DisableAutoFetch ? "false" : "true";
+            var succ = await new Commands.Config(FullPath).SetAsync($"remote.{remote.Name.Quoted()}.disableautofetch", val);
+            if (succ)
+                remote.DisableAutoFetch = !remote.DisableAutoFetch;
         }
 
         public void AddSubmodule()
@@ -5061,7 +5070,7 @@ namespace SourceGit.ViewModels
 
         private async Task AutoFetchOnUIThread()
         {
-            if (_uiStates == null)
+            if (IsAutoFetching)
                 return;
 
             CommandLog log = null;
@@ -5085,7 +5094,10 @@ namespace SourceGit.ViewModels
 
                 var remotes = new List<string>();
                 foreach (var r in _remotes)
-                    remotes.Add(r.Name);
+                {
+                    if (!r.DisableAutoFetch)
+                        remotes.Add(r.Name);
+                }
 
                 if (remotes.Count == 0)
                     return;

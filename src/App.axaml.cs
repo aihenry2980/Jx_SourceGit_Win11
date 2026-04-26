@@ -221,8 +221,6 @@ namespace SourceGit
                     else
                         Models.CommitGraph.SetDefaultPens(overrides.GraphPenThickness);
 
-                    Native.OS.UseMicaOnWindows11 = overrides.UseMicaOnWindows11;
-
                     app.Resources.MergedDictionaries.Add(resDic);
                     app._themeOverrides = resDic;
                 }
@@ -320,8 +318,6 @@ namespace SourceGit
             AvaloniaXamlLoader.Load(this);
 
             var pref = ViewModels.Preferences.Instance;
-            pref.PropertyChanged += (_, _) => pref.Save();
-
             SetLocale(pref.Locale);
             SetTheme(pref.Theme, pref.ThemeOverrides);
             SetAccentColor(pref.MainAccentColor);
