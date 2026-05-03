@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -77,6 +78,151 @@ namespace SourceGit.Views
         }
     }
 
+    public class HistoriesCommitList : DataGrid
+    {
+        public static readonly StyledProperty<int> TotalCommitsProperty =
+            AvaloniaProperty.Register<HistoriesCommitList, int>(nameof(TotalCommits), 0);
+
+        public int TotalCommits
+        {
+            get => GetValue(TotalCommitsProperty);
+            set => SetValue(TotalCommitsProperty, value);
+        }
+
+        public static readonly StyledProperty<List<Models.Commit>> SelectedCommitsProperty =
+            AvaloniaProperty.Register<HistoriesCommitList, List<Models.Commit>>(nameof(SelectedCommits), []);
+
+        public List<Models.Commit> SelectedCommits
+        {
+            get => GetValue(SelectedCommitsProperty);
+            set => SetValue(SelectedCommitsProperty, value);
+        }
+
+        protected override Type StyleKeyOverride => typeof(DataGrid);
+
+        public HistoriesCommitList()
+        {
+            SelectionMode = DataGridSelectionMode.Extended;
+            CanUserReorderColumns = false;
+            CanUserResizeColumns = true;
+            CanUserSortColumns = false;
+            AutoGenerateColumns = false;
+            IsReadOnly = true;
+            HeadersVisibility = DataGridHeadersVisibility.Column;
+            ClipboardCopyMode = DataGridClipboardCopyMode.None;
+            Focusable = false;
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
+        }
+
+        protected override void OnLoaded(RoutedEventArgs e)
+        {
+            base.OnLoaded(e);
+            ApplySelection();
+        }
+
+        protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+        {
+            base.OnPropertyChanged(change);
+
+            if (change.Property == SelectedCommitsProperty && IsLoaded && !_ignoreSelectionChanged)
+                ApplySelection();
+        }
+
+        protected override void OnSelectionChanged(SelectionChangedEventArgs e)
+        {
+            base.OnSelectionChanged(e);
+
+            var commits = new List<Models.Commit>();
+            foreach (var o in SelectedItems)
+            {
+                if (o is Models.Commit c)
+                    commits.Add(c);
+            }
+
+            if (commits.Count > 0 && commits.Count < 3)
+                ScrollIntoView(commits[^1], null);
+
+            if (!_ignoreSelectionChanged)
+            {
+                _ignoreSelectionChanged = true;
+
+                var old = SelectedCommits;
+                if (old.Count != commits.Count)
+                {
+                    SetCurrentValue(SelectedCommitsProperty, commits);
+                }
+                else if (commits.Count > 0)
+                {
+                    var set = new HashSet<string>();
+                    foreach (var c in old)
+                        set.Add(c.SHA);
+
+                    var equals = true;
+                    foreach (var c in commits)
+                    {
+                        if (!set.Contains(c.SHA))
+                        {
+                            equals = false;
+                            break;
+                        }
+                    }
+
+                    if (!equals)
+                        SetCurrentValue(SelectedCommitsProperty, commits);
+                }
+
+                _ignoreSelectionChanged = false;
+            }
+        }
+
+        private void ApplySelection()
+        {
+            _ignoreSelectionChanged = true;
+
+            if (SelectedCommits == null || SelectedCommits.Count == 0)
+            {
+                SelectedItems.Clear();
+            }
+            else if (SelectedCommits.Count == TotalCommits)
+            {
+                SelectAll();
+            }
+            else
+            {
+                IncrNoSelectionChangeCount();
+                SelectedItems.Clear();
+                foreach (var c in SelectedCommits)
+                    SelectedItems.Add(c);
+                DecrNoSelectionChangeCount();
+            }
+
+            _ignoreSelectionChanged = false;
+        }
+
+        private void IncrNoSelectionChangeCount()
+        {
+            var property = typeof(DataGrid).GetProperty("NoSelectionChangeCount", BindingFlags.Instance | BindingFlags.NonPublic);
+            if (property != null)
+            {
+                var old = (int)property.GetValue(this);
+                property.SetValue(this, old + 1);
+            }
+        }
+
+        private void DecrNoSelectionChangeCount()
+        {
+            var property = typeof(DataGrid).GetProperty("NoSelectionChangeCount", BindingFlags.Instance | BindingFlags.NonPublic);
+            if (property != null)
+            {
+                var old = (int)property.GetValue(this);
+                property.SetValue(this, old - 1);
+            }
+        }
+
+        private bool _ignoreSelectionChanged = false;
+    }
+
     public partial class Histories : UserControl
     {
         public static readonly StyledProperty<Models.Branch> CurrentBranchProperty =
@@ -115,15 +261,6 @@ namespace SourceGit.Views
             set => SetValue(OnlyHighlightCurrentBranchProperty, value);
         }
 
-        public static readonly StyledProperty<long> NavigationIdProperty =
-            AvaloniaProperty.Register<Histories, long>(nameof(NavigationId));
-
-        public long NavigationId
-        {
-            get => GetValue(NavigationIdProperty);
-            set => SetValue(NavigationIdProperty, value);
-        }
-
         public static readonly StyledProperty<bool> IsScrollToTopVisibleProperty =
             AvaloniaProperty.Register<Histories, bool>(nameof(IsScrollToTopVisible));
 
@@ -131,6 +268,15 @@ namespace SourceGit.Views
         {
             get => GetValue(IsScrollToTopVisibleProperty);
             set => SetValue(IsScrollToTopVisibleProperty, value);
+        }
+
+        public static readonly StyledProperty<long> NavigationIdProperty =
+            AvaloniaProperty.Register<Histories, long>(nameof(NavigationId));
+
+        public long NavigationId
+        {
+            get => GetValue(NavigationIdProperty);
+            set => SetValue(NavigationIdProperty, value);
         }
 
         public Histories()
@@ -176,7 +322,6 @@ namespace SourceGit.Views
             _pendingEnsureHeadVisibleRetries = 6;
             TryEnsureHeadVisibleInViewport();
         }
-
         private async void OnGotoParent(object sender, RoutedEventArgs e)
         {
             if (DataContext is not ViewModels.Histories vm)
@@ -214,6 +359,51 @@ namespace SourceGit.Views
             {
                 var dialog = new GotoParentSelector();
                 dialog.ParentList.ItemsSource = parents;
+
+                var c = await dialog.ShowDialog<Models.Commit>(owner);
+                if (c != null)
+                    vm.NavigateTo(c.SHA);
+            }
+
+            e.Handled = true;
+        }
+
+        private async void OnGotoChild(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is not ViewModels.Histories vm)
+                return;
+
+            if (!CommitListContainer.IsKeyboardFocusWithin)
+                return;
+
+            if (CommitListContainer.SelectedItems is not { Count: 1 } selected)
+                return;
+
+            if (selected[0] is not Models.Commit { Parents.Count: > 0 } commit)
+                return;
+
+            var children = new List<Models.Commit>();
+            var sha = commit.SHA;
+            foreach (var c in vm.Commits)
+            {
+                foreach (var p in c.Parents)
+                {
+                    if (sha.StartsWith(p, StringComparison.Ordinal))
+                        children.Add(c);
+                }
+
+                if (sha.Equals(c.SHA, StringComparison.Ordinal))
+                    break;
+            }
+
+            if (children.Count == 1)
+            {
+                vm.NavigateTo(children[0].SHA);
+            }
+            else if (children.Count > 1 && TopLevel.GetTopLevel(this) is Window owner)
+            {
+                var dialog = new GotoRevisionSelector();
+                dialog.RevisionList.ItemsSource = children;
 
                 var c = await dialog.ShowDialog<Models.Commit>(owner);
                 if (c != null)
@@ -627,14 +817,6 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
-        private void OnCommitListSelectionChanged(object _, SelectionChangedEventArgs e)
-        {
-            if (DataContext is ViewModels.Histories histories)
-                histories.Select(CommitListContainer.SelectedItems);
-
-            e.Handled = true;
-        }
-
         private void OnOpenOriginRemoteURL(object sender, PointerPressedEventArgs e)
         {
             var point = e.GetCurrentPoint(this);
@@ -646,7 +828,6 @@ namespace SourceGit.Views
 
             e.Handled = true;
         }
-
         private void OnCommitListContextRequested(object sender, ContextRequestedEventArgs e)
         {
             if (e.Source is Control { DataContext: Models.Commit })

@@ -109,6 +109,23 @@ namespace SourceGit.ViewModels
             Refresh();
         }
 
+        public void SetTargets(Models.Commit l, Models.Commit r)
+        {
+            var hashes = new HashSet<string>();
+            hashes.Add(l.SHA);
+            hashes.Add(r.SHA);
+
+            if (_startPoint is Models.Commit s &&
+                _endPoint is Models.Commit e &&
+                hashes.Contains(s.SHA) &&
+                hashes.Contains(e.SHA))
+                return;
+
+            _startPoint = l;
+            _endPoint = r;
+            Refresh();
+        }
+
         public void OpenChangeWithExternalDiffTool(Models.Change change)
         {
             var opt = new Models.DiffOption(GetSHA(_startPoint), GetSHA(_endPoint), change);

@@ -29,40 +29,32 @@
               Click="OnGotoParent"
               HotKey="Alt+Down"
               IsVisible="False"/>
+      <Button Width="0" Height="0"
+              Click="OnGotoChild"
+              HotKey="Alt+Up"
+              IsVisible="False"/>
       
-      <DataGrid x:Name="CommitListContainer"
-                Classes="static_scrollbar"
-                ScrollViewer.AllowAutoHide="False"
-                Background="{DynamicResource Brush.DataGridHeaderBG}"
-                SelectionMode="Extended"
-                ItemsSource="{Binding Commits, Mode=OneWay}"
-                SelectedItem="{Binding SelectedCommit, Mode=OneWay}"
-                CanUserReorderColumns="False"
-                CanUserResizeColumns="True"
-                CanUserSortColumns="False"
-                AutoGenerateColumns="False"
-                IsReadOnly="True"
-                HeadersVisibility="Column"
-                ColumnHeaderHeight="24"
-                ClipboardCopyMode="None"
-                Focusable="False"
-                FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Mode=OneWay}"
-                RowHeight="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesRowHeight, Mode=OneWay}"
-                HorizontalScrollBarVisibility="Disabled"
-                VerticalScrollBarVisibility="Auto"
-                Loaded="OnCommitListLoaded"
-                LayoutUpdated="OnCommitListLayoutUpdated"
-                SelectionChanged="OnCommitListSelectionChanged"
-                ContextRequested="OnCommitListContextRequested"
-                DoubleTapped="OnCommitListDoubleTapped"
-                KeyDown="OnCommitListKeyDown">
+      <v:HistoriesCommitList x:Name="CommitListContainer"
+                             Classes="static_scrollbar"
+                             ScrollViewer.AllowAutoHide="False"
+                             Background="{DynamicResource Brush.DataGridHeaderBG}"
+                             ItemsSource="{Binding Commits, Mode=OneWay}"
+                             TotalCommits="{Binding Commits.Count, Mode=OneWay}"
+                             SelectedCommits="{Binding SelectedCommits, Mode=TwoWay}"
+                             ColumnHeaderHeight="24"
+                             FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Mode=OneWay}"
+                             RowHeight="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesRowHeight, Mode=OneWay}"
+                             Loaded="OnCommitListLoaded"
+                             LayoutUpdated="OnCommitListLayoutUpdated"
+                             ContextRequested="OnCommitListContextRequested"
+                             DoubleTapped="OnCommitListDoubleTapped"
+                             KeyDown="OnCommitListKeyDown">
         <DataGrid.Resources>
           <SolidColorBrush x:Key="DataGridRowSelectedBackgroundBrush" Color="Transparent"/>
           <SolidColorBrush x:Key="DataGridRowSelectedHoveredBackgroundBrush" Color="Transparent"/>
           <SolidColorBrush x:Key="DataGridRowSelectedUnfocusedBackgroundBrush" Color="Transparent"/>
           <SolidColorBrush x:Key="DataGridRowSelectedHoveredUnfocusedBackgroundBrush" Color="Transparent"/>
         </DataGrid.Resources>
-
         <DataGrid.Styles>
           <Style Selector="DataGrid.static_scrollbar">
             <Style Selector="^ /template/ DataGridRowsPresenter#PART_RowsPresenter">
@@ -443,7 +435,7 @@
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
         </DataGrid.Columns>
-      </DataGrid>
+      </v:HistoriesCommitList>
 
       <v:CommitGraph x:Name="CommitGraph"
                      Graph="{Binding Graph}"

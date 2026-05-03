@@ -42,7 +42,7 @@
              HorizontalAlignment="Center"
              VerticalAlignment="Top"/>
 
-      <Grid Grid.Column="1" Margin="0,8,8,8" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" VerticalAlignment="Top">
+      <Grid Grid.Column="1" Margin="0,8,8,8" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" VerticalAlignment="Top">
         <StackPanel Grid.Row="0" Height="40" Orientation="Horizontal">
           <TextBlock Classes="bold" Text="SourceGit" FontSize="32" />
           <Border Margin="12,0,0,0" Height="20"
@@ -71,15 +71,21 @@
         </StackPanel>
 
         <TextBlock Grid.Row="3" x:Name="TxtReleaseDate" Margin="0,12,0,0" Foreground="{DynamicResource Brush.FG2}"/>
-        <TextBlock Grid.Row="4" x:Name="TxtCopyright" Margin="0,2,0,0" Foreground="{DynamicResource Brush.FG2}"/>
+        
+        <StackPanel Grid.Row="4" x:Name="PnlGitSourceRevision" Orientation="Horizontal" Margin="0,2,0,0" IsVisible="False">
+          <TextBlock Foreground="{DynamicResource Brush.FG2}" Text="{DynamicResource Text.About.GitSourceRevision}"/>
+          <SelectableTextBlock x:Name="TxtGitSourceRevision" Margin="4,0,0,0" Foreground="{DynamicResource Brush.FG2}"/>
+        </StackPanel>
 
-        <TextBlock Grid.Row="5" Margin="0,10,0,0" Foreground="{DynamicResource Brush.FG2}" Text="Fork of https://github.com/sourcegit-scm/sourcegit" TextWrapping="Wrap"/>
+        <TextBlock Grid.Row="5" x:Name="TxtCopyright" Margin="0,2,0,0" Foreground="{DynamicResource Brush.FG2}"/>
 
-        <TextBlock Grid.Row="6" Margin="0,2,0,0" Foreground="{DynamicResource Brush.FG2}" Cursor="Hand" PointerPressed="OnVisitForkSourceCode" TextWrapping="Wrap">
+        <TextBlock Grid.Row="6" Margin="0,10,0,0" Foreground="{DynamicResource Brush.FG2}" Text="Fork of https://github.com/sourcegit-scm/sourcegit" TextWrapping="Wrap"/>
+
+        <TextBlock Grid.Row="7" Margin="0,2,0,0" Foreground="{DynamicResource Brush.FG2}" Cursor="Hand" PointerPressed="OnVisitForkSourceCode" TextWrapping="Wrap">
           Fork Repo: https://github.com/aihenry2980/Jx_SourceGit_Win11
         </TextBlock>
 
-        <StackPanel Grid.Row="7" Margin="0,2,0,0" Orientation="Horizontal">
+        <StackPanel Grid.Row="8" Margin="0,2,0,0" Orientation="Horizontal">
           <TextBlock Foreground="{DynamicResource Brush.FG2}" Text="Contact: "/>
           <TextBlock Foreground="{DynamicResource Brush.FG2}" Cursor="Hand" PointerPressed="OnContactMaintainer" Text="jxin@outlook.com"/>
           <TextBlock Margin="10,0,0,0" Foreground="{DynamicResource Brush.FG2}" Text="Target: Windows 11 x64 only"/>
