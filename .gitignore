@@ -46,3 +46,4 @@ src/Properties/launchSettings.json
 /artifacts
 /.dotnet-home
 /.dotnet
+*.lscache

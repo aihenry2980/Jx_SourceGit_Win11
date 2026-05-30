@@ -15,7 +15,7 @@ namespace SourceGit.Models
 
         public User()
         {
-            // Only used by User.Invalid
+            // Only used by User.Invalid.
         }
 
         public User(string data)

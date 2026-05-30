@@ -86,7 +86,8 @@ namespace SourceGit.Commands
                     commit.Body = parts[8];
                     commits.Add(commit);
 
-                    findHead |= commit.IsMerged;
+                    if (!findHead && commit.IsMerged)
+                        findHead = true;
                 }
 
                 if (_markMerged && !findHead && commits.Count > 0)

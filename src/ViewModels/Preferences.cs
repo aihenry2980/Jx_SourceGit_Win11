@@ -326,6 +326,12 @@ namespace SourceGit.ViewModels
             set => SetProperty(ref _compactTrackingBranches, value);
         }
 
+        public bool UseCompactBranchNamesInGraph
+        {
+            get => _useCompactBranchNamesInGraph;
+            set => SetProperty(ref _useCompactBranchNamesInGraph, value);
+        }
+
         public bool UseTwoColumnsLayoutInHistories
         {
             get => _useTwoColumnsLayoutInHistories;
@@ -362,6 +368,12 @@ namespace SourceGit.ViewModels
                 }
             }
         }
+
+        public bool UseStashAndReapplyByDefault
+        {
+            get;
+            set;
+        } = false;
 
         public bool EnableAutoFetch
         {
@@ -1246,6 +1258,7 @@ namespace SourceGit.ViewModels
         private string _presetBranchExactNameColors = string.Empty;
         private string _autoRevertPullConflictExtensions = DEFAULT_AUTO_REVERT_PULL_CONFLICT_EXTENSIONS;
         private List<string> _recursiveLocalChangesRecentHiddenExtensions = [];
+        private bool _useCompactBranchNamesInGraph = true;
 
         private bool _check4UpdatesOnStartup = true;
         private double _lastCheckUpdateTime = 0;

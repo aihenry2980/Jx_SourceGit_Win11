@@ -199,8 +199,17 @@ namespace SourceGit.ViewModels
 
         public bool HighlightCurrentBranchOnlyInHistory
         {
-            get => _histories.HighlightCurrentBranchOnly;
-            set => _histories.HighlightCurrentBranchOnly = value;
+            get => _uiStates.GraphHighlighting == Models.CommitGraphHighlighting.CurrentBranchOnly;
+            set
+            {
+                var mode = value ? Models.CommitGraphHighlighting.CurrentBranchOnly : Models.CommitGraphHighlighting.All;
+                if (_uiStates.GraphHighlighting != mode)
+                {
+                    _uiStates.GraphHighlighting = mode;
+                    OnPropertyChanged();
+                    RefreshCommits();
+                }
+            }
         }
 
         public bool OnlyShowSPPCommitsInHistory
@@ -293,7 +302,7 @@ namespace SourceGit.ViewModels
                 var oldHead = _currentBranch?.Head;
                 if (SetProperty(ref _currentBranch, value))
                 {
-                    _histories.NotifyCurrentBranchChanged();
+                    _histories?.NotifyCurrentBranchChanged();
                     if (value != null && !string.Equals(value.Head, oldHead, StringComparison.Ordinal) && _workingCopy is { UseAmend: true })
                         _workingCopy.UseAmend = false;
 
@@ -900,6 +909,9 @@ namespace SourceGit.ViewModels
             {
                 _gitCommonDir = GitDir;
             }
+
+            _settings = Models.RepositorySettings.Get(_gitCommonDir);
+            _uiStates = Models.RepositoryUIStates.Load(GitDir);
         }
 
         public void Open()
@@ -1668,6 +1680,7 @@ namespace SourceGit.ViewModels
             _watcher?.MarkBranchUpdated();
             _watcher?.MarkWorkingCopyUpdated();
 
+            _branches.RemoveAll(b => b.IsLocal && b.FriendlyName.Equals(created.FriendlyName, StringComparison.Ordinal));
             _branches.Add(created);
 
             if (checkout)
@@ -2477,7 +2490,12 @@ namespace SourceGit.ViewModels
             return new CommitHistorySnapshot()
             {
                 Commits = commits,
-                Graph = Models.CommitGraph.Parse(commits, _uiStates.HistoryShowFlags.HasFlag(Models.HistoryShowFlags.FirstParentOnly)),
+                Graph = Models.CommitGraph.Generate(
+                    commits,
+                    true,
+                    _uiStates.HistoryShowFlags.HasFlag(Models.HistoryShowFlags.FirstParentOnly),
+                    _uiStates.GraphHighlighting,
+                    []),
                 ShouldNotifyFoldControlChange = notifyFoldControlChange,
             };
         }
@@ -3719,7 +3737,7 @@ namespace SourceGit.ViewModels
                     Name = Path.GetFileName(worktree.FullPath),
                     Bookmark = Preferences.Instance.FindUnusedBookmarkColor(),
                     IsRepository = true,
-                };
+            };
 
             App.GetLauncher().OpenRepositoryInTab(node, null);
         }

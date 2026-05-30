@@ -76,6 +76,15 @@ namespace SourceGit.Views
             set => SetValue(ForegroundProperty, value);
         }
 
+        public static readonly StyledProperty<bool> UseCompactBranchNamesProperty =
+            AvaloniaProperty.Register<CommitRefsPresenter, bool>(nameof(UseCompactBranchNames));
+
+        public bool UseCompactBranchNames
+        {
+            get => GetValue(UseCompactBranchNamesProperty);
+            set => SetValue(UseCompactBranchNamesProperty, value);
+        }
+
         public static readonly StyledProperty<bool> UseGraphColorProperty =
             AvaloniaProperty.Register<CommitRefsPresenter, bool>(nameof(UseGraphColor));
 
@@ -128,6 +137,7 @@ namespace SourceGit.Views
                 FontSizeProperty,
                 ForegroundProperty,
                 UseGraphColorProperty,
+                UseCompactBranchNamesProperty,
                 BackgroundProperty,
                 ShowTagsProperty,
                 HighlightTextProperty,

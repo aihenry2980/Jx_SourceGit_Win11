@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace SourceGit.Models
 {
@@ -14,7 +15,7 @@ namespace SourceGit.Models
         ByContent,
     }
 
-    public class Commit
+    public class Commit : ObservableObject
     {
         public const string EmptyTreeSHA1 = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 
@@ -41,6 +42,12 @@ namespace SourceGit.Models
         public int Color { get; set; } = 0;
         public double LeftMargin { get; set; } = 0;
         public int FoldedCommitsBelow { get; set; } = 0;
+
+        public bool IsHighlightedInGraph
+        {
+            get => _isHighlightedInGraph;
+            set => SetProperty(ref _isHighlightedInGraph, value);
+        }
 
         public bool IsCommitterVisible => !Author.Equals(Committer) || AuthorTime != CommitterTime;
         public bool IsCurrentHead => Decorators.Find(x => x.Type is DecoratorType.CurrentBranchHead or DecoratorType.CurrentCommitHead) != null;
@@ -285,6 +292,8 @@ namespace SourceGit.Models
 
             builder.Append(text);
         }
+
+        private bool _isHighlightedInGraph = false;
     }
 
     public class CommitFullMessage

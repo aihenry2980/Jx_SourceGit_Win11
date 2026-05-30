@@ -13,7 +13,7 @@
     <Grid RowDefinitions="26,*">
       <!-- Toolbar -->
       <Border Grid.Row="0" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Brush.Border2}">
-        <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+        <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto">
           <!-- File Icon -->
           <Path Grid.Column="0" Width="12" Height="12" Data="{StaticResource Icons.File}" Margin="8,0,0,0"/>
 
@@ -29,16 +29,34 @@
             <TextBlock FontSize="10" HorizontalAlignment="Center" Margin="4,0" Text="{Binding FileModeChange}" Foreground="{DynamicResource Brush.BadgeFG}"/>
           </Border>
 
+          <!-- Line Changes Summary -->
+          <ContentControl Grid.Column="2" Margin="4,0,0,0" Content="{Binding Content, Mode=OneWay}" IsVisible="{Binding IsTextDiff}">
+            <ContentControl.DataTemplates>
+              <DataTemplate DataType="vm:TextDiffContext">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                  <TextBlock FontSize="11"
+                             Foreground="Green"
+                             Text="{Binding Data.AddedLines, Mode=OneWay, StringFormat=+{0}}"
+                             IsVisible="{Binding Data.AddedLines, Converter={x:Static c:IntConverters.IsGreaterThanZero}}"/>
+                  <TextBlock FontSize="11"
+                             Foreground="Red"
+                             Text="{Binding Data.DeletedLines, Mode=OneWay, StringFormat=-{0}}"
+                             IsVisible="{Binding Data.DeletedLines, Converter={x:Static c:IntConverters.IsGreaterThanZero}}"/>
+                </StackPanel>
+              </DataTemplate>
+            </ContentControl.DataTemplates>
+          </ContentControl>
+
           <!-- Title -->
-          <TextBlock Grid.Column="2" Margin="4,0,0,0" Text="{Binding Title}" ToolTip.Tip="{Binding Title}" FontSize="11" TextTrimming="CharacterEllipsis"/>
+          <TextBlock Grid.Column="3" Margin="4,0,0,0" Text="{Binding Title}" ToolTip.Tip="{Binding Title}" FontSize="11" TextTrimming="CharacterEllipsis"/>
 
           <!-- Toolbar Buttons -->
-          <StackPanel Grid.Column="3" Margin="8,0,0,0" Orientation="Horizontal" VerticalAlignment="Center">
-            <Button Classes="icon_button"
+          <StackPanel Grid.Column="4" Margin="8,0,0,0" Orientation="Horizontal" VerticalAlignment="Center">
+            <Button x:Name="BtnGotoFirstChange"
+                    Classes="icon_button"
                     Width="28"
                     Click="OnGotoFirstChange"
-                    IsVisible="{Binding IsTextDiff}"
-                    HotKey="{OnPlatform Ctrl+Alt+Home, macOS=⌘+Alt+Home}">
+                    IsVisible="{Binding IsTextDiff}">
               <ToolTip.Tip>
                 <TextBlock>
                   <Run Text="{DynamicResource Text.Diff.First}"/>
@@ -49,11 +67,11 @@
               <Path Width="12" Height="12" Stretch="Uniform" Margin="0,6,0,0" Data="{StaticResource Icons.Top}"/>
             </Button>
 
-            <Button Classes="icon_button"
+            <Button x:Name="BtnGotoPrevChange"
+                    Classes="icon_button"
                     Width="28"
                     Click="OnGotoPrevChange"
-                    IsVisible="{Binding IsTextDiff}"
-                    HotKey="{OnPlatform Ctrl+Alt+Up, macOS=⌘+Alt+Up}">
+                    IsVisible="{Binding IsTextDiff}">
               <ToolTip.Tip>
                 <TextBlock>
                   <Run Text="{DynamicResource Text.Diff.Prev}"/>
@@ -72,11 +90,11 @@
               </ContentControl.DataTemplates>
             </ContentControl>
 
-            <Button Classes="icon_button"
+            <Button x:Name="BtnGotoNextChange"
+                    Classes="icon_button"
                     Width="28"
                     Click="OnGotoNextChange"
-                    IsVisible="{Binding IsTextDiff}"
-                    HotKey="{OnPlatform Ctrl+Alt+Down, macOS=⌘+Alt+Down}">
+                    IsVisible="{Binding IsTextDiff}">
               <ToolTip.Tip>
                 <TextBlock>
                   <Run Text="{DynamicResource Text.Diff.Next}"/>
@@ -87,11 +105,11 @@
               <Path Width="12" Height="12" Stretch="Uniform" Margin="0,6,0,0" Data="{StaticResource Icons.Down}"/>
             </Button>
 
-            <Button Classes="icon_button"
+            <Button x:Name="BtnGotoLastChange"
+                    Classes="icon_button"
                     Width="28"
                     Click="OnGotoLastChange"
-                    IsVisible="{Binding IsTextDiff}"
-                    HotKey="{OnPlatform Ctrl+Alt+End, macOS=⌘+Alt+End}">
+                    IsVisible="{Binding IsTextDiff}">
               <ToolTip.Tip>
                 <TextBlock>
                   <Run Text="{DynamicResource Text.Diff.Last}"/>
@@ -179,10 +197,10 @@
               <Path Width="12" Height="12" Data="{StaticResource Icons.Layout}" Margin="0,2,0,0"/>
             </ToggleButton>
 
-            <Button Classes="icon_button"
+            <Button x:Name="BtnOpenExternalMergeTool"
+                    Classes="icon_button"
                     Width="28"
-                    Command="{Binding OpenExternalMergeTool}"
-                    HotKey="{OnPlatform Ctrl+Shift+D, macOS=⌘+Shift+D}">
+                    Command="{Binding OpenExternalMergeTool}">
               <ToolTip.Tip>
                 <TextBlock>
                   <Run Text="{DynamicResource Text.Diff.UseMerger}"/>

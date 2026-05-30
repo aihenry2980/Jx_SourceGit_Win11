@@ -73,8 +73,8 @@
         <TextBlock Grid.Row="3" x:Name="TxtReleaseDate" Margin="0,12,0,0" Foreground="{DynamicResource Brush.FG2}"/>
         
         <StackPanel Grid.Row="4" x:Name="PnlGitSourceRevision" Orientation="Horizontal" Margin="0,2,0,0" IsVisible="False">
-          <TextBlock Foreground="{DynamicResource Brush.FG2}" Text="{DynamicResource Text.About.GitSourceRevision}"/>
-          <SelectableTextBlock x:Name="TxtGitSourceRevision" Margin="4,0,0,0" Foreground="{DynamicResource Brush.FG2}"/>
+          <TextBlock VerticalAlignment="Center" Foreground="{DynamicResource Brush.FG2}" Text="{DynamicResource Text.About.GitSourceRevision}"/>
+          <SelectableTextBlock x:Name="TxtGitSourceRevision" Margin="4,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource Brush.FG2}"/>
         </StackPanel>
 
         <TextBlock Grid.Row="5" x:Name="TxtCopyright" Margin="0,2,0,0" Foreground="{DynamicResource Brush.FG2}"/>

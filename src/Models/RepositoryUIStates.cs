@@ -33,17 +33,23 @@ namespace SourceGit.Models
             set;
         } = true;
 
+        public double AuthorColumnWidth
+        {
+            get;
+            set;
+        } = 120;
+
         public bool EnableTopoOrderInHistory
         {
             get;
             set;
         } = false;
 
-        public bool OnlyHighlightCurrentBranchInHistory
+        public CommitGraphHighlighting GraphHighlighting
         {
             get;
             set;
-        } = false;
+        } = CommitGraphHighlighting.All;
 
         public bool OnlyShowSPPCommitsInHistory
         {

@@ -267,17 +267,33 @@ namespace SourceGit.Views
             foreach (var rule in rules)
                 rule.Matches(_elements, subject);
 
-            var keywordMatch = REG_KEYWORD_FORMAT().Match(subject);
-            if (keywordMatch.Success)
+            if (subject.StartsWith("fixup! ", StringComparison.Ordinal) || subject.StartsWith("amend! ", StringComparison.Ordinal))
             {
-                if (_elements.Intersect(0, keywordMatch.Length) == null)
-                    _elements.Add(new Models.InlineElement(Models.InlineElementType.Keyword, 0, keywordMatch.Length, string.Empty));
+                _elements.Add(new Models.InlineElement(Models.InlineElementType.Keyword, 0, 6, string.Empty));
+            }
+            else if (subject.StartsWith("squash! ", StringComparison.Ordinal))
+            {
+                _elements.Add(new Models.InlineElement(Models.InlineElementType.Keyword, 0, 7, string.Empty));
+            }
+            else if (subject.StartsWith('['))
+            {
+                var bracketIdx = subject.IndexOf(']');
+                if (bracketIdx > 1 && bracketIdx < 50 && _elements.Intersect(0, bracketIdx + 1) == null)
+                    _elements.Add(new Models.InlineElement(Models.InlineElementType.Keyword, 0, bracketIdx + 1, string.Empty));
             }
             else
             {
-                var colonIdx = subject.IndexOf(':', StringComparison.Ordinal);
-                if (colonIdx > 0 && colonIdx < 32 && colonIdx < subject.Length - 2 && char.IsWhiteSpace(subject[colonIdx + 1]) && _elements.Intersect(0, colonIdx + 1) == null)
+                var colonIdx = subject.IndexOf(": ", StringComparison.Ordinal);
+                if (colonIdx > 0 && colonIdx < 32 && colonIdx < subject.Length - 3 && subject.IndexOf('"', 0, colonIdx) == -1 && _elements.Intersect(0, colonIdx) == null)
+                {
                     _elements.Add(new Models.InlineElement(Models.InlineElementType.Keyword, 0, colonIdx + 1, string.Empty));
+                }
+                else
+                {
+                    var hyphenIdx = subject.IndexOf(" - ", StringComparison.Ordinal);
+                    if (hyphenIdx > 0 && hyphenIdx < 32 && hyphenIdx < subject.Length - 4 && subject.IndexOf('"', 0, hyphenIdx) == -1 && _elements.Intersect(0, hyphenIdx) == null)
+                        _elements.Add(new Models.InlineElement(Models.InlineElementType.Keyword, 0, hyphenIdx, string.Empty));
+                }
             }
 
             var codeMatches = REG_INLINECODE_FORMAT().Matches(subject);

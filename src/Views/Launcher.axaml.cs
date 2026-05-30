@@ -7,7 +7,6 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Platform;
-using Avalonia.VisualTree;
 
 namespace SourceGit.Views
 {
@@ -187,7 +186,40 @@ namespace SourceGit.Views
                 }
             }
 
-            if (e.KeyModifiers.HasFlag(OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control))
+            // Ctrl+` to open terminal. On macOS, Cmd+` is used to switch between windows
+            if (e is { Key: Key.OemTilde, KeyModifiers: KeyModifiers.Control })
+            {
+                if (vm.ActivePage.Data is ViewModels.Repository repo)
+                    Native.OS.OpenTerminal(repo.FullPath);
+                else
+                    ViewModels.Welcome.Instance.OpenTerminal();
+
+                e.Handled = true;
+                return;
+            }
+
+            var cmdKey = OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control;
+
+            if (vm.CommandPalette != null)
+            {
+                if (e.Key == Key.Escape)
+                {
+                    vm.CommandPalette = null;
+                    e.Handled = true;
+                }
+                else if (vm.ActivePage.Data is ViewModels.Repository repo
+                    && vm.CommandPalette is ViewModels.LauncherPagesCommandPalette
+                    && e.Key == Key.P
+                    && e.KeyModifiers == (cmdKey | KeyModifiers.Shift))
+                {
+                    vm.CommandPalette = new ViewModels.RepositoryCommandPalette(repo);
+                    e.Handled = true;
+                }
+
+                return;
+            }
+
+            if (e.KeyModifiers.HasFlag(cmdKey))
             {
                 if (e.Key == Key.W)
                 {
@@ -216,7 +248,7 @@ namespace SourceGit.Views
                     return;
                 }
 
-                if (e.Key == Key.T)
+                if (e.Key == Key.T && e.KeyModifiers == cmdKey)
                 {
                     vm.AddNewTab();
                     e.Handled = true;
@@ -272,19 +304,20 @@ namespace SourceGit.Views
                             vm.OpenCommandPalette(new ViewModels.RepositoryCommandPalette(vm, repo));
                             e.Handled = true;
                             return;
-                    }
-                }
-                else
-                {
-                    var welcome = this.FindDescendantOfType<Welcome>();
-                    if (welcome != null)
-                    {
-                        if (e.Key == Key.F)
-                        {
-                            welcome.SearchBox.Focus();
+                        case Key.B when e.KeyModifiers.HasFlag(KeyModifiers.Shift):
+                            if (repo.CanCreatePopup() && repo.GetSelectedCommitInHistory() is { } bc)
+                                repo.ShowPopup(new ViewModels.CreateBranch(repo, bc));
                             e.Handled = true;
                             return;
-                        }
+                        case Key.T when e.KeyModifiers.HasFlag(KeyModifiers.Shift):
+                            if (repo.CanCreatePopup() && repo.GetSelectedCommitInHistory() is { } tc)
+                                repo.ShowPopup(new ViewModels.CreateTag(repo, tc));
+                            e.Handled = true;
+                            return;
+                        case Key.E:
+                            Native.OS.OpenInFileManager(repo.FullPath);
+                            e.Handled = true;
+                            return;
                     }
                 }
             }

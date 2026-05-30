@@ -433,6 +433,10 @@
       </Button>
       <Button Width="0" Height="0" Click="StashAllByHotKey" IsVisible="False" IsEnabled="{Binding !IsBare}" HotKey="{OnPlatform Ctrl+Alt+S, macOS=⌘+⌥+S}"/>
 
+      <Button Classes="icon_button" Width="32" Margin="16,0,0,0" Command="{Binding ApplyPatch}" IsVisible="{Binding !IsBare}" ToolTip.Tip="{DynamicResource Text.Apply.Title}">
+        <Path Width="14" Height="14" Data="{StaticResource Icons.ApplyPatch}"/>
+      </Button>
+
       <Rectangle x:Name="ActionSeparator"
                  Width="1" Height="16"
                  Margin="8,0,0,0"

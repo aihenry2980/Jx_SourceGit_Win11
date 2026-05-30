@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
@@ -9,10 +9,22 @@ namespace SourceGit.ViewModels
 {
     public class Compare : ObservableObject
     {
-        public bool IsLoading
+        public bool IsLoadingChanges
         {
-            get => _isLoading;
-            private set => SetProperty(ref _isLoading, value);
+            get => _isLoadingChanges;
+            private set => SetProperty(ref _isLoadingChanges, value);
+        }
+
+        public bool IsLoadingPickableCommits
+        {
+            get => _isLoadingPickableCommits;
+            private set => SetProperty(ref _isLoadingPickableCommits, value);
+        }
+
+        public bool IsViewChanges
+        {
+            get => _isViewChanges;
+            set => SetProperty(ref _isViewChanges, value);
         }
 
         public bool CanResetFiles
@@ -64,7 +76,7 @@ namespace SourceGit.ViewModels
                 if (SetProperty(ref _selectedChanges, value))
                 {
                     if (value is { Count: 1 })
-                        DiffContext = new DiffContext(_repo, new Models.DiffOption(_based, _to, value[0]), _diffContext);
+                        DiffContext = new DiffContext(_repoPath, new Models.DiffOption(_based, _to, value[0]), _diffContext);
                     else
                         DiffContext = null;
                 }
@@ -77,7 +89,7 @@ namespace SourceGit.ViewModels
             set
             {
                 if (SetProperty(ref _searchFilter, value))
-                    RefreshVisible();
+                    RefreshVisibleChanges();
             }
         }
 
@@ -87,55 +99,63 @@ namespace SourceGit.ViewModels
             private set => SetProperty(ref _diffContext, value);
         }
 
+        public List<Models.Commit> LeftOnlyCommits
+        {
+            get => _leftOnlyCommits;
+            private set => SetProperty(ref _leftOnlyCommits, value);
+        }
+
+        public List<Models.Commit> RightOnlyCommits
+        {
+            get => _rightOnlyCommits;
+            private set => SetProperty(ref _rightOnlyCommits, value);
+        }
+
         public Compare(Repository repo, object based, object to)
         {
-            _repo = repo.FullPath;
+            _repo = repo;
+            _repoPath = repo.FullPath;
             _canResetFiles = !repo.IsBare;
             _based = GetSHA(based);
             _to = GetSHA(to);
             _baseName = GetName(based);
             _toName = GetName(to);
 
-            Refresh();
+            _baseHead = new Commands.QuerySingleCommit(_repoPath, _based).GetResult();
+            _toHead = new Commands.QuerySingleCommit(_repoPath, _to).GetResult();
+
+            UpdatePickableCommits();
+            UpdateChanges();
         }
 
         public Compare(string repo, string based, string to, string baseName, string toName, bool canResetFiles = false)
         {
-            _repo = repo;
+            _repoPath = repo;
             _canResetFiles = canResetFiles;
             _based = based;
             _to = to;
             _baseName = baseName;
             _toName = toName;
 
-            Refresh();
+            _baseHead = new Commands.QuerySingleCommit(_repoPath, _based).GetResult();
+            _toHead = new Commands.QuerySingleCommit(_repoPath, _to).GetResult();
+
+            UpdatePickableCommits();
+            UpdateChanges();
         }
 
         public void NavigateTo(string commitSHA)
         {
-            var launcher = App.GetLauncher();
-            if (launcher == null)
-                return;
-
-            foreach (var page in launcher.Pages)
-            {
-                if (page.Data is Repository repo && repo.FullPath.Equals(_repo))
-                {
-                    repo.NavigateToCommit(commitSHA);
-                    break;
-                }
-            }
+            _repo?.NavigateToCommit(commitSHA);
         }
 
         public void Swap()
         {
             (_based, _to) = (_to, _based);
             (BaseName, ToName) = (_toName, _baseName);
-
-            if (_baseHead != null)
-                (BaseHead, ToHead) = (_toHead, _baseHead);
-
-            Refresh();
+            (BaseHead, ToHead) = (_toHead, _baseHead);
+            (LeftOnlyCommits, RightOnlyCommits) = (_rightOnlyCommits, _leftOnlyCommits);
+            UpdateChanges();
         }
 
         public void ClearSearchFilter()
@@ -145,12 +165,12 @@ namespace SourceGit.ViewModels
 
         public string GetAbsPath(string path)
         {
-            return Native.OS.GetAbsPath(_repo, path);
+            return Native.OS.GetAbsPath(_repoPath, path);
         }
 
         public void OpenInExternalDiffTool(Models.Change change)
         {
-            new Commands.DiffTool(_repo, new Models.DiffOption(_based, _to, change)).Open();
+            new Commands.DiffTool(_repoPath, new Models.DiffOption(_based, _to, change)).Open();
         }
 
         public async Task ResetToLeftAsync(Models.Change change)
@@ -160,21 +180,21 @@ namespace SourceGit.ViewModels
 
             if (change.Index == Models.ChangeState.Added)
             {
-                var fullpath = Native.OS.GetAbsPath(_repo, change.Path);
+                var fullpath = Native.OS.GetAbsPath(_repoPath, change.Path);
                 if (File.Exists(fullpath))
-                    await new Commands.Remove(_repo, [change.Path]).ExecAsync();
+                    await new Commands.Remove(_repoPath, [change.Path]).ExecAsync();
             }
             else if (change.Index == Models.ChangeState.Renamed)
             {
-                var renamed = Native.OS.GetAbsPath(_repo, change.Path);
+                var renamed = Native.OS.GetAbsPath(_repoPath, change.Path);
                 if (File.Exists(renamed))
-                    await new Commands.Remove(_repo, [change.Path]).ExecAsync();
+                    await new Commands.Remove(_repoPath, [change.Path]).ExecAsync();
 
-                await new Commands.Checkout(_repo).FileWithRevisionAsync(change.OriginalPath, _baseHead.SHA);
+                await new Commands.Checkout(_repoPath).FileWithRevisionAsync(change.OriginalPath, _baseHead.SHA);
             }
             else
             {
-                await new Commands.Checkout(_repo).FileWithRevisionAsync(change.Path, _baseHead.SHA);
+                await new Commands.Checkout(_repoPath).FileWithRevisionAsync(change.Path, _baseHead.SHA);
             }
         }
 
@@ -182,21 +202,21 @@ namespace SourceGit.ViewModels
         {
             if (change.Index == Models.ChangeState.Deleted)
             {
-                var fullpath = Native.OS.GetAbsPath(_repo, change.Path);
+                var fullpath = Native.OS.GetAbsPath(_repoPath, change.Path);
                 if (File.Exists(fullpath))
-                    await new Commands.Remove(_repo, [change.Path]).ExecAsync();
+                    await new Commands.Remove(_repoPath, [change.Path]).ExecAsync();
             }
             else if (change.Index == Models.ChangeState.Renamed)
             {
-                var old = Native.OS.GetAbsPath(_repo, change.OriginalPath);
+                var old = Native.OS.GetAbsPath(_repoPath, change.OriginalPath);
                 if (File.Exists(old))
-                    await new Commands.Remove(_repo, [change.OriginalPath]).ExecAsync();
+                    await new Commands.Remove(_repoPath, [change.OriginalPath]).ExecAsync();
 
-                await new Commands.Checkout(_repo).FileWithRevisionAsync(change.Path, ToHead.SHA);
+                await new Commands.Checkout(_repoPath).FileWithRevisionAsync(change.Path, ToHead.SHA);
             }
             else
             {
-                await new Commands.Checkout(_repo).FileWithRevisionAsync(change.Path, ToHead.SHA);
+                await new Commands.Checkout(_repoPath).FileWithRevisionAsync(change.Path, ToHead.SHA);
             }
         }
 
@@ -209,13 +229,13 @@ namespace SourceGit.ViewModels
             {
                 if (c.Index == Models.ChangeState.Added)
                 {
-                    var fullpath = Native.OS.GetAbsPath(_repo, c.Path);
+                    var fullpath = Native.OS.GetAbsPath(_repoPath, c.Path);
                     if (File.Exists(fullpath))
                         removes.Add(c.Path);
                 }
                 else if (c.Index == Models.ChangeState.Renamed)
                 {
-                    var old = Native.OS.GetAbsPath(_repo, c.Path);
+                    var old = Native.OS.GetAbsPath(_repoPath, c.Path);
                     if (File.Exists(old))
                         removes.Add(c.Path);
 
@@ -228,10 +248,10 @@ namespace SourceGit.ViewModels
             }
 
             if (removes.Count > 0)
-                await new Commands.Remove(_repo, removes).ExecAsync();
+                await new Commands.Remove(_repoPath, removes).ExecAsync();
 
             if (checkouts.Count > 0)
-                await new Commands.Checkout(_repo).MultipleFilesWithRevisionAsync(checkouts, _baseHead.SHA);
+                await new Commands.Checkout(_repoPath).MultipleFilesWithRevisionAsync(checkouts, _baseHead.SHA);
         }
 
         public async Task ResetMultipleToRightAsync(List<Models.Change> changes)
@@ -243,13 +263,13 @@ namespace SourceGit.ViewModels
             {
                 if (c.Index == Models.ChangeState.Deleted)
                 {
-                    var fullpath = Native.OS.GetAbsPath(_repo, c.Path);
+                    var fullpath = Native.OS.GetAbsPath(_repoPath, c.Path);
                     if (File.Exists(fullpath))
                         removes.Add(c.Path);
                 }
                 else if (c.Index == Models.ChangeState.Renamed)
                 {
-                    var renamed = Native.OS.GetAbsPath(_repo, c.OriginalPath);
+                    var renamed = Native.OS.GetAbsPath(_repoPath, c.OriginalPath);
                     if (File.Exists(renamed))
                         removes.Add(c.OriginalPath);
 
@@ -262,46 +282,58 @@ namespace SourceGit.ViewModels
             }
 
             if (removes.Count > 0)
-                await new Commands.Remove(_repo, removes).ExecAsync();
+                await new Commands.Remove(_repoPath, removes).ExecAsync();
 
             if (checkouts.Count > 0)
-                await new Commands.Checkout(_repo).MultipleFilesWithRevisionAsync(checkouts, _toHead.SHA);
+                await new Commands.Checkout(_repoPath).MultipleFilesWithRevisionAsync(checkouts, _toHead.SHA);
         }
 
         public async Task<bool> SaveChangesAsPatchAsync(List<Models.Change> changes, string saveTo)
         {
-            return await Commands.SaveChangesAsPatch.ProcessRevisionCompareChangesAsync(_repo, changes, _based, _to, saveTo);
+            return await Commands.SaveChangesAsPatch.ProcessRevisionCompareChangesAsync(_repoPath, changes, _based, _to, saveTo);
         }
 
-        private void Refresh()
+        public void CherryPick(List<Models.Commit> commits)
         {
-            IsLoading = true;
+            if (_repo.CanCreatePopup())
+                _repo.ShowPopup(new CherryPick(_repo, commits));
+        }
+
+        private void UpdatePickableCommits()
+        {
+            IsLoadingPickableCommits = true;
+
+            Task.Run(async () =>
+            {
+                var rightOnly = await new Commands.QueryPickableCommits(_repoPath, _baseHead.SHA, _toHead.SHA)
+                    .GetResultAsync()
+                    .ConfigureAwait(false);
+
+                var leftOnly = await new Commands.QueryPickableCommits(_repoPath, _toHead.SHA, _baseHead.SHA)
+                    .GetResultAsync()
+                    .ConfigureAwait(false);
+
+                Dispatcher.UIThread.Post(() =>
+                {
+                    LeftOnlyCommits = leftOnly;
+                    RightOnlyCommits = rightOnly;
+                    IsLoadingPickableCommits = false;
+                });
+            });
+        }
+
+        private void UpdateChanges()
+        {
+            IsLoadingChanges = true;
             VisibleChanges = [];
             SelectedChanges = [];
 
             Task.Run(async () =>
             {
-                if (_baseHead == null)
-                {
-                    var baseHead = await new Commands.QuerySingleCommit(_repo, _based)
-                        .GetResultAsync()
-                        .ConfigureAwait(false);
-
-                    var toHead = await new Commands.QuerySingleCommit(_repo, _to)
-                        .GetResultAsync()
-                        .ConfigureAwait(false);
-
-                    Dispatcher.UIThread.Post(() =>
-                    {
-                        BaseHead = baseHead;
-                        ToHead = toHead;
-                    });
-                }
-
-                _changes = await new Commands.CompareRevisions(_repo, _based, _to)
+                _changes = await new Commands.CompareRevisions(_repoPath, _based, _to)
                     .ReadAsync()
                     .ConfigureAwait(false);
-                await Commands.QueryRevisionLineStats.ApplyAsync(_repo, _based, _to, _changes).ConfigureAwait(false);
+                await Commands.QueryRevisionLineStats.ApplyAsync(_repoPath, _based, _to, _changes).ConfigureAwait(false);
                 var visible = _changes;
                 if (!string.IsNullOrWhiteSpace(_searchFilter))
                 {
@@ -317,7 +349,7 @@ namespace SourceGit.ViewModels
                 {
                     TotalChanges = _changes.Count;
                     VisibleChanges = visible;
-                    IsLoading = false;
+                    IsLoadingChanges = false;
 
                     if (VisibleChanges.Count > 0)
                         SelectedChanges = [VisibleChanges[0]];
@@ -327,7 +359,7 @@ namespace SourceGit.ViewModels
             });
         }
 
-        private void RefreshVisible()
+        private void RefreshVisibleChanges()
         {
             if (_changes == null)
                 return;
@@ -371,8 +403,11 @@ namespace SourceGit.ViewModels
             };
         }
 
-        private string _repo;
-        private bool _isLoading = true;
+        private Repository _repo;
+        private string _repoPath = string.Empty;
+        private bool _isLoadingChanges = true;
+        private bool _isLoadingPickableCommits = true;
+        private bool _isViewChanges = true;
         private bool _canResetFiles = false;
         private string _based = string.Empty;
         private string _to = string.Empty;
@@ -384,6 +419,8 @@ namespace SourceGit.ViewModels
         private List<Models.Change> _changes = null;
         private List<Models.Change> _visibleChanges = null;
         private List<Models.Change> _selectedChanges = null;
+        private List<Models.Commit> _leftOnlyCommits = [];
+        private List<Models.Commit> _rightOnlyCommits = [];
         private string _searchFilter = string.Empty;
         private DiffContext _diffContext = null;
     }

@@ -51,7 +51,7 @@ namespace SourceGit.ViewModels
         {
             get;
             set;
-        } = Models.DealWithLocalChanges.DoNothing;
+        }
 
         public bool UseRebase
         {
@@ -68,6 +68,10 @@ namespace SourceGit.ViewModels
             _repo = repo;
             Current = repo.CurrentBranch;
             _useRebase = initialUseRebase ?? _repo.UIStates.PreferRebaseInsteadOfMerge;
+
+            DealWithLocalChanges = Preferences.Instance.UseStashAndReapplyByDefault ?
+                Models.DealWithLocalChanges.StashAndReapply :
+                Models.DealWithLocalChanges.DoNothing;
 
             if (specifiedRemoteBranch != null)
             {

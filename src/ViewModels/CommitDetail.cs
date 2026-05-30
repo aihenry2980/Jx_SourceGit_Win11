@@ -235,6 +235,15 @@ namespace SourceGit.ViewModels
             _revisionFiles = null;
             _revisionFileSearchSuggestion = null;
         }
+
+        public CommitDetail Clone()
+        {
+            var cloned = new CommitDetail(_repo, null);
+            cloned.ActiveTabIndex = ActiveTabIndex;
+            cloned.Commit = _commit;
+            return cloned;
+        }
+
         public void NavigateTo(string commitSHA)
         {
             _repo?.NavigateToCommit(commitSHA);
