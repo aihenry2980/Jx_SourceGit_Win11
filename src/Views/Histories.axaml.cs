@@ -706,7 +706,7 @@ namespace SourceGit.Views
                 return;
             }
 
-            BeginCommitBranchDrag(e.GetPosition(presenter), name);
+            BeginCommitBranchDrag(e, e.GetPosition(presenter), name);
         }
 
         private async void OnCommitRefsPointerMoved(object sender, PointerEventArgs e)
@@ -734,7 +734,7 @@ namespace SourceGit.Views
                 return;
             }
 
-            BeginCommitBranchDrag(e.GetPosition(control), name);
+            BeginCommitBranchDrag(e, e.GetPosition(control), name);
         }
 
         private async void OnCommitSubjectPointerMoved(object sender, PointerEventArgs e)
@@ -2011,9 +2011,10 @@ namespace SourceGit.Views
             return 0;
         }
 
-        private void BeginCommitBranchDrag(Point position, string branchName)
+        private void BeginCommitBranchDrag(PointerPressedEventArgs e, Point position, string branchName)
         {
             _pressedCommitRef = true;
+            _pressedCommitRefEvent = e;
             _startDragCommitRef = false;
             _pressedCommitRefPosition = position;
             _pressedCommitRefBranchName = branchName;
@@ -2036,7 +2037,7 @@ namespace SourceGit.Views
 
             try
             {
-                await DragDrop.DoDragDropAsync(e, data, DragDropEffects.Copy);
+                await DragDrop.DoDragDropAsync(_pressedCommitRefEvent, data, DragDropEffects.Copy);
             }
             finally
             {
@@ -2048,6 +2049,7 @@ namespace SourceGit.Views
         private void ClearCommitBranchDragState()
         {
             _pressedCommitRef = false;
+            _pressedCommitRefEvent = null;
             _startDragCommitRef = false;
             _pressedCommitRefBranchName = string.Empty;
         }
@@ -2543,6 +2545,7 @@ namespace SourceGit.Views
         private bool _lastHistoriesIsLoading = false;
         private bool _isCenteringHeadCommit = false;
         private bool _pressedCommitRef = false;
+        private PointerPressedEventArgs _pressedCommitRefEvent = null;
         private bool _startDragCommitRef = false;
         private Point _pressedCommitRefPosition = default;
         private string _pressedCommitRefBranchName = string.Empty;

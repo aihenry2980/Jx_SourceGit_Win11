@@ -28,6 +28,15 @@ namespace SourceGit.Views
             set => SetValue(Use24HoursProperty, value);
         }
 
+        public static readonly StyledProperty<bool> UseAuthorTimeProperty =
+            AvaloniaProperty.Register<CommitTimeTextBlock, bool>(nameof(UseAuthorTime));
+
+        public bool UseAuthorTime
+        {
+            get => GetValue(UseAuthorTimeProperty);
+            set => SetValue(UseAuthorTimeProperty, value);
+        }
+
         public static readonly StyledProperty<int> DateTimeFormatProperty =
             AvaloniaProperty.Register<CommitTimeTextBlock, int>(nameof(DateTimeFormat));
 
@@ -37,13 +46,13 @@ namespace SourceGit.Views
             set => SetValue(DateTimeFormatProperty, value);
         }
 
-        public static readonly StyledProperty<bool> UseAuthorTimeProperty =
-            AvaloniaProperty.Register<CommitTimeTextBlock, bool>(nameof(UseAuthorTime), true);
+        public static readonly StyledProperty<ulong> TimestampProperty =
+            AvaloniaProperty.Register<CommitTimeTextBlock, ulong>(nameof(Timestamp));
 
-        public bool UseAuthorTime
+        public ulong Timestamp
         {
-            get => GetValue(UseAuthorTimeProperty);
-            set => SetValue(UseAuthorTimeProperty, value);
+            get => GetValue(TimestampProperty);
+            set => SetValue(TimestampProperty, value);
         }
 
         protected override Type StyleKeyOverride => typeof(TextBlock);
@@ -52,7 +61,7 @@ namespace SourceGit.Views
         {
             base.OnPropertyChanged(change);
 
-            if (change.Property == UseAuthorTimeProperty)
+            if (change.Property == TimestampProperty)
             {
                 SetCurrentValue(TextProperty, GetDisplayText());
             }
@@ -71,7 +80,7 @@ namespace SourceGit.Views
                     HorizontalAlignment = HorizontalAlignment.Center;
                 }
             }
-            else if (change.Property == DateTimeFormatProperty || change.Property == Use24HoursProperty)
+            else if (change.Property == DateTimeFormatProperty || change.Property == Use24HoursProperty || change.Property == UseAuthorTimeProperty)
             {
                 if (ShowAsDateTime)
                     SetCurrentValue(TextProperty, GetDisplayText());
@@ -127,6 +136,8 @@ namespace SourceGit.Views
                 return string.Empty;
 
             var timestamp = UseAuthorTime ? commit.AuthorTime : commit.CommitterTime;
+            if (timestamp == 0)
+                timestamp = Timestamp;
             if (ShowAsDateTime)
                 return Models.DateTimeFormat.Format(timestamp);
 

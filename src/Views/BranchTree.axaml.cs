@@ -249,7 +249,7 @@ namespace SourceGit.Views
                 if (DataContext is not Models.Branch branch)
                     break;
 
-                if (e.Root is not PopupRoot { Parent: Popup { Parent: Border owner } })
+                if (e.RootVisual is not PopupRoot { Parent: Popup { Parent: Border owner } })
                     break;
 
                 var tree = owner.FindAncestorOfType<BranchTree>();
@@ -426,6 +426,7 @@ namespace SourceGit.Views
                 if (pressPoint.Properties.IsLeftButtonPressed)
                 {
                     _pressedBranchNode = true;
+                    _pressedBranchNodeEvent = e;
                     _startDragBranchNode = false;
                     _pressedBranchNodePosition = e.GetPosition(border);
                     _pressedBranchNodeName = pressedBranch.Name;
@@ -433,6 +434,7 @@ namespace SourceGit.Views
                 else
                 {
                     _pressedBranchNode = false;
+                    _pressedBranchNodeEvent = null;
                     _startDragBranchNode = false;
                     _pressedBranchNodeName = string.Empty;
                 }
@@ -475,9 +477,10 @@ namespace SourceGit.Views
 
             var data = new DataTransfer();
             data.Add(DataTransferItem.Create(_dndPresetBranchNameFormat, _pressedBranchNodeName));
-            await DragDrop.DoDragDropAsync(e, data, DragDropEffects.Copy);
+            await DragDrop.DoDragDropAsync(_pressedBranchNodeEvent, data, DragDropEffects.Copy);
 
             _pressedBranchNode = false;
+            _pressedBranchNodeEvent = null;
             _startDragBranchNode = false;
             _pressedBranchNodeName = string.Empty;
         }
@@ -485,6 +488,7 @@ namespace SourceGit.Views
         private void OnNodePointerReleased(object sender, PointerReleasedEventArgs e)
         {
             _pressedBranchNode = false;
+            _pressedBranchNodeEvent = null;
             _startDragBranchNode = false;
             _pressedBranchNodeName = string.Empty;
         }
@@ -734,6 +738,7 @@ namespace SourceGit.Views
         }
 
         private bool _pressedBranchNode = false;
+        private PointerPressedEventArgs _pressedBranchNodeEvent = null;
         private bool _startDragBranchNode = false;
         private Point _pressedBranchNodePosition = default;
         private string _pressedBranchNodeName = string.Empty;

@@ -59,6 +59,15 @@ namespace SourceGit.Views
             set => SetValue(InlineCodeBackgroundProperty, value);
         }
 
+        public static readonly StyledProperty<IBrush> InlineCodeForegroundProperty =
+            AvaloniaProperty.Register<CommitSubjectPresenter, IBrush>(nameof(InlineCodeForeground), Brushes.White);
+
+        public IBrush InlineCodeForeground
+        {
+            get => GetValue(InlineCodeForegroundProperty);
+            set => SetValue(InlineCodeForegroundProperty, value);
+        }
+
         public static readonly StyledProperty<IBrush> ForegroundProperty =
             AvaloniaProperty.Register<CommitSubjectPresenter, IBrush>(nameof(Foreground), Brushes.White);
 
@@ -186,7 +195,8 @@ namespace SourceGit.Views
                 change.Property == FontSizeProperty ||
                 change.Property == FontWeightProperty ||
                 change.Property == ForegroundProperty ||
-                change.Property == LinkForegroundProperty)
+                change.Property == LinkForegroundProperty ||
+                change.Property == InlineCodeForegroundProperty)
             {
                 _needRebuildInlines = true;
                 InvalidateVisual();
@@ -323,6 +333,7 @@ namespace SourceGit.Views
             var fontSize = FontSize;
             var foreground = Foreground;
             var linkForeground = LinkForeground;
+            var inlineCodeForeground = InlineCodeForeground;
             var typeface = new Typeface(fontFamily, FontStyle.Normal, FontWeight);
             var codeTypeface = new Typeface(codeFontFamily, FontStyle.Normal, FontWeight);
             var pos = 0;
@@ -395,13 +406,13 @@ namespace SourceGit.Views
                         FlowDirection.LeftToRight,
                         codeTypeface,
                         fontSize - 0.5,
-                        foreground);
+                        inlineCodeForeground);
                     _inlines.Add(new Inline(x, link, elem)
                     {
                         RawText = raw,
                         Typeface = codeTypeface,
                         FontSize = fontSize - 0.5,
-                        Brush = foreground,
+                        Brush = inlineCodeForeground,
                     });
                     x += link.WidthIncludingTrailingWhitespace + 8;
                 }

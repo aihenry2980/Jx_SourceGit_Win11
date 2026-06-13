@@ -4,6 +4,7 @@ using System.Windows.Input;
 using System.Threading.Tasks;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Shapes;
+using Avalonia.Input.Platform;
 using Avalonia.Media;
 
 namespace SourceGit
@@ -126,17 +127,20 @@ namespace SourceGit
 
         public static readonly Command HideAppCommand = new Command(_ =>
         {
-            Native.OS.HideSelf();
+            if (OperatingSystem.IsMacOS())
+                Native.MacOSUtilities.HideSelf();
         });
 
         public static readonly Command HideOtherApplicationsCommand = new Command(_ =>
         {
-            Native.OS.HideOtherApplications();
+            if (OperatingSystem.IsMacOS())
+                Native.MacOSUtilities.HideOtherApplications();
         });
 
         public static readonly Command ShowAllApplicationsCommand = new Command(_ =>
         {
-            Native.OS.ShowAllApplications();
+            if (OperatingSystem.IsMacOS())
+                Native.MacOSUtilities.ShowAllApplications();
         });
 
         public static Path CreateMenuIcon(string iconKey)

@@ -67,7 +67,7 @@
       <TextBox Grid.Row="2" Grid.Column="1"
                Height="28"
                CornerRadius="3"
-               Watermark="Relative to repo root, absolute path, or &lt;git_dir&gt;/..."
+               PlaceholderText="Relative to repo root, absolute path, or &lt;git_dir&gt;/..."
                Text="{Binding CustomStorageFile, Mode=TwoWay}"
                IsVisible="{Binding IsCustomStorageSelected}"/>
     </Grid>

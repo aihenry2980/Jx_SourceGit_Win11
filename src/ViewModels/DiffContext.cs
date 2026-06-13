@@ -73,6 +73,12 @@ namespace SourceGit.ViewModels
             private set => SetProperty(ref _isTextDiff, value);
         }
 
+        public bool IsIgnoreWhitespaceVisible
+        {
+            get => _isIgnoreWhitespaceVisible;
+            private set => SetProperty(ref _isIgnoreWhitespaceVisible, value);
+        }
+
         public object Content
         {
             get => _content;
@@ -93,6 +99,7 @@ namespace SourceGit.ViewModels
             if (previous != null)
             {
                 _isTextDiff = previous._isTextDiff;
+                _isIgnoreWhitespaceVisible = previous._isIgnoreWhitespaceVisible;
                 _content = previous._content;
                 _fileModeChange = previous._fileModeChange;
                 _unifiedLines = previous._unifiedLines;
@@ -154,8 +161,9 @@ namespace SourceGit.ViewModels
             {
                 var numLines = Preferences.Instance.UseFullTextDiff ? _entireFileLine : _unifiedLines;
                 var ignoreWhitespace = Preferences.Instance.IgnoreWhitespaceChangesInDiff;
+                var ignoreCRAtEOL = Preferences.Instance.IgnoreCRAtEOLInDiff;
 
-                var latest = await new Commands.Diff(_repo, _option, numLines, ignoreWhitespace)
+                var latest = await new Commands.Diff(_repo, _option, numLines, ignoreWhitespace, ignoreCRAtEOL)
                     .ReadAsync()
                     .ConfigureAwait(false);
 
@@ -173,6 +181,7 @@ namespace SourceGit.ViewModels
                     if (rs is Models.TextDiff cur)
                     {
                         IsTextDiff = true;
+                        IsIgnoreWhitespaceVisible = true;
 
                         if (Preferences.Instance.UseSideBySideDiff)
                             Content = new TwoSideTextDiff(_option, cur, _content as TextDiffContext);
@@ -182,6 +191,7 @@ namespace SourceGit.ViewModels
                     else
                     {
                         IsTextDiff = false;
+                        IsIgnoreWhitespaceVisible = rs is Models.NoOrEOLChange;
                         Content = rs;
                     }
                 });
@@ -380,6 +390,7 @@ namespace SourceGit.ViewModels
         private string _fileModeChange = string.Empty;
         private int _unifiedLines = 4;
         private bool _isTextDiff = false;
+        private bool _isIgnoreWhitespaceVisible = true;
         private object _content = null;
         private Info _info = null;
     }

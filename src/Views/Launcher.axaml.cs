@@ -47,7 +47,6 @@ namespace SourceGit.Views
             {
                 HasLeftCaptionButton = true;
                 CaptionHeight = new GridLength(34);
-                ExtendClientAreaChromeHints |= ExtendClientAreaChromeHints.OSXThickTitleBar;
             }
             else if (UseSystemWindowFrame)
             {

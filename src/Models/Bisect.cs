@@ -8,14 +8,19 @@ namespace SourceGit.Models
         None = 0,
         WaitingForRange,
         Detecting,
+        WaitingForFirstBad,
+        WaitingForCheckoutAnother,
+        WaitingForFirstGood,
+        WaitingForMark,
     }
 
     [Flags]
     public enum BisectCommitFlag
     {
         None = 0,
-        Good = 1 << 0,
-        Bad = 1 << 1,
+        Good,
+        Bad,
+        Skipped,
     }
 
     public class Bisect
@@ -27,6 +32,12 @@ namespace SourceGit.Models
         } = [];
 
         public HashSet<string> Goods
+        {
+            get;
+            set;
+        } = [];
+
+        public HashSet<string> Skipped
         {
             get;
             set;

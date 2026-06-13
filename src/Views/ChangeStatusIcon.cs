@@ -49,7 +49,7 @@ namespace SourceGit.Views
             if (Change == null || Bounds.Width <= 0)
                 return;
 
-            var typeface = new Typeface("fonts:SourceGit#JetBrains Mono");
+            var typeface = new Typeface("fonts:SourceGit#JetBrains Mono NL");
 
             var idx = (int)(IsUnstagedChange ? Change.WorkTree : Change.Index);
             var isSubmodulePointerChange = Change.IsSubmodulePointerChange;

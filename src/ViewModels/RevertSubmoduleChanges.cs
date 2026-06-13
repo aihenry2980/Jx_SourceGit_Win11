@@ -62,7 +62,7 @@ namespace SourceGit.ViewModels
             {
                 update = await new Commands.Submodule(_repo.FullPath)
                     .Use(log)
-                    .UpdateAsync([Submodule], true, false);
+                    .UpdateAsync([Submodule], true, true, false);
             }
 
             log.Complete();

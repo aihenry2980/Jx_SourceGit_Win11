@@ -2347,7 +2347,7 @@ namespace SourceGit.ViewModels
             var builder = new StringBuilder();
             builder
                 .Append('-').Append(maxCommits).Append(' ')
-                .Append(_uiStates.BuildHistoryParams());
+                .Append(_uiStates.BuildHistoryParams(GitDir));
 
             var hasIncludedHistoryFilters = false;
             foreach (var filter in _uiStates.HistoryFilters)
@@ -3401,7 +3401,7 @@ namespace SourceGit.ViewModels
                 var beforeMatchesPointer = IsSameRevision(beforeHead, superProjectPointer);
                 var afterHead = string.Empty;
                 var targetState = Models.RecursiveOperationTargetState.Running;
-                var one = await cmd.Use(log).UpdateAsync([target], true, false).ConfigureAwait(false);
+                var one = await cmd.Use(log).UpdateAsync([target], true, true, false).ConfigureAwait(false);
                 if (cancellationToken.IsCancellationRequested)
                 {
                     log?.AppendLine($"[canceled] Update `{target}` was canceled.");
@@ -3607,7 +3607,7 @@ namespace SourceGit.ViewModels
             {
                 RaiseError = true,
                 CancellationToken = cancellationToken,
-            }.Use(log).UpdateAsync([], true, false).ConfigureAwait(false);
+            }.Use(log).UpdateAsync([], true, true, false).ConfigureAwait(false);
             if (!updateSubmodules)
                 return false;
 
@@ -3643,7 +3643,7 @@ namespace SourceGit.ViewModels
 
                 await new Commands.Submodule(FullPath)
                     .Use(log)
-                    .UpdateAsync(submodules);
+                    .UpdateAsync(submodules, false, _settings.EnableRecursiveWhenAutoUpdatingSubmodules, false);
             } while (false);
         }
 

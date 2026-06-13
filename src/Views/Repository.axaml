@@ -415,7 +415,7 @@
                  BorderThickness="1"
                  CornerRadius="4"
                  BorderBrush="{DynamicResource Brush.Border2}"
-                 Watermark="{DynamicResource Text.Repository.Filter}"
+                 PlaceholderText="{DynamicResource Text.Repository.Filter}"
                  Text="{Binding Filter, Mode=TwoWay}"
                  VerticalContentAlignment="Center"
                  IsVisible="{Binding !IsLeftSidebarCompact}">
@@ -501,7 +501,7 @@
                        Height="30"
                        BorderThickness="0"
                        CornerRadius="3"
-                       Watermark="{DynamicResource Text.Repository.BranchesVisibility.ExactNames.Placeholder}"
+                       PlaceholderText="{DynamicResource Text.Repository.BranchesVisibility.ExactNames.Placeholder}"
                        ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.EditorHint}"
                        TextChanged="OnPresetBranchInputTextChanged"
                        KeyDown="OnPresetBranchExactNameInputKeyDown">
@@ -576,7 +576,7 @@
                        Height="30"
                        BorderThickness="0"
                        CornerRadius="3"
-                       Watermark="{DynamicResource Text.Repository.BranchesVisibility.ContainsPatterns.Placeholder}"
+                       PlaceholderText="{DynamicResource Text.Repository.BranchesVisibility.ContainsPatterns.Placeholder}"
                        ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.EditorHint}"
                        TextChanged="OnPresetBranchInputTextChanged"
                        KeyDown="OnPresetBranchContainsPatternInputKeyDown">
@@ -651,7 +651,7 @@
                        Height="30"
                        BorderThickness="0"
                        CornerRadius="3"
-                       Watermark="{DynamicResource Text.Repository.BranchesVisibility.ExcludeNames.Placeholder}"
+                       PlaceholderText="{DynamicResource Text.Repository.BranchesVisibility.ExcludeNames.Placeholder}"
                        ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.EditorHint}"
                        TextChanged="OnPresetBranchInputTextChanged"
                        KeyDown="OnPresetBranchExcludeNameInputKeyDown">
@@ -1017,7 +1017,7 @@
                    BorderBrush="{DynamicResource Brush.Border2}"
                    Background="{DynamicResource Brush.Contents}"
                    CornerRadius="12"
-                   Watermark="{DynamicResource Text.Repository.Search}"
+                   PlaceholderText="{DynamicResource Text.Repository.Search}"
                    Text="{Binding SearchCommitContext.Filter, Mode=TwoWay}"
                    VerticalContentAlignment="Center"
                    KeyDown="OnSearchKeyDown">
@@ -1416,7 +1416,7 @@
                    Height="24"
                    Margin="8,2,0,2"
                    VerticalContentAlignment="Center"
-                   Watermark="Quick find in history"
+                   PlaceholderText="Quick find in history"
                    Text="{Binding HistoryQuickFindText, Mode=TwoWay}"
                    Tag="{Binding HistoryQuickFindFocusRequestId}"
                    PropertyChanged="OnHistoryQuickFindBoxPropertyChanged"
