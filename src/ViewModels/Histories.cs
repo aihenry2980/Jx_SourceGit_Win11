@@ -27,12 +27,12 @@ namespace SourceGit.ViewModels
 
         public bool IsAuthorColumnVisible
         {
-            get => _repo.UIStates.IsAuthorColumnVisibleInHistory;
+            get => _repo?.UIStates?.IsAuthorColumnVisibleInHistory ?? true;
             set
             {
-                if (_repo.UIStates.IsAuthorColumnVisibleInHistory != value)
+                if (_repo?.UIStates is { } states && states.IsAuthorColumnVisibleInHistory != value)
                 {
-                    _repo.UIStates.IsAuthorColumnVisibleInHistory = value;
+                    states.IsAuthorColumnVisibleInHistory = value;
                     OnPropertyChanged();
                 }
             }
@@ -40,12 +40,12 @@ namespace SourceGit.ViewModels
 
         public bool IsSHAColumnVisible
         {
-            get => _repo.UIStates.IsSHAColumnVisibleInHistory;
+            get => _repo?.UIStates?.IsSHAColumnVisibleInHistory ?? true;
             set
             {
-                if (_repo.UIStates.IsSHAColumnVisibleInHistory != value)
+                if (_repo?.UIStates is { } states && states.IsSHAColumnVisibleInHistory != value)
                 {
-                    _repo.UIStates.IsSHAColumnVisibleInHistory = value;
+                    states.IsSHAColumnVisibleInHistory = value;
                     OnPropertyChanged();
                 }
             }
@@ -59,12 +59,12 @@ namespace SourceGit.ViewModels
 
         public bool IsAuthorTimeColumnVisible
         {
-            get => _repo.UIStates.IsAuthorTimeColumnVisibleInHistory;
+            get => _repo?.UIStates?.IsAuthorTimeColumnVisibleInHistory ?? false;
             set
             {
-                if (_repo.UIStates.IsAuthorTimeColumnVisibleInHistory != value)
+                if (_repo?.UIStates is { } states && states.IsAuthorTimeColumnVisibleInHistory != value)
                 {
-                    _repo.UIStates.IsAuthorTimeColumnVisibleInHistory = value;
+                    states.IsAuthorTimeColumnVisibleInHistory = value;
                     OnPropertyChanged();
                 }
             }
@@ -72,12 +72,12 @@ namespace SourceGit.ViewModels
 
         public bool IsCommitTimeColumnVisible
         {
-            get => _repo.UIStates.IsCommitTimeColumnVisibleInHistory;
+            get => _repo?.UIStates?.IsCommitTimeColumnVisibleInHistory ?? true;
             set
             {
-                if (_repo.UIStates.IsCommitTimeColumnVisibleInHistory != value)
+                if (_repo?.UIStates is { } states && states.IsCommitTimeColumnVisibleInHistory != value)
                 {
-                    _repo.UIStates.IsCommitTimeColumnVisibleInHistory = value;
+                    states.IsCommitTimeColumnVisibleInHistory = value;
                     OnPropertyChanged();
                 }
             }
@@ -88,6 +88,12 @@ namespace SourceGit.ViewModels
             get => _commits;
             set
             {
+                if (_isDisposed || _repo?.UIStates == null)
+                {
+                    SetProperty(ref _commits, value);
+                    return;
+                }
+
                 GenerateGraph(value, true);
                 if (SetProperty(ref _commits, value))
                 {
@@ -105,12 +111,12 @@ namespace SourceGit.ViewModels
 
         public Models.CommitGraphHighlighting GraphHighlighting
         {
-            get => _repo.UIStates.GraphHighlighting;
+            get => _repo?.UIStates?.GraphHighlighting ?? Models.CommitGraphHighlighting.All;
             set
             {
-                if (_repo.UIStates.GraphHighlighting != value)
+                if (_repo?.UIStates is { } states && states.GraphHighlighting != value)
                 {
-                    _repo.UIStates.GraphHighlighting = value;
+                    states.GraphHighlighting = value;
                     OnPropertyChanged(nameof(HighlightCurrentBranchOnly));
                     GenerateGraph(_commits);
                 }
@@ -196,8 +202,12 @@ namespace SourceGit.ViewModels
 
         public double AuthorColumnWidth
         {
-            get => _repo.UIStates.AuthorColumnWidth;
-            set => _repo.UIStates.AuthorColumnWidth = value;
+            get => _repo?.UIStates?.AuthorColumnWidth ?? 120;
+            set
+            {
+                if (_repo?.UIStates is { } states)
+                    states.AuthorColumnWidth = value;
+            }
         }
 
         public bool IsOpenAsStandaloneVisible
@@ -248,14 +258,15 @@ namespace SourceGit.ViewModels
 
         public void Dispose()
         {
+            _isDisposed = true;
             CancelPendingDetailLoad();
-            Commits = [];
-            _repo = null;
+            _commits = [];
             _graph = null;
             _selectedCommits = [];
             if (_detailContext is CommitDetail commitDetail)
                 commitDetail.Dispose();
             _detailContext = null;
+            _repo = null;
         }
 
         public void NotifyCurrentBranchChanged()
@@ -666,7 +677,7 @@ namespace SourceGit.ViewModels
 
         private void PostSelectedCommitsChanged()
         {
-            if (_ignoreSelectionChange)
+            if (_ignoreSelectionChange || _isDisposed || _repo == null)
                 return;
 
             if (_selectedCommits.Count == 0)
@@ -701,14 +712,18 @@ namespace SourceGit.ViewModels
                 DetailContext = new Models.Count(_selectedCommits.Count);
             }
 
-            if (_repo.UIStates.GraphHighlighting >= Models.CommitGraphHighlighting.SelectedCommitsOnly)
+            if (_repo.UIStates?.GraphHighlighting >= Models.CommitGraphHighlighting.SelectedCommitsOnly)
                 GenerateGraph(_commits);
         }
 
         private void GenerateGraph(List<Models.Commit> commits, bool commitsChanged = false)
         {
-            var firstParentOnly = _repo.UIStates.HistoryShowFlags.HasFlag(Models.HistoryShowFlags.FirstParentOnly);
-            var highlighting = _repo.UIStates.GraphHighlighting;
+            var states = _repo?.UIStates;
+            if (_isDisposed || states == null)
+                return;
+
+            var firstParentOnly = states.HistoryShowFlags.HasFlag(Models.HistoryShowFlags.FirstParentOnly);
+            var highlighting = states.GraphHighlighting;
             var extraHeads = new HashSet<string>();
 
             if (highlighting >= Models.CommitGraphHighlighting.SelectedCommitsOnly)
@@ -766,6 +781,8 @@ namespace SourceGit.ViewModels
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     if (token.IsCancellationRequested ||
+                        _isDisposed ||
+                        _repo == null ||
                         !ReferenceEquals(_detailLoadDebounce, cts) ||
                         _selectedCommits.Count != 1 ||
                         !_selectedCommits[0].SHA.Equals(commit.SHA, StringComparison.Ordinal))
@@ -820,6 +837,7 @@ namespace SourceGit.ViewModels
         private object _detailContext = new Models.Null();
         private bool _ignoreSelectionChange = false;
         private CancellationTokenSource _detailLoadDebounce = null;
+        private bool _isDisposed = false;
 
         private GridLength _leftArea = new(1, GridUnitType.Star);
         private GridLength _rightArea = new(1, GridUnitType.Star);
