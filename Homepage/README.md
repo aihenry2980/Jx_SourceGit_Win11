@@ -17,7 +17,19 @@ This folder is a static Firebase Hosting site.
 1. Create a Google Sheet.
 2. Open `Extensions > Apps Script`.
 3. Paste the content of `tools/google-sheets-analytics.gs`.
-4. Set `SPREADSHEET_ID` to your Google Sheet ID.
+4. Set `SPREADSHEET_ID` to your Google Sheet ID, not the spreadsheet file name.
+
+   For a Google Sheet URL like:
+
+   ```text
+   https://docs.google.com/spreadsheets/d/1AbCdEfGhIjKlMnOpQrStUvWxYz/edit
+   ```
+
+   Use only:
+
+   ```js
+   const SPREADSHEET_ID = "1AbCdEfGhIjKlMnOpQrStUvWxYz";
+   ```
 5. Deploy as `Web app`.
 6. Set access to `Anyone`.
 7. Copy the Web App URL.

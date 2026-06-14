@@ -48,3 +48,4 @@ src/Properties/launchSettings.json
 /.dotnet
 *.lscache
 firebase-debug.log
+.firebase/

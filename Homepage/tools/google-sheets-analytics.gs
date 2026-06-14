@@ -1,3 +1,7 @@
+// Use the spreadsheet ID from the Google Sheet URL, not the sheet file name.
+// Example:
+// https://docs.google.com/spreadsheets/d/1AbCdEfGhIjKlMnOpQrStUvWxYz/edit
+//                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 const SPREADSHEET_ID = "PASTE_YOUR_GOOGLE_SHEET_ID_HERE";
 const SHEET_NAME = "homepage_events";
 
@@ -33,6 +37,10 @@ function doGet() {
 }
 
 function getSheet_() {
+  if (!SPREADSHEET_ID || SPREADSHEET_ID === "PASTE_YOUR_GOOGLE_SHEET_ID_HERE") {
+    throw new Error("Set SPREADSHEET_ID to the Google Sheet ID from the spreadsheet URL.");
+  }
+
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   let sheet = ss.getSheetByName(SHEET_NAME);
 
