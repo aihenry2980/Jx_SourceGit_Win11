@@ -120,11 +120,20 @@ a {
   font-size: 12px;
 }
 
-.language-switch a {
+.language-switch button {
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: var(--steel);
+  cursor: pointer;
+  font: inherit;
 }
 
-.language-switch a.active {
+.language-switch button:hover {
+  color: var(--green);
+}
+
+.language-switch button.active {
   color: var(--green);
   text-shadow: 0 0 10px rgba(69, 240, 166, 0.6);
 }
