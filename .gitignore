@@ -47,3 +47,4 @@ src/Properties/launchSettings.json
 /.dotnet-home
 /.dotnet
 *.lscache
+firebase-debug.log

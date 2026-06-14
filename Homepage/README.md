@@ -36,9 +36,21 @@ From this folder:
 firebase.cmd deploy --only hosting
 ```
 
+This folder pins the default Firebase project in `.firebaserc`:
+
+```text
+jx-sourcegit-win11
+```
+
 If your Firebase project is not selected yet:
 
 ```powershell
 firebase.cmd use --add
 firebase.cmd deploy --only hosting
+```
+
+You can also deploy with an explicit project id:
+
+```powershell
+firebase.cmd deploy --only hosting --project jx-sourcegit-win11
 ```
