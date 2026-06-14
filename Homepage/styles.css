@@ -106,6 +106,29 @@ a {
   font-weight: 700;
 }
 
+.language-switch {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid rgba(184, 178, 166, 0.34);
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(44, 42, 37, 0.86), rgba(10, 10, 9, 0.86));
+  color: var(--muted);
+  font-family: "Cascadia Mono", "Consolas", monospace;
+  font-size: 12px;
+}
+
+.language-switch a {
+  color: var(--steel);
+}
+
+.language-switch a.active {
+  color: var(--green);
+  text-shadow: 0 0 10px rgba(69, 240, 166, 0.6);
+}
+
 .top-nav a {
   color: var(--muted);
   text-decoration: none;
