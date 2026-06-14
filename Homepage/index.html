@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Jx SourceGit Win11 fork: a customized Git GUI based on SourceGit.">
+  <meta name="description" content="Jx SourceGit Win11 fork: a mechanical, Windows-focused Git GUI based on SourceGit.">
   <title>Jx SourceGit Win11</title>
   <link rel="stylesheet" href="./styles.css">
   <script src="./config.js" defer></script>
@@ -12,73 +12,157 @@
 <body>
   <header class="site-header">
     <a class="brand" href="#top" aria-label="Jx SourceGit Win11 home">
-      <span class="brand-mark">Git</span>
-      <span>Jx SourceGit Win11</span>
+      <span class="brand-mark">JX</span>
+      <span class="brand-text">SourceGit Win11</span>
     </a>
     <nav class="top-nav" aria-label="Primary">
-      <a href="#features">特色</a>
-      <a href="#screenshots">截图</a>
-      <a href="#fork">Fork 说明</a>
-      <a class="nav-download" href="https://github.com/aihenry2980/Jx_SourceGit_Win11/releases/latest" data-track-download>下载</a>
+      <a href="#fork">Fork</a>
+      <a href="#features">Features</a>
+      <a href="#screenshots">Screenshots</a>
+      <a class="nav-download" href="https://github.com/aihenry2980/Jx_SourceGit_Win11/releases/latest" data-track-download>Download</a>
     </nav>
   </header>
 
   <main id="top">
     <section class="hero" aria-labelledby="hero-title">
-      <div class="hero-copy">
-        <p class="eyebrow">A customized fork of SourceGit</p>
-        <h1 id="hero-title">
-          <span>Jx SourceGit</span>
-          <span>Win11</span>
-        </h1>
-        <p class="hero-text">
-          一个面向日常开发工作流定制的 Git GUI：保留 SourceGit 的快速、清晰和跨平台基础，
-          并加入预设分支过滤、分支颜色、高亮和递归 submodule 工作流等增强。
-        </p>
-        <div class="hero-actions">
-          <a class="primary-action" href="https://github.com/aihenry2980/Jx_SourceGit_Win11/releases/latest" data-track-download>
-            前往 GitHub Releases 下载
-          </a>
-          <a class="secondary-action" href="https://github.com/aihenry2980/Jx_SourceGit_Win11">
-            查看源码
-          </a>
+      <div class="hero-frame">
+        <div class="hero-copy">
+          <p class="eyebrow">forked git workbench / windows x64</p>
+          <h1 id="hero-title">
+            <span>Jx SourceGit</span>
+            <span>Win11</span>
+          </h1>
+          <p class="hero-text">
+            一个带机械控制台气质的 SourceGit fork：面向复杂分支、递归 submodule、SPP 指针、
+            快速 fetch 和 Windows 日常维护流程做了大量细节增强。
+          </p>
+          <div class="hero-actions">
+            <a class="primary-action" href="https://github.com/aihenry2980/Jx_SourceGit_Win11/releases/latest" data-track-download>
+              前往 GitHub Releases 下载
+            </a>
+            <a class="secondary-action" href="https://github.com/aihenry2980/Jx_SourceGit_Win11">
+              查看源码仓库
+            </a>
+          </div>
         </div>
+        <aside class="status-rack" aria-label="Project status">
+          <div>
+            <span>BASE</span>
+            <strong>SourceGit fork</strong>
+          </div>
+          <div>
+            <span>BRANCH</span>
+            <strong>thinkbook16</strong>
+          </div>
+          <div>
+            <span>CHANNEL</span>
+            <strong>Windows x64</strong>
+          </div>
+          <div>
+            <span>FOCUS</span>
+            <strong>Submodule ops</strong>
+          </div>
+        </aside>
       </div>
     </section>
 
     <section class="notice" id="fork" aria-labelledby="fork-title">
-      <div class="section-inner">
-        <p class="eyebrow">Fork notice</p>
-        <h2 id="fork-title">这是对原始 SourceGit 项目的 fork</h2>
+      <div class="section-inner notice-grid">
+        <div>
+          <p class="eyebrow">fork notice</p>
+          <h2 id="fork-title">这是对原始 SourceGit 项目的个人 fork</h2>
+        </div>
         <p>
           本工具基于原始开源项目
           <a href="https://github.com/sourcegit-scm/sourcegit">sourcegit-scm/sourcegit</a>。
           原始作品的核心设计、版权和贡献归原作者及贡献者所有。本 fork 不是 upstream 官方发行版，
-          主要用于加入我自己的 Windows/日常仓库管理工作流增强。
+          主要用于加入我自己的 Windows 仓库维护、分支筛选、history graph 和递归 submodule 工作流增强。
         </p>
       </div>
     </section>
 
     <section class="features" id="features" aria-labelledby="features-title">
       <div class="section-inner">
-        <p class="eyebrow">Why this fork</p>
-        <h2 id="features-title">给复杂分支和 submodule 仓库多一点秩序</h2>
-        <div class="feature-grid">
+        <div class="section-heading">
+          <p class="eyebrow">feature ledger from commit history</p>
+          <h2 id="features-title">从 commit message 整理出来的增强清单</h2>
+          <p>
+            下面这些点来自本 fork 相对 upstream 的提交记录，按日常使用场景归类。它不是空泛的 feature wall，
+            更像一张维修台上的改装记录。
+          </p>
+        </div>
+
+        <div class="feature-ledger">
           <article>
-            <h3>预设分支过滤</h3>
-            <p>用 exact names、contains patterns 和 exclude names 控制左侧分支树，常用分支一键回到可读状态。</p>
+            <div class="module-id">01 / SUBMODULE BAY</div>
+            <h3>递归 submodule 和 SPP 工作流</h3>
+            <ul>
+              <li>递归 submodule update 的顺序、弹窗、结果报告和状态 UX 做了多轮打磨。</li>
+              <li>递归 local changes view、递归 clean action、nested file details 更适合维护大型嵌套仓库。</li>
+              <li>submodule diff summary 更清楚，丢失 revision 时禁用 Open Details，减少误点。</li>
+              <li>围绕 super-project pointer 做过滤、标记和图谱提示，便于追踪 submodule 指针变化。</li>
+              <li>AvaloniaEdit submodule 保持使用个人 fork，并吸收 upstream 需要的变更。</li>
+            </ul>
           </article>
+
           <article>
-            <h3>图谱高亮和颜色</h3>
-            <p>为 exact-match 分支保存颜色，增强 HEAD、SPP 和选中提交在 commit graph 里的视觉反馈。</p>
+            <div class="module-id">02 / HISTORY CORE</div>
+            <h3>History graph、refs 和拖拽操作</h3>
+            <ul>
+              <li>改进 history graph change indicators、graph markers、commit summary 和 graph alignment。</li>
+              <li>增强 refs/tag 显示、bookmark 颜色、history tag toggle 和小屏幕可用性。</li>
+              <li>commit subject 和 refs 支持拖拽动作，带 Rebase / Hard Reset 的指针反馈和取消清理。</li>
+              <li>支持 Ctrl + wheel 缩放 history 窗口，历史空状态信息更明确。</li>
+              <li>关闭 debug instance 时对 graph generation 加保护，避免 UIStates 为空导致异常。</li>
+            </ul>
           </article>
+
           <article>
-            <h3>递归 submodule 工作流</h3>
-            <p>围绕 super-project pointer、递归更新、递归清理和 submodule diff 做了更贴近日常维护的增强。</p>
+            <div class="module-id">03 / BRANCH FILTER</div>
+            <h3>分支过滤、颜色和上下文菜单</h3>
+            <ul>
+              <li>Preset Branch Filter 支持 exact names、contains patterns、exclude names。</li>
+              <li>修复 contains pattern 自动补全问题，并修复 exact names chip 在输入框中被截断的问题。</li>
+              <li>跨 repo 对比 matching remotes，远程分支 context menu 更易读。</li>
+              <li>分支 context menu 增加更快的颜色和 push 操作路径。</li>
+              <li>Push 流程里的 remote branch 自动选择和 branch selector 更适合多远程仓库。</li>
+            </ul>
           </article>
+
           <article>
-            <h3>保留 SourceGit 基础体验</h3>
-            <p>继续使用 SourceGit 的快速启动、清晰历史图、diff、stash、rebase、worktree 和跨平台基础能力。</p>
+            <div class="module-id">04 / FETCH PIPE</div>
+            <h3>Fetch、LFS 和命令流程反馈</h3>
+            <ul>
+              <li>Quick fetch modes、dark toolbar theme 和 fetch feedback 有单独增强。</li>
+              <li>修复 LFS 场景可能卡住的问题，并收紧 auto-fetch state handling。</li>
+              <li>命令工作流、递归操作、Actions popup 行为和 countdown 反馈更直观。</li>
+              <li>窄窗口下减少 toolbar 按钮宽度和间距，避免工具栏图标互相挤压。</li>
+              <li>增加 remote git address text，查看仓库来源更直接。</li>
+            </ul>
+          </article>
+
+          <article>
+            <div class="module-id">05 / DIFF WORKBENCH</div>
+            <h3>Diff、local changes 和冲突处理</h3>
+            <ul>
+              <li>submodule diff summaries 和 nested file details 帮助理解指针与文件层级变化。</li>
+              <li>local changes layout、diff 交互和 branch filter 交互做了 polish。</li>
+              <li>支持配置 pull-related conflicts 时自动 revert 的文件扩展名。</li>
+              <li>保留 SourceGit 的 text diff、stash、rebase、worktree 基础能力，同时针对本 fork 工作流补强。</li>
+              <li>局部修复和防错逻辑减少误操作后的状态不一致。</li>
+            </ul>
+          </article>
+
+          <article>
+            <div class="module-id">06 / WINDOWS RIG</div>
+            <h3>Windows 发布、诊断和启动器</h3>
+            <ul>
+              <li>增加 Windows self-update install workflow 和 release cmd script。</li>
+              <li>release workflow 限制到 Windows x64，减少不需要的平台产物。</li>
+              <li>增加 memory profiling window，用来定位打开的仓库和 UI 功能的内存占用。</li>
+              <li>Launcher title bar、+Folder shortcut 和仓库侧栏布局更贴近日常启动流程。</li>
+              <li>增加“do not close window”方向的窗口保护尝试，以及更多小型按钮和操作入口。</li>
+            </ul>
           </article>
         </div>
       </div>
@@ -86,16 +170,18 @@
 
     <section class="screenshots" id="screenshots" aria-labelledby="screenshots-title">
       <div class="section-inner">
-        <p class="eyebrow">Screenshots</p>
-        <h2 id="screenshots-title">界面截图</h2>
+        <div class="section-heading">
+          <p class="eyebrow">screenshots</p>
+          <h2 id="screenshots-title">界面截图</h2>
+        </div>
         <div class="shot-grid">
           <figure>
-            <img src="./assets/theme_dark.png" alt="SourceGit dark theme screenshot" loading="lazy">
-            <figcaption>Dark theme</figcaption>
+            <img src="./assets/theme_dark.png" alt="Jx SourceGit Win11 dark theme screenshot" loading="lazy">
+            <figcaption>Dark theme / history workbench</figcaption>
           </figure>
           <figure>
-            <img src="./assets/theme_light.png" alt="SourceGit light theme screenshot" loading="lazy">
-            <figcaption>Light theme</figcaption>
+            <img src="./assets/theme_light.png" alt="Jx SourceGit Win11 light theme screenshot" loading="lazy">
+            <figcaption>Light theme / repository dashboard</figcaption>
           </figure>
         </div>
       </div>
@@ -104,7 +190,7 @@
     <section class="download" aria-labelledby="download-title">
       <div class="section-inner download-inner">
         <div>
-          <p class="eyebrow">Download</p>
+          <p class="eyebrow">release hatch</p>
           <h2 id="download-title">下载最新版本</h2>
           <p>安装包和发布说明放在 GitHub Releases。页面上的下载点击会被记录为 download_click 事件。</p>
         </div>
