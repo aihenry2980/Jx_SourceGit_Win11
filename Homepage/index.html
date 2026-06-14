@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Jx SourceGit Win11 fork: a customized Git GUI based on SourceGit.">
+  <title>Jx SourceGit Win11</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./config.js" defer></script>
+  <script src="./script.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="Jx SourceGit Win11 home">
+      <span class="brand-mark">Git</span>
+      <span>Jx SourceGit Win11</span>
+    </a>
+    <nav class="top-nav" aria-label="Primary">
+      <a href="#features">特色</a>
+      <a href="#screenshots">截图</a>
+      <a href="#fork">Fork 说明</a>
+      <a class="nav-download" href="https://github.com/aihenry2980/Jx_SourceGit_Win11/releases/latest" data-track-download>下载</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow">A customized fork of SourceGit</p>
+        <h1 id="hero-title">
+          <span>Jx SourceGit</span>
+          <span>Win11</span>
+        </h1>
+        <p class="hero-text">
+          一个面向日常开发工作流定制的 Git GUI：保留 SourceGit 的快速、清晰和跨平台基础，
+          并加入预设分支过滤、分支颜色、高亮和递归 submodule 工作流等增强。
+        </p>
+        <div class="hero-actions">
+          <a class="primary-action" href="https://github.com/aihenry2980/Jx_SourceGit_Win11/releases/latest" data-track-download>
+            前往 GitHub Releases 下载
+          </a>
+          <a class="secondary-action" href="https://github.com/aihenry2980/Jx_SourceGit_Win11">
+            查看源码
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="notice" id="fork" aria-labelledby="fork-title">
+      <div class="section-inner">
+        <p class="eyebrow">Fork notice</p>
+        <h2 id="fork-title">这是对原始 SourceGit 项目的 fork</h2>
+        <p>
+          本工具基于原始开源项目
+          <a href="https://github.com/sourcegit-scm/sourcegit">sourcegit-scm/sourcegit</a>。
+          原始作品的核心设计、版权和贡献归原作者及贡献者所有。本 fork 不是 upstream 官方发行版，
+          主要用于加入我自己的 Windows/日常仓库管理工作流增强。
+        </p>
+      </div>
+    </section>
+
+    <section class="features" id="features" aria-labelledby="features-title">
+      <div class="section-inner">
+        <p class="eyebrow">Why this fork</p>
+        <h2 id="features-title">给复杂分支和 submodule 仓库多一点秩序</h2>
+        <div class="feature-grid">
+          <article>
+            <h3>预设分支过滤</h3>
+            <p>用 exact names、contains patterns 和 exclude names 控制左侧分支树，常用分支一键回到可读状态。</p>
+          </article>
+          <article>
+            <h3>图谱高亮和颜色</h3>
+            <p>为 exact-match 分支保存颜色，增强 HEAD、SPP 和选中提交在 commit graph 里的视觉反馈。</p>
+          </article>
+          <article>
+            <h3>递归 submodule 工作流</h3>
+            <p>围绕 super-project pointer、递归更新、递归清理和 submodule diff 做了更贴近日常维护的增强。</p>
+          </article>
+          <article>
+            <h3>保留 SourceGit 基础体验</h3>
+            <p>继续使用 SourceGit 的快速启动、清晰历史图、diff、stash、rebase、worktree 和跨平台基础能力。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="screenshots" id="screenshots" aria-labelledby="screenshots-title">
+      <div class="section-inner">
+        <p class="eyebrow">Screenshots</p>
+        <h2 id="screenshots-title">界面截图</h2>
+        <div class="shot-grid">
+          <figure>
+            <img src="./assets/theme_dark.png" alt="SourceGit dark theme screenshot" loading="lazy">
+            <figcaption>Dark theme</figcaption>
+          </figure>
+          <figure>
+            <img src="./assets/theme_light.png" alt="SourceGit light theme screenshot" loading="lazy">
+            <figcaption>Light theme</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="download" aria-labelledby="download-title">
+      <div class="section-inner download-inner">
+        <div>
+          <p class="eyebrow">Download</p>
+          <h2 id="download-title">下载最新版本</h2>
+          <p>安装包和发布说明放在 GitHub Releases。页面上的下载点击会被记录为 download_click 事件。</p>
+        </div>
+        <a class="primary-action" href="https://github.com/aihenry2980/Jx_SourceGit_Win11/releases/latest" data-track-download>
+          打开 Releases
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <span>Jx SourceGit Win11 fork</span>
+    <a href="https://github.com/sourcegit-scm/sourcegit">Original SourceGit</a>
+    <a href="https://github.com/aihenry2980/Jx_SourceGit_Win11">Fork repository</a>
+  </footer>
+</body>
+</html>
