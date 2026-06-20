@@ -1,3 +1,3 @@
 window.JX_SOURCEGIT_ANALYTICS = {
-  googleAppsScriptUrl: "PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE",
+  googleAppsScriptUrl: "https://script.google.com/macros/s/AKfycbxSbdvUXoi5DST7wNYtVzdp6oKUxtE-WwuWY659y5rAtEq4NEkpsRGHdcqIEsRCPYh8/exec",
 };
