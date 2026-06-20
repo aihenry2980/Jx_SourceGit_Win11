@@ -360,7 +360,7 @@ namespace SourceGit
             if (args.Length <= 1 || !args[0].Equals("--rebase-todo-editor", StringComparison.Ordinal))
                 return false;
 
-            var file = args[1];
+            var file = args[1].Replace('\\', '/').Trim('\"').Trim();
             var filename = Path.GetFileName(file);
             if (!filename.Equals("git-rebase-todo", StringComparison.OrdinalIgnoreCase))
                 return true;
@@ -389,7 +389,7 @@ namespace SourceGit
 
             exitCode = 0;
 
-            var file = args[1];
+            var file = args[1].Replace('\\', '/').Trim('\"').Trim();
             var filename = Path.GetFileName(file);
             if (!filename.Equals("COMMIT_EDITMSG", StringComparison.OrdinalIgnoreCase))
                 return true;
@@ -418,7 +418,7 @@ namespace SourceGit
             if (args is not { Length: > 1 } || !args[0].Equals("--history", StringComparison.Ordinal))
                 return false;
 
-            var fullPath = Path.GetFullPath(args[1]);
+            var fullPath = Path.GetFullPath(args[1].Replace('\\', '/').Trim('\"').Trim());
             var dir = Path.GetDirectoryName(fullPath);
 
             var test = new Commands.QueryRepositoryRootPath(dir).GetResult();
@@ -463,7 +463,7 @@ namespace SourceGit
             if (args is not { Length: > 1 } || !args[0].Equals("--blame", StringComparison.Ordinal))
                 return false;
 
-            var file = Path.GetFullPath(args[1]);
+            var file = Path.GetFullPath(args[1].Replace('\\', '/').Trim('\"').Trim());
             var dir = Path.GetDirectoryName(file);
 
             var test = new Commands.QueryRepositoryRootPath(dir).GetResult();
@@ -498,7 +498,7 @@ namespace SourceGit
             if (args is not { Length: > 1 } || !args[0].Equals("--core-editor", StringComparison.Ordinal))
                 return false;
 
-            var file = args[1];
+            var file = args[1].Replace('\\', '/').Trim('\"').Trim();
             if (!File.Exists(file))
             {
                 desktop.Shutdown(-1);
@@ -534,12 +534,10 @@ namespace SourceGit
             _ipcChannel = new Models.IpcChannel();
             if (!_ipcChannel.IsFirstInstance)
             {
-                var arg = desktop.Args is { Length: > 0 } ? desktop.Args[0].Trim() : string.Empty;
+                var arg = desktop.Args is { Length: > 0 } ? desktop.Args[0] : string.Empty;
                 if (!string.IsNullOrEmpty(arg))
                 {
-                    if (arg.StartsWith('"') && arg.EndsWith('"'))
-                        arg = arg.Substring(1, arg.Length - 2).Trim();
-
+                    arg = arg.Replace('\\', '/').TrimEnd('/').Trim('\"').Trim();
                     if (arg.Length > 0 && !Path.IsPathFullyQualified(arg))
                         arg = Path.GetFullPath(arg);
                 }
@@ -553,8 +551,12 @@ namespace SourceGit
             Models.AvatarManager.Instance.Start();
 
             string startupRepo = null;
-            if (desktop.Args is { Length: 1 } && Directory.Exists(desktop.Args[0]))
-                startupRepo = desktop.Args[0];
+            if (desktop.Args is { Length: 1 })
+            {
+                var arg = desktop.Args[0].Replace('\\', '/').TrimEnd('/').Trim('\"').Trim();
+                if (Directory.Exists(arg))
+                    startupRepo = arg;
+            }
 
             var pref = ViewModels.Preferences.Instance;
             pref.SetCanModify();

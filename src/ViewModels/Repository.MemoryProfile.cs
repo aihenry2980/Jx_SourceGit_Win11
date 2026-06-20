@@ -167,7 +167,7 @@ namespace SourceGit.ViewModels
             bytes += MemoryProfileEstimator.EstimateString(search.Filter);
             bytes += EstimateCommits(search.Results);
             bytes += MemoryProfileEstimator.EstimateListReferences(search.Suggestions);
-            bytes += EstimateStrings(search.Suggestions);
+            bytes += EstimateSearchSuggestions(search.Suggestions);
             bytes += search.CachedWorktreeFileCount * 72L;
             return bytes;
         }
@@ -590,6 +590,23 @@ namespace SourceGit.ViewModels
             long bytes = 0;
             foreach (var value in values)
                 bytes += MemoryProfileEstimator.EstimateString(value);
+            return bytes;
+        }
+
+        private static long EstimateSearchSuggestions(List<object> values)
+        {
+            if (values == null || values.Count == 0)
+                return 0;
+
+            long bytes = 0;
+            foreach (var value in values)
+            {
+                if (value is string text)
+                    bytes += MemoryProfileEstimator.EstimateString(text);
+                else if (value is Models.User user)
+                    bytes += EstimateUser(user);
+            }
+
             return bytes;
         }
     }

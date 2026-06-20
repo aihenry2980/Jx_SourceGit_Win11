@@ -1368,7 +1368,7 @@ namespace SourceGit.Views
                     checkoutCommit.Click += (_, e) =>
                     {
                         if (repo.CanCreatePopup())
-                            repo.ShowPopup(new ViewModels.CheckoutCommit(repo, commit));
+                            repo.ShowPopup(new ViewModels.CheckoutDetached(repo, commit));
                         e.Handled = true;
                     };
                     menu.Items.Add(checkoutCommit);
@@ -1713,6 +1713,24 @@ namespace SourceGit.Views
             };
             submenu.Items.Add(rename);
 
+            if (!repo.IsBare)
+            {
+                var type = repo.GetGitFlowType(current);
+                if (type != Models.GitFlowBranchType.None)
+                {
+                    var finish = new MenuItem();
+                    finish.Header = App.Text("BranchCM.Finish", current.Name);
+                    finish.Icon = this.CreateMenuIcon("Icons.GitFlow.Finish");
+                    finish.Click += (_, e) =>
+                    {
+                        if (repo.CanCreatePopup())
+                            repo.ShowPopup(new ViewModels.GitFlowFinish(repo, current, type));
+                        e.Handled = true;
+                    };
+                    submenu.Items.Add(finish);
+                }
+            }
+
             var undoLastRebase = new MenuItem();
             undoLastRebase.Header = "Undo Last Rebase (ORIG_HEAD)...";
             undoLastRebase.Icon = App.CreateMenuIcon("Icons.Undo");
@@ -1792,6 +1810,48 @@ namespace SourceGit.Views
                 e.Handled = true;
             };
             submenu.Items.Add(delete);
+            submenu.Items.Add(new MenuItem() { Header = "-" });
+
+            if (!repo.IsBare)
+            {
+                var type = repo.GetGitFlowType(branch);
+                if (type != Models.GitFlowBranchType.None)
+                {
+                    var finish = new MenuItem();
+                    finish.Header = App.Text("BranchCM.Finish", branch.Name);
+                    finish.Icon = this.CreateMenuIcon("Icons.GitFlow.Finish");
+                    finish.Click += (_, e) =>
+                    {
+                        if (repo.CanCreatePopup())
+                            repo.ShowPopup(new ViewModels.GitFlowFinish(repo, branch, type));
+                        e.Handled = true;
+                    };
+                    submenu.Items.Add(finish);
+                    submenu.Items.Add(new MenuItem() { Header = "-" });
+                }
+            }
+
+            var compare = new MenuItem();
+            compare.Header = App.Text("BranchCM.CompareWithSpecial", current.Name);
+            compare.Icon = this.CreateMenuIcon("Icons.Compare");
+            compare.Click += (_, e) =>
+            {
+                this.ShowWindow(new ViewModels.Compare(repo, current, branch));
+                e.Handled = true;
+            };
+
+            submenu.Items.Add(compare);
+            submenu.Items.Add(new MenuItem() { Header = "-" });
+
+            var copy = new MenuItem();
+            copy.Header = App.Text("BranchCM.CopyName");
+            copy.Icon = this.CreateMenuIcon("Icons.Copy");
+            copy.Click += async (_, e) =>
+            {
+                await this.CopyTextAsync(branch.Name);
+                e.Handled = true;
+            };
+            submenu.Items.Add(copy);
             menu.Items.Add(submenu);
             AddLevel1BranchFilterModeMenuItem(menu, filterModeVm, actionBackground);
             AddLevel1CheckoutBranchMenuItem(menu, repo, branch, branch.Name, actionBackground);
