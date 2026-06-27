@@ -38,7 +38,7 @@
              x:Name="SearchBox"
              Margin="8,8,8,0"
              Height="30"
-             PlaceholderText="Type to filter fonts"
+             Watermark="Type to filter fonts"
              TextChanged="OnSearchTextChanged"/>
 
     <ListBox Grid.Row="2"

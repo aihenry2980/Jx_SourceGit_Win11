@@ -307,6 +307,20 @@ namespace SourceGit.Views
             }
         }
 
+        protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+        {
+            base.OnPropertyChanged(change);
+
+            if (change.Property == FontFamilyProperty ||
+                change.Property == FontSizeProperty ||
+                change.Property == ForegroundProperty ||
+                change.Property == UseGraphColorProperty ||
+                change.Property == UseCompactBranchNamesProperty ||
+                change.Property == BackgroundProperty ||
+                change.Property == ShowTagsProperty)
+                InvalidateMeasure();
+        }
+
         protected override void OnDataContextChanged(EventArgs e)
         {
             base.OnDataContextChanged(e);

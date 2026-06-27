@@ -436,7 +436,6 @@ namespace SourceGit.ViewModels
 
             long bytes = 64;
             bytes += MemoryProfileEstimator.EstimateString(diff.Title);
-            bytes += MemoryProfileEstimator.EstimateString(diff.FileModeChange);
             bytes += EstimateDiffContent(diff.Content);
             return bytes;
         }

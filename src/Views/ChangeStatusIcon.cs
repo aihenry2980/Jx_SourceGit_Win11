@@ -26,33 +26,38 @@ namespace SourceGit.Views
             Colors.OrangeRed,
         ];
 
-        public static readonly StyledProperty<bool> IsUnstagedChangeProperty =
-            AvaloniaProperty.Register<ChangeStatusIcon, bool>(nameof(IsUnstagedChange));
+        public static readonly DirectProperty<ChangeStatusIcon, bool> IsUnstagedChangeProperty =
+            AvaloniaProperty.RegisterDirect<ChangeStatusIcon, bool>(
+                nameof(IsUnstagedChange),
+                static o => o.IsUnstagedChange,
+                static (o, v) => o.IsUnstagedChange = v);
 
         public bool IsUnstagedChange
         {
-            get => GetValue(IsUnstagedChangeProperty);
-            set => SetValue(IsUnstagedChangeProperty, value);
+            get => _isUnstagedChange;
+            set => SetAndRaise(IsUnstagedChangeProperty, ref _isUnstagedChange, value);
         }
 
-        public static readonly StyledProperty<Models.Change> ChangeProperty =
-            AvaloniaProperty.Register<ChangeStatusIcon, Models.Change>(nameof(Change));
+        public static readonly DirectProperty<ChangeStatusIcon, Models.Change> ChangeProperty =
+            AvaloniaProperty.RegisterDirect<ChangeStatusIcon, Models.Change>(
+                nameof(Change),
+                static o => o.Change,
+                static (o, v) => o.Change = v);
 
         public Models.Change Change
         {
-            get => GetValue(ChangeProperty);
-            set => SetValue(ChangeProperty, value);
+            get => _change;
+            set => SetAndRaise(ChangeProperty, ref _change, value);
         }
 
         public override void Render(DrawingContext context)
         {
-            if (Change == null || Bounds.Width <= 0)
+            if (_change == null || Bounds.Width <= 0)
                 return;
 
             var typeface = new Typeface("fonts:SourceGit#JetBrains Mono NL");
-
-            var idx = (int)(IsUnstagedChange ? Change.WorkTree : Change.Index);
-            var isSubmodulePointerChange = Change.IsSubmodulePointerChange;
+            var idx = (int)(_isUnstagedChange ? _change.WorkTree : _change.Index);
+            var isSubmodulePointerChange = _change.IsSubmodulePointerChange;
             var indicator = isSubmodulePointerChange ? SUBMODULE_POINTER_INDICATOR : INDICATOR[idx];
             var color = isSubmodulePointerChange ? SUBMODULE_POINTER_COLOR : COLOR[idx];
             var hsl = color.ToHsl();
@@ -92,5 +97,8 @@ namespace SourceGit.Views
             else if (change.Property.Name == nameof(ActualThemeVariant) && change.NewValue != null)
                 InvalidateVisual();
         }
+
+        private bool _isUnstagedChange = false;
+        private Models.Change _change = null;
     }
 }

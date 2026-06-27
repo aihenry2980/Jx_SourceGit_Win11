@@ -87,7 +87,7 @@ namespace SourceGit.Views
         }
 
         public static readonly StyledProperty<bool> ShowStrikethroughProperty =
-            AvaloniaProperty.Register<CommitSubjectPresenter, bool>(nameof(ShowStrikethrough), false);
+            AvaloniaProperty.Register<CommitSubjectPresenter, bool>(nameof(ShowStrikethrough));
 
         public bool ShowStrikethrough
         {
@@ -95,13 +95,16 @@ namespace SourceGit.Views
             set => SetValue(ShowStrikethroughProperty, value);
         }
 
-        public static readonly StyledProperty<string> SubjectProperty =
-            AvaloniaProperty.Register<CommitSubjectPresenter, string>(nameof(Subject));
+        public static readonly DirectProperty<CommitSubjectPresenter, string> SubjectProperty =
+            AvaloniaProperty.RegisterDirect<CommitSubjectPresenter, string>(
+                nameof(Subject),
+                static o => o.Subject,
+                static (o, v) => o.Subject = v);
 
         public string Subject
         {
-            get => GetValue(SubjectProperty);
-            set => SetValue(SubjectProperty, value);
+            get => _subject;
+            set => SetAndRaise(SubjectProperty, ref _subject, value);
         }
 
         public static readonly StyledProperty<string> HighlightTextProperty =
@@ -113,13 +116,16 @@ namespace SourceGit.Views
             set => SetValue(HighlightTextProperty, value);
         }
 
-        public static readonly StyledProperty<AvaloniaList<Models.IssueTracker>> IssueTrackersProperty =
-            AvaloniaProperty.Register<CommitSubjectPresenter, AvaloniaList<Models.IssueTracker>>(nameof(IssueTrackers));
+        public static readonly DirectProperty<CommitSubjectPresenter, AvaloniaList<Models.IssueTracker>> IssueTrackersProperty =
+            AvaloniaProperty.RegisterDirect<CommitSubjectPresenter, AvaloniaList<Models.IssueTracker>>(
+                nameof(IssueTrackers),
+                static o => o.IssueTrackers,
+                static (o, v) => o.IssueTrackers = v);
 
         public AvaloniaList<Models.IssueTracker> IssueTrackers
         {
-            get => GetValue(IssueTrackersProperty);
-            set => SetValue(IssueTrackersProperty, value);
+            get => _issueTrackers;
+            set => SetAndRaise(IssueTrackersProperty, ref _issueTrackers, value);
         }
 
         public override void Render(DrawingContext context)
@@ -548,6 +554,8 @@ namespace SourceGit.Views
             }
         }
 
+        private string _subject = string.Empty;
+        private AvaloniaList<Models.IssueTracker> _issueTrackers = null;
         private Models.InlineElementCollector _elements = new();
         private List<Inline> _inlines = [];
         private Models.InlineElement _lastHover = null;

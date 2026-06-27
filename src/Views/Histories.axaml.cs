@@ -18,13 +18,16 @@ namespace SourceGit.Views
 {
     public class HistoriesLayout : Grid
     {
-        public static readonly StyledProperty<bool> UseHorizontalProperty =
-            AvaloniaProperty.Register<HistoriesLayout, bool>(nameof(UseHorizontal));
+        public static readonly DirectProperty<HistoriesLayout, bool> UseHorizontalProperty =
+            AvaloniaProperty.RegisterDirect<HistoriesLayout, bool>(
+                nameof(UseHorizontal),
+                static o => o.UseHorizontal,
+                static (o, v) => o.UseHorizontal = v);
 
         public bool UseHorizontal
         {
-            get => GetValue(UseHorizontalProperty);
-            set => SetValue(UseHorizontalProperty, value);
+            get => _useHorizontal;
+            set => SetAndRaise(UseHorizontalProperty, ref _useHorizontal, value);
         }
 
         protected override Type StyleKeyOverride => typeof(Grid);
@@ -76,26 +79,34 @@ namespace SourceGit.Views
                 }
             }
         }
+
+        private bool _useHorizontal = false;
     }
 
     public class HistoriesCommitList : DataGrid
     {
-        public static readonly StyledProperty<int> TotalCommitsProperty =
-            AvaloniaProperty.Register<HistoriesCommitList, int>(nameof(TotalCommits), 0);
+        public static readonly DirectProperty<HistoriesCommitList, int> TotalCommitsProperty =
+            AvaloniaProperty.RegisterDirect<HistoriesCommitList, int>(
+                nameof(TotalCommits),
+                static o => o.TotalCommits,
+                static (o, v) => o.TotalCommits = v);
 
         public int TotalCommits
         {
-            get => GetValue(TotalCommitsProperty);
-            set => SetValue(TotalCommitsProperty, value);
+            get => _totalCommits;
+            set => SetAndRaise(TotalCommitsProperty, ref _totalCommits, value);
         }
 
-        public static readonly StyledProperty<List<Models.Commit>> SelectedCommitsProperty =
-            AvaloniaProperty.Register<HistoriesCommitList, List<Models.Commit>>(nameof(SelectedCommits), []);
+        public static readonly DirectProperty<HistoriesCommitList, List<Models.Commit>> SelectedCommitsProperty =
+            AvaloniaProperty.RegisterDirect<HistoriesCommitList, List<Models.Commit>>(
+                nameof(SelectedCommits),
+                static o => o.SelectedCommits,
+                static (o, v) => o.SelectedCommits = v);
 
         public List<Models.Commit> SelectedCommits
         {
-            get => GetValue(SelectedCommitsProperty);
-            set => SetValue(SelectedCommitsProperty, value);
+            get => _selectedCommits;
+            set => SetAndRaise(SelectedCommitsProperty, ref _selectedCommits, value);
         }
 
         protected override Type StyleKeyOverride => typeof(DataGrid);
@@ -150,7 +161,7 @@ namespace SourceGit.Views
                 var old = SelectedCommits;
                 if (old.Count != commits.Count)
                 {
-                    SetCurrentValue(SelectedCommitsProperty, commits);
+                    SelectedCommits = commits;
                 }
                 else if (commits.Count > 0)
                 {
@@ -169,7 +180,7 @@ namespace SourceGit.Views
                     }
 
                     if (!equals)
-                        SetCurrentValue(SelectedCommitsProperty, commits);
+                        SelectedCommits = commits;
                 }
 
                 _ignoreSelectionChanged = false;
@@ -205,7 +216,7 @@ namespace SourceGit.Views
             var property = typeof(DataGrid).GetProperty("NoSelectionChangeCount", BindingFlags.Instance | BindingFlags.NonPublic);
             if (property != null)
             {
-                var old = (int)property.GetValue(this);
+                var old = (int)property.GetValue(this)!;
                 property.SetValue(this, old + 1);
             }
         }
@@ -215,41 +226,52 @@ namespace SourceGit.Views
             var property = typeof(DataGrid).GetProperty("NoSelectionChangeCount", BindingFlags.Instance | BindingFlags.NonPublic);
             if (property != null)
             {
-                var old = (int)property.GetValue(this);
+                var old = (int)property.GetValue(this)!;
                 property.SetValue(this, old - 1);
             }
         }
 
         private bool _ignoreSelectionChanged = false;
+        private int _totalCommits = 0;
+        private List<Models.Commit> _selectedCommits = [];
     }
 
     public partial class Histories : UserControl
     {
-        public static readonly StyledProperty<Models.Branch> CurrentBranchProperty =
-            AvaloniaProperty.Register<Histories, Models.Branch>(nameof(CurrentBranch));
+        public static readonly DirectProperty<Histories, Models.Branch> CurrentBranchProperty =
+            AvaloniaProperty.RegisterDirect<Histories, Models.Branch>(
+                nameof(CurrentBranch),
+                static o => o.CurrentBranch,
+                static (o, v) => o.CurrentBranch = v);
 
         public Models.Branch CurrentBranch
         {
-            get => GetValue(CurrentBranchProperty);
-            set => SetValue(CurrentBranchProperty, value);
+            get => _currentBranch;
+            set => SetAndRaise(CurrentBranchProperty, ref _currentBranch, value);
         }
 
-        public static readonly StyledProperty<Models.Bisect> BisectProperty =
-            AvaloniaProperty.Register<Histories, Models.Bisect>(nameof(Bisect));
+        public static readonly DirectProperty<Histories, Models.Bisect> BisectProperty =
+            AvaloniaProperty.RegisterDirect<Histories, Models.Bisect>(
+                nameof(Bisect),
+                static o => o.Bisect,
+                static (o, v) => o.Bisect = v);
 
         public Models.Bisect Bisect
         {
-            get => GetValue(BisectProperty);
-            set => SetValue(BisectProperty, value);
+            get => _bisect;
+            set => SetAndRaise(BisectProperty, ref _bisect, value);
         }
 
-        public static readonly StyledProperty<AvaloniaList<Models.IssueTracker>> IssueTrackersProperty =
-            AvaloniaProperty.Register<Histories, AvaloniaList<Models.IssueTracker>>(nameof(IssueTrackers));
+        public static readonly DirectProperty<Histories, AvaloniaList<Models.IssueTracker>> IssueTrackersProperty =
+            AvaloniaProperty.RegisterDirect<Histories, AvaloniaList<Models.IssueTracker>>(
+                nameof(IssueTrackers),
+                static o => o.IssueTrackers,
+                static (o, v) => o.IssueTrackers = v);
 
         public AvaloniaList<Models.IssueTracker> IssueTrackers
         {
-            get => GetValue(IssueTrackersProperty);
-            set => SetValue(IssueTrackersProperty, value);
+            get => _issueTrackers;
+            set => SetAndRaise(IssueTrackersProperty, ref _issueTrackers, value);
         }
 
         public static readonly StyledProperty<bool> OnlyHighlightCurrentBranchProperty =
@@ -261,13 +283,16 @@ namespace SourceGit.Views
             set => SetValue(OnlyHighlightCurrentBranchProperty, value);
         }
 
-        public static readonly StyledProperty<bool> IsScrollToTopVisibleProperty =
-            AvaloniaProperty.Register<Histories, bool>(nameof(IsScrollToTopVisible));
+        public static readonly DirectProperty<Histories, bool> IsScrollToTopVisibleProperty =
+            AvaloniaProperty.RegisterDirect<Histories, bool>(
+                nameof(IsScrollToTopVisible),
+                static o => o.IsScrollToTopVisible,
+                static (o, v) => o.IsScrollToTopVisible = v);
 
         public bool IsScrollToTopVisible
         {
-            get => GetValue(IsScrollToTopVisibleProperty);
-            set => SetValue(IsScrollToTopVisibleProperty, value);
+            get => _isScrollToTopVisible;
+            set => SetAndRaise(IsScrollToTopVisibleProperty, ref _isScrollToTopVisible, value);
         }
 
         public static readonly StyledProperty<long> NavigationIdProperty =
@@ -454,7 +479,7 @@ namespace SourceGit.Views
                 }
             }
 
-            SetCurrentValue(IsScrollToTopVisibleProperty, startY >= rowHeight);
+            IsScrollToTopVisible = startY >= rowHeight;
 
             var graphOffsetY = CalculateGraphVerticalOffset(rowsPresenter, rowHeight, startY);
 
@@ -969,8 +994,7 @@ namespace SourceGit.Views
 
             if (DataContext is ViewModels.Histories histories &&
                 CommitListContainer.SelectedItems is { Count: 1 } &&
-                sender is DataGrid grid &&
-                !Equals(e.Source, grid))
+                e.Source is Control { DataContext: Models.Commit c })
             {
                 if (e.Source is CommitRefsPresenter crp)
                 {
@@ -980,8 +1004,7 @@ namespace SourceGit.Views
                         return;
                 }
 
-                if (e.Source is Control { DataContext: Models.Commit c })
-                    await histories.CheckoutBranchByCommitAsync(c);
+                await histories.CheckoutBranchByCommitAsync(c);
             }
         }
 
@@ -1526,7 +1549,9 @@ namespace SourceGit.Views
                     {
                         var folder = selected[0];
                         var folderPath = folder is { Path: { IsAbsoluteUri: true } path } ? path.LocalPath : folder.Path.ToString();
-                        await repo.SaveCommitAsPatchAsync(commit, folderPath);
+                        var succ = await repo.SaveCommitAsPatchAsync(commit, folderPath);
+                        if (succ)
+                            repo.SendNotification(App.Text("SaveAsPatchSuccess"));
                     }
                 }
                 catch (Exception exception)
@@ -1788,6 +1813,18 @@ namespace SourceGit.Views
                 };
                 submenu.Items.Add(merge);
             }
+
+            var push = new MenuItem();
+            push.Header = App.Text("BranchCM.Push", branch.Name);
+            push.Icon = this.CreateMenuIcon("Icons.Push");
+            push.IsEnabled = repo.Remotes.Count > 0;
+            push.Click += (_, e) =>
+            {
+                if (repo.CanCreatePopup())
+                    repo.ShowPopup(new ViewModels.Push(repo, branch));
+                e.Handled = true;
+            };
+            submenu.Items.Add(push);
 
             var rename = new MenuItem();
             rename.Header = App.Text("BranchCM.Rename", branch.Name);
@@ -2595,6 +2632,10 @@ namespace SourceGit.Views
                 await this.ShowDialogAsync(new ViewModels.InteractiveRebase(repo, on, prefill));
         }
 
+        private Models.Branch _currentBranch = null;
+        private Models.Bisect _bisect = null;
+        private AvaloniaList<Models.IssueTracker> _issueTrackers = null;
+        private bool _isScrollToTopVisible = false;
         private double _lastGraphStartY = 0;
         private double _lastGraphClipWidth = 0;
         private double _lastGraphRowHeight = 0;

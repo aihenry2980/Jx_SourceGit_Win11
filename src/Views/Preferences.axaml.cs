@@ -12,6 +12,28 @@ namespace SourceGit.Views
 {
     public partial class Preferences : ChromelessWindow
     {
+        public static readonly DirectProperty<Preferences, string> GitVersionProperty =
+            AvaloniaProperty.RegisterDirect<Preferences, string>(
+                nameof(GitVersion),
+                static o => o.GitVersion);
+
+        public string GitVersion
+        {
+            get => _gitVersion;
+            set => SetAndRaise(GitVersionProperty, ref _gitVersion, value);
+        }
+
+        public static readonly DirectProperty<Preferences, bool> ShowGitVersionWarningProperty =
+            AvaloniaProperty.RegisterDirect<Preferences, bool>(
+                nameof(ShowGitVersionWarning),
+                static o => o.ShowGitVersionWarning);
+
+        public bool ShowGitVersionWarning
+        {
+            get => _showGitVersionWarning;
+            set => SetAndRaise(ShowGitVersionWarningProperty, ref _showGitVersionWarning, value);
+        }
+
         public string DefaultUser
         {
             get;
@@ -36,24 +58,6 @@ namespace SourceGit.Views
             set;
         }
 
-        public static readonly StyledProperty<string> GitVersionProperty =
-            AvaloniaProperty.Register<Preferences, string>(nameof(GitVersion));
-
-        public string GitVersion
-        {
-            get => GetValue(GitVersionProperty);
-            set => SetValue(GitVersionProperty, value);
-        }
-
-        public static readonly StyledProperty<bool> ShowGitVersionWarningProperty =
-            AvaloniaProperty.Register<Preferences, bool>(nameof(ShowGitVersionWarning));
-
-        public bool ShowGitVersionWarning
-        {
-            get => GetValue(ShowGitVersionWarningProperty);
-            set => SetValue(ShowGitVersionWarningProperty, value);
-        }
-
         public bool EnableGPGCommitSigning
         {
             get;
@@ -66,22 +70,28 @@ namespace SourceGit.Views
             set;
         }
 
-        public static readonly StyledProperty<Models.GPGFormat> GPGFormatProperty =
-            AvaloniaProperty.Register<Preferences, Models.GPGFormat>(nameof(GPGFormat), Models.GPGFormat.Supported[0]);
+        public static readonly DirectProperty<Preferences, Models.GPGFormat> GPGFormatProperty =
+            AvaloniaProperty.RegisterDirect<Preferences, Models.GPGFormat>(
+                nameof(GPGFormat),
+                static o => o.GPGFormat,
+                static (o, v) => o.GPGFormat = v);
 
         public Models.GPGFormat GPGFormat
         {
-            get => GetValue(GPGFormatProperty);
-            set => SetValue(GPGFormatProperty, value);
+            get => _gpgFormat;
+            set => SetAndRaise(GPGFormatProperty, ref _gpgFormat, value);
         }
 
-        public static readonly StyledProperty<string> GPGExecutableFileProperty =
-            AvaloniaProperty.Register<Preferences, string>(nameof(GPGExecutableFile));
+        public static readonly DirectProperty<Preferences, string> GPGExecutableFileProperty =
+            AvaloniaProperty.RegisterDirect<Preferences, string>(
+                nameof(GPGExecutableFile),
+                static o => o.GPGExecutableFile,
+                static (o, v) => o.GPGExecutableFile = v);
 
         public string GPGExecutableFile
         {
-            get => GetValue(GPGExecutableFileProperty);
-            set => SetValue(GPGExecutableFileProperty, value);
+            get => _gpgExecutableFile;
+            set => SetAndRaise(GPGExecutableFileProperty, ref _gpgExecutableFile, value);
         }
 
         public string GPGUserKey
@@ -96,22 +106,28 @@ namespace SourceGit.Views
             set;
         } = false;
 
-        public static readonly StyledProperty<AI.Service> SelectedOpenAIServiceProperty =
-            AvaloniaProperty.Register<Preferences, AI.Service>(nameof(SelectedOpenAIService));
+        public static readonly DirectProperty<Preferences, AI.Service> SelectedOpenAIServiceProperty =
+            AvaloniaProperty.RegisterDirect<Preferences, AI.Service>(
+                nameof(SelectedOpenAIService),
+                static o => o.SelectedOpenAIService,
+                static (o, v) => o.SelectedOpenAIService = v);
 
         public AI.Service SelectedOpenAIService
         {
-            get => GetValue(SelectedOpenAIServiceProperty);
-            set => SetValue(SelectedOpenAIServiceProperty, value);
+            get => _selectedOpenAIService;
+            set => SetAndRaise(SelectedOpenAIServiceProperty, ref _selectedOpenAIService, value);
         }
 
-        public static readonly StyledProperty<Models.CustomAction> SelectedCustomActionProperty =
-            AvaloniaProperty.Register<Preferences, Models.CustomAction>(nameof(SelectedCustomAction));
+        public static readonly DirectProperty<Preferences, Models.CustomAction> SelectedCustomActionProperty =
+            AvaloniaProperty.RegisterDirect<Preferences, Models.CustomAction>(
+                nameof(SelectedCustomAction),
+                static o => o.SelectedCustomAction,
+                static (o, v) => o.SelectedCustomAction = v);
 
         public Models.CustomAction SelectedCustomAction
         {
-            get => GetValue(SelectedCustomActionProperty);
-            set => SetValue(SelectedCustomActionProperty, value);
+            get => _selectedCustomAction;
+            set => SetAndRaise(SelectedCustomActionProperty, ref _selectedCustomAction, value);
         }
 
         public Preferences()
@@ -554,5 +570,11 @@ namespace SourceGit.Views
         }
 
         private static List<string> s_cachedFontFamilyNames;
+        private string _gitVersion = string.Empty;
+        private bool _showGitVersionWarning = false;
+        private Models.GPGFormat _gpgFormat = Models.GPGFormat.Supported[0];
+        private string _gpgExecutableFile = string.Empty;
+        private AI.Service _selectedOpenAIService = null;
+        private Models.CustomAction _selectedCustomAction = null;
     }
 }

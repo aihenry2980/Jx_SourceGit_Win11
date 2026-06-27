@@ -116,7 +116,7 @@
                      Padding="0"
                      BorderThickness="0"
                      Background="Transparent"
-                     PlaceholderText="Hide extensions like .pdb, .dll, .obj"
+                     Watermark="Hide extensions like .pdb, .dll, .obj"
                      Text="{Binding HiddenExtensionInputText, Mode=TwoWay}"
                      KeyDown="OnHiddenExtensionFilterKeyDown"
                      LostFocus="OnHiddenExtensionFilterLostFocus"/>

@@ -61,10 +61,16 @@ namespace SourceGit.ViewModels
             }
         }
 
-        public string FileModeChange
+        public int OldMode
         {
-            get => _fileModeChange;
-            private set => SetProperty(ref _fileModeChange, value);
+            get => _oldMode;
+            private set => SetProperty(ref _oldMode, value);
+        }
+
+        public int NewMode
+        {
+            get => _newMode;
+            private set => SetProperty(ref _newMode, value);
         }
 
         public bool IsTextDiff
@@ -101,7 +107,8 @@ namespace SourceGit.ViewModels
                 _isTextDiff = previous._isTextDiff;
                 _isIgnoreWhitespaceVisible = previous._isIgnoreWhitespaceVisible;
                 _content = previous._content;
-                _fileModeChange = previous._fileModeChange;
+                _oldMode = previous._oldMode;
+                _newMode = previous._newMode;
                 _unifiedLines = previous._unifiedLines;
                 _info = previous._info;
             }
@@ -176,7 +183,8 @@ namespace SourceGit.ViewModels
                 var rs = await BuildContentAsync(latest).ConfigureAwait(false);
                 Dispatcher.UIThread.Post(() =>
                 {
-                    FileModeChange = latest.FileModeChange;
+                    OldMode = latest.OldMode;
+                    NewMode = latest.NewMode;
 
                     if (rs is Models.TextDiff cur)
                     {
@@ -387,7 +395,8 @@ namespace SourceGit.ViewModels
         private readonly int _entireFileLine = 999999999;
         private readonly string _repo;
         private readonly Models.DiffOption _option = null;
-        private string _fileModeChange = string.Empty;
+        private int _oldMode = 0;
+        private int _newMode = 0;
         private int _unifiedLines = 4;
         private bool _isTextDiff = false;
         private bool _isIgnoreWhitespaceVisible = true;

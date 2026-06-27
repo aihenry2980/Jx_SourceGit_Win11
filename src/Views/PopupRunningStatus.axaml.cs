@@ -9,8 +9,11 @@ namespace SourceGit.Views
 {
     public partial class PopupRunningStatus : UserControl
     {
-        public static readonly StyledProperty<string> DescriptionProperty =
-            AvaloniaProperty.Register<PopupRunningStatus, string>(nameof(Description));
+        public static readonly DirectProperty<PopupRunningStatus, string> DescriptionProperty =
+            AvaloniaProperty.RegisterDirect<PopupRunningStatus, string>(
+                nameof(Description),
+                static o => o.Description,
+                static (o, v) => o.Description = v);
         public static readonly StyledProperty<string> ActionButtonTextProperty =
             AvaloniaProperty.Register<PopupRunningStatus, string>(nameof(ActionButtonText), string.Empty);
         public static readonly StyledProperty<bool> IsActionButtonVisibleProperty =
@@ -25,8 +28,8 @@ namespace SourceGit.Views
 
         public string Description
         {
-            get => GetValue(DescriptionProperty);
-            set => SetValue(DescriptionProperty, value);
+            get => _description;
+            set => SetAndRaise(DescriptionProperty, ref _description, value);
         }
 
         public string ActionButtonText
@@ -112,6 +115,7 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
+        private string _description = string.Empty;
         private bool _isUnloading = false;
     }
 }
