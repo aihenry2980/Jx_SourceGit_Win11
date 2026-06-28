@@ -4566,7 +4566,7 @@ namespace SourceGit.ViewModels
                     var pathComparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
                     if (!normalizedSuperProjectRoot.Equals(FullPath, pathComparison))
                     {
-                        var submodules = await new Commands.QuerySubmodules(normalizedSuperProjectRoot).GetResultAsync().ConfigureAwait(false);
+                        var submodules = await new Commands.QuerySubmodules(normalizedSuperProjectRoot, 1, false).GetResultAsync().ConfigureAwait(false);
                         foreach (var submodule in submodules)
                         {
                             if (string.IsNullOrWhiteSpace(submodule.Path))
@@ -4576,7 +4576,11 @@ namespace SourceGit.ViewModels
                             if (!submoduleRoot.Equals(FullPath, pathComparison))
                                 continue;
 
-                            resolved = NormalizeSubmodulePointerSHA(submodule.SHA);
+                            // `submodule status` reports the checked-out SHA; SPP must come from the parent HEAD's gitlink.
+                            var pointer = await new Commands.QuerySubmoduleSuperProjectPointer(normalizedSuperProjectRoot, submodule.Path)
+                                .GetResultAsync()
+                                .ConfigureAwait(false);
+                            resolved = NormalizeSubmodulePointerSHA(pointer);
                             break;
                         }
                     }
