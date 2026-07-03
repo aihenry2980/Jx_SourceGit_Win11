@@ -584,7 +584,7 @@ namespace SourceGit.Views
 
                 menu.Items.Add(new MenuItem() { Header = "-" });
 
-                var historiesCount = repo.Settings.CommitMessages.Count;
+                var historiesCount = repo.UIStates.RecentCommitMessages.Count;
                 if (historiesCount == 0)
                 {
                     menu.Items.Add(new MenuItem()
@@ -598,7 +598,7 @@ namespace SourceGit.Views
                 {
                     for (int i = 0; i < historiesCount; i++)
                     {
-                        var dup = repo.Settings.CommitMessages[i].Trim();
+                        var dup = repo.UIStates.RecentCommitMessages[i].Trim();
                         var header = new TextBlock()
                         {
                             Text = dup.ReplaceLineEndings(" "),
@@ -640,6 +640,8 @@ namespace SourceGit.Views
 
                 button.IsEnabled = false;
                 menu.Placement = PlacementMode.TopEdgeAlignedLeft;
+                menu.HorizontalOffset = -2;
+                menu.VerticalOffset = 1;
                 menu.Closed += (_, _) => button.IsEnabled = true;
                 menu.Open(button);
             }

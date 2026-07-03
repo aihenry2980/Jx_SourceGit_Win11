@@ -996,6 +996,7 @@
   <x:String x:Key="Text.WorkingCopy.AddToGitIgnore.ExtensionRecursively" xml:space="preserve">Ignore *{0} files recursively in this repo</x:String>
   <x:String x:Key="Text.WorkingCopy.AddToGitIgnore.InFolder" xml:space="preserve">忽略该目录下的新文件</x:String>
   <x:String x:Key="Text.WorkingCopy.AddToGitIgnore.SingleFile" xml:space="preserve">忽略本文件</x:String>
+  <x:String x:Key="Text.WorkingCopy.AddToGitIgnore.UntrackedInSameFolder" xml:space="preserve">忽略同目录下所有新文件</x:String>
   <x:String x:Key="Text.WorkingCopy.Amend" xml:space="preserve">修补</x:String>
   <x:String x:Key="Text.WorkingCopy.CanStageTip" xml:space="preserve">现在您已可将其加入暂存区中</x:String>
   <x:String x:Key="Text.WorkingCopy.ClearCommitHistories" xml:space="preserve">清空历史提交信息</x:String>

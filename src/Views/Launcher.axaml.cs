@@ -159,7 +159,9 @@ namespace SourceGit.Views
             }
 
             // Register hotkeys for Windows/Linux (macOS has registered these keys in system menu bar)
-            if (!OperatingSystem.IsMacOS())
+            var isMacOS = OperatingSystem.IsMacOS();
+            var cmdKey = isMacOS ? KeyModifiers.Meta : KeyModifiers.Control;
+            if (!isMacOS)
             {
                 if (e is { KeyModifiers: KeyModifiers.Control, Key: Key.OemComma })
                 {
@@ -194,8 +196,6 @@ namespace SourceGit.Views
                 return;
             }
 
-            var cmdKey = OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control;
-
             if (vm.CommandPalette != null)
             {
                 if (e.Key == Key.Escape)
@@ -224,7 +224,7 @@ namespace SourceGit.Views
                     return;
                 }
 
-                if (e.Key == Key.N)
+                if (e.Key == Key.R)
                 {
                     if (vm.ActivePage.Data is not ViewModels.Welcome)
                         vm.AddNewTab();
@@ -234,7 +234,7 @@ namespace SourceGit.Views
                     return;
                 }
 
-                if (e.Key == Key.O && e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+                if (e.Key == Key.L)
                 {
                     if (vm.ActivePage.Data is not ViewModels.Welcome)
                         vm.AddNewTab();
@@ -251,16 +251,16 @@ namespace SourceGit.Views
                     return;
                 }
 
-                if ((OperatingSystem.IsMacOS() && e.KeyModifiers.HasFlag(KeyModifiers.Alt) && e.Key == Key.Right) ||
-                    (!OperatingSystem.IsMacOS() && !e.KeyModifiers.HasFlag(KeyModifiers.Shift) && e.Key == Key.Tab))
+                if ((isMacOS && e.KeyModifiers.HasFlag(KeyModifiers.Alt) && e.Key == Key.Right) ||
+                    (!isMacOS && !e.KeyModifiers.HasFlag(KeyModifiers.Shift) && e.Key == Key.Tab))
                 {
                     vm.GotoNextTab();
                     e.Handled = true;
                     return;
                 }
 
-                if ((OperatingSystem.IsMacOS() && e.KeyModifiers.HasFlag(KeyModifiers.Alt) && e.Key == Key.Left) ||
-                    (!OperatingSystem.IsMacOS() && e.KeyModifiers.HasFlag(KeyModifiers.Shift) && e.Key == Key.Tab))
+                if ((isMacOS && e.KeyModifiers.HasFlag(KeyModifiers.Alt) && e.Key == Key.Left) ||
+                    (!isMacOS && e.KeyModifiers.HasFlag(KeyModifiers.Shift) && e.Key == Key.Tab))
                 {
                     vm.GotoPrevTab();
                     e.Handled = true;

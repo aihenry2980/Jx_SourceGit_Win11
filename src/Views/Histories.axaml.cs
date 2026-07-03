@@ -1008,6 +1008,31 @@ namespace SourceGit.Views
             }
         }
 
+        private void OnOpenDetailsAsStandalone(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Histories vm)
+            {
+                if (vm.DetailContext is ViewModels.CommitDetail detail)
+                {
+                    var standalone = new CommitDetailStandalone
+                    {
+                        DataContext = detail.Clone(),
+                    };
+                    this.ShowWindow(standalone);
+                }
+                else if (vm.DetailContext is ViewModels.RevisionCompare compare)
+                {
+                    var standalone = new RevisionCompareStandalone
+                    {
+                        DataContext = compare.Clone(),
+                    };
+                    this.ShowWindow(standalone);
+                }
+            }
+
+            e.Handled = true;
+        }
+
         private ContextMenu CreateContextMenuForMultipleCommits(ViewModels.Repository repo, List<Models.Commit> selected)
         {
             var vm = DataContext as ViewModels.Histories;

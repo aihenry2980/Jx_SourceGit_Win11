@@ -40,6 +40,7 @@ namespace SourceGit.ViewModels
                 if (value != _sharedData.ActiveTabIndex)
                 {
                     _sharedData.ActiveTabIndex = value;
+                    OnPropertyChanged(nameof(ActiveTabIndex));
 
                     if (value == 1)
                     {

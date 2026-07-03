@@ -529,7 +529,7 @@
   <x:String x:Key="Text.HistoriesDetailsStandalone.RevisionCompare" xml:space="preserve">Revision Compare</x:String>
   <x:String x:Key="Text.Hotkeys" xml:space="preserve">Keyboard Shortcuts Reference</x:String>
   <x:String x:Key="Text.Hotkeys.Global" xml:space="preserve">GLOBAL</x:String>
-  <x:String x:Key="Text.Hotkeys.Global.Clone" xml:space="preserve">Clone new repository</x:String>
+  <x:String x:Key="Text.Hotkeys.Global.Clone" xml:space="preserve">Clone remote repository</x:String>
   <x:String x:Key="Text.Hotkeys.Global.CloseTab" xml:space="preserve">Close current tab</x:String>
   <x:String x:Key="Text.Hotkeys.Global.GotoNextTab" xml:space="preserve">Go to next tab</x:String>
   <x:String x:Key="Text.Hotkeys.Global.GotoPrevTab" xml:space="preserve">Go to previous tab</x:String>
@@ -1013,6 +1013,7 @@
   <x:String x:Key="Text.WorkingCopy.AddToGitIgnore.ExtensionRecursively" xml:space="preserve">Ignore *{0} files recursively in this repo</x:String>
   <x:String x:Key="Text.WorkingCopy.AddToGitIgnore.InFolder" xml:space="preserve">Ignore untracked files in this folder</x:String>
   <x:String x:Key="Text.WorkingCopy.AddToGitIgnore.SingleFile" xml:space="preserve">Ignore this file only</x:String>
+  <x:String x:Key="Text.WorkingCopy.AddToGitIgnore.UntrackedInSameFolder" xml:space="preserve">Ignore all untracked files in the same folder</x:String>
   <x:String x:Key="Text.WorkingCopy.Amend" xml:space="preserve">Amend</x:String>
   <x:String x:Key="Text.WorkingCopy.CanStageTip" xml:space="preserve">You can stage this file now.</x:String>
   <x:String x:Key="Text.WorkingCopy.ClearCommitHistories" xml:space="preserve">Clear History</x:String>

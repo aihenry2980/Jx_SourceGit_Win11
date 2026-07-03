@@ -799,6 +799,23 @@ namespace SourceGit.Views
                 menu.Items.Add(push);
                 menu.Items.Add(new MenuItem() { Header = "-" });
 
+                var type = repo.GetGitFlowType(branch);
+                if (type != Models.GitFlowBranchType.None)
+                {
+                    var finish = new MenuItem();
+                    finish.Header = App.Text("BranchCM.Finish", branch.Name);
+                    finish.Icon = this.CreateMenuIcon("Icons.GitFlow.Finish");
+                    finish.IsEnabled = !repo.IsBare;
+                    finish.Click += (_, e) =>
+                    {
+                        if (repo.CanCreatePopup())
+                            repo.ShowPopup(new ViewModels.GitFlowFinish(repo, branch, type));
+                        e.Handled = true;
+                    };
+                    menu.Items.Add(finish);
+                    menu.Items.Add(new MenuItem() { Header = "-" });
+                }
+
                 if (upstream != null)
                 {
                     var compareWithUpstream = new MenuItem();
@@ -906,6 +923,23 @@ namespace SourceGit.Views
                     menu.Items.Add(rebase);
                     menu.Items.Add(new MenuItem() { Header = "-" });
                     menu.Items.Add(interactiveRebase);
+
+                    var type = repo.GetGitFlowType(branch);
+                    if (type != Models.GitFlowBranchType.None)
+                    {
+                        var finish = new MenuItem();
+                        finish.Header = App.Text("BranchCM.Finish", branch.Name);
+                        finish.Icon = this.CreateMenuIcon("Icons.GitFlow.Finish");
+                        finish.IsEnabled = !repo.IsBare || !hasNoWorktree;
+                        finish.Click += (_, e) =>
+                        {
+                            if (repo.CanCreatePopup())
+                                repo.ShowPopup(new ViewModels.GitFlowFinish(repo, branch, type));
+                            e.Handled = true;
+                        };
+                        menu.Items.Add(new MenuItem() { Header = "-" });
+                        menu.Items.Add(finish);
+                    }
                 }
 
                 if (hasNoWorktree)
@@ -1035,10 +1069,13 @@ namespace SourceGit.Views
                 e.Handled = true;
             };
 
-            menu.Items.Add(new MenuItem() { Header = "-" });
-            menu.Items.Add(editDescription);
-            menu.Items.Add(rename);
-            menu.Items.Add(delete);
+            if (!branch.IsDetachedHead)
+            {
+                menu.Items.Add(new MenuItem() { Header = "-" });
+                menu.Items.Add(editDescription);
+                menu.Items.Add(rename);
+                menu.Items.Add(delete);
+            }
             menu.Items.Add(new MenuItem() { Header = "-" });
             menu.Items.Add(createBranch);
             menu.Items.Add(createTag);
