@@ -79,37 +79,42 @@ namespace SourceGit.Views
 
             var selectedIdx = LauncherTabsList.SelectedIndex;
             var count = LauncherTabsList.ItemCount;
-            var separatorPen = new Pen(new SolidColorBrush(ActualThemeVariant == ThemeVariant.Dark ? Colors.White : Colors.Black, 0.2));
-            var separatorY = (height - 18) * 0.5 + 1;
+            var inactiveBorder = new SolidColorBrush(
+                ActualThemeVariant == ThemeVariant.Dark ? Colors.White : Colors.Black,
+                ActualThemeVariant == ThemeVariant.Dark ? 0.32 : 0.25);
+            var inactiveFill = new SolidColorBrush(
+                ActualThemeVariant == ThemeVariant.Dark ? Colors.White : Colors.Black,
+                ActualThemeVariant == ThemeVariant.Dark ? 0.05 : 0.035);
+            var inactivePen = new Pen(inactiveBorder);
 
-            if (!_isScrollButtonVisible && selectedIdx > 0)
+            using (context.PushClip(new Rect(
+                LauncherTabsScroller.Bounds.X,
+                0,
+                LauncherTabsScroller.Viewport.Width,
+                height)))
             {
-                var container = LauncherTabsList.ContainerFromIndex(0);
-                if (container != null)
+                for (var i = 0; i < count; i++)
                 {
-                    var x = container.Bounds.Left - startX + LauncherTabsScroller.Bounds.X - 0.5;
-                    context.DrawLine(separatorPen, new Point(x, separatorY), new Point(x, separatorY + 18));
+                    if (i == selectedIdx)
+                        continue;
+
+                    var container = LauncherTabsList.ContainerFromIndex(i);
+                    if (container == null)
+                        continue;
+
+                    var containerStartX = container.Bounds.Left;
+                    var containerEndX = container.Bounds.Right;
+                    if (containerEndX < startX || containerStartX > endX)
+                        continue;
+
+                    var drawLeftX = containerStartX - startX + LauncherTabsScroller.Bounds.X + 0.5;
+                    var drawRightX = containerEndX - startX + LauncherTabsScroller.Bounds.X - 0.5;
+                    var tabRect = new Rect(drawLeftX, 0.5, drawRightX - drawLeftX, height - 1);
+                    context.DrawRectangle(
+                        inactiveFill,
+                        inactivePen,
+                        new RoundedRect(tabRect, new CornerRadius(5)));
                 }
-            }
-
-            for (var i = 0; i < count; i++)
-            {
-                if (i == selectedIdx || i == selectedIdx - 1)
-                    continue;
-
-                var container = LauncherTabsList.ContainerFromIndex(i);
-                if (container == null)
-                    continue;
-
-                var containerEndX = container.Bounds.Right;
-                if (containerEndX < startX || containerEndX > endX)
-                    continue;
-
-                if (_isScrollButtonVisible && i == count - 1)
-                    break;
-
-                var separatorX = containerEndX - startX + LauncherTabsScroller.Bounds.X - 0.5;
-                context.DrawLine(separatorPen, new Point(separatorX, separatorY), new Point(separatorX, separatorY + 18));
             }
 
             var selected = LauncherTabsList.ContainerFromIndex(selectedIdx);
@@ -164,7 +169,7 @@ namespace SourceGit.Views
                 fill = new SolidColorBrush(accent, opacity);
             }
 
-            var stroke = new Pen(this.FindResource("Brush.Border0") as IBrush);
+            var stroke = new Pen(this.FindResource("Brush.Border1") as IBrush, 1.25);
             context.DrawGeometry(fill, stroke, geo);
         }
 
