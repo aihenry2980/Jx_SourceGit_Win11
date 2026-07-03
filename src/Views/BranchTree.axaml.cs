@@ -921,6 +921,9 @@ namespace SourceGit.Views
 
                     menu.Items.Add(merge);
                     menu.Items.Add(rebase);
+                    var rebaseAndForcePush = CreateRebaseAndForcePushMenuItem(repo, current, branch);
+                    if (rebaseAndForcePush != null)
+                        menu.Items.Add(rebaseAndForcePush);
                     menu.Items.Add(new MenuItem() { Header = "-" });
                     menu.Items.Add(interactiveRebase);
 
@@ -1325,6 +1328,9 @@ namespace SourceGit.Views
                 menu.Items.Add(pull);
                 menu.Items.Add(merge);
                 menu.Items.Add(rebase);
+                var rebaseAndForcePush = CreateRebaseAndForcePushMenuItem(repo, current, branch);
+                if (rebaseAndForcePush != null)
+                    menu.Items.Add(rebaseAndForcePush);
                 menu.Items.Add(interactiveRebase);
                 menu.Items.Add(new MenuItem() { Header = "-" });
                 menu.Items.Add(compareWithHead);
@@ -1423,6 +1429,31 @@ namespace SourceGit.Views
             TryToAddCustomActionsToBranchContextMenu(repo, menu, branch);
             menu.Items.Add(copy);
             return menu;
+        }
+
+        private static MenuItem CreateRebaseAndForcePushMenuItem(
+            ViewModels.Repository repo,
+            Models.Branch current,
+            Models.Branch target)
+        {
+            if (!ViewModels.Rebase.CanForcePushAfterRebase(repo, current))
+                return null;
+
+            var rebaseLabel = App.Text("BranchCM.Rebase", current.Name, target.FriendlyName).TrimEnd('.');
+            var item = new MenuItem
+            {
+                Header = $"{rebaseLabel} + {App.Text("Push.Force")}",
+                Icon = App.CreateMenuIcon("Icons.Rebase"),
+                IsEnabled = !string.Equals(current.Head, target.Head, StringComparison.Ordinal),
+            };
+            item.Click += async (_, e) =>
+            {
+                e.Handled = true;
+                if (repo.CanCreatePopup())
+                    await ViewModels.Rebase.StartForcePushAfterRebaseAsync(repo, current, target);
+            };
+
+            return item;
         }
 
         private void TryToAddCustomActionsToBranchContextMenu(ViewModels.Repository repo, ContextMenu menu, Models.Branch branch)

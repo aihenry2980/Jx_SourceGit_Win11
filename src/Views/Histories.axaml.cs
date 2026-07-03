@@ -777,11 +777,15 @@ namespace SourceGit.Views
 
         private void OnCommitRefsDragOver(object sender, DragEventArgs e)
         {
-            var isValid = sender is CommitRefsPresenter presenter &&
-                TryGetRebaseDragSource(e, out _, out _) &&
-                TryGetBranchAtPoint(presenter, e.GetPosition(presenter), out _, out _);
+            var isValid = false;
+            if (sender is CommitRefsPresenter presenter &&
+                TryGetRebaseBranchDropTargets(presenter, e, out var repo, out var source, out _))
+            {
+                isValid = !IsRebaseAndForcePushModifierActive(e.KeyModifiers) ||
+                    ViewModels.Rebase.CanForcePushAfterRebase(repo, source);
+            }
 
-            UpdateCommitDragTargetFeedback(sender as Control, e, isValid);
+            UpdateCommitDragTargetFeedback(sender as Control, e, isValid, true);
 
             e.Handled = true;
         }
@@ -2176,12 +2180,26 @@ namespace SourceGit.Views
             _pressedCommitRefBranchName = string.Empty;
         }
 
-        private static bool IsHardResetModifierActive(KeyModifiers modifiers)
+        private enum CommitBranchDropAction
         {
-            return modifiers.HasFlag(KeyModifiers.Control);
+            Rebase,
+            HardReset,
+            RebaseAndForcePush,
         }
 
-        private void UpdateCommitDragTargetFeedback(Control control, DragEventArgs e, bool isValid)
+        private static bool IsRebaseAndForcePushModifierActive(KeyModifiers modifiers)
+        {
+            return modifiers.HasFlag(KeyModifiers.Control) &&
+                modifiers.HasFlag(KeyModifiers.Shift);
+        }
+
+        private static bool IsHardResetModifierActive(KeyModifiers modifiers)
+        {
+            return modifiers.HasFlag(KeyModifiers.Control) &&
+                !modifiers.HasFlag(KeyModifiers.Shift);
+        }
+
+        private void UpdateCommitDragTargetFeedback(Control control, DragEventArgs e, bool isValid, bool allowForcePush = false)
         {
             if (!isValid || control == null)
             {
@@ -2191,10 +2209,15 @@ namespace SourceGit.Views
             }
 
             e.DragEffects = DragDropEffects.Copy;
-            ShowCommitDragTargetToolTip(control, IsHardResetModifierActive(e.KeyModifiers));
+            var action = allowForcePush && IsRebaseAndForcePushModifierActive(e.KeyModifiers)
+                ? CommitBranchDropAction.RebaseAndForcePush
+                : e.KeyModifiers.HasFlag(KeyModifiers.Control)
+                    ? CommitBranchDropAction.HardReset
+                    : CommitBranchDropAction.Rebase;
+            ShowCommitDragTargetToolTip(control, action);
         }
 
-        private void ShowCommitDragTargetToolTip(Control control, bool isHardReset)
+        private void ShowCommitDragTargetToolTip(Control control, CommitBranchDropAction action)
         {
             if (control == null)
                 return;
@@ -2211,7 +2234,7 @@ namespace SourceGit.Views
                 ToolTip.SetVerticalOffset(control, 18);
             }
 
-            ToolTip.SetTip(control, CreateCommitDragToolTipContent(isHardReset));
+            ToolTip.SetTip(control, CreateCommitDragToolTipContent(action));
             ToolTip.SetIsOpen(control, true);
         }
 
@@ -2232,12 +2255,19 @@ namespace SourceGit.Views
             _commitDragToolTipPreviousTip = null;
         }
 
-        private static Border CreateCommitDragToolTipContent(bool isHardReset)
+        private static Border CreateCommitDragToolTipContent(CommitBranchDropAction action)
         {
-            var background = isHardReset
+            var isDestructive = action != CommitBranchDropAction.Rebase;
+            var background = isDestructive
                 ? new SolidColorBrush(Color.Parse("#C62828"))
                 : new SolidColorBrush(Color.Parse("#FDD835"));
-            var foreground = isHardReset ? Brushes.White : Brushes.Black;
+            var foreground = isDestructive ? Brushes.White : Brushes.Black;
+            var text = action switch
+            {
+                CommitBranchDropAction.HardReset => "Hard Reset",
+                CommitBranchDropAction.RebaseAndForcePush => "Rebase + Force Push",
+                _ => "Rebase",
+            };
 
             return new Border
             {
@@ -2246,7 +2276,7 @@ namespace SourceGit.Views
                 Padding = new Thickness(8, 4),
                 Child = new TextBlock
                 {
-                    Text = isHardReset ? "Hard Reset" : "Rebase",
+                    Text = text,
                     FontWeight = FontWeight.Bold,
                     Foreground = foreground,
                 }
@@ -2257,6 +2287,12 @@ namespace SourceGit.Views
         {
             if (repo == null || source == null || target == null || !repo.CanCreatePopup())
                 return;
+
+            if (IsRebaseAndForcePushModifierActive(modifiers))
+            {
+                await ViewModels.Rebase.StartForcePushAfterRebaseAsync(repo, source, target);
+                return;
+            }
 
             if (IsHardResetModifierActive(modifiers))
             {
@@ -2290,7 +2326,7 @@ namespace SourceGit.Views
             if (repo == null || source == null || target == null || !repo.CanCreatePopup())
                 return;
 
-            if (IsHardResetModifierActive(modifiers))
+            if (modifiers.HasFlag(KeyModifiers.Control))
             {
                 var updateSubmodulesRecursively = await AskShouldUpdateSubmodulesRecursivelyAsync(
                     repo,
