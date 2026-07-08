@@ -1919,6 +1919,25 @@ namespace SourceGit.ViewModels
             }
         }
 
+        public void SetHistoryPathFilter(string path, bool clearExists = true)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return;
+
+            if (clearExists)
+            {
+                _uiStates.HistoryFilters.Clear();
+                HistoryFilterMode = Models.FilterMode.None;
+            }
+
+            var changed = _uiStates.UpdateHistoryFilters(path, Models.FilterType.Path, Models.FilterMode.Included);
+            if (!changed && SelectedViewIndex == 0)
+                return;
+
+            SelectedViewIndex = 0;
+            RefreshHistoryFilters(true);
+        }
+
         public void UpdateBranchNodeIsExpanded(BranchTreeNode node)
         {
             if (_uiStates == null || !string.IsNullOrWhiteSpace(_filter))
@@ -2381,6 +2400,10 @@ namespace SourceGit.ViewModels
                 if (!string.IsNullOrWhiteSpace(_superProjectSubmoduleSHA))
                     builder.Append(' ').Append(_superProjectSubmoduleSHA);
             }
+
+            var pathspecs = _uiStates.BuildHistoryPathspecs();
+            if (!string.IsNullOrEmpty(pathspecs))
+                builder.Append(' ').Append(pathspecs);
 
             return builder.ToString();
         }

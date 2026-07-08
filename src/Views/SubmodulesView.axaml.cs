@@ -280,6 +280,15 @@ namespace SourceGit.Views
                         ev.Handled = true;
                     };
 
+                    var filterUpdatesInGraph = new MenuItem();
+                    filterUpdatesInGraph.Header = App.Text("Submodule.FilterUpdatesInGraph");
+                    filterUpdatesInGraph.Icon = this.CreateMenuIcon("Icons.Filter");
+                    filterUpdatesInGraph.Click += (_, ev) =>
+                    {
+                        repo.SetHistoryPathFilter(submodule.Path);
+                        ev.Handled = true;
+                    };
+
                     var copySHA = new MenuItem();
                     copySHA.Header = App.Text("CommitDetail.Info.SHA");
                     copySHA.Icon = this.CreateMenuIcon("Icons.Hash");
@@ -340,6 +349,7 @@ namespace SourceGit.Views
                     menu.Items.Add(rm);
                     menu.Items.Add(new MenuItem() { Header = "-" });
                     menu.Items.Add(histories);
+                    menu.Items.Add(filterUpdatesInGraph);
                     menu.Items.Add(new MenuItem() { Header = "-" });
                     menu.Items.Add(copy);
                     menu.Open(control);

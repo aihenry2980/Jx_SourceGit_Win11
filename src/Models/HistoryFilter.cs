@@ -9,6 +9,7 @@ namespace SourceGit.Models
         RemoteBranch,
         RemoteBranchFolder,
         Tag,
+        Path,
     }
 
     public enum FilterMode
@@ -40,7 +41,12 @@ namespace SourceGit.Models
 
         public bool IsBranch
         {
-            get => Type != FilterType.Tag;
+            get => Type is not (FilterType.Tag or FilterType.Path);
+        }
+
+        public bool IsPath
+        {
+            get => Type == FilterType.Path;
         }
 
         public uint Color

@@ -315,7 +315,11 @@ namespace SourceGit.Models
         {
             var map = new Dictionary<string, FilterMode>();
             foreach (var filter in HistoryFilters)
-                map.Add(filter.Pattern, filter.Mode);
+            {
+                if (filter.Type != FilterType.Path)
+                    map.Add(filter.Pattern, filter.Mode);
+            }
+
             return map;
         }
 
@@ -430,6 +434,22 @@ namespace SourceGit.Models
             else
                 BuildHistoryParamsForExcluded(builder, gitDir);
 
+            return builder.ToString();
+        }
+
+        public string BuildHistoryPathspecs()
+        {
+            var builder = new StringBuilder();
+            foreach (var filter in HistoryFilters)
+            {
+                if (filter.Type == FilterType.Path && filter.Mode == FilterMode.Included)
+                    builder.Append(filter.Pattern.Quoted()).Append(' ');
+            }
+
+            if (builder.Length == 0)
+                return string.Empty;
+
+            builder.Insert(0, "-- ");
             return builder.ToString();
         }
 

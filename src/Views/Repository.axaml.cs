@@ -781,9 +781,13 @@ namespace SourceGit.Views
 
                 var dump = filter;
                 var item = new MenuItem();
-                item.Header = BuildRemovableHistoryFilterHeader(dump.Pattern, dump.Color);
-                item.Icon = App.CreateMenuIcon(
-                    dump.IsBranch ? (mode == Models.FilterMode.Included ? "Icons.Filter" : "Icons.EyeClose") : "Icons.Tag");
+                item.Header = BuildRemovableHistoryFilterHeader(dump);
+                item.Icon = App.CreateMenuIcon(dump.Type switch
+                {
+                    Models.FilterType.Tag => "Icons.Tag",
+                    Models.FilterType.Path => "Icons.Folder",
+                    _ => mode == Models.FilterMode.Included ? "Icons.Filter" : "Icons.EyeClose",
+                });
                 item.Click += (_, ev) =>
                 {
                     repo.RemoveHistoryFilter(dump);
@@ -1200,13 +1204,13 @@ namespace SourceGit.Views
             return pattern;
         }
 
-        private static StackPanel BuildRemovableHistoryFilterHeader(string pattern, uint color)
+        private static StackPanel BuildRemovableHistoryFilterHeader(Models.HistoryFilter filter)
         {
             var panel = new StackPanel();
             panel.Orientation = Orientation.Horizontal;
             panel.Spacing = 8;
 
-            if (color != 0)
+            if (filter.Color != 0)
             {
                 panel.Children.Add(new Border()
                 {
@@ -1215,12 +1219,15 @@ namespace SourceGit.Views
                     CornerRadius = new CornerRadius(5),
                     BorderThickness = new Thickness(1),
                     BorderBrush = Brushes.Gray,
-                    Background = new SolidColorBrush(Color.FromUInt32(color)),
+                    Background = new SolidColorBrush(Color.FromUInt32(filter.Color)),
                     VerticalAlignment = VerticalAlignment.Center,
                 });
             }
 
-            panel.Children.Add(new TextBlock() { Text = TrimHistoryFilterPattern(pattern) });
+            var name = filter.Type == Models.FilterType.Path
+                ? $"path: {filter.Pattern}"
+                : TrimHistoryFilterPattern(filter.Pattern);
+            panel.Children.Add(new TextBlock() { Text = name });
             panel.Children.Add(new TextBlock() { Text = "x", Opacity = 0.7 });
 
             return panel;
