@@ -1395,11 +1395,12 @@
               <Binding Path="CanFoldVisibleBranchesInGraph"/>
               <Binding Path="CanUnfoldBranchesInGraph"/>
               <Binding Path="HasStatusStripItems"/>
+              <Binding Path="Submodules.Count" Converter="{x:Static c:IntConverters.IsGreaterThanZero}"/>
             </MultiBinding>
           </MultiBinding>
         </Border.IsVisible>
 
-        <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*">
+        <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*">
           <Button Grid.Column="0"
                   Classes="flat"
                   Margin="8,0,0,0"
@@ -1492,7 +1493,29 @@
             </StackPanel>
           </Border>
 
-          <StackPanel Grid.Column="4"
+          <Button Grid.Column="4"
+                  Classes="flat"
+                  Margin="8,0,0,0"
+                  Padding="8,2"
+                  Click="OnOpenSubmoduleHistoryFilter"
+                  ToolTip.Tip="{DynamicResource Text.Repository.SubmoduleUpdateFilter.ToolTip}"
+                  IsVisible="{Binding Submodules.Count, Converter={x:Static c:IntConverters.IsGreaterThanZero}}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Path Width="12" Height="12"
+                    Fill="{DynamicResource Brush.FG2}"
+                    Data="{StaticResource Icons.Submodule}"/>
+              <TextBlock Text="{DynamicResource Text.Repository.SubmoduleUpdateFilter.Short}"/>
+              <TextBlock Foreground="{DynamicResource Brush.Accent}"
+                         FontWeight="SemiBold"
+                         Text="{Binding HistoryPathFilterCount, StringFormat='({0})'}"
+                         IsVisible="{Binding HistoryPathFilterCount, Converter={x:Static c:IntConverters.IsGreaterThanZero}}"/>
+              <Path Width="10" Height="10"
+                    Fill="{DynamicResource Brush.FG2}"
+                    Data="{StaticResource Icons.Down}"/>
+            </StackPanel>
+          </Button>
+
+          <StackPanel Grid.Column="5"
                       Margin="8,0,8,0"
                       Orientation="Horizontal"
                       HorizontalAlignment="Right"

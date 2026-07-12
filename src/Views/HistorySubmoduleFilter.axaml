@@ -1,0 +1,89 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SourceGit.ViewModels"
+             xmlns:m="using:SourceGit.Models"
+             x:Class="SourceGit.Views.HistorySubmoduleFilter"
+             x:DataType="vm:HistorySubmoduleFilter"
+             Width="360">
+  <Grid RowDefinitions="Auto,Auto,*,Auto">
+    <StackPanel Grid.Row="0"
+                Margin="12,10,12,6"
+                Orientation="Horizontal"
+                Spacing="8">
+      <Path Width="14" Height="14"
+            VerticalAlignment="Center"
+            Fill="{DynamicResource Brush.FG1}"
+            Data="{StaticResource Icons.Submodule}"/>
+      <TextBlock VerticalAlignment="Center"
+                 FontWeight="SemiBold"
+                 Text="{DynamicResource Text.Repository.SubmoduleUpdateFilter}"/>
+    </StackPanel>
+
+    <StackPanel Grid.Row="1"
+                Margin="8,0,8,6"
+                Orientation="Horizontal"
+                HorizontalAlignment="Right"
+                Spacing="4">
+      <Button Classes="flat"
+              Padding="8,2"
+              Content="{DynamicResource Text.Repository.SubmoduleUpdateFilter.SelectAll}"
+              Click="OnSelectAll"/>
+      <Button Classes="flat"
+              Padding="8,2"
+              Content="{DynamicResource Text.Repository.SubmoduleUpdateFilter.ClearSelection}"
+              Click="OnClearSelection"/>
+    </StackPanel>
+
+    <ScrollViewer Grid.Row="2"
+                  MinHeight="48"
+                  MaxHeight="320"
+                  HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto">
+      <ItemsControl Margin="8,0" ItemsSource="{Binding Items}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate DataType="vm:HistorySubmoduleFilterItem">
+            <CheckBox Margin="4,2"
+                      Padding="4,3"
+                      HorizontalContentAlignment="Stretch"
+                      IsChecked="{Binding IsSelected, Mode=TwoWay}">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0"
+                           VerticalAlignment="Center"
+                           Text="{Binding Submodule.Path}"
+                           TextTrimming="CharacterEllipsis"/>
+                <TextBlock Grid.Column="1"
+                           Margin="12,0,4,0"
+                           MaxWidth="110"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource Brush.FG2}"
+                           Text="{Binding Submodule.Branch}"
+                           TextTrimming="CharacterEllipsis"/>
+              </Grid>
+            </CheckBox>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+
+    <Border Grid.Row="3"
+            Margin="0,8,0,0"
+            Padding="8"
+            BorderThickness="0,1,0,0"
+            BorderBrush="{DynamicResource Brush.Border2}">
+      <Grid ColumnDefinitions="*,Auto">
+        <Button Grid.Column="0"
+                Classes="flat"
+                HorizontalAlignment="Left"
+                Padding="8,3"
+                Content="{DynamicResource Text.Repository.SubmoduleUpdateFilter.ClearFilter}"
+                Click="OnClearFilter"/>
+        <Button Grid.Column="1"
+                Classes="flat primary"
+                MinWidth="72"
+                Padding="12,3"
+                Content="{DynamicResource Text.Repository.SubmoduleUpdateFilter.Apply}"
+                Click="OnApply"/>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

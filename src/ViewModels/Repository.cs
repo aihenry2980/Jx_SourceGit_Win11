@@ -116,6 +116,24 @@ namespace SourceGit.ViewModels
             }
         }
 
+        public int HistoryPathFilterCount
+        {
+            get
+            {
+                if (_uiStates == null)
+                    return 0;
+
+                var count = 0;
+                foreach (var filter in _uiStates.HistoryFilters)
+                {
+                    if (filter.Type == Models.FilterType.Path && filter.Mode == Models.FilterMode.Included)
+                        count++;
+                }
+
+                return count;
+            }
+        }
+
         public bool CanFoldVisibleBranchesInGraph => _visibleFoldableBranchesCount > _visibleFoldedBranchesCount;
 
         public bool CanUnfoldBranchesInGraph => _foldedBranchFullNames.Count > 0;
@@ -1924,16 +1942,30 @@ namespace SourceGit.ViewModels
             if (string.IsNullOrWhiteSpace(path))
                 return;
 
+            SetHistoryPathFilters([path], clearExists);
+        }
+
+        public void SetHistoryPathFilters(IEnumerable<string> paths, bool clearExists = true)
+        {
             if (clearExists)
-            {
                 _uiStates.HistoryFilters.Clear();
-                HistoryFilterMode = Models.FilterMode.None;
+            else
+            {
+                for (var i = _uiStates.HistoryFilters.Count - 1; i >= 0; i--)
+                {
+                    if (_uiStates.HistoryFilters[i].Type == Models.FilterType.Path)
+                        _uiStates.HistoryFilters.RemoveAt(i);
+                }
             }
 
-            var changed = _uiStates.UpdateHistoryFilters(path, Models.FilterType.Path, Models.FilterMode.Included);
-            if (!changed && SelectedViewIndex == 0)
-                return;
+            var unique = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var path in paths)
+            {
+                if (!string.IsNullOrWhiteSpace(path) && unique.Add(path))
+                    _uiStates.UpdateHistoryFilters(path, Models.FilterType.Path, Models.FilterMode.Included);
+            }
 
+            HistoryFilterMode = _uiStates.GetHistoryFilterMode();
             SelectedViewIndex = 0;
             RefreshHistoryFilters(true);
         }
@@ -2387,7 +2419,7 @@ namespace SourceGit.ViewModels
             var hasIncludedHistoryFilters = false;
             foreach (var filter in _uiStates.HistoryFilters)
             {
-                if (filter.Mode == Models.FilterMode.Included)
+                if (filter.Type != Models.FilterType.Path && filter.Mode == Models.FilterMode.Included)
                 {
                     hasIncludedHistoryFilters = true;
                     break;
@@ -4015,6 +4047,7 @@ namespace SourceGit.ViewModels
         {
             OnPropertyChanged(nameof(IncludedHistoryFilterCount));
             OnPropertyChanged(nameof(ExcludedHistoryFilterCount));
+            OnPropertyChanged(nameof(HistoryPathFilterCount));
         }
 
         private HashSet<string> CollectVisibleFoldableBranchFullNamesInGraph()

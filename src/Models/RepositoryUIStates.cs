@@ -300,7 +300,15 @@ namespace SourceGit.Models
         public FilterMode GetHistoryFilterMode(string pattern = null)
         {
             if (string.IsNullOrEmpty(pattern))
-                return HistoryFilters.Count == 0 ? FilterMode.None : HistoryFilters[0].Mode;
+            {
+                foreach (var filter in HistoryFilters)
+                {
+                    if (filter.Type != FilterType.Path)
+                        return filter.Mode;
+                }
+
+                return FilterMode.None;
+            }
 
             foreach (var filter in HistoryFilters)
             {

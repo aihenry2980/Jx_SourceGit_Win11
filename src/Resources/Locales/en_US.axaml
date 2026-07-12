@@ -821,6 +821,14 @@
   <x:String x:Key="Text.Repository.Filter" xml:space="preserve">Search Branches/Tags/Submodules</x:String>
   <x:String x:Key="Text.Repository.FilterCommits" xml:space="preserve">Visibility in Graph</x:String>
   <x:String x:Key="Text.Repository.FilterCommits.Visible" xml:space="preserve">Visible in Graph</x:String>
+  <x:String x:Key="Text.Repository.OnlyHighlightCurrentBranchInGraph" xml:space="preserve">Highlight current branch path only (all commits remain visible)</x:String>
+  <x:String x:Key="Text.Repository.SubmoduleUpdateFilter" xml:space="preserve">Submodule Update Filter</x:String>
+  <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.Apply" xml:space="preserve">Apply</x:String>
+  <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.ClearFilter" xml:space="preserve">Clear filter</x:String>
+  <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.ClearSelection" xml:space="preserve">Clear selection</x:String>
+  <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.SelectAll" xml:space="preserve">Select all</x:String>
+  <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.Short" xml:space="preserve">SPP updates</x:String>
+  <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.ToolTip" xml:space="preserve">Show commits that update selected submodules</x:String>
   <x:String x:Key="Text.Repository.FilterCommits.Invisible" xml:space="preserve">Invisible in Graph</x:String>
   <x:String x:Key="Text.Repository.FilterCommits.Default" xml:space="preserve">Unset</x:String>
   <x:String x:Key="Text.Repository.FilterCommits.Exclude" xml:space="preserve">Hide in commit graph</x:String>

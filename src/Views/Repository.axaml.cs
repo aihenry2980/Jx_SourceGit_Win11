@@ -742,6 +742,40 @@ namespace SourceGit.Views
             OpenHistoryFiltersMenuByMode(sender, e, Models.FilterMode.Excluded, "Repository.FilterCommits.Invisible");
         }
 
+        private void OnOpenSubmoduleHistoryFilter(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button button || DataContext is not ViewModels.Repository repo)
+            {
+                e.Handled = true;
+                return;
+            }
+
+            var view = new HistorySubmoduleFilter()
+            {
+                DataContext = new ViewModels.HistorySubmoduleFilter(repo),
+            };
+            var flyout = new Flyout()
+            {
+                Content = view,
+                Placement = PlacementMode.BottomEdgeAlignedLeft,
+                VerticalOffset = -4,
+            };
+
+            view.ApplyRequested += paths =>
+            {
+                repo.SetHistoryPathFilters(paths, false);
+                flyout.Hide();
+            };
+            view.ClearFilterRequested += () =>
+            {
+                repo.SetHistoryPathFilters([], false);
+                flyout.Hide();
+            };
+
+            flyout.ShowAt(button);
+            e.Handled = true;
+        }
+
         private void OnFoldVisibleBranchesInGraph(object sender, RoutedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo)

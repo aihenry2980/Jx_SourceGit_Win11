@@ -808,6 +808,14 @@
   <x:String x:Key="Text.Repository.Filter" xml:space="preserve">快速查找分支/标签/子模块</x:String>
   <x:String x:Key="Text.Repository.FilterCommits" xml:space="preserve">设置在列表中的可见性</x:String>
   <x:String x:Key="Text.Repository.FilterCommits.Visible" xml:space="preserve">Visible in Graph</x:String>
+  <x:String x:Key="Text.Repository.OnlyHighlightCurrentBranchInGraph" xml:space="preserve">仅高亮当前分支路径（不会隐藏其他提交）</x:String>
+  <x:String x:Key="Text.Repository.SubmoduleUpdateFilter" xml:space="preserve">子模块更新过滤器</x:String>
+  <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.Apply" xml:space="preserve">应用</x:String>
+  <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.ClearFilter" xml:space="preserve">清除过滤</x:String>
+  <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.ClearSelection" xml:space="preserve">清空选择</x:String>
+  <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.SelectAll" xml:space="preserve">全选</x:String>
+  <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.Short" xml:space="preserve">SPP 更新</x:String>
+  <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.ToolTip" xml:space="preserve">只显示更新所选子模块的提交</x:String>
   <x:String x:Key="Text.Repository.FilterCommits.Invisible" xml:space="preserve">Invisible in Graph</x:String>
   <x:String x:Key="Text.Repository.FilterCommits.Default" xml:space="preserve">不指定</x:String>
   <x:String x:Key="Text.Repository.FilterCommits.Exclude" xml:space="preserve">在提交列表中隐藏</x:String>
