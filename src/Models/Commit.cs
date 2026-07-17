@@ -36,6 +36,7 @@ namespace SourceGit.Models
         public int AddedFileChangeCount { get; set; } = 0;
         public int ModifiedFileChangeCount { get; set; } = 0;
         public int SubmodulePointerChangeCount { get; set; } = 0;
+        public List<SubmoduleUpdateBadge> SubmoduleUpdateBadges { get; set; } = [];
         public bool HasRenameOrCopyChange { get; set; } = false;
         public bool HasTypeChange { get; set; } = false;
         public int Color { get; set; } = 0;
@@ -64,7 +65,6 @@ namespace SourceGit.Models
         public string AddedFileChangeBadgeText => AddedFileChangeCount.ToString();
         public string ModifiedFileChangeBadgeText => ModifiedFileChangeCount.ToString();
         public string OtherRegularFileChangeBadgeText => OtherRegularFileChangeCount == 1 ? "1 other" : $"{OtherRegularFileChangeCount} other";
-        public string SubmodulePointerChangeBadgeText => SubmodulePointerChangeCount <= 1 ? "spp" : $"{SubmodulePointerChangeCount} spp";
         public string HistoryChangeSummaryToolTip
         {
             get
@@ -82,7 +82,11 @@ namespace SourceGit.Models
                 if (OtherRegularFileChangeCount > 0)
                     AppendToolTipLine(builder, OtherRegularFileChangeCount == 1 ? "1 other regular file change" : $"{OtherRegularFileChangeCount} other regular file changes");
                 if (SubmodulePointerChangeCount > 0)
+                {
                     AppendToolTipLine(builder, SubmodulePointerChangeCount == 1 ? "1 submodule pointer change" : $"{SubmodulePointerChangeCount} submodule pointer changes");
+                    foreach (var badge in SubmoduleUpdateBadges)
+                        AppendToolTipLine(builder, $"  {badge.Path}");
+                }
                 else if (HasSubmodulePointerChange)
                     AppendToolTipLine(builder, "Contains submodule pointer change");
                 if (HasRenameOrCopyChange)

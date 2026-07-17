@@ -8,6 +8,7 @@ namespace SourceGit.ViewModels
     public class HistorySubmoduleFilterItem : ObservableObject
     {
         public Models.Submodule Submodule { get; }
+        public uint AccentColor { get; }
 
         public bool IsSelected
         {
@@ -18,6 +19,7 @@ namespace SourceGit.ViewModels
         public HistorySubmoduleFilterItem(Models.Submodule submodule, bool isSelected)
         {
             Submodule = submodule;
+            AccentColor = Models.SubmoduleUpdateBadge.ResolveAccentColor(submodule.Path);
             _isSelected = isSelected;
         }
 
@@ -39,8 +41,17 @@ namespace SourceGit.ViewModels
 
             var submodules = new List<Models.Submodule>(repo.Submodules);
             submodules.Sort((x, y) => string.Compare(x.Path, y.Path, StringComparison.Ordinal));
+            var allPaths = new HashSet<string>(StringComparer.Ordinal);
             foreach (var submodule in submodules)
+                allPaths.Add(NormalizePath(submodule.Path));
+
+            foreach (var submodule in submodules)
+            {
+                if (IsNestedSubmodule(submodule.Path, allPaths))
+                    continue;
+
                 Items.Add(new HistorySubmoduleFilterItem(submodule, selected.Contains(submodule.Path)));
+            }
         }
 
         public void SelectAll()
@@ -65,6 +76,26 @@ namespace SourceGit.ViewModels
             }
 
             return paths;
+        }
+
+        private static bool IsNestedSubmodule(string path, HashSet<string> allPaths)
+        {
+            var normalized = NormalizePath(path);
+            var separator = normalized.LastIndexOf('/');
+            while (separator > 0)
+            {
+                if (allPaths.Contains(normalized.Substring(0, separator)))
+                    return true;
+
+                separator = normalized.LastIndexOf('/', separator - 1);
+            }
+
+            return false;
+        }
+
+        private static string NormalizePath(string path)
+        {
+            return (path ?? string.Empty).Replace('\\', '/').Trim('/');
         }
     }
 }

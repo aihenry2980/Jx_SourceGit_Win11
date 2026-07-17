@@ -15,6 +15,7 @@ namespace SourceGit.Commands
         public int AddedFileChangeCount { get; set; } = 0;
         public int ModifiedFileChangeCount { get; set; } = 0;
         public int SubmodulePointerChangeCount { get; set; } = 0;
+        public List<string> SubmodulePaths { get; set; } = [];
         public bool HasRenameOrCopyChange { get; set; } = false;
         public bool HasTypeChange { get; set; } = false;
     }
@@ -75,7 +76,12 @@ namespace SourceGit.Commands
                     if (oldMode == "160000" || newMode == "160000")
                     {
                         stat.HasSubmodulePointerChange = true;
-                        stat.SubmodulePointerChangeCount++;
+                        var path = NormalizeRawPath(match.Groups[6].Value);
+                        if (!stat.SubmodulePaths.Exists(x => x.Equals(path, StringComparison.Ordinal)))
+                        {
+                            stat.SubmodulePaths.Add(path);
+                            stat.SubmodulePointerChangeCount++;
+                        }
                     }
                     else
                     {
@@ -94,6 +100,9 @@ namespace SourceGit.Commands
                 }
 
                 await proc.WaitForExitAsync().ConfigureAwait(false);
+
+                foreach (var stat in outs.Values)
+                    stat.SubmodulePaths.Sort(StringComparer.Ordinal);
             }
             catch (Exception e)
             {
@@ -101,6 +110,13 @@ namespace SourceGit.Commands
             }
 
             return outs;
+        }
+
+        private static string NormalizeRawPath(string rawPath)
+        {
+            var separator = rawPath.LastIndexOf('\t');
+            var path = separator >= 0 ? rawPath[(separator + 1)..] : rawPath;
+            return path.Trim().Trim('"');
         }
     }
 }

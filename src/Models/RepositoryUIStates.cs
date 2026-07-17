@@ -444,7 +444,10 @@ namespace SourceGit.Models
             if (mode == FilterMode.None)
                 builder.Append("--branches --remotes --tags HEAD");
             else if (mode == FilterMode.Included)
+            {
+                builder.Append("--ignore-missing ");
                 BuildHistoryParamsForIncluded(builder);
+            }
             else
                 BuildHistoryParamsForExcluded(builder, gitDir);
 

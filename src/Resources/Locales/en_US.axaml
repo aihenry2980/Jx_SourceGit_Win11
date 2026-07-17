@@ -827,6 +827,7 @@
   <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.Apply" xml:space="preserve">Apply</x:String>
   <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.ClearFilter" xml:space="preserve">Clear filter</x:String>
   <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.ClearSelection" xml:space="preserve">Clear selection</x:String>
+  <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.OnlyThis" xml:space="preserve">Only show commits that update '{0}'</x:String>
   <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.SelectAll" xml:space="preserve">Select all</x:String>
   <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.Short" xml:space="preserve">SPP updates</x:String>
   <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.ToolTip" xml:space="preserve">Show commits that update selected submodules</x:String>

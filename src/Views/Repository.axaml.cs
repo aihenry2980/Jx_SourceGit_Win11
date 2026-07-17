@@ -1409,6 +1409,26 @@ namespace SourceGit.Views
             return true;
         }
 
+        private void CommitPresetBranchSuggestion(ViewModels.Repository repo, TextBox textBox, string suggestion)
+        {
+            var changed = textBox.Name switch
+            {
+                nameof(PresetBranchExactNameInputBox) => TryCommitPresetBranchExactNameInput(repo, suggestion),
+                nameof(PresetBranchContainsPatternInputBox) => TryCommitPresetBranchContainsPatternInput(repo, suggestion),
+                nameof(PresetBranchExcludeNameInputBox) => TryCommitPresetBranchExcludeNameInput(repo, suggestion),
+                _ => false,
+            };
+
+            if (changed)
+                repo.ApplyPresetBranchFilter();
+
+            textBox.Text = string.Empty;
+            _presetBranchInputSuggestions[textBox] = [];
+            _presetBranchInputSuggestionIndexes.Remove(textBox);
+            ClosePresetBranchSuggestionMenu(textBox);
+            textBox.Focus();
+        }
+
         private bool TryAutocompletePresetBranchInput(TextBox textBox, bool handledWhenAlreadyMatched = false)
         {
             if (DataContext is not ViewModels.Repository repo)
@@ -1561,11 +1581,9 @@ namespace SourceGit.Views
                 };
                 item.Click += (_, e) =>
                 {
-                    textBox.Text = captured;
-                    textBox.CaretIndex = captured.Length;
-                    textBox.Focus();
-                    _presetBranchInputSuggestionIndexes[textBox] = idx;
-                    QueuePresetBranchInputSuggestions(textBox);
+                    if (DataContext is ViewModels.Repository repo)
+                        CommitPresetBranchSuggestion(repo, textBox, captured);
+
                     e.Handled = true;
                 };
                 menu.Items.Add(item);

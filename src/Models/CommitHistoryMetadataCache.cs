@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SourceGit.Models
@@ -17,6 +19,7 @@ namespace SourceGit.Models
         public int AddedFileChangeCount { get; set; } = 0;
         public int ModifiedFileChangeCount { get; set; } = 0;
         public int SubmodulePointerChangeCount { get; set; } = 0;
+        public List<string> SubmodulePaths { get; set; } = [];
         public bool HasRenameOrCopyChange { get; set; } = false;
         public bool HasTypeChange { get; set; } = false;
     }
@@ -83,6 +86,7 @@ namespace SourceGit.Models
                         exists.AddedFileChangeCount == metadata.AddedFileChangeCount &&
                         exists.ModifiedFileChangeCount == metadata.ModifiedFileChangeCount &&
                         exists.SubmodulePointerChangeCount == metadata.SubmodulePointerChangeCount &&
+                        (exists.SubmodulePaths ?? []).SequenceEqual(metadata.SubmodulePaths ?? [], StringComparer.Ordinal) &&
                         exists.HasRenameOrCopyChange == metadata.HasRenameOrCopyChange &&
                         exists.HasTypeChange == metadata.HasTypeChange)
                         continue;
@@ -105,28 +109,33 @@ namespace SourceGit.Models
 
         private async Task SaveAsync()
         {
-            CommitHistoryMetadataCacheData snapshot;
-            lock (_lock)
-            {
-                snapshot = new CommitHistoryMetadataCacheData()
-                {
-                    Entries = new Dictionary<string, CommitHistoryMetadata>(_data.Entries, StringComparer.Ordinal),
-                };
-            }
-
-            var content = JsonSerializer.Serialize(snapshot, JsonCodeGen.Default.CommitHistoryMetadataCacheData);
-            var hash = HashContent(content);
-            if (hash.Equals(_contentHash, StringComparison.Ordinal))
-                return;
-
+            await _saveLock.WaitAsync().ConfigureAwait(false);
             try
             {
-                await File.WriteAllTextAsync(_file, content);
+                CommitHistoryMetadataCacheData snapshot;
+                lock (_lock)
+                {
+                    snapshot = new CommitHistoryMetadataCacheData()
+                    {
+                        Entries = new Dictionary<string, CommitHistoryMetadata>(_data.Entries, StringComparer.Ordinal),
+                    };
+                }
+
+                var content = JsonSerializer.Serialize(snapshot, JsonCodeGen.Default.CommitHistoryMetadataCacheData);
+                var hash = HashContent(content);
+                if (hash.Equals(_contentHash, StringComparison.Ordinal))
+                    return;
+
+                await File.WriteAllTextAsync(_file, content).ConfigureAwait(false);
                 _contentHash = hash;
             }
             catch
             {
                 // Ignore cache save errors.
+            }
+            finally
+            {
+                _saveLock.Release();
             }
         }
 
@@ -141,8 +150,9 @@ namespace SourceGit.Models
 
         private readonly string _file = string.Empty;
         private readonly object _lock = new();
+        private readonly SemaphoreSlim _saveLock = new(1, 1);
         private readonly CommitHistoryMetadataCacheData _data = null;
         private string _contentHash = string.Empty;
-        private const int CURRENT_VERSION = 3;
+        private const int CURRENT_VERSION = 4;
     }
 }

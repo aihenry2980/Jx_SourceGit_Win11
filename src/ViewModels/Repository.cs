@@ -21,12 +21,7 @@ namespace SourceGit.ViewModels
     public partial class Repository : ObservableObject, Models.IRepository
     {
         private const int MAX_LOGS = 100;
-
-        private enum HistoryRefreshMode
-        {
-            Full,
-            FastAfterFetch,
-        }
+        private const int AUTO_COLLAPSE_HISTORY_FILTER_COUNT = 6;
 
         private class CommitHistorySnapshot
         {
@@ -658,21 +653,7 @@ namespace SourceGit.ViewModels
             }
         }
 
-        public int CurrentBranchAheadCount => CurrentBranch?.Ahead.Count ?? 0;
-
-        public int CurrentBranchBehindCount => CurrentBranch?.Behind.Count ?? 0;
-
-        public bool HasAheadStatus => CurrentBranchAheadCount > 0;
-
-        public bool HasBehindStatus => CurrentBranchBehindCount > 0;
-
-        public bool HasLocalChangesStatus => LocalChangesCount > 0;
-
         public bool HasInProgressStatus => InProgressContext != null;
-
-        public bool HasStatusStripItems => HasAheadStatus || HasBehindStatus || HasLocalChangesStatus || HasInProgressStatus;
-
-        public bool ShowCleanStatus => !HasStatusStripItems;
 
         public string HistoryQuickFindText
         {
@@ -1867,8 +1848,7 @@ namespace SourceGit.ViewModels
         public void MarkFetched()
         {
             _lastFetchTime = DateTime.Now;
-            RefreshBranches();
-            RefreshCommits(true);
+            _ = RefreshAfterFetchAsync();
         }
 
         public async Task<TimeSpan> MarkFetchedAndMeasureRefreshAsync()
@@ -1878,9 +1858,7 @@ namespace SourceGit.ViewModels
             var stopwatch = Stopwatch.StartNew();
             try
             {
-                await Task.WhenAll(
-                    RefreshBranchesAsync(),
-                    RefreshCommitsAsync(true)).ConfigureAwait(false);
+                await RefreshAfterFetchAsync().ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -1890,6 +1868,14 @@ namespace SourceGit.ViewModels
             stopwatch.Stop();
 
             return stopwatch.Elapsed;
+        }
+
+        private async Task RefreshAfterFetchAsync()
+        {
+            // A prune can invalidate refs used by active history filters. Refresh and
+            // reconcile branches before starting any command that consumes those refs.
+            await RefreshBranchesAsync().ConfigureAwait(false);
+            await RefreshCommitsAsync(true).ConfigureAwait(false);
         }
 
         public void NavigateToCommit(string sha, bool isDelayMode = false)
@@ -2327,6 +2313,7 @@ namespace SourceGit.ViewModels
                     Remotes = remotes;
                     Branches = branches;
                     CurrentBranch = branches.Find(x => x.IsCurrent);
+                    RemoveInvalidBranchHistoryFilters(branches);
                     RefreshBranchSidebarByCurrentFilters();
                     ApplyPresetBranchFilterIfNeededOnInitialLoad();
 
@@ -2337,6 +2324,68 @@ namespace SourceGit.ViewModels
                     GetOwnerPage()?.ChangeDirtyState(Models.DirtyState.HasPendingPullOrPush, !hasPendingPullOrPush);
                 });
             }, token);
+        }
+
+        private void RemoveInvalidBranchHistoryFilters(List<Models.Branch> branches)
+        {
+            if (_uiStates == null || _uiStates.HistoryFilters.Count == 0)
+                return;
+
+            var localBranches = new HashSet<string>(StringComparer.Ordinal);
+            var remoteBranches = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var branch in branches)
+            {
+                if (string.IsNullOrEmpty(branch.FullName))
+                    continue;
+
+                if (branch.IsLocal)
+                    localBranches.Add(branch.FullName);
+                else
+                    remoteBranches.Add(branch.FullName);
+            }
+
+            var changed = false;
+            for (var i = _uiStates.HistoryFilters.Count - 1; i >= 0; i--)
+            {
+                var filter = _uiStates.HistoryFilters[i];
+                var valid = filter.Type switch
+                {
+                    Models.FilterType.LocalBranch => localBranches.Contains(filter.Pattern),
+                    Models.FilterType.RemoteBranch => remoteBranches.Contains(filter.Pattern),
+                    Models.FilterType.LocalBranchFolder => HasBranchWithPrefix(localBranches, filter.Pattern),
+                    Models.FilterType.RemoteBranchFolder => HasBranchWithPrefix(remoteBranches, filter.Pattern),
+                    _ => true,
+                };
+
+                if (valid)
+                    continue;
+
+                _uiStates.HistoryFilters.RemoveAt(i);
+                changed = true;
+            }
+
+            if (!changed)
+                return;
+
+            HistoryFilterMode = _uiStates.GetHistoryFilterMode();
+            IsHistoryFiltersCollapsed = _uiStates.HistoryFilters.Count > AUTO_COLLAPSE_HISTORY_FILTER_COUNT;
+            NotifyHistoryFilterIndicatorsChanged();
+            NotifyCurrentBranchVisualChanged();
+        }
+
+        private static bool HasBranchWithPrefix(HashSet<string> branches, string prefix)
+        {
+            if (string.IsNullOrEmpty(prefix))
+                return false;
+
+            var prefixWithSeparator = $"{prefix}/";
+            foreach (var branch in branches)
+            {
+                if (branch.StartsWith(prefixWithSeparator, StringComparison.Ordinal))
+                    return true;
+            }
+
+            return false;
         }
 
         public void RefreshWorktrees()
@@ -2388,37 +2437,56 @@ namespace SourceGit.ViewModels
 
             _cancellationRefreshCommits = new CancellationTokenSource();
             var token = _cancellationRefreshCommits.Token;
-            var refreshMode = fastAfterFetch ? HistoryRefreshMode.FastAfterFetch : HistoryRefreshMode.Full;
 
             return Task.Run(async () =>
             {
-                await Dispatcher.UIThread.InvokeAsync(() =>
+                try
                 {
-                    if (_histories != null)
+                    await Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                        _histories.IsLoading = true;
-                        _histories.IsBackfilling = false;
+                        if (_histories != null)
+                        {
+                            _histories.IsLoading = true;
+                            _histories.IsBackfilling = false;
+                        }
+                    });
+
+                    var fullLimits = BuildHistoryLimits(Preferences.Instance.MaxHistoryCommits);
+                    var quickLimits = BuildQuickHistoryLimits();
+
+                    if (!string.IsNullOrEmpty(quickLimits) && !quickLimits.Equals(fullLimits, StringComparison.Ordinal))
+                    {
+                        var quickSnapshot = await QueryCommitHistorySnapshotAsync(quickLimits, false).ConfigureAwait(false);
+                        if (!token.IsCancellationRequested && quickSnapshot != null && quickSnapshot.Commits.Count > 0)
+                            await ApplyCommitHistorySnapshotAsync(quickSnapshot, token, false, true, false).ConfigureAwait(false);
                     }
-                });
 
-                var fullLimits = BuildHistoryLimits(Preferences.Instance.MaxHistoryCommits);
-                var quickLimits = refreshMode == HistoryRefreshMode.FastAfterFetch
-                    ? BuildQuickHistoryLimits()
-                    : string.Empty;
+                    if (token.IsCancellationRequested)
+                        return;
 
-                if (!string.IsNullOrEmpty(quickLimits) && !quickLimits.Equals(fullLimits, StringComparison.Ordinal))
-                {
-                    var quickSnapshot = await QueryCommitHistorySnapshotAsync(quickLimits, false).ConfigureAwait(false);
-                    if (!token.IsCancellationRequested && quickSnapshot != null && quickSnapshot.Commits.Count > 0)
-                        await ApplyCommitHistorySnapshotAsync(quickSnapshot, token, false, true, false).ConfigureAwait(false);
+                    var fullSnapshot = await QueryCommitHistorySnapshotAsync(fullLimits, true).ConfigureAwait(false);
+                    if (fullSnapshot != null)
+                        await ApplyCommitHistorySnapshotAsync(fullSnapshot, token, false, false, true).ConfigureAwait(false);
                 }
+                catch (OperationCanceledException) when (token.IsCancellationRequested)
+                {
+                    // A newer refresh owns the history view now.
+                }
+                catch (Exception e)
+                {
+                    App.RaiseException(FullPath, $"Failed to load commit history. Reason: {e.GetBaseException().Message}");
+                }
+                finally
+                {
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        if (_histories == null || _cancellationRefreshCommits?.Token != token)
+                            return;
 
-                if (token.IsCancellationRequested)
-                    return;
-
-                var fullSnapshot = await QueryCommitHistorySnapshotAsync(fullLimits, true).ConfigureAwait(false);
-                if (fullSnapshot != null)
-                    await ApplyCommitHistorySnapshotAsync(fullSnapshot, token, false, false, true).ConfigureAwait(false);
+                        _histories.IsLoading = false;
+                        _histories.IsBackfilling = false;
+                    });
+                }
             }, token);
         }
 
@@ -2481,6 +2549,7 @@ namespace SourceGit.ViewModels
                         AddedFileChangeCount = cached.AddedFileChangeCount,
                         ModifiedFileChangeCount = cached.ModifiedFileChangeCount,
                         SubmodulePointerChangeCount = cached.SubmodulePointerChangeCount,
+                        SubmodulePaths = cached.SubmodulePaths ?? [],
                         HasRenameOrCopyChange = cached.HasRenameOrCopyChange,
                         HasTypeChange = cached.HasTypeChange,
                     };
@@ -2509,6 +2578,7 @@ namespace SourceGit.ViewModels
                                 AddedFileChangeCount = stat.AddedFileChangeCount,
                                 ModifiedFileChangeCount = stat.ModifiedFileChangeCount,
                                 SubmodulePointerChangeCount = stat.SubmodulePointerChangeCount,
+                                SubmodulePaths = [.. stat.SubmodulePaths],
                                 HasRenameOrCopyChange = stat.HasRenameOrCopyChange,
                                 HasTypeChange = stat.HasTypeChange,
                             };
@@ -2541,6 +2611,11 @@ namespace SourceGit.ViewModels
                     commit.AddedFileChangeCount = stat.AddedFileChangeCount;
                     commit.ModifiedFileChangeCount = stat.ModifiedFileChangeCount;
                     commit.SubmodulePointerChangeCount = submodulePointerChangeCount;
+                    commit.SubmoduleUpdateBadges = stat.SubmodulePaths.Count > 0
+                        ? stat.SubmodulePaths.ConvertAll(path => new Models.SubmoduleUpdateBadge(path))
+                        : stat.HasSubmodulePointerChange
+                            ? [new Models.SubmoduleUpdateBadge("submodule")]
+                            : [];
                     commit.HasRenameOrCopyChange = stat.HasRenameOrCopyChange;
                     commit.HasTypeChange = stat.HasTypeChange;
                 }
@@ -2552,6 +2627,7 @@ namespace SourceGit.ViewModels
                     commit.AddedFileChangeCount = 0;
                     commit.ModifiedFileChangeCount = 0;
                     commit.SubmodulePointerChangeCount = 0;
+                    commit.SubmoduleUpdateBadges = [];
                     commit.HasRenameOrCopyChange = false;
                     commit.HasTypeChange = false;
                 }
@@ -4044,6 +4120,7 @@ namespace SourceGit.ViewModels
         {
             EnsureIncludedBranchFiltersHaveColors();
             HistoryFilterMode = _uiStates.GetHistoryFilterMode();
+            IsHistoryFiltersCollapsed = _uiStates.HistoryFilters.Count > AUTO_COLLAPSE_HISTORY_FILTER_COUNT;
             NotifyHistoryFilterIndicatorsChanged();
             NotifyCurrentBranchVisualChanged();
             if (!refresh)
@@ -4118,14 +4195,7 @@ namespace SourceGit.ViewModels
 
         private void NotifyCompactStatusChanged()
         {
-            OnPropertyChanged(nameof(CurrentBranchAheadCount));
-            OnPropertyChanged(nameof(CurrentBranchBehindCount));
-            OnPropertyChanged(nameof(HasAheadStatus));
-            OnPropertyChanged(nameof(HasBehindStatus));
-            OnPropertyChanged(nameof(HasLocalChangesStatus));
             OnPropertyChanged(nameof(HasInProgressStatus));
-            OnPropertyChanged(nameof(HasStatusStripItems));
-            OnPropertyChanged(nameof(ShowCleanStatus));
             OnPropertyChanged(nameof(InProgressStatusText));
         }
 

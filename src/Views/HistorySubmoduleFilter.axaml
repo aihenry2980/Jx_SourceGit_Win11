@@ -2,9 +2,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:SourceGit.ViewModels"
              xmlns:m="using:SourceGit.Models"
+             xmlns:c="using:SourceGit.Converters"
              x:Class="SourceGit.Views.HistorySubmoduleFilter"
              x:DataType="vm:HistorySubmoduleFilter"
-             Width="360">
+             Width="500">
   <Grid RowDefinitions="Auto,Auto,*,Auto">
     <StackPanel Grid.Row="0"
                 Margin="12,10,12,6"
@@ -39,24 +40,40 @@
                   MaxHeight="320"
                   HorizontalScrollBarVisibility="Disabled"
                   VerticalScrollBarVisibility="Auto">
-      <ItemsControl Margin="8,0" ItemsSource="{Binding Items}">
+      <ItemsControl Margin="8,0"
+                    HorizontalAlignment="Stretch"
+                    ItemsSource="{Binding Items}">
         <ItemsControl.ItemTemplate>
           <DataTemplate DataType="vm:HistorySubmoduleFilterItem">
             <CheckBox Margin="4,2"
                       Padding="4,3"
+                      HorizontalAlignment="Stretch"
                       HorizontalContentAlignment="Stretch"
                       IsChecked="{Binding IsSelected, Mode=TwoWay}">
-              <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Grid.Column="0"
-                           VerticalAlignment="Center"
-                           Text="{Binding Submodule.Path}"
-                           TextTrimming="CharacterEllipsis"/>
+              <Grid ColumnDefinitions="Auto,*,Auto">
+                <Path Grid.Column="0"
+                      Width="9"
+                      Height="9"
+                      Margin="0,0,7,0"
+                      VerticalAlignment="Center"
+                      Data="{StaticResource Icons.Submodule}"
+                      Fill="{Binding AccentColor, Converter={x:Static c:CommitConverters.UInt32ToBrush}}"/>
                 <TextBlock Grid.Column="1"
+                           VerticalAlignment="Center"
+                           Foreground="{Binding AccentColor, Converter={x:Static c:CommitConverters.UInt32ToBrush}}"
+                           FontWeight="SemiBold"
+                           Text="{Binding Submodule.Path}"
+                           TextWrapping="NoWrap"
+                           ToolTip.Tip="{Binding Submodule.Path}"
+                           TextTrimming="CharacterEllipsis"/>
+                <TextBlock Grid.Column="2"
                            Margin="12,0,4,0"
                            MaxWidth="110"
                            VerticalAlignment="Center"
                            Foreground="{DynamicResource Brush.FG2}"
                            Text="{Binding Submodule.Branch}"
+                           TextWrapping="NoWrap"
+                           ToolTip.Tip="{Binding Submodule.Branch}"
                            TextTrimming="CharacterEllipsis"/>
               </Grid>
             </CheckBox>

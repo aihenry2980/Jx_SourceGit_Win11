@@ -812,6 +812,7 @@
   <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.Apply" xml:space="preserve">套用</x:String>
   <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.ClearFilter" xml:space="preserve">清除篩選</x:String>
   <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.ClearSelection" xml:space="preserve">清空選擇</x:String>
+  <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.OnlyThis" xml:space="preserve">僅顯示更新「{0}」子模組的提交</x:String>
   <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.SelectAll" xml:space="preserve">全選</x:String>
   <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.Short" xml:space="preserve">SPP 更新</x:String>
   <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.ToolTip" xml:space="preserve">只顯示更新所選子模組的提交</x:String>

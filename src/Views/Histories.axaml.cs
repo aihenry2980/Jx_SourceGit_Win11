@@ -857,6 +857,33 @@ namespace SourceGit.Views
 
             e.Handled = true;
         }
+
+        private void OnSubmoduleUpdateBadgeContextRequested(object sender, ContextRequestedEventArgs e)
+        {
+            if (sender is not Control { DataContext: Models.SubmoduleUpdateBadge badge } control)
+                return;
+
+            var repoView = this.FindAncestorOfType<Repository>();
+            if (repoView is not { DataContext: ViewModels.Repository repo })
+                return;
+
+            var onlyThisSubmodule = new MenuItem
+            {
+                Header = App.Text("Repository.SubmoduleUpdateFilter.OnlyThis", badge.Name),
+                Icon = App.CreateMenuIcon("Icons.Submodule"),
+            };
+            onlyThisSubmodule.Click += (_, ev) =>
+            {
+                repo.SetHistoryPathFilter(badge.Path, false);
+                ev.Handled = true;
+            };
+
+            var menu = new ContextMenu();
+            menu.Items.Add(onlyThisSubmodule);
+            menu.Open(control);
+            e.Handled = true;
+        }
+
         private void OnCommitListContextRequested(object sender, ContextRequestedEventArgs e)
         {
             if (e.Source is Control { DataContext: Models.Commit })

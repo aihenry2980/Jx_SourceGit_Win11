@@ -269,27 +269,44 @@
                                    Text="{Binding OtherRegularFileChangeBadgeText}"/>
                       </Border>
 
-                      <Border Height="16"
-                              MinWidth="30"
-                              Padding="6,0"
-                              CornerRadius="8"
-                              Background="#FFB794F4"
-                              BorderBrush="#FF7C3AED"
-                              BorderThickness="1"
-                              IsVisible="{Binding HasSubmodulePointerChange}">
-                        <StackPanel Orientation="Horizontal" Spacing="4">
-                          <Path Width="8"
-                                Height="8"
-                                VerticalAlignment="Center"
-                                Data="{StaticResource Icons.Submodule}"
-                                Fill="#FF3B126C"/>
-                          <TextBlock FontSize="10"
-                                     FontWeight="Bold"
-                                     Foreground="#FF2D0A57"
-                                     VerticalAlignment="Center"
-                                     Text="{Binding SubmodulePointerChangeBadgeText}"/>
-                        </StackPanel>
-                      </Border>
+                      <ItemsControl Margin="1,0"
+                                    ItemsSource="{Binding SubmoduleUpdateBadges}"
+                                    IsVisible="{Binding HasSubmodulePointerChange}">
+                        <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="4"/>
+                          </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate DataType="m:SubmoduleUpdateBadge">
+                            <Border Height="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Converter={x:Static c:DoubleConverters.ToHistoryBadgeHeight}}"
+                                    MinWidth="30"
+                                    MaxWidth="180"
+                                    Padding="4,0"
+                                    CornerRadius="2"
+                                    Background="{Binding AccentColor, Converter={x:Static c:CommitConverters.UInt32ToSubtleBrush}}"
+                                    BorderBrush="{Binding AccentColor, Converter={x:Static c:CommitConverters.UInt32ToBrush}}"
+                                    BorderThickness="3,1,1,1"
+                                    ContextRequested="OnSubmoduleUpdateBadgeContextRequested"
+                                    ToolTip.Tip="{Binding Path}">
+                              <StackPanel Orientation="Horizontal" Spacing="4">
+                                <Path Width="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Converter={x:Static c:DoubleConverters.ToHistoryBadgeIconSize}}"
+                                      Height="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Converter={x:Static c:DoubleConverters.ToHistoryBadgeIconSize}}"
+                                      VerticalAlignment="Center"
+                                      Data="{StaticResource Icons.Submodule}"
+                                      Fill="{Binding AccentColor, Converter={x:Static c:CommitConverters.UInt32ToBrush}}"/>
+                                <TextBlock MaxWidth="150"
+                                           FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Converter={x:Static c:DoubleConverters.ToHistoryBadgeFontSize}}"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource Brush.FG1}"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding Name}"
+                                           TextTrimming="CharacterEllipsis"/>
+                              </StackPanel>
+                            </Border>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
 
                       <Border Width="16"
                               Height="16"
@@ -320,6 +337,11 @@
                                    VerticalAlignment="Center"
                                    Text="T"/>
                       </Border>
+
+                      <Border Width="1"
+                              Height="14"
+                              Margin="4,0,2,0"
+                              Background="{DynamicResource Brush.Border1}"/>
                     </StackPanel>
 
                     <v:CommitRefsPresenter Grid.Column="3"

@@ -22,6 +22,16 @@ namespace SourceGit.Converters
         public static readonly FuncValueConverter<Models.Commit, string> SHAToolTip =
             new(commit => commit?.HistoryChangeSummaryToolTip ?? string.Empty);
 
+        public static readonly FuncValueConverter<uint, IBrush> UInt32ToBrush =
+            new(value => new SolidColorBrush(Color.FromUInt32(value)));
+
+        public static readonly FuncValueConverter<uint, IBrush> UInt32ToSubtleBrush =
+            new(value =>
+            {
+                var color = Color.FromUInt32(value);
+                return new SolidColorBrush(Color.FromArgb(0x26, color.R, color.G, color.B));
+            });
+
         public static readonly FuncValueConverter<Models.Commit, IBrush> SubjectToBrush =
             new(commit =>
             {

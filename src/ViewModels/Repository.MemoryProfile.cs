@@ -299,6 +299,9 @@ namespace SourceGit.ViewModels
             bytes += MemoryProfileEstimator.EstimateListReferences(commit.Decorators);
             foreach (var decorator in commit.Decorators)
                 bytes += 48 + MemoryProfileEstimator.EstimateString(decorator?.Name);
+            bytes += MemoryProfileEstimator.EstimateListReferences(commit.SubmoduleUpdateBadges);
+            foreach (var badge in commit.SubmoduleUpdateBadges)
+                bytes += 64 + MemoryProfileEstimator.EstimateString(badge?.Path) + MemoryProfileEstimator.EstimateString(badge?.Name);
             return bytes;
         }
 
