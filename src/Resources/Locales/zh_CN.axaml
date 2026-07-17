@@ -215,7 +215,7 @@
   <x:String x:Key="Text.Configure" xml:space="preserve">仓库配置</x:String>
   <x:String x:Key="Text.Configure.CommitMessageTemplate" xml:space="preserve">提交信息模板</x:String>
   <x:String x:Key="Text.Configure.CommitMessageTemplate.BuiltinVars" xml:space="preserve">内置变量：
-  
+
   ${branch_name} 当前分支名
   ${files_num} 变更文件数量
   ${files} 变更文件路径列表
@@ -227,7 +227,7 @@
   <x:String x:Key="Text.Configure.CustomAction" xml:space="preserve">自定义操作</x:String>
   <x:String x:Key="Text.Configure.CustomAction.Arguments" xml:space="preserve">命令行参数 ：</x:String>
   <x:String x:Key="Text.Configure.CustomAction.Arguments.Tip" xml:space="preserve">内置变量：
-  
+
   ${REPO} 仓库路径
   ${REMOTE} 选中的远程仓库或选中分支所属的远程仓库
   ${BRANCH} 选中的分支，对于远程分支不包含远程名
@@ -817,9 +817,12 @@
   <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.Short" xml:space="preserve">SPP 更新</x:String>
   <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.ToolTip" xml:space="preserve">只显示更新所选子模块的提交</x:String>
   <x:String x:Key="Text.Repository.FilterCommits.Invisible" xml:space="preserve">Invisible in Graph</x:String>
+  <x:String x:Key="Text.Repository.FilterCommits.Collapse" xml:space="preserve">折叠过滤项列表</x:String>
   <x:String x:Key="Text.Repository.FilterCommits.Default" xml:space="preserve">不指定</x:String>
   <x:String x:Key="Text.Repository.FilterCommits.Exclude" xml:space="preserve">在提交列表中隐藏</x:String>
+  <x:String x:Key="Text.Repository.FilterCommits.Expand" xml:space="preserve">展开过滤项列表</x:String>
   <x:String x:Key="Text.Repository.FilterCommits.Include" xml:space="preserve">使用其对提交列表过滤</x:String>
+  <x:String x:Key="Text.Repository.FilterCommits.Summary" xml:space="preserve">个过滤项已被启用</x:String>
   <x:String x:Key="Text.Repository.HistoriesLayout" xml:space="preserve">布局方式</x:String>
   <x:String x:Key="Text.Repository.HistoriesLayout.Horizontal" xml:space="preserve">水平排布</x:String>
   <x:String x:Key="Text.Repository.HistoriesLayout.Vertical" xml:space="preserve">竖直排布</x:String>

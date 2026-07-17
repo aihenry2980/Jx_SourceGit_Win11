@@ -138,6 +138,19 @@ namespace SourceGit.ViewModels
 
         public bool CanUnfoldBranchesInGraph => _foldedBranchFullNames.Count > 0;
 
+        public bool IsHistoryFiltersCollapsed
+        {
+            get => _uiStates.IsHistoryFiltersCollapsed;
+            set
+            {
+                if (value != _uiStates.IsHistoryFiltersCollapsed)
+                {
+                    _uiStates.IsHistoryFiltersCollapsed = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         public bool HasAllowedSignersFile
         {
             get => _hasAllowedSignersFile;

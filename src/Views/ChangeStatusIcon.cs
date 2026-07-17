@@ -22,7 +22,7 @@ namespace SourceGit.Views
             Colors.Tomato,
             Colors.Orchid,
             Colors.Goldenrod,
-            Colors.LimeGreen,
+            Colors.SkyBlue,
             Colors.OrangeRed,
         ];
 

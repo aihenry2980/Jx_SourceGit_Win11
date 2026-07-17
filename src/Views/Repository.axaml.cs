@@ -742,6 +742,14 @@ namespace SourceGit.Views
             OpenHistoryFiltersMenuByMode(sender, e, Models.FilterMode.Excluded, "Repository.FilterCommits.Invisible");
         }
 
+        private void OnRemoveSelectedHistoryFilter(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo && sender is Button { DataContext: Models.HistoryFilter filter })
+                repo.RemoveHistoryFilter(filter);
+
+            e.Handled = true;
+        }
+
         private void OnOpenSubmoduleHistoryFilter(object sender, RoutedEventArgs e)
         {
             if (sender is not Button button || DataContext is not ViewModels.Repository repo)

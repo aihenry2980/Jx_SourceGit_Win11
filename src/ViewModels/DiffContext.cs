@@ -283,18 +283,18 @@ namespace SourceGit.ViewModels
             return binaryDiff;
         }
 
-        private async Task<Models.SubmoduleDiff> CreateSubmoduleDiffAsync(Models.DiffResult result)
+        private async Task<Models.SubmoduleDiff> CreateSubmoduleDiffAsync(string oldRevision, string newRevision)
         {
             var submoduleDiff = new Models.SubmoduleDiff();
             var submoduleRoot = $"{_repo}/{_option.Path}".Replace('\\', '/').TrimEnd('/');
             submoduleDiff.FullPath = submoduleRoot;
             submoduleDiff.RepositoryPath = submoduleRoot;
 
-            if (IsValidSubmoduleHash(result.OldHash))
-                submoduleDiff.Old = await QuerySubmoduleRevisionAsync(submoduleRoot, result.OldHash).ConfigureAwait(false);
+            if (IsValidSubmoduleHash(oldRevision))
+                submoduleDiff.Old = await QuerySubmoduleRevisionAsync(submoduleRoot, oldRevision).ConfigureAwait(false);
 
-            if (IsValidSubmoduleHash(result.NewHash))
-                submoduleDiff.New = await QuerySubmoduleRevisionAsync(submoduleRoot, result.NewHash).ConfigureAwait(false);
+            if (IsValidSubmoduleHash(newRevision))
+                submoduleDiff.New = await QuerySubmoduleRevisionAsync(submoduleRoot, newRevision).ConfigureAwait(false);
 
             var oldSHA = submoduleDiff.Old?.Commit?.SHA;
             var newSHA = submoduleDiff.New?.Commit?.SHA;
@@ -349,7 +349,7 @@ namespace SourceGit.ViewModels
         private async Task<object> BuildContentAsync(Models.DiffResult latest)
         {
             if (latest.IsSubmoduleChange)
-                return await CreateSubmoduleDiffAsync(latest).ConfigureAwait(false);
+                return await CreateSubmoduleDiffAsync(latest.OldHash, latest.NewHash).ConfigureAwait(false);
 
             if (latest.TextDiff != null)
                 return await BuildTextOrSubmoduleDiffAsync(latest.TextDiff).ConfigureAwait(false);

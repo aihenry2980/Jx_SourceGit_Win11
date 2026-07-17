@@ -33,7 +33,7 @@
               Click="OnGotoChild"
               HotKey="Alt+Up"
               IsVisible="False"/>
-      
+
       <v:HistoriesCommitList x:Name="CommitListContainer"
                              Classes="static_scrollbar"
                              ScrollViewer.AllowAutoHide="False"
@@ -73,7 +73,7 @@
               <Setter Property="Background" Value="{DynamicResource Brush.Contents}"/>
             </Style>
           </Style>
-          
+
           <Style Selector="DataGridColumnHeader">
             <Setter Property="MinHeight" Value="24"/>
             <Setter Property="Background" Value="Transparent"/>
@@ -439,7 +439,6 @@
           </DataGridTemplateColumn>
         </DataGrid.Columns>
       </v:HistoriesCommitList>
-
       <v:CommitGraph x:Name="CommitGraph"
                      Graph="{Binding Graph}"
                      DotBrush="{DynamicResource Brush.Contents}"

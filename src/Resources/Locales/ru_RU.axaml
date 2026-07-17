@@ -214,8 +214,8 @@
   <x:String x:Key="Text.Compare.Commits.Tips" xml:space="preserve">Подсказка: Если другая сторона является ГОЛОВОЙ (используя контекстное меню), вы можете использовать частично выбранные ревизии (cherry-pick).</x:String>
   <x:String x:Key="Text.Configure" xml:space="preserve">Настройка репозитория</x:String>
   <x:String x:Key="Text.Configure.CommitMessageTemplate" xml:space="preserve">ШАБЛОН РЕВИЗИИ</x:String>
-  <x:String x:Key="Text.Configure.CommitMessageTemplate.BuiltinVars" xml:space="preserve">Встроенные параметры: 
-  
+  <x:String x:Key="Text.Configure.CommitMessageTemplate.BuiltinVars" xml:space="preserve">Встроенные параметры:
+
   ${branch_name} Имя текущей локальной ветки
   ${files_num} Количество изменённых файлов
   ${files} Пути изменённых файлов
@@ -226,8 +226,8 @@
   <x:String x:Key="Text.Configure.CommitMessageTemplate.Name" xml:space="preserve">Название:</x:String>
   <x:String x:Key="Text.Configure.CustomAction" xml:space="preserve">ПОЛЬЗОВАТЕЛЬСКОЕ ДЕЙСТВИЕ</x:String>
   <x:String x:Key="Text.Configure.CustomAction.Arguments" xml:space="preserve">Аргументы:</x:String>
-  <x:String x:Key="Text.Configure.CustomAction.Arguments.Tip" xml:space="preserve">Встроенные параметры: 
-  
+  <x:String x:Key="Text.Configure.CustomAction.Arguments.Tip" xml:space="preserve">Встроенные параметры:
+
   ${REPO} Путь репозитория
   ${REMOTE} Выбранная удаённая ветка
   ${BRANCH} Выбранная ветка, без ${REMOTE} удалённых веток
