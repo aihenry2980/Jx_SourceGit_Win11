@@ -68,33 +68,22 @@ namespace SourceGit.ViewModels
 
         public void AppendLine(string line = null)
         {
-            if (!Dispatcher.UIThread.CheckAccess())
+            var shouldScheduleFlush = false;
+            lock (_pendingLock)
             {
-                Dispatcher.UIThread.Invoke(() => AppendLine(line));
-            }
-            else
-            {
-                if (IsComplete || _builder == null)
+                if (!_acceptingLines)
                     return;
 
-                var newline = line ?? string.Empty;
-                _builder.AppendLine(newline);
-                var wasTruncated = TrimContentIfNeeded();
-                var latestCommand = ExtractCommandLine(newline);
-                if (!string.IsNullOrEmpty(latestCommand))
+                _pendingLines.Add(line ?? string.Empty);
+                if (!_flushScheduled)
                 {
-                    LatestCommand = latestCommand;
-                    OnPropertyChanged(nameof(LatestCommand));
-                }
-
-                foreach (var receiver in _receivers.ToArray())
-                {
-                    if (wasTruncated)
-                        receiver.OnResetCommandLog(_builder.ToString());
-                    else
-                        receiver.OnReceiveCommandLog(newline);
+                    _flushScheduled = true;
+                    shouldScheduleFlush = true;
                 }
             }
+
+            if (shouldScheduleFlush)
+                Dispatcher.UIThread.Post(FlushPendingLines, DispatcherPriority.Background);
         }
 
         public void Complete()
@@ -105,6 +94,15 @@ namespace SourceGit.ViewModels
                 return;
             }
 
+            List<string> pending;
+            lock (_pendingLock)
+            {
+                _acceptingLines = false;
+                pending = TakePendingLines();
+                _flushScheduled = false;
+            }
+
+            ApplyPendingLines(pending);
             IsComplete = true;
             EndTime = DateTime.Now;
 
@@ -119,6 +117,63 @@ namespace SourceGit.ViewModels
         private string _content = string.Empty;
         private StringBuilder _builder = new StringBuilder();
         private List<Models.ICommandLogReceiver> _receivers = new List<Models.ICommandLogReceiver>();
+        private readonly object _pendingLock = new object();
+        private readonly List<string> _pendingLines = new List<string>();
+        private bool _flushScheduled = false;
+        private bool _acceptingLines = true;
+
+        private void FlushPendingLines()
+        {
+            List<string> pending;
+            lock (_pendingLock)
+            {
+                pending = TakePendingLines();
+                _flushScheduled = false;
+            }
+
+            ApplyPendingLines(pending);
+        }
+
+        private List<string> TakePendingLines()
+        {
+            if (_pendingLines.Count == 0)
+                return null;
+
+            var pending = new List<string>(_pendingLines);
+            _pendingLines.Clear();
+            return pending;
+        }
+
+        private void ApplyPendingLines(List<string> lines)
+        {
+            if (lines == null || lines.Count == 0 || IsComplete || _builder == null)
+                return;
+
+            var latestCommand = string.Empty;
+            foreach (var line in lines)
+            {
+                _builder.AppendLine(line);
+                var command = ExtractCommandLine(line);
+                if (!string.IsNullOrEmpty(command))
+                    latestCommand = command;
+            }
+
+            var wasTruncated = TrimContentIfNeeded();
+            if (!string.IsNullOrEmpty(latestCommand))
+            {
+                LatestCommand = latestCommand;
+                OnPropertyChanged(nameof(LatestCommand));
+            }
+
+            var batch = string.Join(Environment.NewLine, lines);
+            foreach (var receiver in _receivers.ToArray())
+            {
+                if (wasTruncated)
+                    receiver.OnResetCommandLog(_builder.ToString());
+                else
+                    receiver.OnReceiveCommandLog(batch);
+            }
+        }
 
         private bool TrimContentIfNeeded()
         {

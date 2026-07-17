@@ -16,13 +16,13 @@ namespace SourceGit.Converters
             new FuncValueConverter<double, double>(v => Math.Max(48.0, v - 4.0));
 
         public static readonly FuncValueConverter<double, double> ToHistoryBadgeFontSize =
-            new FuncValueConverter<double, double>(v => Math.Max(10.0, v - 2.0));
+            new FuncValueConverter<double, double>(v => Math.Max(9.0, v - 3.0));
 
         public static readonly FuncValueConverter<double, double> ToHistoryBadgeHeight =
-            new FuncValueConverter<double, double>(v => Math.Max(17.0, v + 4.0));
+            new FuncValueConverter<double, double>(v => Math.Max(15.0, v + 2.0));
 
         public static readonly FuncValueConverter<double, double> ToHistoryBadgeIconSize =
-            new FuncValueConverter<double, double>(v => Math.Max(8.0, v * 0.65));
+            new FuncValueConverter<double, double>(v => Math.Max(7.0, v * 0.55));
 
         public static readonly FuncValueConverter<double, string> ToPercentage =
             new FuncValueConverter<double, string>(v => (v * 100).ToString("F0") + "%");

@@ -103,6 +103,12 @@ namespace SourceGit.Models
             set;
         } = string.Empty;
 
+        public string SubmoduleUpdateBadgeColors
+        {
+            get;
+            set;
+        } = string.Empty;
+
         public int PreferredGitIgnoreStorageKind
         {
             get;
@@ -282,6 +288,31 @@ namespace SourceGit.Models
                 return false;
 
             PresetBranchExactNameColors = next;
+            return true;
+        }
+
+        public Dictionary<string, uint> GetSubmoduleUpdateBadgeColorMap()
+        {
+            return ParsePresetBranchRuleColors(SubmoduleUpdateBadgeColors);
+        }
+
+        public bool SetSubmoduleUpdateBadgeColor(string path, uint? color)
+        {
+            var normalized = (path ?? string.Empty).Replace('\\', '/').Trim('/');
+            if (string.IsNullOrEmpty(normalized))
+                return false;
+
+            var colors = ParsePresetBranchRuleColors(SubmoduleUpdateBadgeColors);
+            if (color.HasValue)
+                colors[normalized] = color.Value;
+            else
+                colors.Remove(normalized);
+
+            var next = SerializePresetBranchRuleColors(colors);
+            if (next.Equals(SubmoduleUpdateBadgeColors, StringComparison.Ordinal))
+                return false;
+
+            SubmoduleUpdateBadgeColors = next;
             return true;
         }
 

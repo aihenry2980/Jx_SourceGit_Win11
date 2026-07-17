@@ -44,6 +44,11 @@ namespace SourceGit.Views
             set => SetValue(ForegroundProperty, value);
         }
 
+        static NameHighlightedTextBlock()
+        {
+            AffectsRender<NameHighlightedTextBlock>(ForegroundProperty);
+        }
+
         public override void Render(DrawingContext context)
         {
             var text = Text;

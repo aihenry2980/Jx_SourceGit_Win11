@@ -36,7 +36,11 @@ namespace SourceGit.Models
         public int AddedFileChangeCount { get; set; } = 0;
         public int ModifiedFileChangeCount { get; set; } = 0;
         public int SubmodulePointerChangeCount { get; set; } = 0;
-        public List<SubmoduleUpdateBadge> SubmoduleUpdateBadges { get; set; } = [];
+        public List<SubmoduleUpdateBadge> SubmoduleUpdateBadges
+        {
+            get => _submoduleUpdateBadges;
+            set => SetProperty(ref _submoduleUpdateBadges, value);
+        }
         public bool HasRenameOrCopyChange { get; set; } = false;
         public bool HasTypeChange { get; set; } = false;
         public int Color { get; set; } = 0;
@@ -297,6 +301,7 @@ namespace SourceGit.Models
         }
 
         private bool _isHighlightedInGraph = false;
+        private List<SubmoduleUpdateBadge> _submoduleUpdateBadges = [];
     }
 
     public class CommitFullMessage

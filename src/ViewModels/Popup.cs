@@ -33,9 +33,9 @@ namespace SourceGit.ViewModels
 
         public void OnReceiveCommandLog(string data)
         {
-            var desc = data.Trim();
-            if (!string.IsNullOrEmpty(desc))
-                ProgressDescription = desc;
+            var lines = data?.Split(['\r', '\n'], System.StringSplitOptions.RemoveEmptyEntries);
+            if (lines is { Length: > 0 })
+                ProgressDescription = lines[^1].Trim();
         }
 
         public void OnResetCommandLog(string content)

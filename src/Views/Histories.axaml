@@ -164,7 +164,7 @@
 
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate DataType="m:Commit">
-                <Border Padding="8,0,0,0" Background="Transparent" ClipToBounds="True">
+                <Border Classes="commit_sha_cell" Padding="8,0,0,0" Background="Transparent" ClipToBounds="True">
                   <v:CommitSubjectPresenter Subject="{Binding SHA, Converter={x:Static c:StringConverters.ToShortSHA5}}"
                                             HighlightText="{Binding $parent[v:Repository].((vm:Repository)DataContext).HistoryQuickFindAppliedText}"
                                             FontFamily="{DynamicResource Fonts.Monospace}"
@@ -279,17 +279,15 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                           <DataTemplate DataType="m:SubmoduleUpdateBadge">
-                            <Border Height="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Converter={x:Static c:DoubleConverters.ToHistoryBadgeHeight}}"
-                                    MinWidth="30"
-                                    MaxWidth="180"
-                                    Padding="4,0"
-                                    CornerRadius="2"
-                                    Background="{Binding AccentColor, Converter={x:Static c:CommitConverters.UInt32ToSubtleBrush}}"
-                                    BorderBrush="{Binding AccentColor, Converter={x:Static c:CommitConverters.UInt32ToBrush}}"
-                                    BorderThickness="3,1,1,1"
-                                    ContextRequested="OnSubmoduleUpdateBadgeContextRequested"
-                                    ToolTip.Tip="{Binding Path}">
-                              <StackPanel Orientation="Horizontal" Spacing="4">
+                            <Grid Height="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Converter={x:Static c:DoubleConverters.ToHistoryBadgeHeight}}"
+                                  MinWidth="28"
+                                  MaxWidth="180"
+                                  ClipToBounds="True"
+                                  ContextRequested="OnSubmoduleUpdateBadgeContextRequested"
+                                  ToolTip.Tip="{Binding Path}">
+                              <v:SubmoduleUpdateBadgeShape AccentColor="{Binding AccentColor}"
+                                                           IsHitTestVisible="False"/>
+                              <StackPanel Margin="10,0,5,0" Orientation="Horizontal" Spacing="3">
                                 <Path Width="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Converter={x:Static c:DoubleConverters.ToHistoryBadgeIconSize}}"
                                       Height="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Converter={x:Static c:DoubleConverters.ToHistoryBadgeIconSize}}"
                                       VerticalAlignment="Center"
@@ -297,13 +295,13 @@
                                       Fill="{Binding AccentColor, Converter={x:Static c:CommitConverters.UInt32ToBrush}}"/>
                                 <TextBlock MaxWidth="150"
                                            FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Converter={x:Static c:DoubleConverters.ToHistoryBadgeFontSize}}"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource Brush.FG1}"
+                                           FontWeight="Bold"
+                                           Foreground="{Binding AccentColor, Converter={x:Static c:CommitConverters.UInt32ToBrush}}"
                                            VerticalAlignment="Center"
                                            Text="{Binding Name}"
                                            TextTrimming="CharacterEllipsis"/>
                               </StackPanel>
-                            </Border>
+                            </Grid>
                           </DataTemplate>
                         </ItemsControl.ItemTemplate>
                       </ItemsControl>

@@ -16,10 +16,10 @@ namespace SourceGit.ViewModels
             set => SetProperty(ref _isSelected, value);
         }
 
-        public HistorySubmoduleFilterItem(Models.Submodule submodule, bool isSelected)
+        public HistorySubmoduleFilterItem(Models.Submodule submodule, bool isSelected, uint accentColor)
         {
             Submodule = submodule;
-            AccentColor = Models.SubmoduleUpdateBadge.ResolveAccentColor(submodule.Path);
+            AccentColor = accentColor;
             _isSelected = isSelected;
         }
 
@@ -50,7 +50,10 @@ namespace SourceGit.ViewModels
                 if (IsNestedSubmodule(submodule.Path, allPaths))
                     continue;
 
-                Items.Add(new HistorySubmoduleFilterItem(submodule, selected.Contains(submodule.Path)));
+                Items.Add(new HistorySubmoduleFilterItem(
+                    submodule,
+                    selected.Contains(submodule.Path),
+                    repo.ResolveSubmoduleUpdateBadgeColor(submodule.Path)));
             }
         }
 

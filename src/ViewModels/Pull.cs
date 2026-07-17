@@ -197,7 +197,7 @@ namespace SourceGit.ViewModels
                     return false;
             }
 
-            _repo.RefreshWorkingCopyChanges();
+            await _repo.RefreshAfterPullAsync().ConfigureAwait(false);
             return true;
         }
 
@@ -284,9 +284,6 @@ namespace SourceGit.ViewModels
                 return null;
             }
 
-            _repo.RefreshBranches();
-            _repo.RefreshCommits(true);
-            _repo.RefreshWorkingCopyChanges();
             log?.AppendLine("Quick pull path completed.");
             log?.AppendLine(string.Empty);
             return true;

@@ -880,6 +880,52 @@ namespace SourceGit.Views
 
             var menu = new ContextMenu();
             menu.Items.Add(onlyThisSubmodule);
+            menu.Items.Add(new MenuItem() { Header = "-" });
+
+            var colorMenu = new MenuItem
+            {
+                Header = "Badge color",
+                Icon = App.CreateMenuIcon("Icons.ColorPicker"),
+            };
+            var configuredColor = repo.GetConfiguredSubmoduleUpdateBadgeColor(badge.Path);
+            var automatic = new MenuItem
+            {
+                Header = "Automatic",
+            };
+            if (!configuredColor.HasValue)
+                automatic.Icon = App.CreateMenuIcon("Icons.Check");
+            automatic.Click += (_, ev) =>
+            {
+                repo.SetSubmoduleUpdateBadgeColor(badge.Path, null);
+                ev.Handled = true;
+            };
+            colorMenu.Items.Add(automatic);
+            colorMenu.Items.Add(new MenuItem() { Header = "-" });
+
+            var colorNames = new[]
+            {
+                "Teal", "Blue", "Violet", "Magenta", "Crimson", "Orange",
+                "Green", "Cyan", "Indigo", "Pink", "Brown", "Olive",
+            };
+            var palette = Models.SubmoduleUpdateBadge.ColorPalette;
+            for (var i = 0; i < palette.Count; i++)
+            {
+                var color = palette[i];
+                var colorItem = new MenuItem
+                {
+                    Header = BuildSubmoduleColorOptionHeader(colorNames[i], color),
+                };
+                if (configuredColor == color)
+                    colorItem.Icon = App.CreateMenuIcon("Icons.Check");
+                colorItem.Click += (_, ev) =>
+                {
+                    repo.SetSubmoduleUpdateBadgeColor(badge.Path, color);
+                    ev.Handled = true;
+                };
+                colorMenu.Items.Add(colorItem);
+            }
+
+            menu.Items.Add(colorMenu);
             menu.Open(control);
             e.Handled = true;
         }
@@ -910,7 +956,7 @@ namespace SourceGit.Views
                 }
                 else if (selected.Count == 1)
                 {
-                    var menu = CreateContextMenuForSingleCommit(repo, commits[0]);
+                    var menu = CreateContextMenuForSingleCommit(repo, commits[0], IsCommitSHAContextSource(e.Source));
                     menu.Open(CommitListContainer);
                 }
             }
@@ -1241,7 +1287,7 @@ namespace SourceGit.Views
             return menu;
         }
 
-        private ContextMenu CreateContextMenuForSingleCommit(ViewModels.Repository repo, Models.Commit commit)
+        private ContextMenu CreateContextMenuForSingleCommit(ViewModels.Repository repo, Models.Commit commit, bool copySHAAtTop)
         {
             var current = repo.CurrentBranch;
             var vm = DataContext as ViewModels.Histories;
@@ -1251,6 +1297,20 @@ namespace SourceGit.Views
             var menu = new ContextMenu();
             var tags = new List<Models.Tag>();
             var isHead = commit.IsCurrentHead;
+
+            var copySHA = new MenuItem();
+            copySHA.Header = App.Text("SHALinkCM.CopySHA");
+            copySHA.Icon = App.CreateMenuIcon("Icons.Hash");
+            copySHA.Click += async (_, e) =>
+            {
+                await App.CopyTextAsync(commit.SHA);
+                e.Handled = true;
+            };
+            if (copySHAAtTop)
+            {
+                menu.Items.Add(copySHA);
+                menu.Items.Add(new MenuItem() { Header = "-" });
+            }
 
             if (commit.HasDecorators)
             {
@@ -1666,15 +1726,6 @@ namespace SourceGit.Views
                 e.Handled = true;
             };
 
-            var copySHA = new MenuItem();
-            copySHA.Header = App.Text("CommitCM.CopySHA");
-            copySHA.Icon = App.CreateMenuIcon("Icons.Hash");
-            copySHA.Click += async (_, e) =>
-            {
-                await App.CopyTextAsync(commit.SHA);
-                e.Handled = true;
-            };
-
             var copySubject = new MenuItem();
             copySubject.Header = App.Text("CommitCM.CopySubject");
             copySubject.Icon = App.CreateMenuIcon("Icons.Subject");
@@ -1717,7 +1768,8 @@ namespace SourceGit.Views
             copy.Icon = App.CreateMenuIcon("Icons.Copy");
             copy.Items.Add(copyInfo);
             copy.Items.Add(new MenuItem() { Header = "-" });
-            copy.Items.Add(copySHA);
+            if (!copySHAAtTop)
+                copy.Items.Add(copySHA);
             copy.Items.Add(copySubject);
             copy.Items.Add(copyMessage);
             copy.Items.Add(copyAuthor);
@@ -1727,9 +1779,45 @@ namespace SourceGit.Views
             return menu;
         }
 
+        private static bool IsCommitSHAContextSource(object source)
+        {
+            var visual = source as Visual;
+            while (visual != null && visual is not DataGridRow)
+            {
+                if (visual is Control control && control.Classes.Contains("commit_sha_cell"))
+                    return true;
+
+                visual = visual.GetVisualParent();
+            }
+
+            return false;
+        }
+
+        private static StackPanel BuildSubmoduleColorOptionHeader(string name, uint color)
+        {
+            var panel = new StackPanel
+            {
+                Orientation = Avalonia.Layout.Orientation.Horizontal,
+                Spacing = 8,
+            };
+            panel.Children.Add(new Border
+            {
+                Width = 10,
+                Height = 10,
+                CornerRadius = new CornerRadius(5),
+                BorderThickness = new Thickness(1),
+                BorderBrush = Brushes.Gray,
+                Background = new SolidColorBrush(Color.FromUInt32(color)),
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+            });
+            panel.Children.Add(new TextBlock { Text = name });
+            return panel;
+        }
+
         private void FillCurrentBranchMenu(ContextMenu menu, ViewModels.Repository repo, Models.Branch current, uint decoratorColor, int commitColorIndex)
         {
             var submenu = new MenuItem();
+            submenu.Classes.Add("branch_action");
             submenu.Icon = App.CreateMenuIcon("Icons.Branch");
             submenu.Header = current.Name;
             var graphColor = GetCommitGraphColor(commitColorIndex);
@@ -1823,7 +1911,6 @@ namespace SourceGit.Views
             submenu.Items.Add(undoLastRebase);
             menu.Items.Add(submenu);
             AddLevel1BranchFilterModeMenuItem(menu, filterModeVm, actionBackground);
-            AddLevel1ExcludeBranchMenuItem(menu, repo, current.Name, actionBackground);
             AddLevel1PushBranchMenuItem(menu, repo, current, actionBackground);
             AddLevel1ForcePushBranchMenuItem(menu, repo, current, actionBackground);
             AddLevel1CopyBranchNameMenuItem(menu, current.Name, actionBackground);
@@ -1835,6 +1922,7 @@ namespace SourceGit.Views
                 return;
 
             var submenu = new MenuItem();
+            submenu.Classes.Add("branch_action");
             submenu.Icon = App.CreateMenuIcon("Icons.Branch");
             submenu.Header = branch.Name;
             var graphColor = GetCommitGraphColor(commitColorIndex);
@@ -1948,7 +2036,6 @@ namespace SourceGit.Views
             menu.Items.Add(submenu);
             AddLevel1BranchFilterModeMenuItem(menu, filterModeVm, actionBackground);
             AddLevel1CheckoutBranchMenuItem(menu, repo, branch, branch.Name, actionBackground);
-            AddLevel1ExcludeBranchMenuItem(menu, repo, branch.Name, actionBackground);
             AddLevel1PushBranchMenuItem(menu, repo, branch, actionBackground);
             AddLevel1ForcePushBranchMenuItem(menu, repo, branch, actionBackground);
             AddLevel1CopyBranchNameMenuItem(menu, branch.Name, actionBackground);
@@ -1963,6 +2050,7 @@ namespace SourceGit.Views
             var remoteIndent = new Thickness(18, 0, 0, 0);
 
             var submenu = new MenuItem();
+            submenu.Classes.Add("branch_action");
             submenu.Icon = App.CreateMenuIcon("Icons.Branch");
             submenu.Header = name;
             submenu.Margin = remoteIndent;
@@ -2010,7 +2098,6 @@ namespace SourceGit.Views
             menu.Items.Add(submenu);
             AddLevel1BranchFilterModeMenuItem(menu, filterModeVm, actionBackground, remoteIndent);
             AddLevel1CheckoutBranchMenuItem(menu, repo, branch, name, actionBackground, remoteIndent);
-            AddLevel1ExcludeBranchMenuItem(menu, repo, branch.Name, actionBackground, remoteIndent);
             AddLevel1CopyBranchNameMenuItem(menu, name, actionBackground, remoteIndent);
         }
 
@@ -2028,6 +2115,7 @@ namespace SourceGit.Views
         private static void AddLevel1CheckoutBranchMenuItem(ContextMenu menu, ViewModels.Repository repo, Models.Branch branch, string displayName, IBrush background, Thickness? margin = null)
         {
             var checkout = new MenuItem();
+            checkout.Classes.Add("branch_action");
             checkout.Header = App.Text("BranchCM.Checkout", displayName);
             checkout.Icon = App.CreateMenuIcon("Icons.Check");
             checkout.IsEnabled = !repo.IsBare;
@@ -2042,25 +2130,10 @@ namespace SourceGit.Views
             menu.Items.Add(checkout);
         }
 
-        private static void AddLevel1ExcludeBranchMenuItem(ContextMenu menu, ViewModels.Repository repo, string branchName, IBrush background, Thickness? margin = null)
-        {
-            var exclude = new MenuItem();
-            exclude.Header = App.Text("Repository.BranchesVisibility.ExcludeThisBranch");
-            exclude.Icon = App.CreateMenuIcon("Icons.Filter");
-            exclude.Background = background;
-            if (margin.HasValue)
-                exclude.Margin = margin.Value;
-            exclude.Click += (_, e) =>
-            {
-                repo.ExcludeBranchInPresetFilter(branchName);
-                e.Handled = true;
-            };
-            menu.Items.Add(exclude);
-        }
-
         private static void AddLevel1PushBranchMenuItem(ContextMenu menu, ViewModels.Repository repo, Models.Branch branch, IBrush background)
         {
             var push = new MenuItem();
+            push.Classes.Add("branch_action");
             push.Header = App.Text("BranchCM.Push", branch.Name);
             push.Icon = App.CreateMenuIcon("Icons.Push");
             push.IsEnabled = repo.Remotes.Count > 0;
@@ -2078,12 +2151,10 @@ namespace SourceGit.Views
         {
             var accent = new SolidColorBrush(Color.Parse("#C62828"));
             var forcePush = new MenuItem();
-            forcePush.Header = new TextBlock()
-            {
-                Text = $"Force Push {branch.Name}",
-                FontWeight = FontWeight.Bold,
-                Foreground = accent,
-            };
+            forcePush.Classes.Add("branch_action");
+            forcePush.Header = $"Force Push {branch.Name}";
+            forcePush.FontWeight = FontWeight.Bold;
+            forcePush.Foreground = accent;
             forcePush.Icon = App.CreateMenuIcon("Icons.Push");
             forcePush.IsEnabled = repo.Remotes.Count > 0;
             forcePush.Background = background;
@@ -2126,6 +2197,7 @@ namespace SourceGit.Views
         private static void AddLevel1CopyBranchNameMenuItem(ContextMenu menu, string branchName, IBrush background, Thickness? margin = null)
         {
             var copy = new MenuItem();
+            copy.Classes.Add("branch_action");
             copy.Header = App.Text("BranchCM.CopyName");
             copy.Icon = App.CreateMenuIcon("Icons.Copy");
             copy.Background = background;

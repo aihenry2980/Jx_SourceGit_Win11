@@ -446,8 +446,56 @@ namespace SourceGit.ViewModels
             private set
             {
                 if (SetProperty(ref _submodules, value))
+                {
+                    var paths = value.ConvertAll(x => x.Path);
+                    var colors = BuildSubmoduleUpdateBadgeColorMap(paths);
+                    var colorsChanged = !AreSubmoduleColorMapsEqual(_submoduleUpdateBadgeColors, colors);
+                    _submoduleUpdateBadgeColors = colors;
                     OnPropertyChanged(nameof(SubmodulesHeaderCountText));
+
+                    if (colorsChanged && _histories?.Commits.Count > 0)
+                        RefreshCommits();
+                }
             }
+        }
+
+        public uint ResolveSubmoduleUpdateBadgeColor(string path)
+        {
+            return Models.SubmoduleUpdateBadge.ResolveAccentColor(path, _submoduleUpdateBadgeColors);
+        }
+
+        public uint? GetConfiguredSubmoduleUpdateBadgeColor(string path)
+        {
+            var normalized = NormalizeSubmodulePath(path);
+            var configured = _settings?.GetSubmoduleUpdateBadgeColorMap();
+            return configured != null && configured.TryGetValue(normalized, out var color) ? color : null;
+        }
+
+        public void SetSubmoduleUpdateBadgeColor(string path, uint? color)
+        {
+            if (_settings == null || !_settings.SetSubmoduleUpdateBadgeColor(path, color))
+                return;
+
+            var paths = _submodules.ConvertAll(x => x.Path);
+            var colors = new Dictionary<string, uint>(BuildSubmoduleUpdateBadgeColorMap(paths), StringComparer.Ordinal);
+            var normalized = NormalizeSubmodulePath(path);
+            if (color.HasValue && !colors.ContainsKey(normalized))
+                colors[normalized] = color.Value;
+
+            _submoduleUpdateBadgeColors = colors;
+            if (_histories != null)
+            {
+                foreach (var commit in _histories.Commits)
+                {
+                    if (commit.SubmoduleUpdateBadges.Count == 0)
+                        continue;
+
+                    commit.SubmoduleUpdateBadges = commit.SubmoduleUpdateBadges.ConvertAll(
+                        badge => new Models.SubmoduleUpdateBadge(badge.Path, ResolveSubmoduleUpdateBadgeColor(badge.Path)));
+                }
+            }
+
+            _ = _settings.SaveAsync();
         }
 
         public bool IsSubmodulesLoading
@@ -1017,6 +1065,7 @@ namespace SourceGit.ViewModels
             _tags.Clear();
             _visibleTags = null;
             _submodules.Clear();
+            _submoduleUpdateBadgeColors = new Dictionary<string, uint>(StringComparer.Ordinal);
             _visibleSubmodules = null;
             _presetBranchExactColorItems.Clear();
         }
@@ -1227,14 +1276,25 @@ namespace SourceGit.ViewModels
             AutoBackgroundOperationText = operationName;
             IsQuickFetching = true;
             var gitStopwatch = Stopwatch.StartNew();
+            using var lockWatcher = LockWatcher();
+            var sawRefStatus = 0;
+            var refsChanged = 0;
 
             try
             {
-                succ = await (onlyFilteredBranches
-                        ? new Commands.Fetch(FullPath, remote, true, false, false, false, refspecs)
-                        : new Commands.Fetch(FullPath, remote, true, false))
-                    .Use(log)
-                    .RunAsync();
+                var fetch = onlyFilteredBranches
+                    ? new Commands.Fetch(FullPath, remote, true, false, false, false, refspecs)
+                    : new Commands.Fetch(FullPath, remote, true, false);
+                fetch.OnOutputLine = line =>
+                {
+                    if (!IsFetchRefStatusLine(line, out var changed))
+                        return;
+
+                    Interlocked.Exchange(ref sawRefStatus, 1);
+                    if (changed)
+                        Interlocked.Exchange(ref refsChanged, 1);
+                };
+                succ = await fetch.Use(log).RunAsync();
             }
             finally
             {
@@ -1245,7 +1305,18 @@ namespace SourceGit.ViewModels
 
             if (succ)
             {
-                var refreshDuration = await MarkFetchedAndMeasureRefreshAsync();
+                TimeSpan refreshDuration;
+                if (sawRefStatus != 0 && refsChanged == 0)
+                {
+                    _lastFetchTime = DateTime.Now;
+                    _watcher?.MarkBranchUpdated();
+                    refreshDuration = TimeSpan.Zero;
+                }
+                else
+                {
+                    refreshDuration = await MarkFetchedAndMeasureRefreshAsync();
+                }
+
                 ShowFetchDurationToast(gitStopwatch.Elapsed, refreshDuration);
             }
             else
@@ -1508,21 +1579,6 @@ namespace SourceGit.ViewModels
             _foldedBranchFullNames.Clear();
             NotifyFoldControlsChanged();
             RefreshCommits();
-        }
-
-        public void ExcludeBranchInPresetFilter(string name)
-        {
-            if (_settings == null || string.IsNullOrWhiteSpace(name))
-                return;
-
-            if (_settings.AddPresetBranchExcludeName(name))
-            {
-                OnPropertyChanged(nameof(PresetBranchExcludeNames));
-                OnPropertyChanged(nameof(PresetBranchFilterSummary));
-                SavePresetBranchFilterSettingsAsync();
-            }
-
-            ApplyPresetBranchFilter();
         }
 
         public void UpdatePresetBranchExactNameColor(string name, uint color)
@@ -1845,20 +1901,20 @@ namespace SourceGit.ViewModels
             RefreshSubmodules(true);
         }
 
-        public void MarkFetched()
+        public void MarkFetched(bool refsMayBeDeleted = false)
         {
             _lastFetchTime = DateTime.Now;
-            _ = RefreshAfterFetchAsync();
+            _ = RefreshAfterFetchAsync(refsMayBeDeleted);
         }
 
-        public async Task<TimeSpan> MarkFetchedAndMeasureRefreshAsync()
+        public async Task<TimeSpan> MarkFetchedAndMeasureRefreshAsync(bool refsMayBeDeleted = false)
         {
             _lastFetchTime = DateTime.Now;
 
             var stopwatch = Stopwatch.StartNew();
             try
             {
-                await RefreshAfterFetchAsync().ConfigureAwait(false);
+                await RefreshAfterFetchAsync(refsMayBeDeleted).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -1870,12 +1926,33 @@ namespace SourceGit.ViewModels
             return stopwatch.Elapsed;
         }
 
-        private async Task RefreshAfterFetchAsync()
+        private async Task RefreshAfterFetchAsync(bool refsMayBeDeleted)
         {
-            // A prune can invalidate refs used by active history filters. Refresh and
-            // reconcile branches before starting any command that consumes those refs.
-            await RefreshBranchesAsync().ConfigureAwait(false);
-            await RefreshCommitsAsync(true).ConfigureAwait(false);
+            if (refsMayBeDeleted)
+            {
+                // A prune can invalidate refs used by active history filters. Reconcile
+                // branches before starting any command that consumes those refs.
+                await RefreshBranchesAsync().ConfigureAwait(false);
+                await RefreshCommitsAsync(true).ConfigureAwait(false);
+            }
+            else
+            {
+                await Task.WhenAll(
+                    RefreshBranchesAsync(),
+                    RefreshCommitsAsync(true)).ConfigureAwait(false);
+            }
+
+            _watcher?.MarkBranchUpdated();
+        }
+
+        public async Task RefreshAfterPullAsync()
+        {
+            await Task.WhenAll(
+                RefreshBranchesAsync(),
+                RefreshCommitsAsync(true),
+                RefreshWorkingCopyChangesAsync(false)).ConfigureAwait(false);
+            _watcher?.MarkBranchUpdated();
+            _watcher?.MarkWorkingCopyUpdated();
         }
 
         public void NavigateToCommit(string sha, bool isDelayMode = false)
@@ -2452,7 +2529,7 @@ namespace SourceGit.ViewModels
                     });
 
                     var fullLimits = BuildHistoryLimits(Preferences.Instance.MaxHistoryCommits);
-                    var quickLimits = BuildQuickHistoryLimits();
+                    var quickLimits = fastAfterFetch ? string.Empty : BuildQuickHistoryLimits();
 
                     if (!string.IsNullOrEmpty(quickLimits) && !quickLimits.Equals(fullLimits, StringComparison.Ordinal))
                     {
@@ -2612,9 +2689,9 @@ namespace SourceGit.ViewModels
                     commit.ModifiedFileChangeCount = stat.ModifiedFileChangeCount;
                     commit.SubmodulePointerChangeCount = submodulePointerChangeCount;
                     commit.SubmoduleUpdateBadges = stat.SubmodulePaths.Count > 0
-                        ? stat.SubmodulePaths.ConvertAll(path => new Models.SubmoduleUpdateBadge(path))
+                        ? stat.SubmodulePaths.ConvertAll(path => new Models.SubmoduleUpdateBadge(path, ResolveSubmoduleUpdateBadgeColor(path)))
                         : stat.HasSubmodulePointerChange
-                            ? [new Models.SubmoduleUpdateBadge("submodule")]
+                            ? [new Models.SubmoduleUpdateBadge("submodule", ResolveSubmoduleUpdateBadgeColor("submodule"))]
                             : [];
                     commit.HasRenameOrCopyChange = stat.HasRenameOrCopyChange;
                     commit.HasTypeChange = stat.HasTypeChange;
@@ -2791,8 +2868,13 @@ namespace SourceGit.ViewModels
 
         public void RefreshWorkingCopyChanges(bool bypassUntrackedCache)
         {
+            _ = RefreshWorkingCopyChangesAsync(bypassUntrackedCache);
+        }
+
+        private Task RefreshWorkingCopyChangesAsync(bool bypassUntrackedCache)
+        {
             if (IsBare)
-                return;
+                return Task.CompletedTask;
 
             if (_cancellationRefreshWorkingCopyChanges is { IsCancellationRequested: false })
                 _cancellationRefreshWorkingCopyChanges.Cancel();
@@ -2801,7 +2883,7 @@ namespace SourceGit.ViewModels
             var token = _cancellationRefreshWorkingCopyChanges.Token;
             var noOptionalLocks = Interlocked.Add(ref _queryLocalChangesTimes, 1) > 1;
 
-            Task.Run(async () =>
+            return Task.Run(async () =>
             {
                 var changes = await new Commands.QueryLocalChanges(
                     FullPath,
@@ -3119,6 +3201,7 @@ namespace SourceGit.ViewModels
             var skippedByUserTargets = 0;
             var skippedNotInitializedTargets = 0;
             var failedTargets = 0;
+            var progressLock = new object();
             var prunedBranches = prune ? new List<PrunedRemoteBranch>() : null;
             var prunedBranchKeys = prune ? new HashSet<string>(StringComparer.Ordinal) : null;
             var targets = new List<string>();
@@ -3149,7 +3232,48 @@ namespace SourceGit.ViewModels
             }
 
             var totalTargets = targets.Count;
-            var completedTargets = 0;
+
+            Models.RecursiveOperationProgress CreateProgress(
+                string target,
+                Models.RecursiveOperationTargetState state)
+            {
+                lock (progressLock)
+                {
+                    return new Models.RecursiveOperationProgress
+                    {
+                        Total = totalTargets,
+                        Succeeded = succeededTargets,
+                        SkippedByUser = skippedByUserTargets,
+                        SkippedAutomatically = skippedAutomaticallyTargets,
+                        SkippedNotInitialized = skippedNotInitializedTargets,
+                        Failed = failedTargets,
+                        CurrentTarget = target,
+                        CurrentState = state,
+                    };
+                }
+            }
+
+            void ApplyResult(Models.RecursiveOperationTargetState state, bool notInitialized)
+            {
+                lock (progressLock)
+                {
+                    switch (state)
+                    {
+                        case Models.RecursiveOperationTargetState.Succeeded:
+                            succeededTargets++;
+                            break;
+                        case Models.RecursiveOperationTargetState.Skipped:
+                            skippedAutomaticallyTargets++;
+                            if (notInitialized)
+                                skippedNotInitializedTargets++;
+                            break;
+                        case Models.RecursiveOperationTargetState.Failed:
+                            failedTargets++;
+                            succ = false;
+                            break;
+                    }
+                }
+            }
 
             // Split recursive fetch into independent units so one hung submodule fetch does not
             // block the whole operation forever.
@@ -3178,63 +3302,30 @@ namespace SourceGit.ViewModels
                 }
             }
 
-            foreach (var submodulePath in targets)
+            async Task<Models.RecursiveOperationTargetState> RunSubmoduleFetchAsync(string submodulePath)
             {
                 if (cancellationToken.IsCancellationRequested)
-                    return false;
+                    return Models.RecursiveOperationTargetState.Failed;
 
-                onProgressChanged?.Invoke(new Models.RecursiveOperationProgress
-                {
-                    Total = totalTargets,
-                    Succeeded = succeededTargets,
-                    SkippedByUser = skippedByUserTargets,
-                    SkippedAutomatically = skippedAutomaticallyTargets,
-                    SkippedNotInitialized = skippedNotInitializedTargets,
-                    Failed = failedTargets,
-                    CurrentTarget = submodulePath,
-                    CurrentState = Models.RecursiveOperationTargetState.Running,
-                });
+                onProgressChanged?.Invoke(CreateProgress(submodulePath, Models.RecursiveOperationTargetState.Running));
 
                 var submoduleRoot = Native.OS.GetAbsPath(FullPath, submodulePath).Replace('\\', '/');
                 var gitDir = Path.Combine(submoduleRoot, ".git");
                 if (!Directory.Exists(submoduleRoot) || (!Directory.Exists(gitDir) && !File.Exists(gitDir)))
                 {
                     log?.AppendLine($"Skip submodule `{submodulePath}` (not initialized).");
-                    skippedAutomaticallyTargets++;
-                    skippedNotInitializedTargets++;
-                    completedTargets++;
-                    onProgressChanged?.Invoke(new Models.RecursiveOperationProgress
-                    {
-                        Total = totalTargets,
-                        Succeeded = succeededTargets,
-                        SkippedByUser = skippedByUserTargets,
-                        SkippedAutomatically = skippedAutomaticallyTargets,
-                        SkippedNotInitialized = skippedNotInitializedTargets,
-                        Failed = failedTargets,
-                        CurrentTarget = submodulePath,
-                        CurrentState = Models.RecursiveOperationTargetState.Skipped,
-                    });
-                    continue;
+                    ApplyResult(Models.RecursiveOperationTargetState.Skipped, true);
+                    onProgressChanged?.Invoke(CreateProgress(submodulePath, Models.RecursiveOperationTargetState.Skipped));
+                    return Models.RecursiveOperationTargetState.Skipped;
                 }
 
                 var submoduleRemotes = await GetFetchRemoteNamesForRepositoryAsync(submoduleRoot);
                 if (submoduleRemotes.Count == 0)
                 {
                     log?.AppendLine($"Skip submodule `{submodulePath}` (no remotes).");
-                    skippedAutomaticallyTargets++;
-                    completedTargets++;
-                    onProgressChanged?.Invoke(new Models.RecursiveOperationProgress
-                    {
-                        Total = totalTargets,
-                        Succeeded = succeededTargets,
-                        SkippedByUser = skippedByUserTargets,
-                        SkippedAutomatically = skippedAutomaticallyTargets,
-                        SkippedNotInitialized = skippedNotInitializedTargets,
-                        Failed = failedTargets,
-                        CurrentTarget = submodulePath,
-                        CurrentState = Models.RecursiveOperationTargetState.Skipped,
-                    });
-                    continue;
+                    ApplyResult(Models.RecursiveOperationTargetState.Skipped, false);
+                    onProgressChanged?.Invoke(CreateProgress(submodulePath, Models.RecursiveOperationTargetState.Skipped));
+                    return Models.RecursiveOperationTargetState.Skipped;
                 }
 
                 log?.AppendLine($"=== Fetch submodule `{submodulePath}` ===");
@@ -3247,7 +3338,7 @@ namespace SourceGit.ViewModels
                         noTags,
                         force,
                         prune,
-                        true,
+                        false,
                         log,
                         $"submodule:{submodulePath}",
                         stopOnError,
@@ -3257,50 +3348,65 @@ namespace SourceGit.ViewModels
                     if (!one)
                     {
                         submoduleSucceeded = false;
-                        succ = false;
                         if (stopOnError)
-                        {
-                            failedTargets++;
-                            onProgressChanged?.Invoke(new Models.RecursiveOperationProgress
-                            {
-                                Total = totalTargets,
-                                Succeeded = succeededTargets,
-                                SkippedByUser = skippedByUserTargets,
-                                SkippedAutomatically = skippedAutomaticallyTargets,
-                                SkippedNotInitialized = skippedNotInitializedTargets,
-                                Failed = failedTargets,
-                                CurrentTarget = submodulePath,
-                                CurrentState = Models.RecursiveOperationTargetState.Failed,
-                            });
-                            return false;
-                        }
+                            break;
                     }
                 }
 
-                if (submoduleSucceeded)
-                    succeededTargets++;
-                else
-                    failedTargets++;
+                var state = submoduleSucceeded
+                    ? Models.RecursiveOperationTargetState.Succeeded
+                    : Models.RecursiveOperationTargetState.Failed;
+                ApplyResult(state, false);
+                onProgressChanged?.Invoke(CreateProgress(submodulePath, state));
+                return state;
+            }
 
-                completedTargets++;
-                onProgressChanged?.Invoke(new Models.RecursiveOperationProgress
+            if (stopOnError)
+            {
+                foreach (var target in targets)
                 {
-                    Total = totalTargets,
-                    Succeeded = succeededTargets,
-                    SkippedByUser = skippedByUserTargets,
-                    SkippedAutomatically = skippedAutomaticallyTargets,
-                    SkippedNotInitialized = skippedNotInitializedTargets,
-                    Failed = failedTargets,
-                    CurrentTarget = submodulePath,
-                    CurrentState = submoduleSucceeded ? Models.RecursiveOperationTargetState.Succeeded : Models.RecursiveOperationTargetState.Failed,
-                });
+                    var state = await RunSubmoduleFetchAsync(target).ConfigureAwait(false);
+                    if (state == Models.RecursiveOperationTargetState.Failed)
+                        return false;
+                }
+            }
+            else if (targets.Count > 0)
+            {
+                var maxParallelism = Math.Min(SPLIT_FETCH_MAX_PARALLELISM, targets.Count);
+                log?.AppendLine($"Fetching up to {maxParallelism} submodule(s) in parallel.");
+                using var parallelLimiter = new SemaphoreSlim(maxParallelism);
+                var tasks = new List<Task>();
+                foreach (var target in targets)
+                {
+                    tasks.Add(Task.Run(async () =>
+                    {
+                        await parallelLimiter.WaitAsync(cancellationToken).ConfigureAwait(false);
+                        try
+                        {
+                            await RunSubmoduleFetchAsync(target).ConfigureAwait(false);
+                        }
+                        finally
+                        {
+                            parallelLimiter.Release();
+                        }
+                    }, CancellationToken.None));
+                }
+
+                try
+                {
+                    await Task.WhenAll(tasks).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    return false;
+                }
             }
 
             if (prune)
                 AppendPrunedRemoteBranchesSummary(log, prunedBranches);
 
             if (succ)
-                MarkFetched();
+                MarkFetched(prune);
 
             return succ;
         }
@@ -3358,8 +3464,11 @@ namespace SourceGit.ViewModels
                         return;
 
                     var key = $"{scope}\n{remoteRef}";
-                    if (prunedBranchKeys.Add(key))
-                        prunedBranches.Add(new PrunedRemoteBranch(scope, remoteRef));
+                    lock (prunedBranchKeys)
+                    {
+                        if (prunedBranchKeys.Add(key))
+                            prunedBranches.Add(new PrunedRemoteBranch(scope, remoteRef));
+                    }
                 };
             }
 
@@ -3404,6 +3513,16 @@ namespace SourceGit.ViewModels
                 return null;
 
             return remoteRef;
+        }
+
+        private static bool IsFetchRefStatusLine(string line, out bool changed)
+        {
+            changed = false;
+            if (string.IsNullOrWhiteSpace(line) || !line.Contains(" -> ", StringComparison.Ordinal))
+                return false;
+
+            changed = !line.Contains("[up to date]", StringComparison.OrdinalIgnoreCase);
+            return true;
         }
 
         private static void AppendPrunedRemoteBranchesSummary(Models.ICommandLog log, List<PrunedRemoteBranch> prunedBranches)
@@ -4197,6 +4316,46 @@ namespace SourceGit.ViewModels
         {
             OnPropertyChanged(nameof(HasInProgressStatus));
             OnPropertyChanged(nameof(InProgressStatusText));
+        }
+
+        private static bool AreSubmoduleColorMapsEqual(
+            IReadOnlyDictionary<string, uint> left,
+            IReadOnlyDictionary<string, uint> right)
+        {
+            if (ReferenceEquals(left, right))
+                return true;
+
+            if (left == null || right == null || left.Count != right.Count)
+                return false;
+
+            foreach (var pair in left)
+            {
+                if (!right.TryGetValue(pair.Key, out var color) || color != pair.Value)
+                    return false;
+            }
+
+            return true;
+        }
+
+        private IReadOnlyDictionary<string, uint> BuildSubmoduleUpdateBadgeColorMap(IEnumerable<string> paths)
+        {
+            var colors = new Dictionary<string, uint>(Models.SubmoduleUpdateBadge.BuildDirectSubmoduleColorMap(paths), StringComparer.Ordinal);
+            var configured = _settings?.GetSubmoduleUpdateBadgeColorMap();
+            if (configured != null)
+            {
+                foreach (var pair in configured)
+                {
+                    if (colors.ContainsKey(pair.Key))
+                        colors[pair.Key] = pair.Value;
+                }
+            }
+
+            return colors;
+        }
+
+        private static string NormalizeSubmodulePath(string path)
+        {
+            return (path ?? string.Empty).Replace('\\', '/').Trim('/');
         }
 
         private uint ResolveCurrentBranchDisplayColor()
@@ -5488,6 +5647,7 @@ namespace SourceGit.ViewModels
         private List<Models.Tag> _tags = [];
         private object _visibleTags = null;
         private List<Models.Submodule> _submodules = [];
+        private IReadOnlyDictionary<string, uint> _submoduleUpdateBadgeColors = new Dictionary<string, uint>(StringComparer.Ordinal);
         private object _visibleSubmodules = null;
         private bool _isSubmodulesLoading = false;
         private int _refreshSubmodulesVersion = 0;
@@ -5563,6 +5723,7 @@ namespace SourceGit.ViewModels
 
         private static readonly TimeSpan SPLIT_FETCH_TIMEOUT = TimeSpan.FromMinutes(5);
         private static readonly TimeSpan SPLIT_SUBMODULE_UPDATE_TIMEOUT = TimeSpan.FromMinutes(5);
+        private static readonly int SPLIT_FETCH_MAX_PARALLELISM = Math.Max(1, Math.Min(4, Environment.ProcessorCount));
         private static readonly int SPLIT_SUBMODULE_UPDATE_MAX_PARALLELISM = Math.Max(1, Math.Min(4, Environment.ProcessorCount));
         private static readonly uint[] s_autoHistoryFilterBranchColors =
         [

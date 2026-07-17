@@ -879,7 +879,9 @@
                                 RecognizesAccessKey="False">
                 <ContentPresenter.DataTemplates>
                   <DataTemplate DataType="x:String">
-                    <v:NameHighlightedTextBlock Text="{Binding}" VerticalAlignment="Center"/>
+                    <v:NameHighlightedTextBlock Text="{Binding}"
+                                                Foreground="{Binding $parent[ContentPresenter].Foreground}"
+                                                VerticalAlignment="Center"/>
                   </DataTemplate>
 
                   <DataTemplate DataType="vm:FilterModeInGraph">
@@ -988,6 +990,22 @@
         </ControlTemplate>
       </Setter>
     </Style>
+  </Style>
+
+  <Style Selector="MenuItem.branch_action:selected /template/ Border#PART_LayoutRoot">
+    <Setter Property="Background" Value="#FF263238"/>
+  </Style>
+
+  <Style Selector="MenuItem.branch_action:selected /template/ ContentPresenter#PART_HeaderPresenter">
+    <Setter Property="Foreground" Value="#FFF7FAFC"/>
+  </Style>
+
+  <Style Selector="MenuItem.branch_action:selected /template/ Path#PART_ChevronPath">
+    <Setter Property="Fill" Value="#FFF7FAFC"/>
+  </Style>
+
+  <Style Selector="MenuItem.branch_action:selected /template/ ContentControl#PART_IconPresenter > Path">
+    <Setter Property="Fill" Value="#FFF7FAFC"/>
   </Style>
 
   <Style Selector="MenuItem.filter_mode_switcher">
