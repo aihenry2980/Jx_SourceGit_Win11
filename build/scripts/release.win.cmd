@@ -122,12 +122,12 @@ set /a MOD100=N%%100
 set /a MOD10=N%%10
 set "SUFFIX=th"
 
-if %MOD100% GEQ 11 if %MOD100% LEQ 13 (
+if !MOD100! GEQ 11 if !MOD100! LEQ 13 (
   set "SUFFIX=th"
 ) else (
-  if %MOD10% EQU 1 set "SUFFIX=st"
-  if %MOD10% EQU 2 set "SUFFIX=nd"
-  if %MOD10% EQU 3 set "SUFFIX=rd"
+  if !MOD10! EQU 1 set "SUFFIX=st"
+  if !MOD10! EQU 2 set "SUFFIX=nd"
+  if !MOD10! EQU 3 set "SUFFIX=rd"
 )
 
 endlocal & set "%2=%1%SUFFIX%"
