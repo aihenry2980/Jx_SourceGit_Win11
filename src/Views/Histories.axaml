@@ -183,7 +183,40 @@
 
           <DataGridTemplateColumn Width="*" IsReadOnly="True">
             <DataGridTemplateColumn.Header>
-              <TextBlock Classes="table_header" Text="{DynamicResource Text.Histories.Header.GraphAndSubject}" HorizontalAlignment="Center"/>
+              <StackPanel Orientation="Horizontal"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"
+                          Spacing="8">
+                <TextBlock Classes="table_header"
+                           Text="{DynamicResource Text.Histories.Header.GraphAndSubject}"
+                           VerticalAlignment="Center"/>
+                <Border Height="18"
+                        Padding="6,0"
+                        CornerRadius="4"
+                        Background="#FF1B5E20"
+                        BorderBrush="#FF0F3A12"
+                        BorderThickness="1"
+                        VerticalAlignment="Center"
+                        IsVisible="{Binding $parent[v:Repository].((vm:Repository)DataContext).IsParentRepository}">
+                  <ToolTip.Tip>
+                    <TextBlock MaxWidth="360"
+                               Text="This repository is the parent repository for the submodules it contains."
+                               TextWrapping="Wrap"/>
+                  </ToolTip.Tip>
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Path Width="10"
+                          Height="10"
+                          Data="{StaticResource Icons.Submodule}"
+                          Fill="#FFFFEB3B"
+                          VerticalAlignment="Center"/>
+                    <TextBlock Text="PARENT"
+                               FontSize="10"
+                               FontWeight="Bold"
+                               Foreground="#FFFFEB3B"
+                               VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
             </DataGridTemplateColumn.Header>
 
             <DataGridTemplateColumn.CellTemplate>
@@ -372,10 +405,10 @@
                                               InlineCodeBackground="{DynamicResource Brush.InlineCode}"
                                               Foreground="{Binding ., Converter={x:Static c:CommitConverters.SubjectToBrush}}"
                                               LinkForeground="{DynamicResource Brush.Link}"
-                                              FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Mode=OneWay}"
+                                              FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Converter={x:Static c:DoubleConverters.Decrease}, Mode=OneWay}"
                                               Subject="{Binding HistoryDisplaySubject}"
                                               IssueTrackers="{Binding $parent[v:Histories].IssueTrackers}"
-                                              FontWeight="{Binding IsCurrentHead, Converter={x:Static c:BoolConverters.IsBoldToFontWeight}}"
+                                              FontWeight="Regular"
                                               Opacity="{Binding IsMerged, Converter={x:Static c:BoolConverters.IsMergedToOpacity}}"
                                               PointerPressed="OnCommitSubjectPointerPressed"
                                               PointerMoved="OnCommitSubjectPointerMoved"

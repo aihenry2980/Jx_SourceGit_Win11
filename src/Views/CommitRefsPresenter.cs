@@ -32,6 +32,7 @@ namespace SourceGit.Views
             public IBrush FoldButtonForeground { get; set; } = null;
             public bool IsHead { get; set; } = false;
             public bool IsCurrentCommitHead { get; set; } = false;
+            public bool IsBranch { get; set; } = false;
             public bool UseSolidBackground { get; set; } = false;
             public bool CanFold { get; set; } = false;
             public bool IsFolded { get; set; } = false;
@@ -183,7 +184,10 @@ namespace SourceGit.Views
                     y += item.Height + 4.0;
                 }
 
-                var entireRect = new RoundedRect(new Rect(x, y, item.Width, item.Height), new CornerRadius(4));
+                var rightCornerRadius = item.IsBranch ? item.Height * 0.5 : 4.0;
+                var entireRect = new RoundedRect(
+                    new Rect(x, y, item.Width, item.Height),
+                    new CornerRadius(4, rightCornerRadius, rightCornerRadius, 4));
                 var centerY = y + item.Height * 0.5;
                 var hasCompactTrackingBadge = item.SecondaryIcon != null;
                 var rebaseBaseIconOffset = item.RebaseBaseIcon != null ? 14.0 : 0.0;
@@ -228,13 +232,17 @@ namespace SourceGit.Views
                         if (bg != null)
                             context.DrawRectangle(bg, null, entireRect);
 
-                        var fullLabelWidth = (item.PrefixLabel?.WidthIncludingTrailingWhitespace ?? 0.0) + item.Label.Width;
-                        var labelRect = new RoundedRect(new Rect(x + item.LeadingWidth, y, fullLabelWidth + 8, item.Height), new CornerRadius(0, 4, 4, 0));
+                        var labelRect = new RoundedRect(
+                            new Rect(x + item.LeadingWidth, y, item.Width - item.LeadingWidth, item.Height),
+                            new CornerRadius(0, rightCornerRadius, rightCornerRadius, 0));
                         using (context.PushOpacity(.2))
                             context.DrawRectangle(item.Brush, null, labelRect);
 
                         context.DrawLine(new Pen(item.Brush), new Point(x + item.LeadingWidth, y), new Point(x + item.LeadingWidth, y + item.Height));
                     }
+
+                    if (item.Decorator?.Type == Models.DecoratorType.Tag)
+                        DrawTagStripePattern(context, entireRect, fg);
 
                     var labelX = x + item.LeadingWidth + 4;
                     DrawLabelHighlights(context, item, labelX, centerY - item.Label.Height * 0.5);
@@ -295,7 +303,10 @@ namespace SourceGit.Views
                     var foldButtonHeight = Math.Max(14.0, item.Height - 2.0);
                     var foldButtonX = x + item.Width - 17;
                     var foldButtonY = y + (item.Height - foldButtonHeight) * 0.5;
-                    var foldButtonRect = new RoundedRect(new Rect(foldButtonX, foldButtonY, foldButtonWidth, foldButtonHeight), new CornerRadius(3));
+                    var foldButtonRightRadius = item.IsBranch ? foldButtonHeight * 0.5 : 3.0;
+                    var foldButtonRect = new RoundedRect(
+                        new Rect(foldButtonX, foldButtonY, foldButtonWidth, foldButtonHeight),
+                        new CornerRadius(3, foldButtonRightRadius, foldButtonRightRadius, 3));
 
                     context.DrawRectangle(
                         item.FoldButtonBackground ?? Brushes.LightGray,
@@ -382,20 +393,20 @@ namespace SourceGit.Views
 
                     var isHead = decorator.Type is Models.DecoratorType.CurrentBranchHead or Models.DecoratorType.CurrentCommitHead;
                     var isCurrentCommitHead = decorator.Type == Models.DecoratorType.CurrentCommitHead;
+                    var isBranch = decorator.Type is Models.DecoratorType.CurrentBranchHead or
+                        Models.DecoratorType.LocalBranchHead or
+                        Models.DecoratorType.RemoteBranchHead;
                     var isSuperProjectPointer = decorator.Type == Models.DecoratorType.SuperProjectPointer;
-                    var isParentRepository = decorator.Type == Models.DecoratorType.ParentRepository;
                     var isMutedIncidentalBranch = IsMutedIncidentalBranch(decorator);
                     var labelBrush = isCurrentCommitHead
                         ? s_headTagForegroundBrush
                         : isSuperProjectPointer
                             ? s_superProjectPointerForegroundBrush
-                            : isParentRepository
-                                ? s_parentRepositoryForegroundBrush
                             : isMutedIncidentalBranch
                                 ? s_incidentalBranchForegroundBrush
                                 : fg;
 
-                    var labelTypeface = isHead || isSuperProjectPointer || isParentRepository ? typefaceBold : typeface;
+                    var labelTypeface = isHead || isSuperProjectPointer ? typefaceBold : typeface;
                     var labelSizeForItem = isHead ? labelSize + 1 : labelSize;
                     FormattedText prefixLabel = null;
                     var labelText = decorator.Name;
@@ -437,14 +448,13 @@ namespace SourceGit.Views
                             ? s_headTagForegroundBrush
                             : isSuperProjectPointer
                                 ? s_superProjectPointerForegroundBrush
-                                : isParentRepository
-                                    ? s_parentRepositoryForegroundBrush
                                 : isMutedIncidentalBranch
                                     ? s_incidentalBranchForegroundBrush
                                     : fg,
-                        UseSolidBackground = isSuperProjectPointer || isParentRepository,
+                        UseSolidBackground = isSuperProjectPointer,
                         IsHead = isHead,
                         IsCurrentCommitHead = isCurrentCommitHead,
+                        IsBranch = isBranch,
                         Decorator = decorator,
                     };
 
@@ -455,8 +465,6 @@ namespace SourceGit.Views
                             ? s_headTagForegroundBrush
                             : isSuperProjectPointer
                                 ? s_superProjectPointerForegroundBrush
-                                : isParentRepository
-                                    ? s_parentRepositoryForegroundBrush
                                 : s_compactLocalIconBrush;
                         item.SecondaryIconBrush = s_compactRemoteIconBrush;
                         item.PrimaryIconBackground = s_compactLocalIconBackgroundBrush;
@@ -502,11 +510,6 @@ namespace SourceGit.Views
                         case Models.DecoratorType.CurrentCommitHead:
                             geo = this.FindResource("Icons.Head") as StreamGeometry;
                             break;
-                        case Models.DecoratorType.ParentRepository:
-                            item.Brush = s_parentRepositoryBackgroundBrush;
-                            item.BorderBrush = s_parentRepositoryBorderBrush;
-                            geo = this.FindResource("Icons.Submodule") as StreamGeometry;
-                            break;
                         case Models.DecoratorType.RemoteBranchHead:
                             geo = this.FindResource("Icons.Remote") as StreamGeometry;
                             break;
@@ -551,6 +554,8 @@ namespace SourceGit.Views
                     item.Width = item.LeadingWidth + (isHead ? 0 : 4) + prefixWidth + label.Width + 4;
                     if (item.CanFold)
                         item.Width += 18;
+                    else if (item.IsBranch)
+                        item.Width += Math.Max(4.0, item.Height * 0.5 - 4.0);
                     _items.Add(item);
                     currentLineHeight = Math.Max(currentLineHeight, item.Height);
                     requiredHeight = Math.Max(requiredHeight, currentLineHeight);
@@ -574,6 +579,25 @@ namespace SourceGit.Views
             }
 
             return new Size(0, 0);
+        }
+
+        private static void DrawTagStripePattern(DrawingContext context, RoundedRect clipRect, IBrush brush)
+        {
+            var rect = clipRect.Rect;
+            var spacing = Math.Max(6.0, rect.Height * 0.38);
+            var pen = new Pen(brush ?? Brushes.Gray, 1.0);
+
+            using (context.PushClip(clipRect))
+            using (context.PushOpacity(0.14))
+            {
+                for (var startX = rect.Left - rect.Height; startX < rect.Right; startX += spacing)
+                {
+                    context.DrawLine(
+                        pen,
+                        new Point(startX, rect.Bottom),
+                        new Point(startX + rect.Height, rect.Top));
+                }
+            }
         }
 
         private void DrawLabelHighlights(DrawingContext context, RenderItem item, double x, double y)
@@ -728,9 +752,6 @@ namespace SourceGit.Views
         private static readonly IBrush s_superProjectPointerBackgroundBrush = new SolidColorBrush(Color.Parse("#005BBB"));
         private static readonly IBrush s_superProjectPointerBorderBrush = new SolidColorBrush(Color.Parse("#003A75"));
         private static readonly IBrush s_superProjectPointerForegroundBrush = new SolidColorBrush(Color.Parse("#FFEB3B"));
-        private static readonly IBrush s_parentRepositoryBackgroundBrush = new SolidColorBrush(Color.Parse("#1B5E20"));
-        private static readonly IBrush s_parentRepositoryBorderBrush = new SolidColorBrush(Color.Parse("#0F3A12"));
-        private static readonly IBrush s_parentRepositoryForegroundBrush = new SolidColorBrush(Color.Parse("#FFEB3B"));
         private static readonly IBrush s_highlightBackground = new SolidColorBrush(Color.Parse("#E6F2C200"));
         private static readonly IBrush s_highlightForeground = Brushes.Black;
         private static readonly IBrush s_remotePrefixAccentBrush = new SolidColorBrush(Color.Parse("#1565C0"));

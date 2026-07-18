@@ -100,6 +100,7 @@
                     <Button Width="0" Height="0"
                             Click="OnPopupSureByHotKey"
                             HotKey="Enter"
+                            IsEnabled="{Binding ShowOptions}"
                             Focusable="False"/>
                     <Button Classes="flat primary"
                             Width="100" Height="28"
@@ -187,5 +188,38 @@
         </ScrollViewer>
       </Grid>
     </Grid>
+
+    <!-- Clipboard confirmation -->
+    <Border Grid.Row="1"
+            ZIndex="10"
+            Margin="16,0,16,24"
+            MaxWidth="720"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Bottom"
+            IsHitTestVisible="False"
+            IsVisible="{Binding IsCopyToastVisible}"
+            Opacity="{Binding CopyToastOpacity}"
+            Effect="drop-shadow(0 0 10 #90000000)">
+      <Border Padding="14,9"
+              CornerRadius="6"
+              Background="#FF1F2937"
+              BorderThickness="1"
+              BorderBrush="#FF4B5563">
+        <Grid ColumnDefinitions="Auto,*">
+          <Path Grid.Column="0"
+                Width="14" Height="14"
+                Data="{StaticResource Icons.CheckCircled}"
+                Fill="#FF86EFAC"/>
+          <TextBlock Grid.Column="1"
+                     Margin="8,0,0,0"
+                     MaxWidth="650"
+                     VerticalAlignment="Center"
+                     FontFamily="{DynamicResource Fonts.Monospace}"
+                     Foreground="White"
+                     Text="{Binding CopyToastText}"
+                     TextTrimming="CharacterEllipsis"/>
+        </Grid>
+      </Border>
+    </Border>
   </Grid>
 </UserControl>

@@ -33,13 +33,6 @@ namespace SourceGit.Converters
             });
 
         public static readonly FuncValueConverter<Models.Commit, IBrush> SubjectToBrush =
-            new(commit =>
-            {
-                if (commit is { IsCurrentHead: true })
-                    return Brushes.Red;
-                if (commit is { IsSuperProjectPointer: true })
-                    return Brushes.Purple;
-                return Application.Current?.FindResource("Brush.FG1") as IBrush;
-            });
+            new(_ => Application.Current?.FindResource("Brush.CommitSubject") as IBrush);
     }
 }

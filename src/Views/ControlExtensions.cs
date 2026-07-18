@@ -28,7 +28,10 @@ namespace SourceGit.Views
         {
             var clipboard = TopLevel.GetTopLevel(control)?.Clipboard;
             if (clipboard != null)
+            {
                 await clipboard.SetTextAsync(text);
+                App.ShowCopyToast(text);
+            }
         }
 
         public static Path CreateMenuIcon(this Control control, string iconKey)

@@ -108,6 +108,15 @@ namespace SourceGit.ViewModels
             }
         }
 
+        public bool IsRebaseBaseBranchMissing
+        {
+            get
+            {
+                var configured = _settings?.RebaseBaseBranch?.Trim();
+                return !string.IsNullOrEmpty(configured) && GetRebaseBaseBranch() == null;
+            }
+        }
+
         public void SetRebaseBaseBranch(Models.Branch branch)
         {
             if (_settings == null || branch == null || IsRebaseBaseBranch(branch))
@@ -118,6 +127,44 @@ namespace SourceGit.ViewModels
             RefreshBranchSidebarByCurrentFilters();
             RefreshCommits();
             SendNotification($"`{branch.FriendlyName}` is now the rebase base branch.");
+        }
+
+        public void ClearRebaseBaseBranch()
+        {
+            if (_settings == null || string.IsNullOrWhiteSpace(_settings.RebaseBaseBranch))
+                return;
+
+            _settings.RebaseBaseBranch = string.Empty;
+            _ = _settings.SaveAsync();
+            RefreshBranchSidebarByCurrentFilters();
+            RefreshCommits();
+            SendNotification("Rebase base branch disabled.");
+        }
+
+        public void NavigateToRebaseBaseBranchCommit()
+        {
+            var configured = _settings?.RebaseBaseBranch?.Trim();
+            if (string.IsNullOrEmpty(configured))
+                return;
+
+            var branch = GetRebaseBaseBranch();
+            if (branch == null || string.IsNullOrEmpty(branch.Head))
+            {
+                SendNotification($"Rebase base branch '{configured}' doesn't exist.", true);
+                OpenRebaseBaseBranchPicker();
+                return;
+            }
+
+            NavigateToCommit(branch.Head);
+        }
+
+        public void OpenRebaseBaseBranchPicker()
+        {
+            if (!CanCreatePopup())
+                return;
+
+            var configured = _settings?.RebaseBaseBranch?.Trim() ?? string.Empty;
+            ShowPopup(new SelectRebaseBaseBranch(this, configured));
         }
 
         public Models.GitFlow GitFlow
@@ -402,6 +449,8 @@ namespace SourceGit.ViewModels
 
         public bool HasSuperProjectPointer => !string.IsNullOrEmpty(_superProjectSubmoduleSHA);
 
+        public bool IsParentRepository => string.IsNullOrEmpty(_superProjectSubmoduleSHA) && _submodules.Count > 0;
+
         public Color AccentColor => ResolvePageAccentColor();
 
         public Color AccentHoveredColor
@@ -511,6 +560,7 @@ namespace SourceGit.ViewModels
                     var colorsChanged = !AreSubmoduleColorMapsEqual(_submoduleUpdateBadgeColors, colors);
                     _submoduleUpdateBadgeColors = colors;
                     OnPropertyChanged(nameof(SubmodulesHeaderCountText));
+                    OnPropertyChanged(nameof(IsParentRepository));
 
                     if (colorsChanged && _histories?.Commits.Count > 0)
                         RefreshCommits();
@@ -819,6 +869,20 @@ namespace SourceGit.ViewModels
         public void ClearHistoryQuickFind()
         {
             HistoryQuickFindText = string.Empty;
+        }
+
+        public bool NavigateHistoryQuickFind(bool forward)
+        {
+            if (string.IsNullOrWhiteSpace(_historyQuickFindText) || _histories == null)
+                return false;
+
+            if (!string.Equals(_historyQuickFindAppliedText, _historyQuickFindText, StringComparison.Ordinal))
+            {
+                ApplyHistoryQuickFind(_historyQuickFindText);
+                return true;
+            }
+
+            return _histories.NavigateQuickFind(forward);
         }
 
         public bool IsLocalBranchGroupExpanded
@@ -1148,6 +1212,11 @@ namespace SourceGit.ViewModels
             var page = GetOwnerPage();
             if (page != null)
                 page.Popup = popup;
+        }
+
+        public void ClosePopup()
+        {
+            GetOwnerPage()?.CancelPopup();
         }
 
         public async Task ShowAndStartPopupAsync(Popup popup)
@@ -1786,6 +1855,7 @@ namespace SourceGit.ViewModels
             _lastVisibleBranchesCount = visibleBranches.Count;
             UpdateShouldShowBranchPresetEmptyState();
             OnPropertyChanged(nameof(RebaseBaseBranchDisplayName));
+            OnPropertyChanged(nameof(IsRebaseBaseBranchMissing));
         }
 
         public IDisposable LockWatcher()
@@ -2784,7 +2854,6 @@ namespace SourceGit.ViewModels
                 commits.RemoveAll(x => !x.HasSubmodulePointerChange);
 
             AttachSuperProjectPointerDecorator(commits);
-            AttachParentRepositoryDecorator(commits);
             ApplyHistoryFilterColorsToDecorators(commits);
             var foldableBranchFullNames = BuildFoldableBranchFullNameSet(commits);
             var notifyFoldControlChange = false;
@@ -2883,11 +2952,8 @@ namespace SourceGit.ViewModels
 
                     if (_submodules.Count > 0)
                     {
-                        var hadParentDecorator = ShouldAttachParentRepositoryDecorator();
                         Submodules = [];
                         VisibleSubmodules = BuildVisibleSubmodules();
-                        if (hadParentDecorator != ShouldAttachParentRepositoryDecorator())
-                            RefreshCommits();
                     }
                 });
 
@@ -2912,7 +2978,6 @@ namespace SourceGit.ViewModels
                         if (refreshVersion != _refreshSubmodulesVersion)
                             return;
 
-                        var hadParentDecorator = ShouldAttachParentRepositoryDecorator();
                         bool hasChanged = _submodules.Count != submodules.Count;
                         if (!hasChanged)
                         {
@@ -2944,8 +3009,6 @@ namespace SourceGit.ViewModels
                         {
                             Submodules = submodules;
                             VisibleSubmodules = BuildVisibleSubmodules();
-                            if (hadParentDecorator != ShouldAttachParentRepositoryDecorator())
-                                RefreshCommits();
                         }
                     });
                 }
@@ -4059,6 +4122,7 @@ namespace SourceGit.ViewModels
 
             _superProjectSubmoduleSHA = normalized;
             OnPropertyChanged(nameof(HasSuperProjectPointer));
+            OnPropertyChanged(nameof(IsParentRepository));
             RefreshCommits();
         }
 
@@ -4948,11 +5012,6 @@ namespace SourceGit.ViewModels
             return normalized.ToLowerInvariant();
         }
 
-        private bool ShouldAttachParentRepositoryDecorator()
-        {
-            return string.IsNullOrEmpty(_superProjectSubmoduleSHA) && _submodules.Count > 0;
-        }
-
         private async Task ResolveSuperProjectSubmodulePointerAsync()
         {
             var resolved = string.Empty;
@@ -5013,30 +5072,6 @@ namespace SourceGit.ViewModels
             {
                 Type = Models.DecoratorType.SuperProjectPointer,
                 Name = "SPP",
-            });
-
-            Models.Commit.SortDecorators(target.Decorators);
-        }
-
-        private void AttachParentRepositoryDecorator(List<Models.Commit> commits)
-        {
-            if (commits == null || commits.Count == 0)
-                return;
-
-            foreach (var commit in commits)
-                commit.Decorators.RemoveAll(x => x.Type == Models.DecoratorType.ParentRepository);
-
-            if (!ShouldAttachParentRepositoryDecorator())
-                return;
-
-            var target = commits.Find(x => x.IsCurrentHead);
-            if (target == null)
-                return;
-
-            target.Decorators.Add(new Models.Decorator()
-            {
-                Type = Models.DecoratorType.ParentRepository,
-                Name = "PARENT",
             });
 
             Models.Commit.SortDecorators(target.Decorators);
@@ -5646,7 +5681,7 @@ namespace SourceGit.ViewModels
             var token = cts.Token;
             try
             {
-                await Task.Delay(200, token);
+                await Task.Delay(500, token);
                 if (token.IsCancellationRequested)
                     return;
 

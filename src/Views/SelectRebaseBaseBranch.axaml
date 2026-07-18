@@ -1,0 +1,150 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:SourceGit.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="180"
+             x:Class="SourceGit.Views.SelectRebaseBaseBranch"
+             x:DataType="vm:SelectRebaseBaseBranch">
+  <StackPanel Margin="8,0,8,8" Spacing="14">
+    <StackPanel Orientation="Horizontal" Spacing="8">
+      <Path Width="16"
+            Height="16"
+            Data="{StaticResource Icons.Star}"
+            Fill="#FFFFC107"
+            Stroke="#FF6D4C00"
+            StrokeThickness="0.8"/>
+      <TextBlock FontSize="18"
+                 FontWeight="Bold"
+                 Text="Set Rebase Base Branch"/>
+    </StackPanel>
+
+    <StackPanel Orientation="Horizontal">
+      <TextBlock Foreground="{DynamicResource Brush.FG2}" Text="Current: "/>
+      <TextBlock Foreground="{DynamicResource Brush.FG2}"
+                 FontWeight="SemiBold"
+                 Text="{Binding CurrentBranchName}"/>
+      <TextBlock Margin="4,0,0,0"
+                 Foreground="#FFD32F2F"
+                 Text="(not exist)"
+                 IsVisible="{Binding IsCurrentBranchMissing}"/>
+    </StackPanel>
+
+    <ItemsControl Height="56"
+                  ClipToBounds="True"
+                  HorizontalAlignment="Stretch"
+                  ItemsSource="{Binding SuggestedBranches}">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <WrapPanel Orientation="Horizontal"/>
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate DataType="vm:RebaseBaseBranchChoice">
+          <Border Height="24"
+                  Margin="2"
+                  Padding="6,0"
+                  CornerRadius="5"
+                  BorderThickness="1"
+                  BorderBrush="#99D6A700"
+                  Background="#18FFC107"
+                  Cursor="Hand"
+                  ToolTip.Tip="{Binding DisplayName}"
+                  PointerPressed="OnBranchPointerPressed">
+            <Grid ColumnDefinitions="Auto,*">
+              <Path Grid.Column="0"
+                    Width="10"
+                    Height="10"
+                    Margin="0,0,4,0"
+                    Data="{StaticResource Icons.Branch}"
+                    Fill="#FF7A5B00"
+                    IsVisible="{Binding !IsNone}"/>
+              <Path Grid.Column="0"
+                    Width="10"
+                    Height="10"
+                    Margin="0,0,4,0"
+                    Data="{StaticResource Icons.Clear}"
+                    Fill="{DynamicResource Brush.FG2}"
+                    IsVisible="{Binding IsNone}"/>
+              <TextBlock Grid.Column="1"
+                         FontSize="11"
+                         VerticalAlignment="Center"
+                         Text="{Binding DisplayName}"/>
+            </Grid>
+          </Border>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <Grid RowDefinitions="30,Auto">
+      <TextBox Grid.Row="0"
+               x:Name="BranchSearchBox"
+               Height="28"
+               Text="{Binding SearchText, Mode=TwoWay}"
+               Watermark="Type a branch name"
+               VerticalContentAlignment="Center"
+               KeyDown="OnSearchKeyDown">
+        <TextBox.InnerLeftContent>
+          <Path Width="13"
+                Height="13"
+                Margin="6,0,0,0"
+                Fill="{DynamicResource Brush.FG2}"
+                Data="{StaticResource Icons.Search}"/>
+        </TextBox.InnerLeftContent>
+      </TextBox>
+
+      <ListBox Grid.Row="1"
+               x:Name="BranchList"
+               Margin="0,6,0,0"
+               MinHeight="28"
+               MaxHeight="170"
+               ItemsSource="{Binding VisibleBranches}"
+               SelectionMode="Single"
+               IsVisible="{Binding HasSearchText}"
+               KeyDown="OnBranchListKeyDown">
+        <ListBox.Styles>
+          <Style Selector="ListBoxItem">
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="CornerRadius" Value="3"/>
+          </Style>
+        </ListBox.Styles>
+        <ListBox.ItemTemplate>
+          <DataTemplate DataType="vm:RebaseBaseBranchChoice">
+            <Grid Height="30"
+                  ColumnDefinitions="Auto,*"
+                  Background="Transparent"
+                  PointerPressed="OnBranchPointerPressed">
+              <Path Grid.Column="0"
+                    Width="13"
+                    Height="13"
+                    Margin="8,0"
+                    Data="{StaticResource Icons.Branch}"
+                    Fill="{DynamicResource Brush.FG1}"
+                    IsVisible="{Binding !IsNone}"/>
+              <Path Grid.Column="0"
+                    Width="12"
+                    Height="12"
+                    Margin="8,0"
+                    Data="{StaticResource Icons.Clear}"
+                    Fill="{DynamicResource Brush.FG2}"
+                    IsVisible="{Binding IsNone}"/>
+              <TextBlock Grid.Column="1"
+                         VerticalAlignment="Center"
+                         Text="{Binding DisplayName}"
+                         TextTrimming="CharacterEllipsis"/>
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </Grid>
+
+    <Button Classes="flat"
+            Width="100"
+            Height="28"
+            Padding="0"
+            HorizontalAlignment="Right"
+            HorizontalContentAlignment="Center"
+            Content="Cancel"
+            Click="OnCancel"/>
+  </StackPanel>
+</UserControl>

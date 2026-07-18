@@ -774,7 +774,18 @@
                   BorderBrush="#66FFC107"
                   BorderThickness="1"
                   IsVisible="{Binding RebaseBaseBranchDisplayName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                  ToolTip.Tip="Rebase Base Branch">
+                  Cursor="Hand"
+                  ContextRequested="OnRebaseBaseBranchContextRequested"
+                  DoubleTapped="OnRebaseBaseBranchDoubleTapped">
+            <ToolTip.Tip>
+              <StackPanel>
+                <TextBlock FontWeight="Bold" Text="Rebase Base Branch"/>
+                <TextBlock Classes="small"
+                           Margin="0,4,0,0"
+                           Foreground="{DynamicResource Brush.FG2}"
+                           Text="Double-click to select its tip commit."/>
+              </StackPanel>
+            </ToolTip.Tip>
             <Grid ColumnDefinitions="Auto,*">
               <Path Grid.Column="0"
                     Width="12" Height="12"
@@ -785,12 +796,21 @@
                     Fill="#FFFFC107"
                     Stroke="#FF6D4C00"
                     StrokeThickness="0.8"/>
-              <TextBlock Grid.Column="1"
-                         VerticalAlignment="Center"
-                         FontWeight="SemiBold"
-                         Text="{Binding RebaseBaseBranchDisplayName}"
-                         TextTrimming="CharacterEllipsis"
-                         ToolTip.Tip="{Binding RebaseBaseBranchDisplayName}"/>
+              <Grid Grid.Column="1"
+                    ColumnDefinitions="*,Auto"
+                    VerticalAlignment="Center">
+                <TextBlock Grid.Column="0"
+                           FontWeight="SemiBold"
+                           Text="{Binding RebaseBaseBranchDisplayName}"
+                           TextTrimming="CharacterEllipsis"
+                           ToolTip.Tip="{Binding RebaseBaseBranchDisplayName}"/>
+                <TextBlock Grid.Column="1"
+                           Margin="4,0,0,0"
+                           FontWeight="SemiBold"
+                           Foreground="#FFD32F2F"
+                           Text="(not exist)"
+                           IsVisible="{Binding IsRebaseBaseBranchMissing}"/>
+              </Grid>
             </Grid>
           </Border>
 

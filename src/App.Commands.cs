@@ -6,6 +6,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Shapes;
 using Avalonia.Input.Platform;
 using Avalonia.Media;
+using Avalonia.Threading;
 
 namespace SourceGit
 {
@@ -163,7 +164,21 @@ namespace SourceGit
         public static async Task CopyTextAsync(string text)
         {
             if (Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: { Clipboard: { } clipboard } })
+            {
                 await clipboard.SetTextAsync(text ?? string.Empty);
+                ShowCopyToast(text);
+            }
+        }
+
+        public static void ShowCopyToast(string text)
+        {
+            if (!Dispatcher.UIThread.CheckAccess())
+            {
+                Dispatcher.UIThread.Post(() => ShowCopyToast(text));
+                return;
+            }
+
+            GetLauncher()?.ActivePage?.ShowCopyToast(text);
         }
 
         public static void SendNotification(string group, string message, bool isError = false)

@@ -24,6 +24,11 @@ namespace SourceGit.Views
                 OnDashboardScrollViewerPointerWheelChanged,
                 RoutingStrategies.Tunnel,
                 true);
+            AddHandler(
+                InputElement.KeyDownEvent,
+                OnRepositoryKeyDown,
+                RoutingStrategies.Tunnel,
+                true);
         }
 
         protected override void OnLoaded(RoutedEventArgs e)
@@ -118,6 +123,20 @@ namespace SourceGit.Views
             }
         }
 
+        private void OnRepositoryKeyDown(object _, KeyEventArgs e)
+        {
+            if (e.Key != Key.F3 ||
+                DataContext is not ViewModels.Repository repo ||
+                repo.SelectedViewIndex != 0 ||
+                string.IsNullOrWhiteSpace(repo.HistoryQuickFindText))
+            {
+                return;
+            }
+
+            repo.NavigateHistoryQuickFind(!e.KeyModifiers.HasFlag(KeyModifiers.Shift));
+            e.Handled = true;
+        }
+
         private void OnOpenRecursiveLocalChanges(object _, RoutedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo)
@@ -159,6 +178,22 @@ namespace SourceGit.Views
         {
             RemoteBranchTree.UnselectAll();
             TagsList.UnselectAll();
+        }
+
+        private void OnRebaseBaseBranchDoubleTapped(object sender, TappedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+                repo.NavigateToRebaseBaseBranchCommit();
+
+            e.Handled = true;
+        }
+
+        private void OnRebaseBaseBranchContextRequested(object sender, ContextRequestedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+                repo.OpenRebaseBaseBranchPicker();
+
+            e.Handled = true;
         }
 
         private void OnRemoteBranchTreeSelectionChanged(object _1, RoutedEventArgs _2)

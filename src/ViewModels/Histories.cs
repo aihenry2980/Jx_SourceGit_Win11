@@ -359,10 +359,48 @@ namespace SourceGit.ViewModels
             if (_commits == null || _commits.Count == 0)
                 return;
 
-            if (!UpdateQuickFindMatches(query))
+            UpdateQuickFindMatches(query);
+            if (string.IsNullOrWhiteSpace(query))
                 return;
 
-            Commits = [.. _commits];
+            foreach (var commit in _commits)
+            {
+                if (commit.IsQuickFindMatched)
+                {
+                    SelectedCommits = [commit];
+                    return;
+                }
+            }
+        }
+
+        public bool NavigateQuickFind(bool forward)
+        {
+            if (_commits == null || _commits.Count == 0)
+                return false;
+
+            var selectedIndex = -1;
+            if (_selectedCommits.Count == 1)
+            {
+                var selectedSHA = _selectedCommits[0].SHA;
+                selectedIndex = _commits.FindIndex(x => x.SHA.Equals(selectedSHA, StringComparison.Ordinal));
+            }
+
+            var count = _commits.Count;
+            var startIndex = selectedIndex >= 0 ? selectedIndex : (forward ? -1 : 0);
+            for (var offset = 1; offset <= count; offset++)
+            {
+                var index = forward ?
+                    (startIndex + offset) % count :
+                    (startIndex - offset + count * 2) % count;
+                var commit = _commits[index];
+                if (!commit.IsQuickFindMatched)
+                    continue;
+
+                SelectedCommits = [commit];
+                return true;
+            }
+
+            return false;
         }
 
         public async Task<Models.Commit> GetCommitAsync(string sha)

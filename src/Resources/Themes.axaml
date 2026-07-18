@@ -91,6 +91,7 @@
   <SolidColorBrush x:Key="Brush.FlatButton.FloatingBorder" Color="{DynamicResource Color.FlatButton.FloatingBorder}"/>
   <SolidColorBrush x:Key="Brush.FG1" Color="{DynamicResource Color.FG1}"/>
   <SolidColorBrush x:Key="Brush.FG2" Color="{DynamicResource Color.FG2}"/>
+  <SolidColorBrush x:Key="Brush.CommitSubject" Color="{DynamicResource Color.FG2}" Opacity="0.55"/>
   <SolidColorBrush x:Key="Brush.Accent" Color="{DynamicResource SystemAccentColor}"/>
   <SolidColorBrush x:Key="Brush.AccentHovered" Color="{DynamicResource SystemListLowColor}"/>
   <SolidColorBrush x:Key="Brush.Diff.EmptyBG" Color="{DynamicResource Color.Diff.EmptyBG}"/>

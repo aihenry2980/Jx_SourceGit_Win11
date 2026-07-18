@@ -500,7 +500,7 @@
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical" MaxWidth="520">
             <TextBlock FontWeight="Bold" Text="History marker legend"/>
-            <TextBlock Classes="small" Margin="0,6,0,0" Text="SPP and PARENT are special ref chips in commit refs."/>
+            <TextBlock Classes="small" Margin="0,6,0,0" Text="SPP marks the commit pinned by a super-project. PARENT is a repository status shown in the graph header."/>
             <StackPanel Orientation="Horizontal" Margin="0,6,0,0" Spacing="8">
               <Border Padding="8,2" CornerRadius="10" Background="#FF1D6FDD" BorderBrush="#FF114B99" BorderThickness="1">
                 <TextBlock Foreground="#FFFFE066" FontWeight="Bold" Text="SPP"/>

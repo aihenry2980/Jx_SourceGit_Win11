@@ -245,11 +245,10 @@ namespace SourceGit.Models
             {
                 DecoratorType.CurrentCommitHead => 0,
                 DecoratorType.SuperProjectPointer => 1,
-                DecoratorType.ParentRepository => 2,
-                DecoratorType.CurrentBranchHead => 3,
-                DecoratorType.LocalBranchHead => 4,
-                DecoratorType.RemoteBranchHead => 5,
-                DecoratorType.Tag => 6,
+                DecoratorType.CurrentBranchHead => 2,
+                DecoratorType.LocalBranchHead => 3,
+                DecoratorType.RemoteBranchHead => 4,
+                DecoratorType.Tag => 5,
                 _ => 100,
             };
         }

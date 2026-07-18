@@ -6,7 +6,6 @@
         CurrentBranchHead,
         LocalBranchHead,
         CurrentCommitHead,
-        ParentRepository,
         RemoteBranchHead,
         SuperProjectPointer,
         Tag,
