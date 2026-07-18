@@ -1004,8 +1004,12 @@
     <Setter Property="Fill" Value="#FFF7FAFC"/>
   </Style>
 
-  <Style Selector="MenuItem.branch_action:selected /template/ ContentControl#PART_IconPresenter > Path">
-    <Setter Property="Fill" Value="#FFF7FAFC"/>
+  <Style Selector="MenuItem.branch_action.force_push">
+    <Setter Property="Foreground" Value="#FFC62828"/>
+  </Style>
+
+  <Style Selector="MenuItem.branch_action:selected">
+    <Setter Property="Foreground" Value="#FFF7FAFC"/>
   </Style>
 
   <Style Selector="MenuItem.filter_mode_switcher">

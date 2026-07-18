@@ -28,6 +28,13 @@ namespace SourceGit.ViewModels
             public List<Models.Commit> Commits { get; set; } = [];
             public Models.CommitGraph Graph { get; set; } = null;
             public bool ShouldNotifyFoldControlChange { get; set; } = false;
+            public long QueryCommitsMilliseconds { get; set; } = 0;
+            public long MetadataMilliseconds { get; set; } = 0;
+            public long PrepareMilliseconds { get; set; } = 0;
+            public long GraphMilliseconds { get; set; } = 0;
+            public long TotalMilliseconds { get; set; } = 0;
+            public int MetadataCacheHits { get; set; } = 0;
+            public int QueriedCommitCount { get; set; } = 0;
         }
 
         private class PrunedRemoteBranch(string scope, string remoteRef)
@@ -59,6 +66,58 @@ namespace SourceGit.ViewModels
         public Models.RepositoryUIStates UIStates
         {
             get => _uiStates;
+        }
+
+        public Models.Branch GetRebaseBaseBranch()
+        {
+            var configured = _settings?.RebaseBaseBranch?.Trim();
+            if (string.IsNullOrEmpty(configured))
+                return null;
+
+            var branch = _branches.Find(x => x.FullName.Equals(configured, StringComparison.Ordinal));
+            branch ??= _branches.Find(x => x.IsLocal && x.Name.Equals(configured, StringComparison.Ordinal));
+            branch ??= _branches.Find(x => x.FriendlyName.Equals(configured, StringComparison.Ordinal));
+            branch ??= _branches.Find(x =>
+                !x.IsLocal &&
+                x.Name.Equals(configured, StringComparison.Ordinal) &&
+                string.Equals(x.Remote, _settings.DefaultRemote, StringComparison.Ordinal));
+            branch ??= _branches.Find(x =>
+                !x.IsLocal &&
+                x.Name.Equals(configured, StringComparison.Ordinal) &&
+                string.Equals(x.Remote, "origin", StringComparison.Ordinal));
+            branch ??= _branches.Find(x => !x.IsLocal && x.Name.Equals(configured, StringComparison.Ordinal));
+            return branch;
+        }
+
+        public bool IsRebaseBaseBranch(Models.Branch branch)
+        {
+            var configured = GetRebaseBaseBranch();
+            return branch != null && configured != null &&
+                branch.FullName.Equals(configured.FullName, StringComparison.Ordinal);
+        }
+
+        public string RebaseBaseBranchDisplayName
+        {
+            get
+            {
+                var resolved = GetRebaseBaseBranch();
+                if (resolved != null)
+                    return resolved.FriendlyName;
+
+                return _settings?.RebaseBaseBranch?.Trim() ?? string.Empty;
+            }
+        }
+
+        public void SetRebaseBaseBranch(Models.Branch branch)
+        {
+            if (_settings == null || branch == null || IsRebaseBaseBranch(branch))
+                return;
+
+            _settings.RebaseBaseBranch = branch.FriendlyName;
+            _ = _settings.SaveAsync();
+            RefreshBranchSidebarByCurrentFilters();
+            RefreshCommits();
+            SendNotification($"`{branch.FriendlyName}` is now the rebase base branch.");
         }
 
         public Models.GitFlow GitFlow
@@ -1726,6 +1785,7 @@ namespace SourceGit.ViewModels
             LocalBranchesCount = localBranchesCount;
             _lastVisibleBranchesCount = visibleBranches.Count;
             UpdateShouldShowBranchPresetEmptyState();
+            OnPropertyChanged(nameof(RebaseBaseBranchDisplayName));
         }
 
         public IDisposable LockWatcher()
@@ -2610,14 +2670,21 @@ namespace SourceGit.ViewModels
 
         private async Task<CommitHistorySnapshot> QueryCommitHistorySnapshotAsync(string limits, bool pruneFoldState)
         {
+            var totalStopwatch = Stopwatch.StartNew();
+            var stageStopwatch = Stopwatch.StartNew();
             var commits = await new Commands.QueryCommits(FullPath, limits).GetResultAsync().ConfigureAwait(false);
+            var queriedCommitCount = commits.Count;
+            var queryCommitsMilliseconds = stageStopwatch.ElapsedMilliseconds;
+            stageStopwatch.Restart();
             var commitDiffStats = new Dictionary<string, Commands.CommitHistoryDiffStat>(StringComparer.Ordinal);
             var allCached = _commitHistoryMetadataCache != null && commits.Count > 0;
+            var metadataCacheHits = 0;
 
             foreach (var commit in commits)
             {
                 if (_commitHistoryMetadataCache != null && _commitHistoryMetadataCache.TryGet(commit.SHA, out var cached))
                 {
+                    metadataCacheHits++;
                     commitDiffStats[commit.SHA] = new Commands.CommitHistoryDiffStat()
                     {
                         ChangedFileCount = cached.ChangedFileCount,
@@ -2710,6 +2777,9 @@ namespace SourceGit.ViewModels
                 }
             }
 
+            var metadataMilliseconds = stageStopwatch.ElapsedMilliseconds;
+            stageStopwatch.Restart();
+
             if (_uiStates.OnlyShowSPPCommitsInHistory)
                 commits.RemoveAll(x => !x.HasSubmodulePointerChange);
 
@@ -2724,16 +2794,29 @@ namespace SourceGit.ViewModels
             ApplyFoldStateToDecorators(commits, foldableBranchFullNames);
             ApplyFoldedBranchRuns(commits, foldableBranchFullNames);
 
+            var prepareMilliseconds = stageStopwatch.ElapsedMilliseconds;
+            stageStopwatch.Restart();
+            var graph = Models.CommitGraph.Generate(
+                commits,
+                true,
+                _uiStates.HistoryShowFlags.HasFlag(Models.HistoryShowFlags.FirstParentOnly),
+                _uiStates.GraphHighlighting,
+                []);
+            var graphMilliseconds = stageStopwatch.ElapsedMilliseconds;
+            totalStopwatch.Stop();
+
             return new CommitHistorySnapshot()
             {
                 Commits = commits,
-                Graph = Models.CommitGraph.Generate(
-                    commits,
-                    true,
-                    _uiStates.HistoryShowFlags.HasFlag(Models.HistoryShowFlags.FirstParentOnly),
-                    _uiStates.GraphHighlighting,
-                    []),
+                Graph = graph,
                 ShouldNotifyFoldControlChange = notifyFoldControlChange,
+                QueryCommitsMilliseconds = queryCommitsMilliseconds,
+                MetadataMilliseconds = metadataMilliseconds,
+                PrepareMilliseconds = prepareMilliseconds,
+                GraphMilliseconds = graphMilliseconds,
+                TotalMilliseconds = totalStopwatch.ElapsedMilliseconds,
+                MetadataCacheHits = metadataCacheHits,
+                QueriedCommitCount = queriedCommitCount,
             };
         }
 
@@ -2744,18 +2827,21 @@ namespace SourceGit.ViewModels
             bool isBackfilling,
             bool finalizeNavigation)
         {
+            var uiQueueStopwatch = Stopwatch.StartNew();
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
                 if (token.IsCancellationRequested || _histories == null)
                     return;
+
+                uiQueueStopwatch.Stop();
+                var applyStopwatch = Stopwatch.StartNew();
 
                 if (snapshot.ShouldNotifyFoldControlChange)
                     NotifyFoldControlsChanged();
 
                 _histories.IsLoading = isLoading;
                 _histories.IsBackfilling = isBackfilling;
-                _histories.Commits = snapshot.Commits;
-                _histories.Graph = snapshot.Graph;
+                _histories.ApplySnapshot(snapshot.Commits, snapshot.Graph);
                 UpdateVisibleFoldBranchStatesFromCurrentGraph();
                 NotifyCurrentBranchVisualChanged();
 
@@ -2768,6 +2854,19 @@ namespace SourceGit.ViewModels
 
                     _navigateToCommitDelayed = string.Empty;
                 }
+
+                applyStopwatch.Stop();
+                Debug.WriteLine(
+                    $"[HistoryPerformance] mode={(isBackfilling ? "quick" : "full")}, " +
+                    $"commits={snapshot.Commits.Count}/{snapshot.QueriedCommitCount}, " +
+                    $"query={snapshot.QueryCommitsMilliseconds}ms, " +
+                    $"metadata={snapshot.MetadataMilliseconds}ms " +
+                    $"(cache={snapshot.MetadataCacheHits}/{snapshot.QueriedCommitCount}), " +
+                    $"prepare={snapshot.PrepareMilliseconds}ms, " +
+                    $"graph={snapshot.GraphMilliseconds}ms, " +
+                    $"queue={uiQueueStopwatch.ElapsedMilliseconds}ms, " +
+                    $"ui={applyStopwatch.ElapsedMilliseconds}ms, " +
+                    $"total={snapshot.TotalMilliseconds + uiQueueStopwatch.ElapsedMilliseconds + applyStopwatch.ElapsedMilliseconds}ms");
             });
         }
 
@@ -4145,7 +4244,10 @@ namespace SourceGit.ViewModels
 
         private BranchTreeNode.Builder BuildBranchTree(List<Models.Branch> branches, List<Models.Remote> remotes, bool shouldCleanupExpandedNodes = false)
         {
-            var builder = new BranchTreeNode.Builder(_uiStates.LocalBranchSortMode, _uiStates.RemoteBranchSortMode);
+            var builder = new BranchTreeNode.Builder(
+                _uiStates.LocalBranchSortMode,
+                _uiStates.RemoteBranchSortMode,
+                GetRebaseBaseBranch()?.FullName);
             if (string.IsNullOrEmpty(_filter))
             {
                 builder.SetExpandedNodes(_uiStates.ExpandedBranchNodesInSideBar);
@@ -4991,6 +5093,7 @@ namespace SourceGit.ViewModels
             }
 
             var hasIncludedBranches = includedBranches.Count > 0;
+            var rebaseBaseBranchFullName = GetRebaseBaseBranch()?.FullName;
             const uint incidentalBranchColor = 0x18808080;
 
             foreach (var commit in commits)
@@ -4998,11 +5101,13 @@ namespace SourceGit.ViewModels
                 foreach (var decorator in commit.Decorators)
                 {
                     decorator.Color = 0;
+                    decorator.IsRebaseBaseBranch = false;
                     switch (decorator.Type)
                     {
                         case Models.DecoratorType.CurrentBranchHead:
                         case Models.DecoratorType.LocalBranchHead:
                             var localRefName = $"refs/heads/{decorator.Name}";
+                            decorator.IsRebaseBaseBranch = localRefName.Equals(rebaseBaseBranchFullName, StringComparison.Ordinal);
                             if (TryResolveBranchDisplayColor(localRefName, true, branchColors, branchesByFullName, localBranchesByUpstream, out var localColor))
                                 decorator.Color = localColor;
                             else if (hasIncludedBranches && !ShouldKeepBranchVisibleColor(localRefName, true, includedBranches, branchesByFullName, localBranchesByUpstream))
@@ -5010,6 +5115,7 @@ namespace SourceGit.ViewModels
                             break;
                         case Models.DecoratorType.RemoteBranchHead:
                             var remoteRefName = $"refs/remotes/{decorator.Name}";
+                            decorator.IsRebaseBaseBranch = remoteRefName.Equals(rebaseBaseBranchFullName, StringComparison.Ordinal);
                             if (TryResolveBranchDisplayColor(remoteRefName, false, branchColors, branchesByFullName, localBranchesByUpstream, out var remoteColor))
                                 decorator.Color = remoteColor;
                             else if (hasIncludedBranches && !ShouldKeepBranchVisibleColor(remoteRefName, false, includedBranches, branchesByFullName, localBranchesByUpstream))

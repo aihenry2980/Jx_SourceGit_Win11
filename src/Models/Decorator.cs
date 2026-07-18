@@ -17,6 +17,7 @@
         public DecoratorType Type { get; set; } = DecoratorType.None;
         public string Name { get; set; } = "";
         public uint Color { get; set; } = 0;
+        public bool IsRebaseBaseBranch { get; set; } = false;
         public bool IsBranchFoldable { get; set; } = false;
         public bool IsBranchFolded { get; set; } = false;
         public bool IsTag => Type == DecoratorType.Tag;

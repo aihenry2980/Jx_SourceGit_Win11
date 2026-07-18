@@ -32,6 +32,7 @@ namespace SourceGit.Models
             foreach (var c in colors)
                 Pens.Add(new Pen(c.ToUInt32(), thickness));
 
+            s_penColors = [.. colors];
             s_penCount = colors.Count;
         }
 
@@ -195,6 +196,8 @@ namespace SourceGit.Models
                 }
                 commit.IsHighlightedInGraph = isHighlighted;
 
+                var preferredColor = FindPreferredPenIndex(commit);
+
                 // If no path found, create new curve for branch head
                 // Otherwise, create new curve for new merged commit
                 if (major == null)
@@ -203,20 +206,38 @@ namespace SourceGit.Models
 
                     if (commit.Parents.Count > 0)
                     {
-                        major = new PathHelper(commit.Parents[0], isHighlighted, colorPicker.Next(), new Point(offsetX, offsetY));
+                        major = new PathHelper(commit.Parents[0], isHighlighted, colorPicker.Next(preferredColor), new Point(offsetX, offsetY));
                         unsolved.Add(major);
                         temp.Paths.Add(major.Path);
                     }
                 }
-                else if (isHighlighted && !major.IsHighlighted && commit.Parents.Count > 0)
+                else
                 {
-                    major.Highlight();
-                    temp.Paths.Add(major.Path);
+                    // A branch can point into an existing lane. Split it at the branch head
+                    // so the selected branch color applies from this commit onward.
+                    if (preferredColor >= 0 && major.Path.Color != preferredColor && commit.Parents.Count > 0)
+                    {
+                        var majorIndex = unsolved.IndexOf(major);
+                        major.FinishAtCurrentPosition();
+                        colorPicker.Recycle(major.Path.Color);
+                        major = new PathHelper(
+                            commit.Parents[0],
+                            isHighlighted,
+                            colorPicker.Next(preferredColor),
+                            new Point(offsetX, offsetY));
+                        unsolved[majorIndex] = major;
+                        temp.Paths.Add(major.Path);
+                    }
+                    else if (isHighlighted && !major.IsHighlighted && commit.Parents.Count > 0)
+                    {
+                        major.Highlight();
+                        temp.Paths.Add(major.Path);
+                    }
                 }
 
                 // Calculate link position of this commit.
                 var position = new Point(major?.LastX ?? offsetX, offsetY);
-                var dotColor = major?.Path.Color ?? 0;
+                var dotColor = preferredColor >= 0 ? preferredColor : (major?.Path.Color ?? 0);
                 var anchor = new Dot() { Center = position, Color = dotColor, IsMerged = commit.IsMerged, IsHighlighted = isHighlighted };
                 if (commit.IsCurrentHead)
                     anchor.Type = DotType.Head;
@@ -285,26 +306,96 @@ namespace SourceGit.Models
             return temp;
         }
 
+        private static int FindPreferredPenIndex(Commit commit)
+        {
+            uint preferredColor = 0;
+            foreach (var decorator in commit.Decorators)
+            {
+                if (decorator.Type is not (DecoratorType.CurrentBranchHead or DecoratorType.LocalBranchHead or DecoratorType.RemoteBranchHead))
+                    continue;
+
+                var color = Color.FromUInt32(decorator.Color);
+                if (color.A < 0x80)
+                    continue;
+
+                preferredColor = decorator.Color;
+                break;
+            }
+
+            var penColors = s_penColors;
+            if (preferredColor == 0 || penColors.Length == 0)
+                return -1;
+
+            var target = Color.FromUInt32(preferredColor);
+            var nearest = -1;
+            var nearestDistance = long.MaxValue;
+            for (var i = 0; i < penColors.Length; i++)
+            {
+                var candidate = penColors[i];
+                var red = target.R - candidate.R;
+                var green = target.G - candidate.G;
+                var blue = target.B - candidate.B;
+                var distance = (long)red * red + (long)green * green + (long)blue * blue;
+                if (distance < nearestDistance)
+                {
+                    nearest = i;
+                    nearestDistance = distance;
+                }
+            }
+
+            return nearest;
+        }
+
         private class ColorPicker
         {
-            public int Next()
+            public int Next(int preferred = -1)
             {
-                if (_colorsQueue.Count == 0)
+                FillQueueIfEmpty();
+
+                if (preferred >= 0 && preferred < s_penCount)
                 {
-                    for (var i = 0; i < s_penCount; i++)
-                        _colorsQueue.Enqueue(i);
+                    RemoveFromQueue(preferred);
+                    _usages[preferred]++;
+                    return preferred;
                 }
 
-                return _colorsQueue.Dequeue();
+                var color = _colorsQueue.Dequeue();
+                _usages[color]++;
+                return color;
             }
 
             public void Recycle(int idx)
             {
-                if (!_colorsQueue.Contains(idx))
+                if (idx < 0 || idx >= _usages.Length || _usages[idx] == 0)
+                    return;
+
+                _usages[idx]--;
+                if (_usages[idx] == 0 && !_colorsQueue.Contains(idx))
                     _colorsQueue.Enqueue(idx);
             }
 
+            private void FillQueueIfEmpty()
+            {
+                if (_colorsQueue.Count > 0)
+                    return;
+
+                for (var i = 0; i < s_penCount; i++)
+                    _colorsQueue.Enqueue(i);
+            }
+
+            private void RemoveFromQueue(int color)
+            {
+                var count = _colorsQueue.Count;
+                for (var i = 0; i < count; i++)
+                {
+                    var candidate = _colorsQueue.Dequeue();
+                    if (candidate != color)
+                        _colorsQueue.Enqueue(candidate);
+                }
+            }
+
             private Queue<int> _colorsQueue = new Queue<int>();
+            private int[] _usages = new int[s_penCount];
         }
 
         private class PathHelper
@@ -423,6 +514,11 @@ namespace SourceGit.Models
                 _endY = 0;
             }
 
+            public void FinishAtCurrentPosition()
+            {
+                Add(LastX, _lastY);
+            }
+
             private void Add(double x, double y)
             {
                 if (_endY < y)
@@ -437,6 +533,7 @@ namespace SourceGit.Models
         }
 
         private static int s_penCount = 0;
+        private static Color[] s_penColors = [];
         private static readonly List<Color> s_defaultPenColors = [
             Colors.Orange,
             Colors.ForestGreen,

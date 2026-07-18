@@ -44,6 +44,12 @@ namespace SourceGit.ViewModels
             get => Backend is Models.Branch { IsCurrent: true };
         }
 
+        public bool IsRebaseBaseBranch
+        {
+            get;
+            private set;
+        }
+
         public bool ShowUpstreamGoneTip
         {
             get => Backend is Models.Branch { IsUpstreamGone: true };
@@ -64,10 +70,14 @@ namespace SourceGit.ViewModels
             public List<BranchTreeNode> Remotes { get; } = [];
             public List<string> InvalidExpandedNodes { get; } = [];
 
-            public Builder(Models.BranchSortMode localSortMode, Models.BranchSortMode remoteSortMode)
+            public Builder(
+                Models.BranchSortMode localSortMode,
+                Models.BranchSortMode remoteSortMode,
+                string rebaseBaseBranchFullName)
             {
                 _localSortMode = localSortMode;
                 _remoteSortMode = remoteSortMode;
+                _rebaseBaseBranchFullName = rebaseBaseBranchFullName;
             }
 
             public void SetExpandedNodes(List<string> expanded)
@@ -146,6 +156,7 @@ namespace SourceGit.ViewModels
                         Path = fullpath,
                         Backend = branch,
                         IsExpanded = false,
+                        IsRebaseBaseBranch = branch.FullName.Equals(_rebaseBaseBranchFullName, StringComparison.Ordinal),
                         TimeToSort = time,
                     });
                     return;
@@ -204,6 +215,7 @@ namespace SourceGit.ViewModels
                     Path = fullpath,
                     Backend = branch,
                     IsExpanded = false,
+                    IsRebaseBaseBranch = branch.FullName.Equals(_rebaseBaseBranchFullName, StringComparison.Ordinal),
                     TimeToSort = time,
                 });
             }
@@ -254,6 +266,7 @@ namespace SourceGit.ViewModels
 
             private readonly Models.BranchSortMode _localSortMode;
             private readonly Models.BranchSortMode _remoteSortMode;
+            private readonly string _rebaseBaseBranchFullName;
             private readonly HashSet<string> _expanded = new HashSet<string>();
         }
     }

@@ -14,6 +14,7 @@ namespace SourceGit.Views
         {
             public Geometry Icon { get; set; } = null;
             public Geometry SecondaryIcon { get; set; } = null;
+            public Geometry RebaseBaseIcon { get; set; } = null;
             public FormattedText PrefixLabel { get; set; } = null;
             public FormattedText Label { get; set; } = null;
             public FormattedText FoldLabel { get; set; } = null;
@@ -185,6 +186,7 @@ namespace SourceGit.Views
                 var entireRect = new RoundedRect(new Rect(x, y, item.Width, item.Height), new CornerRadius(4));
                 var centerY = y + item.Height * 0.5;
                 var hasCompactTrackingBadge = item.SecondaryIcon != null;
+                var rebaseBaseIconOffset = item.RebaseBaseIcon != null ? 14.0 : 0.0;
                 var badgeSize = hasCompactTrackingBadge ? 15.0 : 12.0;
                 var iconSize = hasCompactTrackingBadge ? 11.0 : 10.0;
                 var iconBackgroundY = y + (item.Height - badgeSize) * 0.5;
@@ -253,16 +255,22 @@ namespace SourceGit.Views
                     context.DrawRectangle(
                         item.PrimaryIconBackground,
                         new Pen(item.IconBrush ?? fg, hasCompactTrackingBadge ? 1.0 : 0.0),
-                        new RoundedRect(new Rect(x + 2, iconBackgroundY, badgeSize, badgeSize), new CornerRadius(4)));
+                        new RoundedRect(new Rect(x + 2 + rebaseBaseIconOffset, iconBackgroundY, badgeSize, badgeSize), new CornerRadius(4)));
                 }
 
-                var primaryIconX = x + 2 + (badgeSize - iconSize) * 0.5;
+                if (item.RebaseBaseIcon != null)
+                {
+                    using (context.PushTransform(Matrix.CreateTranslation(x + 2, iconY)))
+                        context.DrawGeometry(s_rebaseBaseIconBrush, new Pen(s_rebaseBaseIconBorderBrush, 0.8), item.RebaseBaseIcon);
+                }
+
+                var primaryIconX = x + 2 + rebaseBaseIconOffset + (badgeSize - iconSize) * 0.5;
                 using (context.PushTransform(Matrix.CreateTranslation(primaryIconX, iconY)))
                     context.DrawGeometry(item.IconBrush ?? fg, hasCompactTrackingBadge ? new Pen(s_compactIconOutlineBrush, 0.8) : null, item.Icon);
 
                 if (item.SecondaryIcon != null)
                 {
-                    var secondaryBadgeX = x + 19;
+                    var secondaryBadgeX = x + 19 + rebaseBaseIconOffset;
                     if (item.SecondaryIconBackground != null)
                     {
                         context.DrawRectangle(
@@ -273,8 +281,8 @@ namespace SourceGit.Views
 
                     context.DrawLine(
                         new Pen(item.BorderBrush ?? item.Brush, 1),
-                        new Point(x + 18, y + 2),
-                        new Point(x + 18, y + item.Height - 2));
+                        new Point(x + 18 + rebaseBaseIconOffset, y + 2),
+                        new Point(x + 18 + rebaseBaseIconOffset, y + item.Height - 2));
 
                     var secondaryIconX = secondaryBadgeX + (badgeSize - iconSize) * 0.5;
                     using (context.PushTransform(Matrix.CreateTranslation(secondaryIconX, iconY)))
@@ -454,6 +462,12 @@ namespace SourceGit.Views
                         item.PrimaryIconBackground = s_compactLocalIconBackgroundBrush;
                         item.SecondaryIconBackground = s_compactRemoteIconBackgroundBrush;
                         item.LeadingWidth = 38.0;
+                    }
+
+                    if (decorator.IsRebaseBaseBranch || secondaryDecorator?.IsRebaseBaseBranch == true)
+                    {
+                        item.RebaseBaseIcon = CreateIcon(this.FindResource("Icons.Star") as StreamGeometry, 10.0);
+                        item.LeadingWidth += 14.0;
                     }
 
                     item.CanFold = decorator.IsBranchFoldable &&
@@ -725,6 +739,8 @@ namespace SourceGit.Views
         private static readonly IBrush s_compactLocalIconBrush = Brushes.White;
         private static readonly IBrush s_compactRemoteIconBrush = Brushes.White;
         private static readonly IBrush s_compactIconOutlineBrush = new SolidColorBrush(Color.Parse("#AA202124"));
+        private static readonly IBrush s_rebaseBaseIconBrush = new SolidColorBrush(Color.Parse("#FFFFC107"));
+        private static readonly IBrush s_rebaseBaseIconBorderBrush = new SolidColorBrush(Color.Parse("#FF6D4C00"));
         private static readonly IBrush s_compactLocalIconBackgroundBrush = new LinearGradientBrush()
         {
             StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),

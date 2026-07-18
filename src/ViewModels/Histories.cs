@@ -86,21 +86,13 @@ namespace SourceGit.ViewModels
         public List<Models.Commit> Commits
         {
             get => _commits;
-            set
-            {
-                if (_isDisposed || _repo?.UIStates == null)
-                {
-                    SetProperty(ref _commits, value);
-                    return;
-                }
+            set => SetCommits(value, true);
+        }
 
-                GenerateGraph(value, true);
-                if (SetProperty(ref _commits, value))
-                {
-                    UpdateQuickFindMatches(_repo?.HistoryQuickFindAppliedText ?? string.Empty);
-                    PostCommitsChanged();
-                }
-            }
+        public void ApplySnapshot(List<Models.Commit> commits, Models.CommitGraph graph)
+        {
+            Graph = graph;
+            SetCommits(commits, false);
         }
 
         public Models.CommitGraph Graph
@@ -733,6 +725,24 @@ namespace SourceGit.ViewModels
             }
 
             Graph = Models.CommitGraph.Generate(commits, commitsChanged, firstParentOnly, highlighting, extraHeads);
+        }
+
+        private void SetCommits(List<Models.Commit> commits, bool generateGraph)
+        {
+            if (_isDisposed || _repo?.UIStates == null)
+            {
+                SetProperty(ref _commits, commits, nameof(Commits));
+                return;
+            }
+
+            if (generateGraph)
+                GenerateGraph(commits, true);
+
+            if (SetProperty(ref _commits, commits, nameof(Commits)))
+            {
+                UpdateQuickFindMatches(_repo?.HistoryQuickFindAppliedText ?? string.Empty);
+                PostCommitsChanged();
+            }
         }
 
         private bool UpdateQuickFindMatches(string query)

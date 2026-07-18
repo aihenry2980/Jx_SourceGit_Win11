@@ -27,7 +27,7 @@ namespace SourceGit.ViewModels
 
         public IReadOnlyList<PresetBranchColorOption> BranchColorOptions
         {
-            get => Repository.BranchFilterColorOptions;
+            get => _branchColorOptions;
         }
 
         public PresetBranchColorOption SelectedBranchColor
@@ -55,6 +55,17 @@ namespace SourceGit.ViewModels
                 _mode = _repo.UIStates.GetHistoryFilterMode(b.FullName);
                 var selectedColor = initialBranchColor != 0 ? initialBranchColor : _repo.GetEffectiveBranchDisplayColor(b);
                 _selectedBranchColor = FindBranchColorOption(selectedColor);
+                if (_selectedBranchColor == null)
+                {
+                    var currentGraphColor = new PresetBranchColorOption("Current graph color", selectedColor);
+                    var options = new List<PresetBranchColorOption>(Repository.BranchFilterColorOptions.Count + 1)
+                    {
+                        currentGraphColor,
+                    };
+                    options.AddRange(Repository.BranchFilterColorOptions);
+                    _branchColorOptions = options;
+                    _selectedBranchColor = currentGraphColor;
+                }
             }
             else if (_target is Models.Tag t)
             {
@@ -101,12 +112,13 @@ namespace SourceGit.ViewModels
                     return option;
             }
 
-            return Repository.BranchFilterColorOptions[0];
+            return null;
         }
 
         private Repository _repo = null;
         private object _target = null;
         private Models.FilterMode _mode = Models.FilterMode.None;
+        private IReadOnlyList<PresetBranchColorOption> _branchColorOptions = Repository.BranchFilterColorOptions;
         private PresetBranchColorOption _selectedBranchColor = null;
     }
 }

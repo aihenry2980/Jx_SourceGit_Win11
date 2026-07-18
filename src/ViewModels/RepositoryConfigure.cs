@@ -40,6 +40,20 @@ namespace SourceGit.ViewModels
             }
         }
 
+        public string RebaseBaseBranch
+        {
+            get => _repo.Settings.RebaseBaseBranch;
+            set
+            {
+                var normalized = value?.Trim() ?? string.Empty;
+                if (_repo.Settings.RebaseBaseBranch != normalized)
+                {
+                    _repo.Settings.RebaseBaseBranch = normalized;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         public int PreferredMergeMode
         {
             get => _repo.Settings.PreferredMergeMode;
@@ -234,6 +248,7 @@ namespace SourceGit.ViewModels
         public RepositoryConfigure(Repository repo)
         {
             _repo = repo;
+            _originalRebaseBaseBranch = _repo.Settings.RebaseBaseBranch;
 
             Remotes = new List<string>();
             foreach (var remote in _repo.Remotes)
@@ -366,6 +381,10 @@ namespace SourceGit.ViewModels
 
         public async Task SaveAsync()
         {
+            var rebaseBaseBranchChanged = !string.Equals(
+                _originalRebaseBaseBranch,
+                _repo.Settings.RebaseBaseBranch,
+                StringComparison.Ordinal);
             _repo.Settings.Save();
 
             await SetIfChangedAsync("user.name", UserName, "");
@@ -380,6 +399,11 @@ namespace SourceGit.ViewModels
             await ApplyRepoLocalIgnoreRulesAsync();
             await _repo.Settings.SaveAsync();
             _repo.EnsureAutoFetchTimerState();
+            if (rebaseBaseBranchChanged)
+            {
+                _repo.RefreshBranchSidebarByCurrentFilters();
+                _repo.RefreshCommits();
+            }
         }
 
         public async Task ApplyRepoLocalIgnoreRulesAsync()
@@ -546,6 +570,7 @@ namespace SourceGit.ViewModels
         private readonly Repository _repo;
         private readonly Dictionary<string, string> _cached;
         private readonly string _repoLocalIgnoreFile;
+        private readonly string _originalRebaseBaseBranch;
         private string _httpProxy;
         private string _repoLocalIgnoreRules = string.Empty;
         private string _repoLocalIgnoreRulesOrg = string.Empty;

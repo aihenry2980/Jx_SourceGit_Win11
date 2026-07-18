@@ -77,15 +77,50 @@ namespace SourceGit.ViewModels
                 Test();
         }
 
-        public void ConfigureForcePushAfterSuccess(Models.Remote remote, Models.Branch remoteBranch)
+        public void ConfigureForcePushAfterSuccess(
+            Models.Remote remote,
+            Models.Branch remoteBranch,
+            bool setUpstream = false)
         {
             _forcePushRemote = remote;
             _forcePushRemoteBranch = remoteBranch;
+            _setUpstreamAfterForcePush = setUpstream;
         }
 
         public static bool CanForcePushAfterRebase(Repository repo, Models.Branch source)
         {
-            return TryResolveForcePushTarget(repo, source, out _, out _);
+            return TryResolveForcePushTarget(repo, source, true, out _, out _, out _);
+        }
+
+        public static bool CanCheckoutRebaseAndForcePush(
+            Repository repo,
+            Models.Branch source,
+            Models.Branch target)
+        {
+            return GetCheckoutRebaseAndForcePushDisabledReason(repo, source, target) == null;
+        }
+
+        public static string GetCheckoutRebaseAndForcePushDisabledReason(
+            Repository repo,
+            Models.Branch source,
+            Models.Branch target)
+        {
+            if (repo == null || repo.IsBare)
+                return "This operation requires a non-bare repository";
+            if (source is not { IsLocal: true, IsDetachedHead: false })
+                return "Select a local branch";
+            if (target == null)
+                return "Configure a valid Rebase Base Branch";
+            if (source.FullName.Equals(target.FullName, StringComparison.Ordinal))
+                return "The source branch is already the Rebase Base Branch";
+            if (source.HasWorktree)
+                return "This branch is checked out in another worktree";
+            if (!source.IsCurrent && repo.LocalChangesCount > 0)
+                return "A clean working copy is required before checking out another branch";
+            if (!TryResolveForcePushTarget(repo, source, false, out _, out _, out _))
+                return "Set an upstream branch, configure Default Remote, or use a repository with one remote";
+
+            return null;
         }
 
         public static async Task StartForcePushAfterRebaseAsync(
@@ -93,9 +128,9 @@ namespace SourceGit.ViewModels
             Models.Branch source,
             Models.Branch target)
         {
-            if (!TryResolveForcePushTarget(repo, source, out var remote, out var remoteBranch))
+            if (!TryResolveForcePushTarget(repo, source, true, out var remote, out var remoteBranch, out var setUpstream))
             {
-                repo?.SendNotification($"Branch `{source?.Name}` has no valid upstream for force push.", true);
+                repo?.SendNotification($"Branch `{source?.Name}` has no valid force-push destination.", true);
                 return;
             }
 
@@ -108,7 +143,37 @@ namespace SourceGit.ViewModels
                 return;
 
             var operation = new Rebase(repo, source, target, false);
-            operation.ConfigureForcePushAfterSuccess(remote, remoteBranch);
+            operation.ConfigureForcePushAfterSuccess(remote, remoteBranch, setUpstream);
+            await repo.ShowAndStartPopupAsync(operation);
+        }
+
+        public static async Task StartCheckoutRebaseAndForcePushAsync(
+            Repository repo,
+            Models.Branch source,
+            Models.Branch target)
+        {
+            if (!CanCheckoutRebaseAndForcePush(repo, source, target) ||
+                !TryResolveForcePushTarget(repo, source, false, out var remote, out var remoteBranch, out var setUpstream))
+            {
+                repo?.SendNotification($"Branch `{source?.Name}` cannot be checked out, rebased, and force-pushed.", true);
+                return;
+            }
+
+            var checkoutStep = source.IsCurrent ? string.Empty : $"Checkout: {source.Name}\n";
+            var message =
+                checkoutStep +
+                $"Rebase: {source.Name} onto {target.FriendlyName}\n" +
+                $"Force push: {source.Name} -> {remote.Name}/{remoteBranch.Name}\n\n" +
+                "This rewrites remote history using --force-with-lease.";
+            var confirmed = await App.AskConfirmAsync(message, Models.ConfirmButtonType.YesNo);
+            if (!confirmed || !repo.CanCreatePopup())
+                return;
+
+            var operation = new Rebase(repo, source, target, false)
+            {
+                _checkoutBeforeRebase = !source.IsCurrent,
+            };
+            operation.ConfigureForcePushAfterSuccess(remote, remoteBranch, setUpstream);
             await repo.ShowAndStartPopupAsync(operation);
         }
 
@@ -116,17 +181,38 @@ namespace SourceGit.ViewModels
         {
             var forcePushAfterSuccess = _forcePushRemote != null && _forcePushRemoteBranch != null;
             _repo.ClearCommitMessage();
-            ProgressDescription = forcePushAfterSuccess ? "Rebasing before force push ..." : "Rebasing ...";
+            ProgressDescription = _checkoutBeforeRebase ? $"Checking out {Current.Name} ..." :
+                forcePushAfterSuccess ? "Rebasing before force push ..." : "Rebasing ...";
 
-            var log = _repo.CreateLog(forcePushAfterSuccess ? "Rebase & Force Push" : "Rebase");
+            var logName = _checkoutBeforeRebase ? "Checkout, Rebase & Force Push" :
+                forcePushAfterSuccess ? "Rebase & Force Push" : "Rebase";
+            var log = _repo.CreateLog(logName);
             Use(log);
 
             bool succ;
+            var checkoutSucceeded = !_checkoutBeforeRebase;
             using (var lockWatcher = _repo.LockWatcher())
             {
-                succ = await new Commands.Rebase(_repo.FullPath, _revision, AutoStash, NoVerify)
-                    .Use(log)
-                    .ExecAsync();
+                if (_checkoutBeforeRebase)
+                {
+                    log.AppendLine($"=== Checkout `{Current.Name}` ===");
+                    succ = await new Commands.Checkout(_repo.FullPath)
+                        .Use(log)
+                        .BranchAsync(Current.Name, false);
+                    checkoutSucceeded = succ;
+                }
+                else
+                {
+                    succ = true;
+                }
+
+                if (succ)
+                {
+                    ProgressDescription = forcePushAfterSuccess ? "Rebasing before force push ..." : "Rebasing ...";
+                    succ = await new Commands.Rebase(_repo.FullPath, _revision, AutoStash, NoVerify)
+                        .Use(log)
+                        .ExecAsync();
+                }
             }
 
             if (succ && UpdateSubmodulesRecursivelyAfterOperation)
@@ -149,7 +235,7 @@ namespace SourceGit.ViewModels
                     _forcePushRemoteBranch.Name,
                     false,
                     _repo.Submodules.Count > 0,
-                    false,
+                    _setUpstreamAfterForcePush,
                     true).Use(log).RunAsync();
             }
 
@@ -158,11 +244,16 @@ namespace SourceGit.ViewModels
 
             log.Complete();
 
+            if (_checkoutBeforeRebase && checkoutSucceeded)
+                _repo.RefreshAfterCheckoutBranch(Current);
+
             if (forcePushAfterSuccess)
             {
                 _repo.MarkBranchesDirtyManually();
                 if (succ)
                     _repo.SendNotification($"Rebased `{Current.Name}` and force-pushed it to `{_forcePushRemote.Name}/{_forcePushRemoteBranch.Name}`.");
+                else if (!checkoutSucceeded)
+                    _repo.SendNotification($"Checkout of `{Current.Name}` failed. Rebase and force push were skipped.", true);
                 else if (rebaseSucceeded)
                     _repo.SendNotification($"Force push of `{Current.Name}` failed. Review the repository log for details.", true);
                 else
@@ -214,29 +305,64 @@ namespace SourceGit.ViewModels
         private static bool TryResolveForcePushTarget(
             Repository repo,
             Models.Branch source,
+            bool requireCurrent,
             out Models.Remote remote,
-            out Models.Branch remoteBranch)
+            out Models.Branch remoteBranch,
+            out bool setUpstream)
         {
             remote = null;
             remoteBranch = null;
+            setUpstream = false;
 
             if (repo == null ||
-                source is not { IsLocal: true, IsCurrent: true, IsDetachedHead: false, IsUpstreamGone: false } ||
-                string.IsNullOrWhiteSpace(source.Upstream))
+                source is not { IsLocal: true, IsDetachedHead: false } ||
+                (requireCurrent && !source.IsCurrent))
             {
                 return false;
             }
 
-            var resolvedRemoteBranch = repo.Branches.Find(x =>
-                !x.IsLocal &&
-                string.Equals(x.FullName, source.Upstream, StringComparison.Ordinal));
-            if (resolvedRemoteBranch == null)
+            if (!source.IsUpstreamGone && !string.IsNullOrWhiteSpace(source.Upstream))
+            {
+                var resolvedRemoteBranch = repo.Branches.Find(x =>
+                    !x.IsLocal &&
+                    string.Equals(x.FullName, source.Upstream, StringComparison.Ordinal));
+                if (resolvedRemoteBranch != null)
+                {
+                    var resolvedRemote = repo.Remotes.Find(x =>
+                        string.Equals(x.Name, resolvedRemoteBranch.Remote, StringComparison.Ordinal));
+                    if (resolvedRemote != null)
+                    {
+                        remote = resolvedRemote;
+                        remoteBranch = resolvedRemoteBranch;
+                        return true;
+                    }
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(repo.Settings?.DefaultRemote))
+            {
+                remote = repo.Remotes.Find(x =>
+                    string.Equals(x.Name, repo.Settings.DefaultRemote, StringComparison.Ordinal));
+            }
+
+            if (remote == null && repo.Remotes.Count == 1)
+                remote = repo.Remotes[0];
+            if (remote == null)
                 return false;
 
-            remoteBranch = resolvedRemoteBranch;
-            var remoteName = resolvedRemoteBranch.Remote;
-            remote = repo.Remotes.Find(x => string.Equals(x.Name, remoteName, StringComparison.Ordinal));
-            return remote != null;
+            var remoteName = remote.Name;
+            remoteBranch = repo.Branches.Find(x =>
+                !x.IsLocal &&
+                string.Equals(x.Remote, remoteName, StringComparison.Ordinal) &&
+                string.Equals(x.Name, source.Name, StringComparison.Ordinal));
+            remoteBranch ??= new Models.Branch
+            {
+                Name = source.Name,
+                FullName = $"refs/remotes/{remoteName}/{source.Name}",
+                Remote = remoteName,
+            };
+            setUpstream = !string.Equals(source.Upstream, remoteBranch.FullName, StringComparison.Ordinal);
+            return true;
         }
 
         private readonly Repository _repo;
@@ -244,5 +370,7 @@ namespace SourceGit.ViewModels
         private RebaseTestingState _testingState = RebaseTestingState.Disabled;
         private Models.Remote _forcePushRemote = null;
         private Models.Branch _forcePushRemoteBranch = null;
+        private bool _setUpstreamAfterForcePush = false;
+        private bool _checkoutBeforeRebase = false;
     }
 }

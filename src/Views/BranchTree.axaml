@@ -141,12 +141,25 @@
                                     IsExpanded="{Binding IsExpanded}"/>
 
               <!-- Name -->
-              <TextBlock Grid.Column="1"
-                         FontWeight="{Binding IsCurrent, Converter={x:Static c:BoolConverters.IsBoldToFontWeight}}"
-                         TextTrimming="CharacterEllipsis">
-                <Run Text="{Binding Name}"/>
-                <Run Text="{Binding BranchesCount}" Foreground="{DynamicResource Brush.FG2}"/>
-              </TextBlock>
+              <Grid Grid.Column="1" ColumnDefinitions="Auto,*">
+                <Path Grid.Column="0"
+                      Width="12" Height="12"
+                      Margin="0,0,4,0"
+                      VerticalAlignment="Center"
+                      Stretch="Uniform"
+                      Data="{StaticResource Icons.Star}"
+                      Fill="#FFFFC107"
+                      Stroke="#FF6D4C00"
+                      StrokeThickness="0.8"
+                      IsVisible="{Binding IsRebaseBaseBranch}"
+                      ToolTip.Tip="Rebase Base Branch"/>
+                <TextBlock Grid.Column="1"
+                           FontWeight="{Binding IsCurrent, Converter={x:Static c:BoolConverters.IsBoldToFontWeight}}"
+                           TextTrimming="CharacterEllipsis">
+                  <Run Text="{Binding Name}"/>
+                  <Run Text="{Binding BranchesCount}" Foreground="{DynamicResource Brush.FG2}"/>
+                </TextBlock>
+              </Grid>
 
               <!-- Upstream invalid tip -->
               <Border Grid.Column="2"

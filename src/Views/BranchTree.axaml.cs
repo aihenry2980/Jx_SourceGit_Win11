@@ -797,6 +797,10 @@ namespace SourceGit.Views
                 }
 
                 menu.Items.Add(push);
+                var checkoutRebaseAndForcePush = CreateCheckoutRebaseAndForcePushMenuItem(repo, branch);
+                if (checkoutRebaseAndForcePush != null)
+                    menu.Items.Add(checkoutRebaseAndForcePush);
+                menu.Items.Add(CreateSetRebaseBaseBranchMenuItem(repo, branch));
                 menu.Items.Add(new MenuItem() { Header = "-" });
 
                 var type = repo.GetGitFlowType(branch);
@@ -885,6 +889,10 @@ namespace SourceGit.Views
                 }
 
                 menu.Items.Add(push);
+                var checkoutRebaseAndForcePush = CreateCheckoutRebaseAndForcePushMenuItem(repo, branch);
+                if (checkoutRebaseAndForcePush != null)
+                    menu.Items.Add(checkoutRebaseAndForcePush);
+                menu.Items.Add(CreateSetRebaseBaseBranchMenuItem(repo, branch));
 
                 if (!repo.IsBare)
                 {
@@ -1453,6 +1461,53 @@ namespace SourceGit.Views
                     await ViewModels.Rebase.StartForcePushAfterRebaseAsync(repo, current, target);
             };
 
+            return item;
+        }
+
+        private static MenuItem CreateCheckoutRebaseAndForcePushMenuItem(
+            ViewModels.Repository repo,
+            Models.Branch source)
+        {
+            var target = repo.GetRebaseBaseBranch();
+            if (target == null || source.FullName.Equals(target.FullName, StringComparison.Ordinal))
+                return null;
+
+            var item = new MenuItem
+            {
+                Header = $"Checkout {source.Name} & rebase onto {target.FriendlyName} & force push",
+                Icon = App.CreateMenuIcon("Icons.Rebase"),
+            };
+            var disabledReason = ViewModels.Rebase.GetCheckoutRebaseAndForcePushDisabledReason(repo, source, target);
+            item.IsEnabled = disabledReason == null;
+            if (disabledReason != null)
+                ToolTip.SetTip(item, disabledReason);
+            item.Click += async (_, e) =>
+            {
+                e.Handled = true;
+                if (repo.CanCreatePopup())
+                    await ViewModels.Rebase.StartCheckoutRebaseAndForcePushAsync(repo, source, target);
+            };
+
+            return item;
+        }
+
+        private static MenuItem CreateSetRebaseBaseBranchMenuItem(
+            ViewModels.Repository repo,
+            Models.Branch branch)
+        {
+            var item = new MenuItem
+            {
+                Header = "Set as Rebase Base Branch",
+                Icon = App.CreateMenuIcon("Icons.Star"),
+                IsEnabled = !repo.IsRebaseBaseBranch(branch),
+            };
+            if (!item.IsEnabled)
+                ToolTip.SetTip(item, "Current rebase base branch");
+            item.Click += (_, e) =>
+            {
+                repo.SetRebaseBaseBranch(branch);
+                e.Handled = true;
+            };
             return item;
         }
 
