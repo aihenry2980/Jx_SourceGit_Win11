@@ -218,13 +218,14 @@ namespace SourceGit.Models
                     if (preferredColor >= 0 && major.Path.Color != preferredColor && commit.Parents.Count > 0)
                     {
                         var majorIndex = unsolved.IndexOf(major);
+                        var splitPoint = new Point(major.LastX, offsetY);
                         major.FinishAtCurrentPosition();
                         colorPicker.Recycle(major.Path.Color);
                         major = new PathHelper(
                             commit.Parents[0],
                             isHighlighted,
                             colorPicker.Next(preferredColor),
-                            new Point(offsetX, offsetY));
+                            splitPoint);
                         unsolved[majorIndex] = major;
                         temp.Paths.Add(major.Path);
                     }

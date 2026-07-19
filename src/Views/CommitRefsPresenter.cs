@@ -27,6 +27,8 @@ namespace SourceGit.Views
             public IBrush SecondaryIconBrush { get; set; } = null;
             public IBrush PrimaryIconBackground { get; set; } = null;
             public IBrush SecondaryIconBackground { get; set; } = null;
+            public IBrush TrackingTopBackground { get; set; } = null;
+            public IBrush TrackingBottomBackground { get; set; } = null;
             public IBrush LabelBrush { get; set; } = null;
             public IBrush FoldButtonBackground { get; set; } = null;
             public IBrush FoldButtonForeground { get; set; } = null;
@@ -207,8 +209,13 @@ namespace SourceGit.Views
                         if (bg != null)
                             context.DrawRectangle(bg, null, entireRect);
 
-                        using (context.PushOpacity(.6))
-                            context.DrawRectangle(item.Brush, null, entireRect);
+                        if (hasCompactTrackingBadge)
+                            DrawTrackingBranchBackground(context, entireRect, item, .78);
+                        else
+                        {
+                            using (context.PushOpacity(.6))
+                                context.DrawRectangle(item.Brush, null, entireRect);
+                        }
                     }
 
                     var labelX = x + item.LeadingWidth;
@@ -232,11 +239,18 @@ namespace SourceGit.Views
                         if (bg != null)
                             context.DrawRectangle(bg, null, entireRect);
 
-                        var labelRect = new RoundedRect(
-                            new Rect(x + item.LeadingWidth, y, item.Width - item.LeadingWidth, item.Height),
-                            new CornerRadius(0, rightCornerRadius, rightCornerRadius, 0));
-                        using (context.PushOpacity(.2))
-                            context.DrawRectangle(item.Brush, null, labelRect);
+                        if (hasCompactTrackingBadge)
+                        {
+                            DrawTrackingBranchBackground(context, entireRect, item, .55);
+                        }
+                        else
+                        {
+                            var labelRect = new RoundedRect(
+                                new Rect(x + item.LeadingWidth, y, item.Width - item.LeadingWidth, item.Height),
+                                new CornerRadius(0, rightCornerRadius, rightCornerRadius, 0));
+                            using (context.PushOpacity(.2))
+                                context.DrawRectangle(item.Brush, null, labelRect);
+                        }
 
                         context.DrawLine(new Pen(item.Brush), new Point(x + item.LeadingWidth, y), new Point(x + item.LeadingWidth, y + item.Height));
                     }
@@ -530,6 +544,9 @@ namespace SourceGit.Views
                     }
 
                     item.Icon = CreateIcon(geo, secondaryDecorator != null ? 11.0 : 10.0);
+                    if (secondaryDecorator != null)
+                        CreateTrackingBranchBackgrounds(item);
+
                     if (item.CanFold)
                     {
                         item.FoldButtonBackground = item.IsFolded
@@ -579,6 +596,54 @@ namespace SourceGit.Views
             }
 
             return new Size(0, 0);
+        }
+
+        private static void DrawTrackingBranchBackground(
+            DrawingContext context,
+            RoundedRect clipRect,
+            RenderItem item,
+            double opacity)
+        {
+            var rect = clipRect.Rect;
+            var middleY = rect.Top + rect.Height * 0.5;
+            using (context.PushClip(clipRect))
+            using (context.PushOpacity(opacity))
+            {
+                context.DrawRectangle(
+                    item.TrackingTopBackground ?? item.Brush,
+                    null,
+                    new Rect(rect.Left, rect.Top, rect.Width, middleY - rect.Top));
+                context.DrawRectangle(
+                    item.TrackingBottomBackground ?? item.Brush,
+                    null,
+                    new Rect(rect.Left, middleY, rect.Width, rect.Bottom - middleY));
+            }
+        }
+
+        private static void CreateTrackingBranchBackgrounds(RenderItem item)
+        {
+            if (item.Brush is not ISolidColorBrush solid)
+                return;
+
+            item.TrackingTopBackground = new SolidColorBrush(BlendColor(solid.Color, Colors.White, 0.55));
+            item.TrackingBottomBackground = new SolidColorBrush(BlendColor(solid.Color, Colors.Black, 0.38));
+        }
+
+        private static Color BlendColor(Color source, Color target, double amount)
+        {
+            static byte BlendChannel(byte sourceChannel, byte targetChannel, double blendAmount)
+            {
+                return (byte)Math.Clamp(
+                    (int)Math.Round(sourceChannel + (targetChannel - sourceChannel) * blendAmount),
+                    0,
+                    255);
+            }
+
+            return Color.FromArgb(
+                source.A,
+                BlendChannel(source.R, target.R, amount),
+                BlendChannel(source.G, target.G, amount),
+                BlendChannel(source.B, target.B, amount));
         }
 
         private static void DrawTagStripePattern(DrawingContext context, RoundedRect clipRect, IBrush brush)
