@@ -194,7 +194,7 @@ namespace SourceGit.ViewModels
 
         public double AuthorColumnWidth
         {
-            get => _repo?.UIStates?.AuthorColumnWidth ?? 120;
+            get => _repo?.UIStates?.AuthorColumnWidth ?? 240;
             set
             {
                 if (_repo?.UIStates is { } states)

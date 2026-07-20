@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading.Tasks;
 
 namespace SourceGit.Commands
@@ -19,14 +18,16 @@ namespace SourceGit.Commands
 
             try
             {
-                using var proc = new Process();
-                proc.StartInfo = CreateGitStartInfo(true);
-                proc.Start();
+                var result = await ReadToEndAndKillOnCancelAsync().ConfigureAwait(false);
+                if (!result.IsSuccess || CancellationToken.IsCancellationRequested)
+                    return outs;
 
-                while (await proc.StandardOutput.ReadLineAsync().ConfigureAwait(false) is { Length: > 8 } line)
-                    outs.Add(line);
-
-                await proc.WaitForExitAsync().ConfigureAwait(false);
+                foreach (var line in result.StdOut.Split(['\r', '\n'], System.StringSplitOptions.RemoveEmptyEntries))
+                {
+                    CancellationToken.ThrowIfCancellationRequested();
+                    if (line.Length > 8)
+                        outs.Add(line);
+                }
             }
             catch
             {

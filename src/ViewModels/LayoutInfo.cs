@@ -143,12 +143,29 @@ namespace SourceGit.ViewModels
             set => SetProperty(ref _dateTimeColumnWidth, new DataGridLength(value.Value, DataGridLengthUnitType.Pixel, 0, value.DisplayValue));
         }
 
+        public int HistoryColumnLayoutVersion
+        {
+            get;
+            set;
+        } = 0;
+
+        internal void Normalize()
+        {
+            if (HistoryColumnLayoutVersion < 1)
+            {
+                if (System.Math.Abs(_authorColumnWidth.Value - 120) < 0.01)
+                    _authorColumnWidth = new DataGridLength(240, DataGridLengthUnitType.Pixel, 0, 240);
+
+                HistoryColumnLayoutVersion = 1;
+            }
+        }
+
         private GridLength _repositorySidebarWidth = new GridLength(250, GridUnitType.Pixel);
         private GridLength _workingCopyLeftWidth = new GridLength(300, GridUnitType.Pixel);
         private GridLength _stashesLeftWidth = new GridLength(300, GridUnitType.Pixel);
         private GridLength _commitDetailChangesLeftWidth = new GridLength(256, GridUnitType.Pixel);
         private GridLength _commitDetailFilesLeftWidth = new GridLength(256, GridUnitType.Pixel);
-        private DataGridLength _authorColumnWidth = new DataGridLength(120, DataGridLengthUnitType.Pixel, 0, 120);
+        private DataGridLength _authorColumnWidth = new DataGridLength(240, DataGridLengthUnitType.Pixel, 0, 240);
         private DataGridLength _shaColumnWidth = new DataGridLength(72, DataGridLengthUnitType.Pixel, 0, 72);
         private DataGridLength _dateTimeColumnWidth = new DataGridLength(136, DataGridLengthUnitType.Pixel, 0, 136);
     }

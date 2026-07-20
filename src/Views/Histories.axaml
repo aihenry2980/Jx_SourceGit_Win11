@@ -314,7 +314,7 @@
                           <DataTemplate DataType="m:SubmoduleUpdateBadge">
                             <Grid Height="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Converter={x:Static c:DoubleConverters.ToHistoryBadgeHeight}}"
                                   MinWidth="28"
-                                  MaxWidth="180"
+                                  MaxWidth="216"
                                   ClipToBounds="True"
                                   ContextRequested="OnSubmoduleUpdateBadgeContextRequested"
                                   ToolTip.Tip="{Binding Path}">
@@ -326,7 +326,7 @@
                                       VerticalAlignment="Center"
                                       Data="{StaticResource Icons.Submodule}"
                                       Fill="{Binding AccentColor, Converter={x:Static c:CommitConverters.UInt32ToBrush}}"/>
-                                <TextBlock MaxWidth="150"
+                                <TextBlock MaxWidth="180"
                                            FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Converter={x:Static c:DoubleConverters.ToHistoryBadgeFontSize}}"
                                            FontWeight="Bold"
                                            Foreground="{Binding AccentColor, Converter={x:Static c:CommitConverters.UInt32ToBrush}}"

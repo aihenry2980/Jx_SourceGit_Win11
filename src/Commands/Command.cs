@@ -51,6 +51,7 @@ namespace SourceGit.Commands
 
             var captured = new CapturedProcess() { Process = proc };
             var capturedLock = new object();
+            CancellationTokenRegistration registration = default;
             try
             {
                 proc.Start();
@@ -58,12 +59,12 @@ namespace SourceGit.Commands
                 // Not safe, please only use `CancellationToken` in readonly commands.
                 if (CancellationToken.CanBeCanceled)
                 {
-                    CancellationToken.Register(() =>
+                    registration = CancellationToken.Register(() =>
                     {
                         lock (capturedLock)
                         {
                             if (captured is { Process: { HasExited: false } })
-                                captured.Process.Kill();
+                                TryKillProcessTree(captured.Process);
                         }
                     });
                 }
@@ -93,6 +94,7 @@ namespace SourceGit.Commands
             {
                 captured.Process = null;
             }
+            registration.Dispose();
 
             Log?.AppendLine(string.Empty);
 
@@ -175,7 +177,7 @@ namespace SourceGit.Commands
                         lock (capturedLock)
                         {
                             if (captured is { Process: { HasExited: false } })
-                                captured.Process.Kill();
+                                TryKillProcessTree(captured.Process);
                         }
                     });
                 }
@@ -188,10 +190,13 @@ namespace SourceGit.Commands
             try
             {
                 var rs = new Result() { IsSuccess = true };
-                rs.StdOut = await proc.StandardOutput.ReadToEndAsync(CancellationToken).ConfigureAwait(false);
-                rs.StdErr = await proc.StandardError.ReadToEndAsync(CancellationToken).ConfigureAwait(false);
+                var stdoutTask = proc.StandardOutput.ReadToEndAsync(CancellationToken);
+                var stderrTask = proc.StandardError.ReadToEndAsync(CancellationToken);
+                await Task.WhenAll(stdoutTask, stderrTask).ConfigureAwait(false);
                 await proc.WaitForExitAsync(CancellationToken).ConfigureAwait(false);
 
+                rs.StdOut = await stdoutTask.ConfigureAwait(false);
+                rs.StdErr = await stderrTask.ConfigureAwait(false);
                 rs.IsSuccess = proc.ExitCode == 0;
                 return rs;
             }
@@ -276,6 +281,25 @@ namespace SourceGit.Commands
         protected void RaiseException(string error)
         {
             Models.Notification.Send(Context, error, true);
+        }
+
+        protected static void TryKillProcessTree(Process process)
+        {
+            try
+            {
+                process.Kill(true);
+            }
+            catch
+            {
+                try
+                {
+                    process.Kill();
+                }
+                catch
+                {
+                    // The process may have exited while cancellation was being handled.
+                }
+            }
         }
 
         private void HandleOutput(string line, List<string> errs)

@@ -2639,62 +2639,76 @@ namespace SourceGit.ViewModels
 
         private Task RefreshCommitsAsync(bool fastAfterFetch)
         {
-            if (_cancellationRefreshCommits is { IsCancellationRequested: false })
-                _cancellationRefreshCommits.Cancel();
-
-            _cancellationRefreshCommits = new CancellationTokenSource();
-            var token = _cancellationRefreshCommits.Token;
-
-            return Task.Run(async () =>
+            lock (_refreshCommitsLock)
             {
-                try
+                if (_cancellationRefreshCommits is { IsCancellationRequested: false })
+                    _cancellationRefreshCommits.Cancel();
+
+                _cancellationRefreshCommits = new CancellationTokenSource();
+                var token = _cancellationRefreshCommits.Token;
+                return Task.Run(async () =>
                 {
-                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    var enteredRefreshGate = false;
+                    try
                     {
-                        if (_histories != null)
+                        await _refreshCommitsGate.WaitAsync(token).ConfigureAwait(false);
+                        enteredRefreshGate = true;
+                        token.ThrowIfCancellationRequested();
+                        await Dispatcher.UIThread.InvokeAsync(() =>
                         {
-                            _histories.IsLoading = true;
-                            _histories.IsBackfilling = false;
+                            if (_histories != null)
+                            {
+                                _histories.IsLoading = true;
+                                _histories.IsBackfilling = false;
+                            }
+                        });
+
+                        var fullLimits = BuildHistoryLimits(Preferences.Instance.MaxHistoryCommits);
+                        var quickLimits = fastAfterFetch ? string.Empty : BuildQuickHistoryLimits();
+
+                        if (!string.IsNullOrEmpty(quickLimits) && !quickLimits.Equals(fullLimits, StringComparison.Ordinal))
+                        {
+                            var quickSnapshot = await QueryCommitHistorySnapshotAsync(quickLimits, false, token).ConfigureAwait(false);
+                            if (!token.IsCancellationRequested && quickSnapshot != null && quickSnapshot.Commits.Count > 0)
+                                await ApplyCommitHistorySnapshotAsync(quickSnapshot, token, false, true, false).ConfigureAwait(false);
                         }
-                    });
 
-                    var fullLimits = BuildHistoryLimits(Preferences.Instance.MaxHistoryCommits);
-                    var quickLimits = fastAfterFetch ? string.Empty : BuildQuickHistoryLimits();
-
-                    if (!string.IsNullOrEmpty(quickLimits) && !quickLimits.Equals(fullLimits, StringComparison.Ordinal))
-                    {
-                        var quickSnapshot = await QueryCommitHistorySnapshotAsync(quickLimits, false).ConfigureAwait(false);
-                        if (!token.IsCancellationRequested && quickSnapshot != null && quickSnapshot.Commits.Count > 0)
-                            await ApplyCommitHistorySnapshotAsync(quickSnapshot, token, false, true, false).ConfigureAwait(false);
-                    }
-
-                    if (token.IsCancellationRequested)
-                        return;
-
-                    var fullSnapshot = await QueryCommitHistorySnapshotAsync(fullLimits, true).ConfigureAwait(false);
-                    if (fullSnapshot != null)
-                        await ApplyCommitHistorySnapshotAsync(fullSnapshot, token, false, false, true).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException) when (token.IsCancellationRequested)
-                {
-                    // A newer refresh owns the history view now.
-                }
-                catch (Exception e)
-                {
-                    App.RaiseException(FullPath, $"Failed to load commit history. Reason: {e.GetBaseException().Message}");
-                }
-                finally
-                {
-                    await Dispatcher.UIThread.InvokeAsync(() =>
-                    {
-                        if (_histories == null || _cancellationRefreshCommits?.Token != token)
+                        if (token.IsCancellationRequested)
                             return;
 
-                        _histories.IsLoading = false;
-                        _histories.IsBackfilling = false;
-                    });
-                }
-            }, token);
+                        var fullSnapshot = await QueryCommitHistorySnapshotAsync(fullLimits, true, token).ConfigureAwait(false);
+                        if (fullSnapshot != null)
+                            await ApplyCommitHistorySnapshotAsync(fullSnapshot, token, false, false, true).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException) when (token.IsCancellationRequested)
+                    {
+                        // A newer refresh owns the history view now.
+                    }
+                    catch (Exception e)
+                    {
+                        App.RaiseException(FullPath, $"Failed to load commit history. Reason: {e.GetBaseException().Message}");
+                    }
+                    finally
+                    {
+                        try
+                        {
+                            await Dispatcher.UIThread.InvokeAsync(() =>
+                            {
+                                if (_histories == null || _cancellationRefreshCommits?.Token != token)
+                                    return;
+
+                                _histories.IsLoading = false;
+                                _histories.IsBackfilling = false;
+                            });
+                        }
+                        finally
+                        {
+                            if (enteredRefreshGate)
+                                _refreshCommitsGate.Release();
+                        }
+                    }
+                }, CancellationToken.None);
+            }
         }
 
         private string BuildHistoryLimits(int maxCommits)
@@ -2738,20 +2752,30 @@ namespace SourceGit.ViewModels
             return BuildHistoryLimits(quickCount);
         }
 
-        private async Task<CommitHistorySnapshot> QueryCommitHistorySnapshotAsync(string limits, bool pruneFoldState)
+        private async Task<CommitHistorySnapshot> QueryCommitHistorySnapshotAsync(
+            string limits,
+            bool pruneFoldState,
+            CancellationToken cancellationToken)
         {
             var totalStopwatch = Stopwatch.StartNew();
             var stageStopwatch = Stopwatch.StartNew();
-            var commits = await new Commands.QueryCommits(FullPath, limits).GetResultAsync().ConfigureAwait(false);
+            var queryCommits = new Commands.QueryCommits(FullPath, limits)
+            {
+                CancellationToken = cancellationToken,
+            };
+            var commits = await queryCommits.GetResultAsync().ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
             var queriedCommitCount = commits.Count;
             var queryCommitsMilliseconds = stageStopwatch.ElapsedMilliseconds;
             stageStopwatch.Restart();
             var commitDiffStats = new Dictionary<string, Commands.CommitHistoryDiffStat>(StringComparer.Ordinal);
-            var allCached = _commitHistoryMetadataCache != null && commits.Count > 0;
+            var commitsMissingMetadata = new List<Models.Commit>();
             var metadataCacheHits = 0;
 
             foreach (var commit in commits)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 if (_commitHistoryMetadataCache != null && _commitHistoryMetadataCache.TryGet(commit.SHA, out var cached))
                 {
                     metadataCacheHits++;
@@ -2770,17 +2794,32 @@ namespace SourceGit.ViewModels
                 }
                 else
                 {
-                    allCached = false;
+                    commitsMissingMetadata.Add(commit);
                 }
             }
 
-            if (!allCached)
+            if (commitsMissingMetadata.Count > 0)
             {
-                commitDiffStats = await new Commands.QueryCommitSubmodulePointerFlags(FullPath, limits).GetResultAsync().ConfigureAwait(false);
+                var queryOnlyMissingCommits =
+                    _commitHistoryMetadataCache != null &&
+                    commitsMissingMetadata.Count <= MAX_INCREMENTAL_HISTORY_METADATA_COMMITS;
+                var queryMetadata = queryOnlyMissingCommits
+                    ? new Commands.QueryCommitSubmodulePointerFlags(
+                        FullPath,
+                        commitsMissingMetadata.ConvertAll(x => x.SHA))
+                    : new Commands.QueryCommitSubmodulePointerFlags(FullPath, limits);
+                queryMetadata.CancellationToken = cancellationToken;
+                var queriedDiffStats = await queryMetadata.GetResultAsync().ConfigureAwait(false);
+                cancellationToken.ThrowIfCancellationRequested();
+
+                foreach (var pair in queriedDiffStats)
+                    commitDiffStats[pair.Key] = pair.Value;
+
                 if (_commitHistoryMetadataCache != null)
                 {
+                    var commitsToCache = queryOnlyMissingCommits ? commitsMissingMetadata : commits;
                     var cacheUpdates = new Dictionary<string, Models.CommitHistoryMetadata>(StringComparer.Ordinal);
-                    foreach (var commit in commits)
+                    foreach (var commit in commitsToCache)
                     {
                         if (commitDiffStats.TryGetValue(commit.SHA, out var stat))
                         {
@@ -2809,6 +2848,8 @@ namespace SourceGit.ViewModels
 
             foreach (var commit in commits)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 if (commitDiffStats.TryGetValue(commit.SHA, out var stat))
                 {
                     var submodulePointerChangeCount = stat.SubmodulePointerChangeCount;
@@ -2865,6 +2906,7 @@ namespace SourceGit.ViewModels
 
             var prepareMilliseconds = stageStopwatch.ElapsedMilliseconds;
             stageStopwatch.Restart();
+            cancellationToken.ThrowIfCancellationRequested();
             var graph = Models.CommitGraph.Generate(
                 commits,
                 true,
@@ -3523,45 +3565,11 @@ namespace SourceGit.ViewModels
                 return state;
             }
 
-            if (stopOnError)
+            foreach (var target in targets)
             {
-                foreach (var target in targets)
-                {
-                    var state = await RunSubmoduleFetchAsync(target).ConfigureAwait(false);
-                    if (state == Models.RecursiveOperationTargetState.Failed)
-                        return false;
-                }
-            }
-            else if (targets.Count > 0)
-            {
-                var maxParallelism = Math.Min(SPLIT_FETCH_MAX_PARALLELISM, targets.Count);
-                log?.AppendLine($"Fetching up to {maxParallelism} submodule(s) in parallel.");
-                using var parallelLimiter = new SemaphoreSlim(maxParallelism);
-                var tasks = new List<Task>();
-                foreach (var target in targets)
-                {
-                    tasks.Add(Task.Run(async () =>
-                    {
-                        await parallelLimiter.WaitAsync(cancellationToken).ConfigureAwait(false);
-                        try
-                        {
-                            await RunSubmoduleFetchAsync(target).ConfigureAwait(false);
-                        }
-                        finally
-                        {
-                            parallelLimiter.Release();
-                        }
-                    }, CancellationToken.None));
-                }
-
-                try
-                {
-                    await Task.WhenAll(tasks).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                {
+                var state = await RunSubmoduleFetchAsync(target).ConfigureAwait(false);
+                if (state == Models.RecursiveOperationTargetState.Failed && stopOnError)
                     return false;
-                }
             }
 
             if (prune)
@@ -5810,6 +5818,8 @@ namespace SourceGit.ViewModels
         private CancellationTokenSource _cancellationRefreshTags = null;
         private CancellationTokenSource _cancellationRefreshWorkingCopyChanges = null;
         private CancellationTokenSource _cancellationRefreshCommits = null;
+        private readonly object _refreshCommitsLock = new();
+        private readonly SemaphoreSlim _refreshCommitsGate = new(1, 1);
         private CancellationTokenSource _cancellationRefreshStashes = null;
 
         private sealed class PresetBranchFilterMatchCache
@@ -5864,8 +5874,8 @@ namespace SourceGit.ViewModels
 
         private static readonly TimeSpan SPLIT_FETCH_TIMEOUT = TimeSpan.FromMinutes(5);
         private static readonly TimeSpan SPLIT_SUBMODULE_UPDATE_TIMEOUT = TimeSpan.FromMinutes(5);
-        private static readonly int SPLIT_FETCH_MAX_PARALLELISM = Math.Max(1, Math.Min(4, Environment.ProcessorCount));
         private static readonly int SPLIT_SUBMODULE_UPDATE_MAX_PARALLELISM = Math.Max(1, Math.Min(4, Environment.ProcessorCount));
+        private const int MAX_INCREMENTAL_HISTORY_METADATA_COMMITS = 256;
         private static readonly uint[] s_autoHistoryFilterBranchColors =
         [
             0xFF10893E, // green

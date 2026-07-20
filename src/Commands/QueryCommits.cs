@@ -55,17 +55,22 @@ namespace SourceGit.Commands
             var commits = new List<Models.Commit>();
             try
             {
-                using var proc = new Process();
-                proc.StartInfo = CreateGitStartInfo(true);
-                proc.Start();
+                var result = await ReadToEndAndKillOnCancelAsync().ConfigureAwait(false);
+                if (CancellationToken.IsCancellationRequested)
+                    return commits;
 
-                var output = await proc.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
-                await proc.WaitForExitAsync().ConfigureAwait(false);
+                if (!result.IsSuccess)
+                {
+                    RaiseException($"Failed to query commits. Reason: {result.StdErr}");
+                    return commits;
+                }
 
                 var findHead = false;
-                var records = output.Split(RecordSeparator, StringSplitOptions.RemoveEmptyEntries);
+                var records = result.StdOut.Split(RecordSeparator, StringSplitOptions.RemoveEmptyEntries);
                 foreach (var rawRecord in records)
                 {
+                    CancellationToken.ThrowIfCancellationRequested();
+
                     var record = rawRecord.TrimEnd('\r', '\n');
                     var parts = record.Split([FieldSeparator], 9);
                     if (parts.Length != 9)
@@ -88,9 +93,12 @@ namespace SourceGit.Commands
 
                 if (_markMerged && !findHead && commits.Count > 0)
                 {
-                    var set = await new QueryCurrentBranchCommitHashes(WorkingDirectory, commits[^1].CommitterTime)
-                        .GetResultAsync()
-                        .ConfigureAwait(false);
+                    var query = new QueryCurrentBranchCommitHashes(WorkingDirectory, commits[^1].CommitterTime)
+                    {
+                        CancellationToken = CancellationToken,
+                    };
+                    var set = await query.GetResultAsync().ConfigureAwait(false);
+                    CancellationToken.ThrowIfCancellationRequested();
 
                     foreach (var c in commits)
                     {
@@ -101,6 +109,10 @@ namespace SourceGit.Commands
                         }
                     }
                 }
+            }
+            catch (OperationCanceledException) when (CancellationToken.IsCancellationRequested)
+            {
+                commits.Clear();
             }
             catch (Exception e)
             {

@@ -1022,6 +1022,8 @@ namespace SourceGit.ViewModels
 
         private void Normalize()
         {
+            _layout ??= new LayoutInfo();
+            _layout.Normalize();
             _maxHistoryCommits = Math.Clamp(_maxHistoryCommits, MIN_HISTORY_COMMITS, MAX_HISTORY_COMMITS);
             _recursiveSubmoduleDisplayDepth = Math.Clamp(_recursiveSubmoduleDisplayDepth, MIN_RECURSIVE_SUBMODULE_DISPLAY_DEPTH, MAX_RECURSIVE_SUBMODULE_DISPLAY_DEPTH);
             _autoRevertPullConflictExtensions ??= DEFAULT_AUTO_REVERT_PULL_CONFLICT_EXTENSIONS;

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SourceGit.Commands
@@ -36,6 +37,19 @@ namespace SourceGit.Commands
             Args = builder.ToString();
         }
 
+        public QueryCommitSubmodulePointerFlags(string repo, IReadOnlyList<string> commits)
+        {
+            WorkingDirectory = repo;
+            Context = repo;
+
+            var builder = new StringBuilder();
+            builder.Append("log --no-walk --raw --no-abbrev --no-show-signature --format=%H");
+            foreach (var commit in commits)
+                builder.Append(' ').Append(commit);
+
+            Args = builder.ToString();
+        }
+
         public async Task<Dictionary<string, CommitHistoryDiffStat>> GetResultAsync()
         {
             var outs = new Dictionary<string, CommitHistoryDiffStat>(StringComparer.Ordinal);
@@ -45,10 +59,14 @@ namespace SourceGit.Commands
                 using var proc = new Process();
                 proc.StartInfo = CreateGitStartInfo(true);
                 proc.Start();
+                using var registration = CancellationToken.Register(() => TryKillProcessTree(proc));
+                var stderrTask = proc.StandardError.ReadToEndAsync(CancellationToken);
 
                 string currentCommit = null;
-                while (await proc.StandardOutput.ReadLineAsync().ConfigureAwait(false) is { } line)
+                while (await proc.StandardOutput.ReadLineAsync(CancellationToken).ConfigureAwait(false) is { } line)
                 {
+                    CancellationToken.ThrowIfCancellationRequested();
+
                     if (string.IsNullOrWhiteSpace(line))
                         continue;
 
@@ -99,10 +117,15 @@ namespace SourceGit.Commands
                         stat.HasTypeChange = true;
                 }
 
-                await proc.WaitForExitAsync().ConfigureAwait(false);
+                await proc.WaitForExitAsync(CancellationToken).ConfigureAwait(false);
+                await stderrTask.ConfigureAwait(false);
 
                 foreach (var stat in outs.Values)
                     stat.SubmodulePaths.Sort(StringComparer.Ordinal);
+            }
+            catch (OperationCanceledException) when (CancellationToken.IsCancellationRequested)
+            {
+                outs.Clear();
             }
             catch (Exception e)
             {
