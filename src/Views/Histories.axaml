@@ -152,12 +152,11 @@
         </DataGrid.Styles>
 
         <DataGrid.Columns>
-          <DataGridTemplateColumn MinWidth="64" CanUserResize="True" IsReadOnly="True" IsVisible="{Binding IsSHAColumnVisible, Mode=OneWay}">
-            <DataGridTemplateColumn.Width>
-              <Binding Source="{x:Static vm:Preferences.Instance}"
-                       Path="Layout.SHAColumnWidth"
-                       Mode="TwoWay"/>
-            </DataGridTemplateColumn.Width>
+          <DataGridTemplateColumn Width="SizeToCells"
+                                  MinWidth="64"
+                                  CanUserResize="True"
+                                  IsReadOnly="True"
+                                  IsVisible="{Binding IsSHAColumnVisible, Mode=OneWay}">
             <DataGridTemplateColumn.Header>
               <TextBlock Classes="table_header" Text="{DynamicResource Text.Histories.Header.SHA}" HorizontalAlignment="Center"/>
             </DataGridTemplateColumn.Header>
@@ -423,12 +422,11 @@
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
 
-          <DataGridTemplateColumn MinWidth="80" CanUserResize="True" IsReadOnly="True" IsVisible="{Binding IsAuthorColumnVisible, Mode=OneWay}">
-            <DataGridTemplateColumn.Width>
-              <Binding Source="{x:Static vm:Preferences.Instance}"
-                       Path="Layout.AuthorColumnWidth"
-                       Mode="TwoWay"/>
-            </DataGridTemplateColumn.Width>
+          <DataGridTemplateColumn Width="SizeToCells"
+                                  MinWidth="80"
+                                  CanUserResize="True"
+                                  IsReadOnly="True"
+                                  IsVisible="{Binding IsAuthorColumnVisible, Mode=OneWay}">
             <DataGridTemplateColumn.Header>
               <TextBlock Classes="table_header" Text="{DynamicResource Text.Histories.Header.Author}" HorizontalAlignment="Center"/>
             </DataGridTemplateColumn.Header>
@@ -456,12 +454,11 @@
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
 
-          <DataGridTemplateColumn MinWidth="120" CanUserResize="True" IsReadOnly="True" IsVisible="{Binding IsDateTimeColumnVisible, Mode=OneWay}">
-            <DataGridTemplateColumn.Width>
-              <Binding Source="{x:Static vm:Preferences.Instance}"
-                       Path="Layout.DateTimeColumnWidth"
-                       Mode="TwoWay"/>
-            </DataGridTemplateColumn.Width>
+          <DataGridTemplateColumn Width="SizeToCells"
+                                  MinWidth="120"
+                                  CanUserResize="True"
+                                  IsReadOnly="True"
+                                  IsVisible="{Binding IsDateTimeColumnVisible, Mode=OneWay}">
             <DataGridTemplateColumn.Header>
               <Grid HorizontalAlignment="Center">
                 <TextBlock Classes="table_header"
@@ -521,7 +518,10 @@
               VerticalAlignment="Top"
               IsVisible="{Binding IsBackfilling}">
         <StackPanel Orientation="Horizontal" Spacing="6">
-          <v:LoadingIcon Width="12" Height="12" IsVisible="True"/>
+          <Path Width="12"
+                Height="12"
+                Data="{StaticResource Icons.Waiting}"
+                Fill="#FF8A6D00"/>
           <TextBlock FontSize="11"
                      FontWeight="SemiBold"
                      Foreground="#FF8A6D00"

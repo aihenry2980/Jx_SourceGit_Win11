@@ -216,7 +216,22 @@ namespace SourceGit.Views
         private void OnTabsLayoutUpdated(object _1, EventArgs _2)
         {
             IsScrollButtonVisible = LauncherTabsScroller.Extent.Width > LauncherTabsScroller.Viewport.Width;
-            InvalidateVisual();
+
+            var selectedIndex = LauncherTabsList.SelectedIndex;
+            var selectedBounds = LauncherTabsList.ContainerFromIndex(selectedIndex)?.Bounds ?? default;
+            var state = new TabRenderState(
+                LauncherTabsScroller.Offset,
+                LauncherTabsScroller.Viewport,
+                LauncherTabsScroller.Extent,
+                selectedBounds,
+                selectedIndex,
+                LauncherTabsList.ItemCount);
+
+            if (!_lastTabRenderState.ApproximatelyEquals(state))
+            {
+                _lastTabRenderState = state;
+                InvalidateVisual();
+            }
         }
 
         private void OnTabsSelectionChanged(object _1, SelectionChangedEventArgs _2)
@@ -502,5 +517,44 @@ namespace SourceGit.Views
         private Point _pressedTabPosition = new();
         private bool _startDragTab = false;
         private readonly DataFormat<string> _dndMainTabFormat = DataFormat.CreateStringApplicationFormat("sourcegit-dnd-main-tab");
+        private TabRenderState _lastTabRenderState = TabRenderState.Empty;
+
+        private readonly record struct TabRenderState(
+            Vector Offset,
+            Size Viewport,
+            Size Extent,
+            Rect SelectedBounds,
+            int SelectedIndex,
+            int ItemCount)
+        {
+            public static TabRenderState Empty { get; } = new(
+                new Vector(double.NaN, double.NaN),
+                new Size(double.NaN, double.NaN),
+                new Size(double.NaN, double.NaN),
+                new Rect(double.NaN, double.NaN, double.NaN, double.NaN),
+                -2,
+                -1);
+
+            public bool ApproximatelyEquals(TabRenderState other)
+            {
+                return AreClose(Offset.X, other.Offset.X) &&
+                    AreClose(Offset.Y, other.Offset.Y) &&
+                    AreClose(Viewport.Width, other.Viewport.Width) &&
+                    AreClose(Viewport.Height, other.Viewport.Height) &&
+                    AreClose(Extent.Width, other.Extent.Width) &&
+                    AreClose(Extent.Height, other.Extent.Height) &&
+                    AreClose(SelectedBounds.X, other.SelectedBounds.X) &&
+                    AreClose(SelectedBounds.Y, other.SelectedBounds.Y) &&
+                    AreClose(SelectedBounds.Width, other.SelectedBounds.Width) &&
+                    AreClose(SelectedBounds.Height, other.SelectedBounds.Height) &&
+                    SelectedIndex == other.SelectedIndex &&
+                    ItemCount == other.ItemCount;
+            }
+
+            private static bool AreClose(double left, double right)
+            {
+                return double.IsNaN(left) && double.IsNaN(right) || Math.Abs(left - right) < 0.01;
+            }
+        }
     }
 }

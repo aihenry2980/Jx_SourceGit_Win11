@@ -39,6 +39,7 @@ namespace SourceGit.Models
         private static partial Regex REG_GITHUB_USER_EMAIL();
 
         private readonly Lock _synclock = new();
+        private readonly SemaphoreSlim _requestSignal = new(0);
         private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(2) };
         private string _storePath;
         private List<IAvatarHost> _avatars = new List<IAvatarHost>();
@@ -60,12 +61,10 @@ namespace SourceGit.Models
             {
                 while (true)
                 {
+                    await _requestSignal.WaitAsync().ConfigureAwait(false);
                     var email = GetNextRequestingEmail();
                     if (email == null)
-                    {
-                        Thread.Sleep(100);
                         continue;
-                    }
 
                     var md5 = GetEmailHash(email);
                     var url = GetAvatarUrl(email, md5);
@@ -144,7 +143,8 @@ namespace SourceGit.Models
 
             lock (_synclock)
             {
-                _requesting.Add(email);
+                if (_requesting.Add(email))
+                    _requestSignal.Release();
             }
 
             return null;

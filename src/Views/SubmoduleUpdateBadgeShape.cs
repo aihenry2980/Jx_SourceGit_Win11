@@ -27,9 +27,21 @@ namespace SourceGit.Views
             if (width <= 1 || height <= 1)
                 return;
 
+            EnsureDrawingResources(width, height);
+            context.DrawGeometry(_fill, _borderPen, _geometry);
+        }
+
+        private void EnsureDrawingResources(double width, double height)
+        {
+            if (_geometry != null &&
+                _accentColor == AccentColor &&
+                System.Math.Abs(_renderWidth - width) < 0.01 &&
+                System.Math.Abs(_renderHeight - height) < 0.01)
+                return;
+
             var notch = System.Math.Min(8.0, height * 0.42);
-            var geometry = new StreamGeometry();
-            using (var shape = geometry.Open())
+            _geometry = new StreamGeometry();
+            using (var shape = _geometry.Open())
             {
                 shape.BeginFigure(new Point(notch, 0.5), true);
                 shape.LineTo(new Point(width - 0.5, 0.5));
@@ -40,18 +52,27 @@ namespace SourceGit.Views
             }
 
             var color = Color.FromUInt32(AccentColor);
-            var fill = new SolidColorBrush(Color.FromArgb(
+            _fill = new SolidColorBrush(Color.FromArgb(
                 color.A,
                 ToPastelChannel(color.R),
                 ToPastelChannel(color.G),
                 ToPastelChannel(color.B)));
-            var border = new SolidColorBrush(color);
-            context.DrawGeometry(fill, new Pen(border), geometry);
+            _borderPen = new Pen(new SolidColorBrush(color));
+            _accentColor = AccentColor;
+            _renderWidth = width;
+            _renderHeight = height;
         }
 
         private static byte ToPastelChannel(byte channel)
         {
             return (byte)(channel + (255 - channel) * 0.78);
         }
+
+        private StreamGeometry _geometry = null;
+        private IBrush _fill = null;
+        private Pen _borderPen = null;
+        private uint _accentColor = 0;
+        private double _renderWidth = double.NaN;
+        private double _renderHeight = double.NaN;
     }
 }

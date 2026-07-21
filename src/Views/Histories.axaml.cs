@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
@@ -14,6 +15,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 
 namespace SourceGit.Views
@@ -330,6 +332,8 @@ namespace SourceGit.Views
         private void OnCommitListLoaded(object sender, RoutedEventArgs e)
         {
             var dataGrid = CommitListContainer;
+            PrepareHistoryColumnsForAutoSize();
+
             var rowsPresenter = dataGrid.FindDescendantOfType<DataGridRowsPresenter>();
             if (rowsPresenter is { Children: { Count: > 0 } rows } &&
                 TryGetGraphColumnLayout(dataGrid, out var graphOffsetX, out var graphClipWidth))
@@ -458,6 +462,8 @@ namespace SourceGit.Views
             if (rowsPresenter == null)
                 return;
 
+            ScheduleHistoryColumnWidthFreeze(rowsPresenter);
+
             var rowHeight = dataGrid.RowHeight;
             if (rowHeight <= 0 || double.IsNaN(rowHeight))
                 rowHeight = 24;
@@ -556,6 +562,57 @@ namespace SourceGit.Views
                 return width;
 
             return Math.Max(0, col.MinWidth);
+        }
+
+        private void PrepareHistoryColumnsForAutoSize()
+        {
+            _historyColumnWidthFreezeScheduled = false;
+            _historyColumnWidthsFrozen = false;
+            var shaColumn = CommitListContainer.Columns[SHAColumnIndex];
+            var fontFamily = this.FindResource("Fonts.Monospace") as FontFamily ?? FontFamily.Default;
+            var typeface = new Typeface(fontFamily, FontStyle.Normal, FontWeight.Bold);
+            var sample = new FormattedText(
+                "00000",
+                CultureInfo.CurrentCulture,
+                FlowDirection.LeftToRight,
+                typeface,
+                ViewModels.Preferences.Instance.HistoriesFontSize,
+                Brushes.White);
+            var shaWidth = Math.Max(shaColumn.MinWidth, sample.WidthIncludingTrailingWhitespace + 20);
+            shaColumn.Width = new DataGridLength(Math.Ceiling(shaWidth), DataGridLengthUnitType.Pixel);
+            CommitListContainer.Columns[AuthorColumnIndex].Width = DataGridLength.SizeToCells;
+            CommitListContainer.Columns[DateTimeColumnIndex].Width = DataGridLength.SizeToCells;
+        }
+
+        private void ScheduleHistoryColumnWidthFreeze(DataGridRowsPresenter rowsPresenter)
+        {
+            if (_historyColumnWidthsFrozen ||
+                _historyColumnWidthFreezeScheduled ||
+                rowsPresenter.Children.Count == 0)
+            {
+                return;
+            }
+
+            _historyColumnWidthFreezeScheduled = true;
+            Dispatcher.UIThread.Post(() =>
+            {
+                _historyColumnWidthFreezeScheduled = false;
+                if (!IsLoaded || _historyColumnWidthsFrozen)
+                    return;
+
+                FreezeHistoryColumnWidth(CommitListContainer.Columns[SHAColumnIndex]);
+                FreezeHistoryColumnWidth(CommitListContainer.Columns[AuthorColumnIndex]);
+                FreezeHistoryColumnWidth(CommitListContainer.Columns[DateTimeColumnIndex]);
+                _historyColumnWidthsFrozen = true;
+            }, DispatcherPriority.Background);
+        }
+
+        private static void FreezeHistoryColumnWidth(DataGridColumn column)
+        {
+            if (!column.IsVisible || column.ActualWidth <= 0 || double.IsNaN(column.ActualWidth))
+                return;
+
+            column.Width = new DataGridLength(Math.Ceiling(column.ActualWidth), DataGridLengthUnitType.Pixel);
         }
 
         private static double CalculateGraphVerticalOffset(DataGridRowsPresenter rowsPresenter, double rowHeight, double startY)
@@ -708,6 +765,7 @@ namespace SourceGit.Views
             var step = delta > 0 ? 0.05 : -0.05;
             var next = pref.HistoriesZoom + step;
             pref.HistoriesZoom = Math.Clamp(next, 0.75, 2.50);
+            PrepareHistoryColumnsForAutoSize();
             e.Handled = true;
         }
 
@@ -2857,6 +2915,10 @@ namespace SourceGit.Views
                 await this.ShowDialogAsync(new ViewModels.InteractiveRebase(repo, on, prefill));
         }
 
+        private const int SHAColumnIndex = 0;
+        private const int AuthorColumnIndex = 2;
+        private const int DateTimeColumnIndex = 3;
+
         private Models.Branch _currentBranch = null;
         private Models.Bisect _bisect = null;
         private AvaloniaList<Models.IssueTracker> _issueTrackers = null;
@@ -2869,6 +2931,8 @@ namespace SourceGit.Views
         private double _lastGraphTopOffset = -1;
         private int _pendingEnsureHeadVisibleRetries = 0;
         private bool _lastHistoriesIsLoading = false;
+        private bool _historyColumnWidthFreezeScheduled = false;
+        private bool _historyColumnWidthsFrozen = false;
         private bool _isCenteringHeadCommit = false;
         private bool _pressedCommitRef = false;
         private PointerPressedEventArgs _pressedCommitRefEvent = null;
