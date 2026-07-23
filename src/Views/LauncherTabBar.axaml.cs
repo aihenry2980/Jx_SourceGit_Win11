@@ -249,11 +249,16 @@ namespace SourceGit.Views
                     (DataContext as ViewModels.Launcher)?.CloseTab(page);
                     e.Handled = true;
                 }
-                else
+                else if (point.Properties.IsLeftButtonPressed)
                 {
                     _pressedTabEvent = e;
                     _startDragTab = false;
                     _pressedTabPosition = e.GetPosition(border);
+                }
+                else
+                {
+                    _pressedTabEvent = null;
+                    _startDragTab = false;
                 }
             }
         }

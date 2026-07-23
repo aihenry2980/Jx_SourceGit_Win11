@@ -210,7 +210,6 @@ namespace SourceGit.ViewModels
             bytes += EstimateChanges(detail.Changes);
             bytes += MemoryProfileEstimator.EstimateListReferences(detail.VisibleChanges);
             bytes += MemoryProfileEstimator.EstimateListReferences(detail.SelectedChanges);
-            bytes += EstimateStrings(detail.Children);
             bytes += MemoryProfileEstimator.EstimateString(detail.SearchChangeFilter);
             bytes += MemoryProfileEstimator.EstimateString(detail.ViewRevisionFilePath);
             bytes += EstimateRevisionFileContent(detail.ViewRevisionFileContent);

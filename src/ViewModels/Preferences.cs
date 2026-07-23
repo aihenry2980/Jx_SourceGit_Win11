@@ -290,12 +290,6 @@ namespace SourceGit.ViewModels
             set => SetProperty(ref _showAuthorTimeInGraph, value);
         }
 
-        public bool ShowChildren
-        {
-            get => _showChildren;
-            set => SetProperty(ref _showChildren, value);
-        }
-
         public bool DisableBackgroundTasks
         {
             get => _disableBackgroundTasks;
@@ -1245,7 +1239,6 @@ namespace SourceGit.ViewModels
         private bool _useAutoHideScrollBars = true;
         private bool _useGitHubStyleAvatar = true;
         private bool _showAuthorTimeInGraph = false;
-        private bool _showChildren = false;
         private bool _disableBackgroundTasks = false;
         private bool _refreshSubmoduleStatusByDefault = false;
         private string _presetBranchExactNames = string.Empty;
