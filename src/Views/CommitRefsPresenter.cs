@@ -26,6 +26,7 @@ namespace SourceGit.Views
             public IBrush IconBrush { get; set; } = null;
             public IBrush SecondaryIconBrush { get; set; } = null;
             public IBrush PrimaryIconBackground { get; set; } = null;
+            public IBrush PrimaryIconBorderBrush { get; set; } = null;
             public IBrush SecondaryIconBackground { get; set; } = null;
             public IBrush TrackingTopBackground { get; set; } = null;
             public IBrush TrackingBottomBackground { get; set; } = null;
@@ -192,9 +193,13 @@ namespace SourceGit.Views
                     new CornerRadius(4, rightCornerRadius, rightCornerRadius, 4));
                 var centerY = y + item.Height * 0.5;
                 var hasCompactTrackingBadge = item.SecondaryIcon != null;
+                var hasStandaloneRemoteBadge =
+                    item.PrimaryIconBackground != null &&
+                    !hasCompactTrackingBadge &&
+                    item.Decorator?.Type == Models.DecoratorType.RemoteBranchHead;
                 var rebaseBaseIconOffset = item.RebaseBaseIcon != null ? 14.0 : 0.0;
-                var badgeSize = hasCompactTrackingBadge ? 15.0 : 12.0;
-                var iconSize = hasCompactTrackingBadge ? 11.0 : 10.0;
+                var badgeSize = hasStandaloneRemoteBadge ? 16.0 : hasCompactTrackingBadge ? 15.0 : 12.0;
+                var iconSize = hasStandaloneRemoteBadge ? 12.0 : hasCompactTrackingBadge ? 11.0 : 10.0;
                 var iconBackgroundY = y + (item.Height - badgeSize) * 0.5;
                 var iconY = y + (item.Height - iconSize) * 0.5;
 
@@ -276,7 +281,7 @@ namespace SourceGit.Views
                 {
                     context.DrawRectangle(
                         item.PrimaryIconBackground,
-                        new Pen(item.IconBrush ?? fg, hasCompactTrackingBadge ? 1.0 : 0.0),
+                        new Pen(item.PrimaryIconBorderBrush ?? item.IconBrush ?? fg, 1.0),
                         new RoundedRect(new Rect(x + 2 + rebaseBaseIconOffset, iconBackgroundY, badgeSize, badgeSize), new CornerRadius(4)));
                 }
 
@@ -485,6 +490,13 @@ namespace SourceGit.Views
                         item.SecondaryIconBackground = s_compactRemoteIconBackgroundBrush;
                         item.LeadingWidth = 38.0;
                     }
+                    else if (decorator.Type == Models.DecoratorType.RemoteBranchHead)
+                    {
+                        item.IconBrush = Brushes.White;
+                        item.PrimaryIconBackground = s_remoteIconBackgroundBrush;
+                        item.PrimaryIconBorderBrush = s_remoteIconBorderBrush;
+                        item.LeadingWidth = 20.0;
+                    }
 
                     if (decorator.IsRebaseBaseBranch || secondaryDecorator?.IsRebaseBaseBranch == true)
                     {
@@ -543,7 +555,13 @@ namespace SourceGit.Views
                             break;
                     }
 
-                    item.Icon = CreateIcon(geo, secondaryDecorator != null ? 11.0 : 10.0);
+                    item.Icon = CreateIcon(
+                        geo,
+                        decorator.Type == Models.DecoratorType.RemoteBranchHead
+                            ? 12.0
+                            : secondaryDecorator != null
+                                ? 11.0
+                                : 10.0);
                     if (secondaryDecorator != null)
                         CreateTrackingBranchBackgrounds(item);
 
@@ -605,7 +623,7 @@ namespace SourceGit.Views
             double opacity)
         {
             var rect = clipRect.Rect;
-            var middleY = rect.Top + rect.Height * 0.5;
+            var middleY = rect.Top + rect.Height * 0.68;
             using (context.PushClip(clipRect))
             using (context.PushOpacity(opacity))
             {
@@ -822,6 +840,8 @@ namespace SourceGit.Views
         private static readonly IBrush s_remotePrefixAccentBrush = new SolidColorBrush(Color.Parse("#1565C0"));
         private static readonly IBrush s_incidentalBranchForegroundBrush = new SolidColorBrush(Color.Parse("#FF9AA0A6"));
         private static readonly IBrush s_incidentalBranchBorderBrush = new SolidColorBrush(Color.Parse("#CC202124"));
+        private static readonly IBrush s_remoteIconBackgroundBrush = new SolidColorBrush(Color.Parse("#FF0B57D0"));
+        private static readonly IBrush s_remoteIconBorderBrush = new SolidColorBrush(Color.Parse("#FF073B8C"));
         private static readonly IBrush s_compactLocalIconBrush = Brushes.White;
         private static readonly IBrush s_compactRemoteIconBrush = Brushes.White;
         private static readonly IBrush s_compactIconOutlineBrush = new SolidColorBrush(Color.Parse("#AA202124"));

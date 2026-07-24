@@ -158,7 +158,7 @@
             <TextBlock Classes="small" Margin="0,4,0,0" Text="Use this when you only want to know whether new commits arrived as fast as possible." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
             <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git fetch --progress --verbose --no-tags &lt;preferred-remote&gt;"/>
             <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcut: Ctrl+Alt+F." Foreground="{DynamicResource Brush.FG2}"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="It runs directly in background, writes to repository logs, and uses the fast recent-history refresh path." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="On Windows it runs in an independent terminal, then refreshes SourceGit once after Git exits successfully." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
           </StackPanel>
         </ToolTip.Tip>
 
@@ -309,15 +309,18 @@
             <TextBlock Text="Click: fetch recursively and prune stale remote refs for the root repository and configured submodules." TextWrapping="Wrap" MaxWidth="960"/>
             <TextBlock Classes="small" Margin="0,4,0,0" Text="Ctrl+click: fetch recursively without pruning." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
             <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0">
-              <Run Text="Click: git fetch --progress --verbose --no-tags "/>
+              <Run Text="Root: git fetch --progress --verbose --no-tags "/>
+              <Run Text="--prune " Foreground="#FFE74C3C"/>
+              <Run Text="&lt;remote&gt;"/>
+            </TextBlock>
+            <TextBlock Classes="tooltip_cmd" Margin="0,2,0,0" TextWrapping="Wrap">
+              <Run Text="Selected submodule: git fetch --progress --verbose --no-tags "/>
               <Run Text="--prune " Foreground="#FFE74C3C"/>
               <Run Text="--recurse-submodules &lt;remote&gt;"/>
             </TextBlock>
-            <TextBlock Classes="tooltip_cmd" Margin="0,2,0,0">
-              <Run Text="Ctrl+click: git fetch --progress --verbose --no-tags --recurse-submodules &lt;remote&gt;"/>
-            </TextBlock>
             <TextBlock Classes="small" Margin="0,4,0,0" Text="Example: Use click after remote branch cleanup, or Ctrl+click when you only want fresh refs without deleting stale ones yet." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
             <TextBlock Classes="small" Margin="0,4,0,0" Text="If Sync All submodule targets were configured, this button uses the same saved submodule selection." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="On Windows the selected repositories are fetched in one independent terminal; SourceGit refreshes once when all commands finish." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
             <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcuts: Ctrl+Alt+Shift+Down = prune, Ctrl+Alt+Down = no prune." Foreground="{DynamicResource Brush.FG2}"/>
           </StackPanel>
         </ToolTip.Tip>

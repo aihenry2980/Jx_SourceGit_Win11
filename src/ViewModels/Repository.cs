@@ -3542,7 +3542,7 @@ namespace SourceGit.ViewModels
                         noTags,
                         force,
                         prune,
-                        false,
+                        true,
                         log,
                         $"submodule:{submodulePath}",
                         stopOnError,

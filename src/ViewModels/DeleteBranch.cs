@@ -1,6 +1,4 @@
-﻿using System;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 
 namespace SourceGit.ViewModels
 {
@@ -39,28 +37,7 @@ namespace SourceGit.ViewModels
                     .DeleteLocalAsync(Force);
 
                 if (succ)
-                {
                     _repo.UIStates.RemoveHistoryFilter(Target.FullName, Models.FilterType.LocalBranch);
-
-                    var upstream = Target.Upstream ?? string.Empty;
-                    var tracking = _repo.Branches.Find(x => x.FullName.Equals(upstream, StringComparison.Ordinal));
-                    if (tracking != null && tracking.Name.Equals(Target.Name, StringComparison.Ordinal))
-                    {
-                        var msgBuilder = new StringBuilder();
-                        msgBuilder
-                            .AppendLine(App.Text("DeleteBranch.AskForRemote"))
-                            .AppendLine()
-                            .Append("• ").Append(tracking.FriendlyName);
-
-                        var deleteTracking = await App.AskConfirmAsync(msgBuilder.ToString(), Models.ConfirmButtonType.YesNo);
-                        if (deleteTracking)
-                        {
-                            succ = await DeleteRemoteBranchAsync(tracking, log);
-                            if (succ)
-                                _repo.UIStates.RemoveHistoryFilter(tracking.FullName, Models.FilterType.RemoteBranch);
-                        }
-                    }
-                }
             }
             else
             {

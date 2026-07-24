@@ -41,6 +41,7 @@ namespace SourceGit.Views
         }
 
         private sealed record ToolbarGitCommandSpec(string MenuLabel, string WindowTitle, string Description, string CommandText, Action<ViewModels.Repository> OnSuccess = null);
+        private sealed record ExternalGitCommand(string WorkingDirectory, IReadOnlyList<string> Arguments);
 
         private ToolbarDensity _toolbarDensity = ToolbarDensity.Default;
         private ContextMenu _activeToolbarGitCommandMenu = null;
@@ -442,7 +443,8 @@ namespace SourceGit.Views
         {
             if (DataContext is ViewModels.Repository repo)
             {
-                await repo.QuickFetchAsync();
+                if (!TryLaunchQuickFetchInTerminal(repo))
+                    await repo.QuickFetchAsync();
                 e.Handled = true;
             }
         }
@@ -469,7 +471,8 @@ namespace SourceGit.Views
         {
             if (DataContext is ViewModels.Repository repo)
             {
-                await repo.QuickFetchAsync();
+                if (!TryLaunchQuickFetchInTerminal(repo))
+                    await repo.QuickFetchAsync();
                 e.Handled = true;
             }
         }
@@ -485,25 +488,33 @@ namespace SourceGit.Views
 
         private async void FetchRecursivelyWithOptionalPrune(object sender, TappedEventArgs e)
         {
-            if (DataContext is ViewModels.Repository repo && repo.CanCreatePopup())
+            if (DataContext is ViewModels.Repository repo)
             {
                 var prune = e.KeyModifiers.HasFlag(OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control)
                     ? false
                     : true;
-                OpenToolbarRecursiveOperationWindow(new ViewModels.ToolbarRecursiveOperation(
-                    repo,
-                    prune ? ViewModels.ToolbarRecursiveOperationKind.FetchAndPruneRecursively : ViewModels.ToolbarRecursiveOperationKind.FetchRecursively));
+                if (!await TryLaunchRecursiveFetchInTerminalAsync(repo, prune) && repo.CanCreatePopup())
+                {
+                    OpenToolbarRecursiveOperationWindow(new ViewModels.ToolbarRecursiveOperation(
+                        repo,
+                        prune ? ViewModels.ToolbarRecursiveOperationKind.FetchAndPruneRecursively : ViewModels.ToolbarRecursiveOperationKind.FetchRecursively));
+                }
+
                 e.Handled = true;
             }
         }
 
         private async void FetchAndPruneRecursively(object sender, RoutedEventArgs e)
         {
-            if (DataContext is ViewModels.Repository repo && repo.CanCreatePopup())
+            if (DataContext is ViewModels.Repository repo)
             {
-                OpenToolbarRecursiveOperationWindow(new ViewModels.ToolbarRecursiveOperation(
-                    repo,
-                    ViewModels.ToolbarRecursiveOperationKind.FetchAndPruneRecursively));
+                if (!await TryLaunchRecursiveFetchInTerminalAsync(repo, true) && repo.CanCreatePopup())
+                {
+                    OpenToolbarRecursiveOperationWindow(new ViewModels.ToolbarRecursiveOperation(
+                        repo,
+                        ViewModels.ToolbarRecursiveOperationKind.FetchAndPruneRecursively));
+                }
+
                 e.Handled = true;
             }
         }
@@ -933,6 +944,7 @@ namespace SourceGit.Views
                         .Append(" fetch --progress --verbose --no-tags ");
                     if (prune)
                         builder.Append("--prune ");
+                    builder.Append("--recurse-submodules ");
                     builder.Append(Quote(remote)).AppendLine();
                 }
             }
@@ -1102,6 +1114,204 @@ namespace SourceGit.Views
                 normalized = normalized.Substring(0, normalized.Length - 4);
 
             return normalized.ToLowerInvariant();
+        }
+
+        private static bool TryLaunchQuickFetchInTerminal(ViewModels.Repository repo)
+        {
+            if (!OperatingSystem.IsWindows())
+                return false;
+
+            var remote = repo.GetPreferredRemoteNameForToolbarCommandEditor();
+            if (string.IsNullOrWhiteSpace(remote))
+                return false;
+
+            var command = new ExternalGitCommand(
+                repo.FullPath,
+                ["fetch", "--progress", "--verbose", "--no-tags", remote]);
+            return TryLaunchGitCommandsInTerminal(repo, "QFetch", [command], false);
+        }
+
+        private static async Task<bool> TryLaunchRecursiveFetchInTerminalAsync(ViewModels.Repository repo, bool prune)
+        {
+            if (!OperatingSystem.IsWindows())
+                return false;
+
+            var commands = new List<ExternalGitCommand>();
+            var force = repo.UIStates.EnableForceOnFetch;
+            foreach (var remote in repo.GetFetchRemoteNamesForCurrentRepositoryForToolbarCommandEditor())
+                commands.Add(CreateExternalFetchCommand(repo.FullPath, remote, force, prune, false));
+
+            var targets = GetSelectedSubmoduleTargets(repo);
+            var submoduleCommands = await Task.WhenAll(targets.Select(async target =>
+            {
+                var root = Native.OS.GetAbsPath(repo.FullPath, target);
+                if (!Directory.Exists(root))
+                    return [];
+
+                var remotes = await repo.GetFetchRemoteNamesForRepositoryForToolbarCommandEditorAsync(root);
+                return remotes
+                    .Select(remote => CreateExternalFetchCommand(root, remote, force, prune, true))
+                    .ToList();
+            }));
+
+            foreach (var targetCommands in submoduleCommands)
+                commands.AddRange(targetCommands);
+
+            if (commands.Count == 0)
+            {
+                App.SendNotification(repo.FullPath, "No remote is available for external fetch.");
+                return true;
+            }
+
+            return TryLaunchGitCommandsInTerminal(
+                repo,
+                prune ? "Fetch + Prune" : "Fetch Recursively",
+                commands,
+                prune);
+        }
+
+        private static ExternalGitCommand CreateExternalFetchCommand(
+            string workdir,
+            string remote,
+            bool force,
+            bool prune,
+            bool recurseSubmodules)
+        {
+            var args = new List<string> { "fetch", "--progress", "--verbose", "--no-tags" };
+            if (force)
+                args.Add("--force");
+            if (prune)
+                args.Add("--prune");
+            if (recurseSubmodules)
+                args.Add("--recurse-submodules");
+            args.Add(remote);
+            return new ExternalGitCommand(workdir, args);
+        }
+
+        [SupportedOSPlatform("windows")]
+        private static bool TryLaunchGitCommandsInTerminal(
+            ViewModels.Repository repo,
+            string title,
+            IReadOnlyList<ExternalGitCommand> commands,
+            bool refsMayBeDeleted)
+        {
+            if (!OperatingSystem.IsWindows())
+                return false;
+
+            var powershell = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.System),
+                @"WindowsPowerShell\v1.0\powershell.exe");
+            if (!File.Exists(powershell))
+                return false;
+
+            var scriptPath = Path.Combine(Path.GetTempPath(), $"sourcegit-{Guid.NewGuid():N}.ps1");
+            var script = new StringBuilder();
+            script.AppendLine("$ErrorActionPreference = 'Continue'");
+            script.Append("$Host.UI.RawUI.WindowTitle = ").AppendLine(QuotePowerShellLiteral($"SourceGit - {title}"));
+            script.AppendLine("$hadError = $false");
+            script.AppendLine("Write-Host ''");
+            script.Append("Write-Host ").Append(QuotePowerShellLiteral($"[SourceGit] {title}")).AppendLine(" -ForegroundColor Cyan");
+
+            foreach (var command in commands)
+            {
+                script.AppendLine("Write-Host ''");
+                script.Append("Write-Host ").Append(QuotePowerShellLiteral($"> {command.WorkingDirectory}")).AppendLine(" -ForegroundColor DarkGray");
+                script.Append("Set-Location -LiteralPath ").AppendLine(QuotePowerShellLiteral(command.WorkingDirectory));
+                script.Append("& ").Append(QuotePowerShellLiteral(Native.OS.GitExecutable));
+                foreach (var arg in command.Arguments)
+                    script.Append(' ').Append(QuotePowerShellLiteral(arg));
+                script.AppendLine();
+                script.AppendLine("if ($LASTEXITCODE -ne 0) {");
+                script.AppendLine("    $hadError = $true");
+                script.AppendLine("    Write-Host \"Git exited with code $LASTEXITCODE.\" -ForegroundColor Red");
+                script.AppendLine("}");
+            }
+
+            script.AppendLine("Write-Host ''");
+            script.AppendLine("if ($hadError) {");
+            script.AppendLine("    Read-Host 'One or more commands failed. Press Enter to close'");
+            script.AppendLine("    exit 1");
+            script.AppendLine("}");
+            script.AppendLine("Write-Host 'Completed. SourceGit will refresh once.' -ForegroundColor Green");
+            script.AppendLine("Start-Sleep -Milliseconds 700");
+
+            IDisposable watcherLock = null;
+            try
+            {
+                File.WriteAllText(scriptPath, script.ToString(), new UTF8Encoding(true));
+                watcherLock = repo.LockWatcher();
+
+                var start = new ProcessStartInfo
+                {
+                    FileName = powershell,
+                    WorkingDirectory = repo.FullPath,
+                    UseShellExecute = true,
+                };
+                start.ArgumentList.Add("-NoLogo");
+                start.ArgumentList.Add("-NoProfile");
+                start.ArgumentList.Add("-ExecutionPolicy");
+                start.ArgumentList.Add("Bypass");
+                start.ArgumentList.Add("-File");
+                start.ArgumentList.Add(scriptPath);
+
+                var process = Process.Start(start);
+                if (process == null)
+                    throw new InvalidOperationException("The terminal process did not start.");
+
+                _ = Task.Run(() =>
+                {
+                    var succeeded = false;
+                    try
+                    {
+                        process.WaitForExit();
+                        succeeded = process.ExitCode == 0;
+                    }
+                    catch
+                    {
+                        // The repository watcher is released below even if the terminal is closed abruptly.
+                    }
+                    finally
+                    {
+                        process.Dispose();
+                        watcherLock?.Dispose();
+                        try
+                        {
+                            File.Delete(scriptPath);
+                        }
+                        catch
+                        {
+                            // Temporary command cleanup is best-effort.
+                        }
+                    }
+
+                    if (succeeded)
+                    {
+                        Dispatcher.UIThread.Post(() => repo.MarkFetched(refsMayBeDeleted));
+                    }
+                });
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                watcherLock?.Dispose();
+                try
+                {
+                    File.Delete(scriptPath);
+                }
+                catch
+                {
+                    // Temporary command cleanup is best-effort.
+                }
+
+                App.SendNotification(repo.FullPath, $"Failed to launch {title} in a terminal: {ex.Message}");
+                return true;
+            }
+        }
+
+        private static string QuotePowerShellLiteral(string value)
+        {
+            return "'" + (value ?? string.Empty).Replace("'", "''") + "'";
         }
 
         private static List<string> GetSelectedSubmoduleTargets(ViewModels.Repository repo)

@@ -2242,6 +2242,7 @@ namespace SourceGit.Views
 
                 ToolTip.SetIsOpen(forcePush, false);
                 armedAt = DateTime.MinValue;
+                menu.Close();
                 if (repo.CanCreatePopup())
                 {
                     var push = new ViewModels.Push(repo, branch)
