@@ -28,8 +28,8 @@ namespace SourceGit.Views
             public IBrush PrimaryIconBackground { get; set; } = null;
             public IBrush PrimaryIconBorderBrush { get; set; } = null;
             public IBrush SecondaryIconBackground { get; set; } = null;
-            public IBrush TrackingTopBackground { get; set; } = null;
-            public IBrush TrackingBottomBackground { get; set; } = null;
+            public IBrush TrackingRemoteBackground { get; set; } = null;
+            public IBrush TrackingLocalBackground { get; set; } = null;
             public IBrush LabelBrush { get; set; } = null;
             public IBrush FoldButtonBackground { get; set; } = null;
             public IBrush FoldButtonForeground { get; set; } = null;
@@ -623,18 +623,32 @@ namespace SourceGit.Views
             double opacity)
         {
             var rect = clipRect.Rect;
-            var middleY = rect.Top + rect.Height * 0.68;
             using (context.PushClip(clipRect))
             using (context.PushOpacity(opacity))
             {
                 context.DrawRectangle(
-                    item.TrackingTopBackground ?? item.Brush,
+                    item.TrackingRemoteBackground ?? item.Brush,
                     null,
-                    new Rect(rect.Left, rect.Top, rect.Width, middleY - rect.Top));
-                context.DrawRectangle(
-                    item.TrackingBottomBackground ?? item.Brush,
-                    null,
-                    new Rect(rect.Left, middleY, rect.Width, rect.Bottom - middleY));
+                    rect);
+
+                var localBackground = item.TrackingLocalBackground ?? item.Brush;
+                var curve = new StreamGeometry();
+                using (var geo = curve.Open())
+                {
+                    var leftY = rect.Top + rect.Height * 0.66;
+                    var rightY = rect.Top + rect.Height * 0.66;
+                    var controlY = rect.Bottom - rect.Height * 0.06;
+
+                    geo.BeginFigure(new Point(rect.Left, leftY), true);
+                    geo.QuadraticBezierTo(
+                        new Point(rect.Left + rect.Width * 0.5, controlY),
+                        new Point(rect.Right, rightY));
+                    geo.LineTo(rect.BottomRight);
+                    geo.LineTo(rect.BottomLeft);
+                    geo.EndFigure(true);
+                }
+
+                context.DrawGeometry(localBackground, null, curve);
             }
         }
 
@@ -643,8 +657,8 @@ namespace SourceGit.Views
             if (item.Brush is not ISolidColorBrush solid)
                 return;
 
-            item.TrackingTopBackground = new SolidColorBrush(BlendColor(solid.Color, Colors.White, 0.55));
-            item.TrackingBottomBackground = new SolidColorBrush(BlendColor(solid.Color, Colors.Black, 0.38));
+            item.TrackingRemoteBackground = new SolidColorBrush(BlendColor(solid.Color, Colors.White, 0.55));
+            item.TrackingLocalBackground = new SolidColorBrush(BlendColor(solid.Color, Colors.Black, 0.38));
         }
 
         private static Color BlendColor(Color source, Color target, double amount)

@@ -694,6 +694,7 @@
   <x:String x:Key="Text.Preferences.General.MaxHistoryCommits" xml:space="preserve">Commits en el historial</x:String>
   <x:String x:Key="Text.Preferences.General.ShowChangesPageByDefault" xml:space="preserve">Mostrar la página `CAMBIOS LOCALES` por defecto</x:String>
   <x:String x:Key="Text.Preferences.General.ShowChangesTabInCommitDetailByDefault" xml:space="preserve">Mostrar pestaña de `CAMBIOS` en los detalles del commit por defecto</x:String>
+  <x:String x:Key="Text.Preferences.General.ShowAuthorTime" xml:space="preserve">Mostrar hora del autor en el gráfico de commits</x:String>
   <x:String x:Key="Text.Preferences.General.ShowRelativeTimeInGraph" xml:space="preserve">Mostrar hora relativa en el gráfico de commits</x:String>
   <x:String x:Key="Text.Preferences.General.ShowTagsInGraph" xml:space="preserve">Mostrar etiquetas en el gráfico de commit</x:String>
   <x:String x:Key="Text.Preferences.General.SubjectGuideLength" xml:space="preserve">Longitud de la guía del asunto</x:String>

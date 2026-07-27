@@ -429,6 +429,7 @@
   <x:String x:Key="Text.Preferences.General.DateFormat" xml:space="preserve">Формат дати</x:String>
   <x:String x:Key="Text.Preferences.General.Locale" xml:space="preserve">Мова</x:String>
   <x:String x:Key="Text.Preferences.General.MaxHistoryCommits" xml:space="preserve">Кількість комітів в історії</x:String>
+  <x:String x:Key="Text.Preferences.General.ShowAuthorTime" xml:space="preserve">Показувати час автора в графі комітів</x:String>
   <x:String x:Key="Text.Preferences.General.ShowTagsInGraph" xml:space="preserve">Показувати теги в графі комітів</x:String>
   <x:String x:Key="Text.Preferences.General.SubjectGuideLength" xml:space="preserve">Довжина лінії-орієнтира для теми</x:String>
   <x:String x:Key="Text.Preferences.Git" xml:space="preserve">GIT</x:String>

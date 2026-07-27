@@ -690,6 +690,7 @@
   <x:String x:Key="Text.Preferences.General.MaxHistoryCommits" xml:space="preserve">Commits ιστορικού</x:String>
   <x:String x:Key="Text.Preferences.General.ShowChangesPageByDefault" xml:space="preserve">Εμφάνιση της σελίδας `ΤΟΠΙΚΕΣ ΑΛΛΑΓΕΣ` από προεπιλογή</x:String>
   <x:String x:Key="Text.Preferences.General.ShowChangesTabInCommitDetailByDefault" xml:space="preserve">Εμφάνιση της καρτέλας `ΑΛΛΑΓΕΣ` στις λεπτομέρειες commit από προεπιλογή</x:String>
+  <x:String x:Key="Text.Preferences.General.ShowAuthorTime" xml:space="preserve">Εμφάνιση ώρας συγγραφέα στο γράφημα commit</x:String>
   <x:String x:Key="Text.Preferences.General.ShowRelativeTimeInGraph" xml:space="preserve">Εμφάνιση σχετικού χρόνου στο γράφημα commit</x:String>
   <x:String x:Key="Text.Preferences.General.ShowTagsInGraph" xml:space="preserve">Εμφάνιση ετικετών στο γράφημα commit</x:String>
   <x:String x:Key="Text.Preferences.General.SubjectGuideLength" xml:space="preserve">Μήκος οδηγού θέματος</x:String>

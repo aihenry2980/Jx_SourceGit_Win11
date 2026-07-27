@@ -694,6 +694,7 @@
   <x:String x:Key="Text.Preferences.General.MaxHistoryCommits" xml:space="preserve">Максимальная длина истории</x:String>
   <x:String x:Key="Text.Preferences.General.ShowChangesPageByDefault" xml:space="preserve">Показывать вкладку «ЛОКАЛЬНЫЕ ИЗМЕНЕНИЯ» по умолчанию</x:String>
   <x:String x:Key="Text.Preferences.General.ShowChangesTabInCommitDetailByDefault" xml:space="preserve">Показывать вкладку «Изменения» в сведении ревизии по умолчанию</x:String>
+  <x:String x:Key="Text.Preferences.General.ShowAuthorTime" xml:space="preserve">Показывать время автора на графе ревизий</x:String>
   <x:String x:Key="Text.Preferences.General.ShowRelativeTimeInGraph" xml:space="preserve">Отображение относительного времени на графе ревизии</x:String>
   <x:String x:Key="Text.Preferences.General.ShowTagsInGraph" xml:space="preserve">Показывать метки на графике</x:String>
   <x:String x:Key="Text.Preferences.General.SubjectGuideLength" xml:space="preserve">Длина темы ревизии</x:String>

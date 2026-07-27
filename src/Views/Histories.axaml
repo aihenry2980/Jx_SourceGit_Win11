@@ -123,23 +123,25 @@
           <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
             <Setter Property="Fill" Value="{DynamicResource Brush.AccentHovered}"/>
             <Setter Property="Opacity" Value="0.28"/>
+            <Setter Property="Stroke" Value="{DynamicResource Brush.Accent}"/>
+            <Setter Property="StrokeThickness" Value="2"/>
           </Style>
 
           <Style Selector="DataGridRow:selected:pointerover /template/ Rectangle#BackgroundRectangle">
             <Setter Property="Fill" Value="{DynamicResource Brush.AccentHovered}"/>
             <Setter Property="Opacity" Value="0.38"/>
+            <Setter Property="Stroke" Value="{DynamicResource Brush.Accent}"/>
+            <Setter Property="StrokeThickness" Value="2"/>
           </Style>
 
           <Style Selector="DataGridRow:selected /template/ Border#RowBorder">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}"/>
-            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="BorderThickness" Value="0"/>
           </Style>
 
           <Style Selector="DataGridRow:selected:pointerover /template/ Border#RowBorder">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}"/>
-            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="BorderThickness" Value="0"/>
           </Style>
 
           <Style Selector="DataGridCell:selected">
