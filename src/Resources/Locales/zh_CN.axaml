@@ -487,7 +487,7 @@
   <x:String x:Key="Text.GitLFS.AddTrackPattern.Pattern" xml:space="preserve">规则 ：</x:String>
   <x:String x:Key="Text.GitLFS.AddTrackPattern.Title" xml:space="preserve">添加LFS追踪文件规则</x:String>
   <x:String x:Key="Text.GitLFS.Fetch" xml:space="preserve">拉取LFS对象 (fetch)</x:String>
-  <x:String x:Key="Text.GitLFS.Fetch.Tips" xml:space="preserve">执行`git lfs prune`命令，下载远程LFS对象，但不会更新工作副本。</x:String>
+  <x:String x:Key="Text.GitLFS.Fetch.Tips" xml:space="preserve">执行`git lfs fetch`命令，下载远程LFS对象，但不会更新工作副本。</x:String>
   <x:String x:Key="Text.GitLFS.Fetch.Title" xml:space="preserve">拉取LFS对象</x:String>
   <x:String x:Key="Text.GitLFS.Install" xml:space="preserve">启用Git LFS支持</x:String>
   <x:String x:Key="Text.GitLFS.Locks" xml:space="preserve">显示LFS对象锁</x:String>
@@ -1029,6 +1029,7 @@
   <x:String x:Key="Text.WorkingCopy.Conflicts.Resolved" xml:space="preserve">文件冲突已解决</x:String>
   <x:String x:Key="Text.WorkingCopy.Conflicts.UseMine" xml:space="preserve">使用 MINE</x:String>
   <x:String x:Key="Text.WorkingCopy.Conflicts.UseTheirs" xml:space="preserve">使用 THEIRS</x:String>
+  <x:String x:Key="Text.WorkingCopy.FilterChanges" xml:space="preserve">查找变更...</x:String>
   <x:String x:Key="Text.WorkingCopy.IncludeUntracked" xml:space="preserve">显示未跟踪文件</x:String>
   <x:String x:Key="Text.WorkingCopy.NoCommitHistories" xml:space="preserve">没有提交信息记录</x:String>
   <x:String x:Key="Text.WorkingCopy.NoCommitTemplates" xml:space="preserve">没有可应用的提交信息模板</x:String>
