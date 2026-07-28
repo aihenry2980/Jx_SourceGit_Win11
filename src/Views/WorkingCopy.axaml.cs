@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 
 namespace SourceGit.Views
@@ -571,34 +573,6 @@ namespace SourceGit.Views
                         lfs.Header = App.Text("GitLFS");
                         lfs.Icon = this.CreateMenuIcon("Icons.LFS");
 
-                        var isLFSFiltered = new Commands.IsLFSFiltered(repo.FullPath, change.Path).GetResult();
-                        if (!isLFSFiltered)
-                        {
-                            var filename = Path.GetFileName(change.Path);
-                            var lfsTrackThisFile = new MenuItem();
-                            lfsTrackThisFile.Header = App.Text("GitLFS.Track", filename);
-                            lfsTrackThisFile.Click += async (_, e) =>
-                            {
-                                await repo.TrackLFSFileAsync(filename, true);
-                                e.Handled = true;
-                            };
-                            lfs.Items.Add(lfsTrackThisFile);
-
-                            if (!string.IsNullOrEmpty(extension))
-                            {
-                                var lfsTrackByExtension = new MenuItem();
-                                lfsTrackByExtension.Header = App.Text("GitLFS.TrackByExtension", extension);
-                                lfsTrackByExtension.Click += async (_, e) =>
-                                {
-                                    await repo.TrackLFSFileAsync($"*{extension}", false);
-                                    e.Handled = true;
-                                };
-                                lfs.Items.Add(lfsTrackByExtension);
-                            }
-
-                            lfs.Items.Add(new MenuItem() { Header = "-" });
-                        }
-
                         var lfsLock = new MenuItem();
                         lfsLock.Header = App.Text("GitLFS.Locks.Lock");
                         lfsLock.Icon = this.CreateMenuIcon("Icons.Lock");
@@ -656,6 +630,43 @@ namespace SourceGit.Views
                             }
                         }
                         lfs.Items.Add(lfsUnlock);
+
+                        _ = Task.Run(async () =>
+                        {
+                            var isLFSFiltered = await new Commands.IsLFSFiltered(repo.FullPath, change.Path)
+                                .GetResultAsync()
+                                .ConfigureAwait(false);
+                            if (isLFSFiltered)
+                                return;
+
+                            var filename = Path.GetFileName(change.Path);
+                            Dispatcher.UIThread.Post(() =>
+                            {
+                                var insertIdx = 0;
+                                var lfsTrackThisFile = new MenuItem();
+                                lfsTrackThisFile.Header = App.Text("GitLFS.Track", filename);
+                                lfsTrackThisFile.Click += async (_, e) =>
+                                {
+                                    await repo.TrackLFSFileAsync(filename, true);
+                                    e.Handled = true;
+                                };
+                                lfs.Items.Insert(insertIdx++, lfsTrackThisFile);
+
+                                if (!string.IsNullOrEmpty(extension))
+                                {
+                                    var lfsTrackByExtension = new MenuItem();
+                                    lfsTrackByExtension.Header = App.Text("GitLFS.TrackByExtension", extension);
+                                    lfsTrackByExtension.Click += async (_, e) =>
+                                    {
+                                        await repo.TrackLFSFileAsync($"*{extension}", false);
+                                        e.Handled = true;
+                                    };
+                                    lfs.Items.Insert(insertIdx++, lfsTrackByExtension);
+                                }
+
+                                lfs.Items.Insert(insertIdx, new MenuItem() { Header = "-" });
+                            });
+                        });
 
                         menu.Items.Add(lfs);
                         hasExtra = true;

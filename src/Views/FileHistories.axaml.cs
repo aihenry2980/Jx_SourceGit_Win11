@@ -126,14 +126,14 @@ namespace SourceGit.Views
                 ToolTip.SetTip(border, null);
         }
 
-        private void OnCommitSubjectPointerMoved(object sender, PointerEventArgs e)
+        private async void OnCommitSubjectPointerMoved(object sender, PointerEventArgs e)
         {
             if (sender is Border { DataContext: Models.FileVersion ver } border &&
                 DataContext is ViewModels.FileHistories vm)
             {
                 var tooltip = ToolTip.GetTip(border);
                 if (tooltip == null)
-                    ToolTip.SetTip(border, vm.GetCommitFullMessage(ver));
+                    ToolTip.SetTip(border, await vm.GetCommitFullMessageAsync(ver));
             }
         }
 

@@ -149,7 +149,7 @@ namespace SourceGit.Views
                 return new Size(maxWidth, 0);
             }
 
-            protected override void OnPointerMoved(PointerEventArgs e)
+            protected override async void OnPointerMoved(PointerEventArgs e)
             {
                 base.OnPointerMoved(e);
 
@@ -186,7 +186,7 @@ namespace SourceGit.Views
 
                             if (DataContext is ViewModels.Blame blame)
                             {
-                                var msg = blame.GetCommitMessage(info.CommitSHA);
+                                var msg = await blame.GetCommitMessageAsync(info.CommitSHA);
                                 ToolTip.SetTip(this, msg);
                             }
 

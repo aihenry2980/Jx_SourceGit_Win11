@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace SourceGit.Commands
 {
@@ -31,6 +32,28 @@ namespace SourceGit.Commands
             var parent = shas.Length > 1 ? shas[1] : Models.EmptyTreeHash.Guess(shas[0]);
             Args = $"diff-index --cached -M {parent}";
             rs = ReadToEnd();
+            return ParseChanges(rs, parent);
+        }
+
+        public async Task<List<Models.Change>> GetResultAsync()
+        {
+            Args = "show --no-show-signature --format=\"%H %P\" -s HEAD";
+            var rs = await ReadToEndAsync().ConfigureAwait(false);
+            if (!rs.IsSuccess)
+                return [];
+
+            var shas = rs.StdOut.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (shas.Length == 0)
+                return [];
+
+            var parent = shas.Length > 1 ? shas[1] : Models.EmptyTreeHash.Guess(shas[0]);
+            Args = $"diff-index --cached -M {parent}";
+            rs = await ReadToEndAsync().ConfigureAwait(false);
+            return ParseChanges(rs, parent);
+        }
+
+        private List<Models.Change> ParseChanges(Result rs, string parent)
+        {
             if (!rs.IsSuccess)
                 return [];
 

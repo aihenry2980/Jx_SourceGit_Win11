@@ -121,11 +121,7 @@ namespace SourceGit.ViewModels
             _baseName = GetName(based);
             _toName = GetName(to);
 
-            _baseHead = new Commands.QuerySingleCommit(_repoPath, _based).GetResult();
-            _toHead = new Commands.QuerySingleCommit(_repoPath, _to).GetResult();
-
-            UpdatePickableCommits();
-            UpdateChanges();
+            _ = LoadHeadsAndRefreshAsync();
         }
 
         public Compare(string repo, string based, string to, string baseName, string toName, bool canResetFiles = false)
@@ -137,11 +133,7 @@ namespace SourceGit.ViewModels
             _baseName = baseName;
             _toName = toName;
 
-            _baseHead = new Commands.QuerySingleCommit(_repoPath, _based).GetResult();
-            _toHead = new Commands.QuerySingleCommit(_repoPath, _to).GetResult();
-
-            UpdatePickableCommits();
-            UpdateChanges();
+            _ = LoadHeadsAndRefreshAsync();
         }
 
         public void NavigateTo(string commitSHA)
@@ -149,8 +141,25 @@ namespace SourceGit.ViewModels
             _repo?.NavigateToCommit(commitSHA);
         }
 
+        private async Task LoadHeadsAndRefreshAsync()
+        {
+            var baseHeadTask = new Commands.QuerySingleCommit(_repoPath, _based).GetResultAsync();
+            var toHeadTask = new Commands.QuerySingleCommit(_repoPath, _to).GetResultAsync();
+
+            await Task.WhenAll(baseHeadTask, toHeadTask);
+
+            BaseHead = await baseHeadTask;
+            ToHead = await toHeadTask;
+
+            UpdatePickableCommits();
+            UpdateChanges();
+        }
+
         public void Swap()
         {
+            if (_baseHead == null || _toHead == null)
+                return;
+
             (_based, _to) = (_to, _based);
             (BaseName, ToName) = (_toName, _baseName);
             (BaseHead, ToHead) = (_toHead, _baseHead);

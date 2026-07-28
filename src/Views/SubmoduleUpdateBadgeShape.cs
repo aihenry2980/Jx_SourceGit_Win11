@@ -52,22 +52,14 @@ namespace SourceGit.Views
             }
 
             var color = Color.FromUInt32(AccentColor);
-            _fill = new SolidColorBrush(Color.FromArgb(
-                color.A,
-                ToPastelChannel(color.R),
-                ToPastelChannel(color.G),
-                ToPastelChannel(color.B)));
+            _fill = s_badgeBackgroundBrush;
             _borderPen = new Pen(new SolidColorBrush(color));
             _accentColor = AccentColor;
             _renderWidth = width;
             _renderHeight = height;
         }
 
-        private static byte ToPastelChannel(byte channel)
-        {
-            return (byte)(channel + (255 - channel) * 0.78);
-        }
-
+        private static readonly IBrush s_badgeBackgroundBrush = new SolidColorBrush(Color.Parse("#FFE6E8EB"));
         private StreamGeometry _geometry = null;
         private IBrush _fill = null;
         private Pen _borderPen = null;

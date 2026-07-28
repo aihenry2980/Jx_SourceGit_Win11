@@ -439,23 +439,7 @@ namespace SourceGit.ViewModels
             ResetCombinedPhaseStates();
 
             if (_showSubmoduleSelection)
-            {
-                var saved = _repo.Settings?.GetRecursiveSubmoduleUpdateTargets() ?? [];
-                var savedSet = new HashSet<string>(saved, StringComparer.Ordinal);
-                var defaultSelectAll = savedSet.Count == 0;
-                var submodules = GetSubmodulesForSelection();
-                var hierarchyDepths = BuildSubmoduleHierarchyDepths(submodules);
-
-                foreach (var submodule in submodules)
-                {
-                    hierarchyDepths.TryGetValue(submodule.Path, out var depth);
-                    SubmoduleSelections.Add(new SubmoduleSelectionItem(submodule.Path, defaultSelectAll || savedSet.Contains(submodule.Path)));
-                    SubmoduleRunItems.Add(new SubmoduleRunItem(submodule.Path, defaultSelectAll || savedSet.Contains(submodule.Path), depth));
-                }
-
-                if (SubmoduleSelections.Count > 0)
-                    SelectedSubmoduleSelection = SubmoduleSelections[0];
-            }
+                _loadSubmoduleSelectionTask = LoadSubmoduleSelectionsAsync();
         }
 
         public void SelectAllSubmodules()
@@ -539,6 +523,7 @@ namespace SourceGit.ViewModels
                 List<string> selectedTargets = null;
                 if (_showSubmoduleSelection)
                 {
+                    await _loadSubmoduleSelectionTask;
                     selectedTargets = [];
                     foreach (var item in SubmoduleRunItems)
                     {
@@ -568,7 +553,7 @@ namespace SourceGit.ViewModels
                     return true;
                 }
 
-                InitializeSubmoduleRunItems(selectedTargets);
+                await InitializeSubmoduleRunItemsAsync(selectedTargets);
 
                 succ = _kind switch
                 {
@@ -948,7 +933,30 @@ namespace SourceGit.ViewModels
             return Math.Clamp(seconds, 1, 60);
         }
 
-        private void InitializeSubmoduleRunItems(List<string> selectedTargets)
+        private async Task LoadSubmoduleSelectionsAsync()
+        {
+            var saved = _repo.Settings?.GetRecursiveSubmoduleUpdateTargets() ?? [];
+            var savedSet = new HashSet<string>(saved, StringComparer.Ordinal);
+            var defaultSelectAll = savedSet.Count == 0;
+            var submodules = await GetSubmodulesForSelectionAsync();
+            var hierarchyDepths = BuildSubmoduleHierarchyDepths(submodules);
+
+            foreach (var submodule in submodules)
+            {
+                hierarchyDepths.TryGetValue(submodule.Path, out var depth);
+                SubmoduleSelections.Add(new SubmoduleSelectionItem(submodule.Path, defaultSelectAll || savedSet.Contains(submodule.Path)));
+                SubmoduleRunItems.Add(new SubmoduleRunItem(submodule.Path, defaultSelectAll || savedSet.Contains(submodule.Path), depth));
+            }
+
+            if (SubmoduleSelections.Count > 0)
+                SelectedSubmoduleSelection = SubmoduleSelections[0];
+
+            OnPropertyChanged(nameof(HasSubmodulesToSelect));
+            OnPropertyChanged(nameof(IsSubmoduleProgressBoardVisible));
+            OnPropertyChanged(nameof(PreferTallWindow));
+        }
+
+        private async Task InitializeSubmoduleRunItemsAsync(List<string> selectedTargets)
         {
             SubmoduleRunItems.Clear();
 
@@ -961,7 +969,7 @@ namespace SourceGit.ViewModels
             HashSet<string> selectedSet = null;
             if (selectedTargets != null)
                 selectedSet = new HashSet<string>(selectedTargets, StringComparer.Ordinal);
-            var submodules = GetSubmodulesForSelection();
+            var submodules = await GetSubmodulesForSelectionAsync();
             var hierarchyDepths = BuildSubmoduleHierarchyDepths(submodules);
 
             foreach (var submodule in submodules)
@@ -1020,7 +1028,7 @@ namespace SourceGit.ViewModels
             return revision.Length > 10 ? revision.Substring(0, 10) : revision;
         }
 
-        private List<Models.Submodule> GetSubmodulesForSelection()
+        private async Task<List<Models.Submodule>> GetSubmodulesForSelectionAsync()
         {
             if (_repo.Submodules.Count > 0 || !_repo.MayHaveSubmodules())
                 return _repo.Submodules;
@@ -1028,7 +1036,7 @@ namespace SourceGit.ViewModels
             try
             {
                 var depth = Preferences.Instance.RecursiveSubmoduleDisplayDepth;
-                return new Commands.QuerySubmodules(_repo.FullPath, depth).GetResultAsync().GetAwaiter().GetResult();
+                return await new Commands.QuerySubmodules(_repo.FullPath, depth).GetResultAsync();
             }
             catch
             {
@@ -1105,6 +1113,7 @@ namespace SourceGit.ViewModels
         private bool _showEmbeddedHeader = true;
         private bool _keepWindowOpen = false;
         private SubmoduleSelectionItem _selectedSubmoduleSelection = null;
+        private Task _loadSubmoduleSelectionTask = Task.CompletedTask;
 
         private static readonly IBrush s_activePhaseBackgroundBrush = new LinearGradientBrush
         {

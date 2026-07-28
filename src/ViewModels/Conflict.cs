@@ -43,7 +43,9 @@ namespace SourceGit.ViewModels
 
             Task.Run(async () =>
             {
-                _head = new Commands.QuerySingleCommit(repo.FullPath, "HEAD").GetResult();
+                _head = await new Commands.QuerySingleCommit(repo.FullPath, "HEAD")
+                    .GetResultAsync()
+                    .ConfigureAwait(false);
 
                 var (mine, theirs) = wc.InProgressContext switch
                 {

@@ -75,51 +75,18 @@ namespace SourceGit.ViewModels
             });
         }
 
-        public DirHistories(string repoPath, string dir)
-        {
-            Title = dir;
-
-            var gitDir = new Commands.QueryGitDir(repoPath).GetResult();
-            _repo = new Repository(true, repoPath, gitDir); // Trait repository as a bare repository to disable some file operations.
-            _repo.RefreshBranches();
-
-            _detail = new CommitDetail(_repo, null);
-            _detail.SearchChangeFilter = dir;
-
-            Task.Run(async () =>
-            {
-                var argsBuilder = new StringBuilder();
-                argsBuilder
-                    .Append("--date-order -n 10000 -- ")
-                    .Append(dir.Quoted());
-
-                var commits = await new Commands.QueryCommits(_repo.FullPath, argsBuilder.ToString(), false)
-                    .GetResultAsync()
-                    .ConfigureAwait(false);
-
-                Dispatcher.UIThread.Post(() =>
-                {
-                    Commits = commits;
-                    IsLoading = false;
-
-                    if (commits.Count > 0)
-                        SelectedCommit = commits[0];
-                });
-            });
-        }
-
         public void NavigateToCommit(Models.Commit commit)
         {
             _repo.NavigateToCommit(commit.SHA);
         }
 
-        public string GetCommitFullMessage(Models.Commit commit)
+        public async Task<string> GetCommitFullMessageAsync(Models.Commit commit)
         {
             var sha = commit.SHA;
             if (_cachedCommitFullMessage.TryGetValue(sha, out var msg))
                 return msg;
 
-            msg = new Commands.QueryCommitFullMessage(_repo.FullPath, sha).GetResult();
+            msg = await new Commands.QueryCommitFullMessage(_repo.FullPath, sha).GetResultAsync();
             _cachedCommitFullMessage[sha] = msg;
             return msg;
         }

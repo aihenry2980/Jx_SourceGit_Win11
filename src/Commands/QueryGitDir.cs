@@ -1,4 +1,5 @@
-﻿using System.IO;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace SourceGit.Commands
 {
@@ -13,6 +14,11 @@ namespace SourceGit.Commands
         public string GetResult()
         {
             return Parse(ReadToEnd());
+        }
+
+        public async Task<string> GetResultAsync()
+        {
+            return Parse(await ReadToEndAsync().ConfigureAwait(false));
         }
 
         private string Parse(Result rs)

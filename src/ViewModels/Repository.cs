@@ -1742,6 +1742,7 @@ namespace SourceGit.ViewModels
         public void ApplyPresetBranchFilter()
         {
             UsePresetBranchFilterForSession();
+            InvalidatePresetBranchFilterMatchCache();
 
             var presetBranchFilter = GetPresetBranchFilterMatchCache();
             var exactNames = presetBranchFilter.ExactNames;
@@ -1870,6 +1871,7 @@ namespace SourceGit.ViewModels
 
             _branches.RemoveAll(b => b.IsLocal && b.Name.Equals(created.Name, StringComparison.Ordinal));
             _branches.Add(created);
+            InvalidatePresetBranchFilterMatchCache();
 
             if (checkout)
             {
@@ -1890,9 +1892,6 @@ namespace SourceGit.ViewModels
                 if (folderEndIdx > 10)
                     _uiStates.ExpandedBranchNodesInSideBar.Add(created.FullName.Substring(0, folderEndIdx));
 
-                if (_historyFilterMode == Models.FilterMode.Included)
-                    SetBranchFilterMode(created, Models.FilterMode.Included, false, false);
-
                 CurrentBranch = created;
             }
 
@@ -1912,7 +1911,11 @@ namespace SourceGit.ViewModels
             LocalBranchTrees = builder.Locals;
             LocalBranchesCount = count;
 
-            RefreshCommits();
+            if (_historyFilterMode == Models.FilterMode.Included)
+                IncludeBranchInHistoryFilter(created, true);
+            else
+                RefreshCommits();
+
             RefreshWorkingCopyChanges();
             RefreshWorktrees();
         }
@@ -1934,8 +1937,6 @@ namespace SourceGit.ViewModels
 
             checkouted.IsCurrent = true;
             checkouted.WorktreePath = FullPath;
-            if (_historyFilterMode == Models.FilterMode.Included)
-                SetBranchFilterMode(checkouted, Models.FilterMode.Included, false, false);
 
             List<Models.Branch> locals = [];
             foreach (var b in _branches)
@@ -1948,7 +1949,11 @@ namespace SourceGit.ViewModels
             LocalBranchTrees = builder.Locals;
             CurrentBranch = checkouted;
 
-            RefreshCommits();
+            if (_historyFilterMode == Models.FilterMode.Included)
+                IncludeBranchInHistoryFilter(checkouted, true);
+            else
+                RefreshCommits();
+
             RefreshWorkingCopyChanges();
             RefreshWorktrees();
         }
@@ -2204,6 +2209,29 @@ namespace SourceGit.ViewModels
             var node = FindBranchNode(branch.IsLocal ? _localBranchTrees : _remoteBranchTrees, branch.FullName);
             if (node != null)
                 SetBranchFilterMode(node, mode, clearExists, refresh);
+        }
+
+        private bool IncludeBranchInHistoryFilter(Models.Branch branch, bool refresh)
+        {
+            if (_uiStates == null || branch == null)
+                return false;
+
+            var changed = false;
+            if (branch.IsLocal)
+            {
+                changed |= _uiStates.UpdateHistoryFilters(branch.FullName, Models.FilterType.LocalBranch, Models.FilterMode.Included);
+                if (!string.IsNullOrEmpty(branch.Upstream) && !branch.IsUpstreamGone)
+                    changed |= _uiStates.UpdateHistoryFilters(branch.Upstream, Models.FilterType.RemoteBranch, Models.FilterMode.Included);
+            }
+            else
+            {
+                changed |= _uiStates.UpdateHistoryFilters(branch.FullName, Models.FilterType.RemoteBranch, Models.FilterMode.Included);
+            }
+
+            if (changed || refresh)
+                RefreshHistoryFilters(refresh);
+
+            return changed;
         }
 
         public void SetBranchFilterMode(BranchTreeNode node, Models.FilterMode mode, bool clearExists, bool refresh)
@@ -2519,6 +2547,7 @@ namespace SourceGit.ViewModels
 
                     Remotes = remotes;
                     Branches = branches;
+                    InvalidatePresetBranchFilterMatchCache();
                     CurrentBranch = branches.Find(x => x.IsCurrent);
                     RemoveInvalidBranchHistoryFilters(branches);
                     RefreshBranchSidebarByCurrentFilters();
@@ -2939,6 +2968,7 @@ namespace SourceGit.ViewModels
             bool finalizeNavigation)
         {
             var uiQueueStopwatch = Stopwatch.StartNew();
+            Histories appliedHistories = null;
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
                 if (token.IsCancellationRequested || _histories == null)
@@ -2956,7 +2986,7 @@ namespace SourceGit.ViewModels
                 UpdateVisibleFoldBranchStatesFromCurrentGraph();
                 NotifyCurrentBranchVisualChanged();
 
-                BisectState = _histories.UpdateBisectInfo();
+                appliedHistories = _histories;
 
                 if (finalizeNavigation)
                 {
@@ -2979,6 +3009,16 @@ namespace SourceGit.ViewModels
                     $"ui={applyStopwatch.ElapsedMilliseconds}ms, " +
                     $"total={snapshot.TotalMilliseconds + uiQueueStopwatch.ElapsedMilliseconds + applyStopwatch.ElapsedMilliseconds}ms");
             });
+
+            if (appliedHistories != null && !token.IsCancellationRequested)
+            {
+                var state = await appliedHistories.UpdateBisectInfoAsync().ConfigureAwait(false);
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    if (!token.IsCancellationRequested && _histories == appliedHistories)
+                        BisectState = state;
+                });
+            }
         }
 
         public void RefreshSubmodules(bool force = false)

@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text.Json;
+using System.Threading.Tasks;
 
 using Avalonia.Interactivity;
 
@@ -19,9 +20,9 @@ namespace SourceGit.Views
             InitializeComponent();
         }
 
-        public void AsStandalone(string file)
+        public async Task AsStandaloneAsync(string file)
         {
-            var gitDir = new Commands.QueryGitDir(Path.GetDirectoryName(file)).GetResult();
+            var gitDir = await new Commands.QueryGitDir(Path.GetDirectoryName(file)).GetResultAsync();
             if (!string.IsNullOrEmpty(gitDir))
             {
                 var settingsFile = Path.Combine(gitDir, "sourcegit.settings");

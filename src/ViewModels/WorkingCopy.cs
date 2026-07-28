@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace SourceGit.ViewModels
@@ -98,7 +100,18 @@ namespace SourceGit.ViewModels
                             return;
                         }
 
-                        CommitMessage = new Commands.QueryCommitFullMessage(_repo.FullPath, currentBranch.Head).GetResult();
+                        var head = currentBranch.Head;
+                        _ = Task.Run(async () =>
+                        {
+                            var message = await new Commands.QueryCommitFullMessage(_repo.FullPath, head)
+                                .GetResultAsync()
+                                .ConfigureAwait(false);
+                            Dispatcher.UIThread.Post(() =>
+                            {
+                                if (_useAmend && _repo.CurrentBranch?.Head == head)
+                                    CommitMessage = message;
+                            });
+                        });
                     }
                     else
                     {
@@ -234,7 +247,7 @@ namespace SourceGit.ViewModels
             if (!IsChanged(_cached, changes))
             {
                 HasUnsolvedConflicts = _cached.Find(x => x.IsConflicted) != null;
-                UpdateInProgressState();
+                ScheduleUpdateInProgressState();
                 UpdateDetail();
                 return;
             }
@@ -310,7 +323,7 @@ namespace SourceGit.ViewModels
             SelectedStaged = selectedStaged;
             _isLoadingData = false;
 
-            UpdateInProgressState();
+            ScheduleUpdateInProgressState();
             UpdateDetail();
         }
 
@@ -710,11 +723,7 @@ namespace SourceGit.ViewModels
         private List<Models.Change> GetStagedChanges(List<Models.Change> cached)
         {
             if (_useAmend)
-            {
-                var changes = new Commands.QueryStagedChangesWithAmend(_repo.FullPath).GetResult();
-                changes.Sort((l, r) => Models.NumericSort.Compare(l.Path, r.Path));
-                return changes;
-            }
+                ScheduleLoadStagedChangesWithAmend();
 
             var rs = new List<Models.Change>();
             foreach (var c in cached)
@@ -723,6 +732,29 @@ namespace SourceGit.ViewModels
                     rs.Add(c);
             }
             return rs;
+        }
+
+        private void ScheduleLoadStagedChangesWithAmend()
+        {
+            var version = Interlocked.Increment(ref _stagedChangesWithAmendVersion);
+            var repoPath = _repo.FullPath;
+            Task.Run(async () =>
+            {
+                var changes = await new Commands.QueryStagedChangesWithAmend(repoPath)
+                    .GetResultAsync()
+                    .ConfigureAwait(false);
+                changes.Sort((l, r) => Models.NumericSort.Compare(l.Path, r.Path));
+
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (version != _stagedChangesWithAmendVersion || !_useAmend)
+                        return;
+
+                    Staged = changes;
+                    VisibleStaged = GetVisibleChanges(changes);
+                    SelectedStaged = [];
+                });
+            });
         }
 
         private void UpdateDetail()
@@ -735,20 +767,45 @@ namespace SourceGit.ViewModels
                 SetDetail(null, false);
         }
 
-        private void UpdateInProgressState()
+        private void ScheduleUpdateInProgressState()
+        {
+            var version = Interlocked.Increment(ref _inProgressRefreshVersion);
+            _ = UpdateInProgressStateAndReportAsync(version);
+        }
+
+        private async Task UpdateInProgressStateAndReportAsync(int version)
+        {
+            try
+            {
+                await UpdateInProgressStateAsync(version);
+            }
+            catch (Exception ex)
+            {
+                App.LogException(ex);
+            }
+        }
+
+        private async Task UpdateInProgressStateAsync(int version)
         {
             var oldType = _inProgressContext != null ? _inProgressContext.GetType() : null;
+            InProgressContext nextContext;
 
             if (File.Exists(Path.Combine(_repo.GitDir, "CHERRY_PICK_HEAD")))
-                InProgressContext = new CherryPickInProgress(_repo);
+                nextContext = await CherryPickInProgress.CreateAsync(_repo);
             else if (Directory.Exists(Path.Combine(_repo.GitDir, "rebase-merge")) || Directory.Exists(Path.Combine(_repo.GitDir, "rebase-apply")))
-                InProgressContext = new RebaseInProgress(_repo);
+                nextContext = await RebaseInProgress.CreateAsync(_repo);
             else if (File.Exists(Path.Combine(_repo.GitDir, "REVERT_HEAD")))
-                InProgressContext = new RevertInProgress(_repo);
+                nextContext = await RevertInProgress.CreateAsync(_repo);
             else if (File.Exists(Path.Combine(_repo.GitDir, "MERGE_HEAD")))
-                InProgressContext = new MergeInProgress(_repo);
+                nextContext = await MergeInProgress.CreateAsync(_repo);
             else
-                InProgressContext = null;
+                nextContext = null;
+
+            if (version != _inProgressRefreshVersion)
+                return;
+
+            InProgressContext = nextContext;
+            UpdateDetail();
 
             if (_inProgressContext != null && _inProgressContext.GetType() == oldType && !string.IsNullOrEmpty(_commitMessage))
                 return;
@@ -762,7 +819,21 @@ namespace SourceGit.ViewModels
             if (LoadCommitMessageFromFile(Path.Combine(_repo.GitDir, "rebase-merge", "message")))
                 return;
 
-            CommitMessage = new Commands.QueryCommitFullMessage(_repo.FullPath, rebasing.StoppedAt.SHA).GetResult();
+            if (rebasing.StoppedAt == null)
+                return;
+
+            var stoppedAt = rebasing.StoppedAt.SHA;
+            _ = Task.Run(async () =>
+            {
+                var message = await new Commands.QueryCommitFullMessage(_repo.FullPath, stoppedAt)
+                    .GetResultAsync()
+                    .ConfigureAwait(false);
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (_inProgressContext is RebaseInProgress current && current.StoppedAt.SHA == stoppedAt)
+                        CommitMessage = message;
+                });
+            });
         }
 
         private bool LoadCommitMessageFromFile(string file)
@@ -828,5 +899,7 @@ namespace SourceGit.ViewModels
 
         private bool _hasUnsolvedConflicts = false;
         private InProgressContext _inProgressContext = null;
+        private int _stagedChangesWithAmendVersion = 0;
+        private int _inProgressRefreshVersion = 0;
     }
 }

@@ -328,7 +328,7 @@ namespace SourceGit
             SetFonts(pref.DefaultFontFamily, pref.MonospaceFontFamily);
         }
 
-        public override void OnFrameworkInitializationCompleted()
+        public override async void OnFrameworkInitializationCompleted()
         {
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
@@ -342,13 +342,13 @@ namespace SourceGit
                         e.Cancel = true;
                 });
 
-                if (TryLaunchAsFileHistoryViewer(desktop))
+                if (await TryLaunchAsFileHistoryViewerAsync(desktop))
                     return;
 
-                if (TryLaunchAsBlameViewer(desktop))
+                if (await TryLaunchAsBlameViewerAsync(desktop))
                     return;
 
-                if (TryLaunchAsCoreEditor(desktop))
+                if (await TryLaunchAsCoreEditorAsync(desktop))
                     return;
 
                 if (TryLaunchAsAskpass(desktop))
@@ -419,7 +419,7 @@ namespace SourceGit
             return true;
         }
 
-        private bool TryLaunchAsFileHistoryViewer(IClassicDesktopStyleApplicationLifetime desktop)
+        private async Task<bool> TryLaunchAsFileHistoryViewerAsync(IClassicDesktopStyleApplicationLifetime desktop)
         {
             var args = desktop.Args;
             if (args is not { Length: > 1 } || !args[0].Equals("--history", StringComparison.Ordinal))
@@ -428,7 +428,7 @@ namespace SourceGit
             var fullPath = Path.GetFullPath(args[1].Replace('\\', '/').Trim('\"').Trim());
             var dir = Path.GetDirectoryName(fullPath);
 
-            var test = new Commands.QueryRepositoryRootPath(dir).GetResult();
+            var test = await new Commands.QueryRepositoryRootPath(dir).GetResultAsync();
             if (!test.IsSuccess || string.IsNullOrEmpty(test.StdOut))
             {
                 Console.Out.WriteLine($"'{args[1]}' is not in a valid git repository");
@@ -450,9 +450,12 @@ namespace SourceGit
             }
             else if (Directory.Exists(fullPath))
             {
+                var gitDir = await new Commands.QueryGitDir(repo).GetResultAsync();
+                var repository = new ViewModels.Repository(true, repo, gitDir); // Treat repository as bare to disable file operations.
+                repository.RefreshBranches();
                 desktop.MainWindow = new Views.DirHistories()
                 {
-                    DataContext = new ViewModels.DirHistories(repo, relativePath.TrimEnd('/'))
+                    DataContext = new ViewModels.DirHistories(repository, relativePath.TrimEnd('/'))
                 };
             }
             else
@@ -464,7 +467,7 @@ namespace SourceGit
             return true;
         }
 
-        private bool TryLaunchAsBlameViewer(IClassicDesktopStyleApplicationLifetime desktop)
+        private async Task<bool> TryLaunchAsBlameViewerAsync(IClassicDesktopStyleApplicationLifetime desktop)
         {
             var args = desktop.Args;
             if (args is not { Length: > 1 } || !args[0].Equals("--blame", StringComparison.Ordinal))
@@ -473,7 +476,7 @@ namespace SourceGit
             var file = Path.GetFullPath(args[1].Replace('\\', '/').Trim('\"').Trim());
             var dir = Path.GetDirectoryName(file);
 
-            var test = new Commands.QueryRepositoryRootPath(dir).GetResult();
+            var test = await new Commands.QueryRepositoryRootPath(dir).GetResultAsync();
             if (!test.IsSuccess || string.IsNullOrEmpty(test.StdOut))
             {
                 Console.Out.WriteLine($"'{args[1]}' is not in a valid git repository");
@@ -482,7 +485,7 @@ namespace SourceGit
             }
 
             var repo = test.StdOut.Trim();
-            var head = new Commands.QuerySingleCommit(repo, "HEAD").GetResult();
+            var head = await new Commands.QuerySingleCommit(repo, "HEAD").GetResultAsync();
             if (head == null)
             {
                 Console.Out.WriteLine($"{repo} has no commits!");
@@ -499,7 +502,7 @@ namespace SourceGit
             return true;
         }
 
-        private bool TryLaunchAsCoreEditor(IClassicDesktopStyleApplicationLifetime desktop)
+        private async Task<bool> TryLaunchAsCoreEditorAsync(IClassicDesktopStyleApplicationLifetime desktop)
         {
             var args = desktop.Args;
             if (args is not { Length: > 1 } || !args[0].Equals("--core-editor", StringComparison.Ordinal))
@@ -513,7 +516,7 @@ namespace SourceGit
             }
 
             var editor = new Views.CommitMessageEditor();
-            editor.AsStandalone(file);
+            await editor.AsStandaloneAsync(file);
             desktop.MainWindow = editor;
             return true;
         }

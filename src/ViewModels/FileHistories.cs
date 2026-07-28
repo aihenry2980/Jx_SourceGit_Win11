@@ -299,13 +299,13 @@ namespace SourceGit.ViewModels
             }
         }
 
-        public string GetCommitFullMessage(Models.FileVersion revision)
+        public async Task<string> GetCommitFullMessageAsync(Models.FileVersion revision)
         {
             var sha = revision.SHA;
             if (_fullCommitMessages.TryGetValue(sha, out var msg))
                 return msg;
 
-            msg = new Commands.QueryCommitFullMessage(_repo, sha).GetResult();
+            msg = await new Commands.QueryCommitFullMessage(_repo, sha).GetResultAsync();
             _fullCommitMessages[sha] = msg;
             return msg;
         }

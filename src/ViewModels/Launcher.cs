@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Threading.Tasks;
 
 using Avalonia;
 using Avalonia.Collections;
@@ -96,19 +97,32 @@ namespace SourceGit.ViewModels
             Pages = new AvaloniaList<LauncherPage>();
             AddNewTab();
 
-            var repos = ActiveWorkspace.Repositories.ToArray();
-            foreach (var repo in repos)
-                OpenRepositoryInTab(repo, null);
+            _ = RestoreWorkspaceAsync(startupRepo);
+        }
 
-            _ignoreIndexChange = false;
-
-            if (!TryOpenRepositoryFromPath(startupRepo))
+        private async Task RestoreWorkspaceAsync(string startupRepo)
+        {
+            try
             {
-                var activeIdx = ActiveWorkspace.ActiveIdx;
-                if (activeIdx > 0 && activeIdx < Pages.Count)
-                    ActivePage = Pages[activeIdx];
-                else
-                    ActivePage = Pages[0];
+                var repos = ActiveWorkspace.Repositories.ToArray();
+                foreach (var repo in repos)
+                    await OpenRepositoryInTabAsync(repo, null);
+
+                _ignoreIndexChange = false;
+
+                if (!await TryOpenRepositoryFromPathAsync(startupRepo))
+                {
+                    var activeIdx = ActiveWorkspace.ActiveIdx;
+                    if (activeIdx > 0 && activeIdx < Pages.Count)
+                        ActivePage = Pages[activeIdx];
+                    else
+                        ActivePage = Pages[0];
+                }
+            }
+            catch (Exception ex)
+            {
+                App.LogException(ex);
+                _ignoreIndexChange = false;
             }
 
             PostActivePageChanged();
@@ -116,23 +130,44 @@ namespace SourceGit.ViewModels
 
         public bool TryOpenRepositoryFromPath(string repo)
         {
+            if (string.IsNullOrEmpty(repo) || !Directory.Exists(repo))
+                return false;
+
+            _ = TryOpenRepositoryFromPathAndReportAsync(repo);
+            return true;
+        }
+
+        private async Task TryOpenRepositoryFromPathAndReportAsync(string repo)
+        {
+            try
+            {
+                await TryOpenRepositoryFromPathAsync(repo);
+            }
+            catch (Exception ex)
+            {
+                App.LogException(ex);
+            }
+        }
+
+        private async Task<bool> TryOpenRepositoryFromPathAsync(string repo)
+        {
             if (!string.IsNullOrEmpty(repo) && Directory.Exists(repo))
             {
-                var isBare = new Commands.IsBareRepository(repo).GetResult();
+                var isBare = await new Commands.IsBareRepository(repo).GetResultAsync();
                 if (isBare)
                 {
                     var node = Preferences.Instance.FindOrAddNodeByRepositoryPath(repo, null, false);
                     Welcome.Instance.Refresh();
-                    OpenRepositoryInTab(node, null);
+                    await OpenRepositoryInTabAsync(node, null);
                     return true;
                 }
 
-                var test = new Commands.QueryRepositoryRootPath(repo).GetResult();
+                var test = await new Commands.QueryRepositoryRootPath(repo).GetResultAsync();
                 if (test.IsSuccess && !string.IsNullOrEmpty(test.StdOut))
                 {
                     var node = Preferences.Instance.FindOrAddNodeByRepositoryPath(test.StdOut.Trim(), null, false);
                     Welcome.Instance.Refresh();
-                    OpenRepositoryInTab(node, null);
+                    await OpenRepositoryInTabAsync(node, null);
                     return true;
                 }
                 else
@@ -332,6 +367,23 @@ namespace SourceGit.ViewModels
 
         public void OpenRepositoryInTab(string repo, LauncherPage page)
         {
+            _ = OpenRepositoryInTabAndReportAsync(repo, page);
+        }
+
+        private async Task OpenRepositoryInTabAndReportAsync(string repo, LauncherPage page)
+        {
+            try
+            {
+                await OpenRepositoryInTabAsync(repo, page);
+            }
+            catch (Exception ex)
+            {
+                App.LogException(ex);
+            }
+        }
+
+        private Task OpenRepositoryInTabAsync(string repo, LauncherPage page)
+        {
             var normalizedPath = repo.Replace('\\', '/').TrimEnd('/');
             var node = Preferences.Instance.FindNode(normalizedPath) ?? new RepositoryNode
             {
@@ -342,7 +394,7 @@ namespace SourceGit.ViewModels
                 IsUnmanaged = true
             };
 
-            OpenRepositoryInTab(node, page);
+            return OpenRepositoryInTabAsync(node, page);
         }
 
         public void OpenRepositoryInTab(RepositoryNode node, LauncherPage page)
@@ -351,6 +403,31 @@ namespace SourceGit.ViewModels
         }
 
         public void OpenRepositoryInTab(
+            RepositoryNode node,
+            LauncherPage page,
+            string superProjectSubmoduleSHA = null,
+            LauncherPage insertAfter = null)
+        {
+            _ = OpenRepositoryInTabAndReportAsync(node, page, superProjectSubmoduleSHA, insertAfter);
+        }
+
+        private async Task OpenRepositoryInTabAndReportAsync(
+            RepositoryNode node,
+            LauncherPage page,
+            string superProjectSubmoduleSHA = null,
+            LauncherPage insertAfter = null)
+        {
+            try
+            {
+                await OpenRepositoryInTabAsync(node, page, superProjectSubmoduleSHA, insertAfter);
+            }
+            catch (Exception ex)
+            {
+                App.LogException(ex);
+            }
+        }
+
+        private async Task OpenRepositoryInTabAsync(
             RepositoryNode node,
             LauncherPage page,
             string superProjectSubmoduleSHA = null,
@@ -379,8 +456,8 @@ namespace SourceGit.ViewModels
                 return;
             }
 
-            var isBare = new Commands.IsBareRepository(node.Id).GetResult();
-            var gitDir = isBare ? node.Id : GetRepositoryGitDir(node.Id);
+            var isBare = await new Commands.IsBareRepository(node.Id).GetResultAsync();
+            var gitDir = isBare ? node.Id : await GetRepositoryGitDirAsync(node.Id);
             if (string.IsNullOrEmpty(gitDir))
             {
                 ActivePage.Notifications.Add(new Models.Notification
@@ -472,7 +549,7 @@ namespace SourceGit.ViewModels
             OnPropertyChanged(nameof(ActivePageTitleBarBackground));
         }
 
-        private string GetRepositoryGitDir(string repo)
+        private async Task<string> GetRepositoryGitDirAsync(string repo)
         {
             var fullpath = Path.Combine(repo, ".git");
             if (Directory.Exists(fullpath))
@@ -500,7 +577,7 @@ namespace SourceGit.ViewModels
                 return null;
             }
 
-            return new Commands.QueryGitDir(repo).GetResult();
+            return await new Commands.QueryGitDir(repo).GetResultAsync();
         }
 
         private void CloseRepositoryInTab(LauncherPage page, bool removeFromWorkspace = true)

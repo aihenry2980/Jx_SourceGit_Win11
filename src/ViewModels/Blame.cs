@@ -71,12 +71,12 @@ namespace SourceGit.ViewModels
             SetBlameData(_navigationHistory[0]);
         }
 
-        public string GetCommitMessage(string sha)
+        public async Task<string> GetCommitMessageAsync(string sha)
         {
             if (_commitMessages.TryGetValue(sha, out var msg))
                 return msg;
 
-            msg = new Commands.QueryCommitFullMessage(_repo, sha).GetResult();
+            msg = await new Commands.QueryCommitFullMessage(_repo, sha).GetResultAsync();
             _commitMessages[sha] = msg;
             return msg;
         }

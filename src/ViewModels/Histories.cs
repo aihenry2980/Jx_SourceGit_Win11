@@ -266,19 +266,27 @@ namespace SourceGit.ViewModels
             OnPropertyChanged(nameof(CurrentBranch));
         }
 
-        public Models.BisectState UpdateBisectInfo()
+        public async Task<Models.BisectState> UpdateBisectInfoAsync()
         {
-            var test = Path.Combine(_repo.GitDir, "BISECT_START");
+            var repo = _repo;
+            if (repo == null)
+                return Models.BisectState.None;
+
+            var test = Path.Combine(repo.GitDir, "BISECT_START");
             if (!File.Exists(test))
             {
-                Bisect = null;
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    if (_repo == repo)
+                        Bisect = null;
+                });
                 return Models.BisectState.None;
             }
 
-            var head = new Commands.QueryRevisionByRefName(_repo.FullPath, "HEAD").GetResult();
+            var head = await new Commands.QueryRevisionByRefName(repo.FullPath, "HEAD").GetResultAsync();
             var info = new Models.Bisect();
             var markedHead = false;
-            var dir = Path.Combine(_repo.GitDir, "refs", "bisect");
+            var dir = Path.Combine(repo.GitDir, "refs", "bisect");
             if (Directory.Exists(dir))
             {
                 var files = new DirectoryInfo(dir).GetFiles();
@@ -286,7 +294,7 @@ namespace SourceGit.ViewModels
                 {
                     var sha = File.ReadAllText(file.FullName).Trim();
                     if (!markedHead)
-                        markedHead = head.Equals(sha, StringComparison.Ordinal);
+                        markedHead = head?.Equals(sha, StringComparison.Ordinal) == true;
 
                     if (file.Name.StartsWith("bad"))
                         info.Bads.Add(sha);
@@ -297,7 +305,11 @@ namespace SourceGit.ViewModels
                 }
             }
 
-            Bisect = info;
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (_repo == repo)
+                    Bisect = info;
+            });
 
             if (info.Bads.Count == 0)
                 return Models.BisectState.WaitingForFirstBad;

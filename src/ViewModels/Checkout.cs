@@ -106,10 +106,6 @@ namespace SourceGit.ViewModels
             }
 
             log.Complete();
-            var b = _repo.Branches.Find(x => x.IsLocal && x.Name == branchName);
-            if (b != null && _repo.HistoryFilterMode == Models.FilterMode.Included)
-                _repo.SetBranchFilterMode(b, Models.FilterMode.Included, false, false);
-
             _repo.MarkBranchesDirtyManually();
             if (succ)
                 _repo.RefreshSuperProjectSubmodulePointer();
