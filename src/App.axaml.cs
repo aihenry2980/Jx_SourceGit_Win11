@@ -146,6 +146,9 @@ namespace SourceGit
 
         public static async Task<bool> AskConfirmAsync(string message, Models.ConfirmButtonType buttonType = Models.ConfirmButtonType.OkCancel)
         {
+            if (!Dispatcher.UIThread.CheckAccess())
+                return await Dispatcher.UIThread.InvokeAsync(() => AskConfirmAsync(message, buttonType));
+
             if (Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: { } owner })
             {
                 var confirm = new Views.Confirm();

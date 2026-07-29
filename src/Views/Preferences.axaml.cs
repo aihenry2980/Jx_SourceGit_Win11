@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
 
 using Avalonia;
@@ -486,7 +487,11 @@ namespace SourceGit.Views
             {
                 var selected = await StorageProvider.OpenFilePickerAsync(options);
                 if (selected is { Count: 1 } && sender is Button { DataContext: Models.CustomAction action })
-                    action.Executable = selected[0].Path.LocalPath;
+                {
+                    var executable = selected[0].Path.LocalPath;
+                    action.Executable = executable;
+                    RenameDefaultCustomAction(action, executable);
+                }
             }
             catch (Exception ex)
             {
@@ -494,6 +499,18 @@ namespace SourceGit.Views
             }
 
             e.Handled = true;
+        }
+
+        private static void RenameDefaultCustomAction(Models.CustomAction action, string executable)
+        {
+            if (!string.IsNullOrWhiteSpace(action.Name) &&
+                !action.Name.Equals("Unnamed Action", StringComparison.Ordinal) &&
+                !action.Name.Equals("Unnamed Action (Global)", StringComparison.Ordinal))
+                return;
+
+            var filename = Path.GetFileName(executable);
+            if (!string.IsNullOrWhiteSpace(filename))
+                action.Name = filename;
         }
 
         private void OnRemoveSelectedCustomAction(object sender, RoutedEventArgs e)

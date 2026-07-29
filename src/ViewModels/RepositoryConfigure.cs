@@ -233,6 +233,8 @@ namespace SourceGit.ViewModels
             get => _repo.Settings.CustomActions;
         }
 
+        public string RepoPath => _repo.FullPath;
+
         public string RepoLocalIgnoreRules
         {
             get => _repoLocalIgnoreRules;

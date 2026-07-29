@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -129,17 +130,37 @@ namespace SourceGit.Views
 
         private async void SelectExecutableForCustomAction(object sender, RoutedEventArgs e)
         {
+            var suggestedStartLocation = DataContext is ViewModels.RepositoryConfigure vm ?
+                await StorageProvider.TryGetFolderFromPathAsync(vm.RepoPath) :
+                null;
+
             var options = new FilePickerOpenOptions()
             {
                 AllowMultiple = false,
-                FileTypeFilter = [new("Executable file(script)") { Patterns = ["*"] }]
+                FileTypeFilter = [new("Executable file(script)") { Patterns = ["*"] }],
+                SuggestedStartLocation = suggestedStartLocation,
             };
 
             var selected = await StorageProvider.OpenFilePickerAsync(options);
             if (selected.Count == 1 && sender is Button { DataContext: Models.CustomAction action })
-                action.Executable = selected[0].Path.LocalPath;
+            {
+                var executable = selected[0].Path.LocalPath;
+                action.Executable = executable;
+                RenameDefaultCustomAction(action, executable);
+            }
 
             e.Handled = true;
+        }
+
+        private static void RenameDefaultCustomAction(Models.CustomAction action, string executable)
+        {
+            if (!string.IsNullOrWhiteSpace(action.Name) &&
+                !action.Name.Equals("Unnamed Action", StringComparison.Ordinal))
+                return;
+
+            var filename = Path.GetFileName(executable);
+            if (!string.IsNullOrWhiteSpace(filename))
+                action.Name = filename;
         }
 
         private async void EditCustomActionControls(object sender, RoutedEventArgs e)
