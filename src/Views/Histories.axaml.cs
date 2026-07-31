@@ -1176,6 +1176,7 @@ namespace SourceGit.Views
             var canCherryPick = true;
             var canMerge = true;
             var canMergeToOneCommit = vm?.CanMergeSelectedCommitsToOne(selected) == true;
+            var canCreateBranchWithoutCommits = CanCreateBranchWithoutCommits(repo, selected);
 
             foreach (var c in selected)
             {
@@ -1236,8 +1237,19 @@ namespace SourceGit.Views
                     menu.Items.Add(mergeToOneCommit);
                 }
 
-                if (canCherryPick || canMerge || canMergeToOneCommit)
-                    menu.Items.Add(new MenuItem() { Header = "-" });
+                var createBranchWithoutCommits = new MenuItem();
+                createBranchWithoutCommits.Header = App.Text("CommitCM.CreateBranchWithoutCommits");
+                createBranchWithoutCommits.Icon = App.CreateMenuIcon("Icons.Branch.Add");
+                createBranchWithoutCommits.IsEnabled = canCreateBranchWithoutCommits;
+                createBranchWithoutCommits.Click += (_, e) =>
+                {
+                    if (repo.CanCreatePopup())
+                        repo.ShowPopup(new ViewModels.CreateBranchWithoutCommit(repo, repo.CurrentBranch, selected));
+                    e.Handled = true;
+                };
+                menu.Items.Add(createBranchWithoutCommits);
+
+                menu.Items.Add(new MenuItem() { Header = "-" });
             }
 
             var saveToPatch = new MenuItem();
@@ -1345,6 +1357,21 @@ namespace SourceGit.Views
             copy.Items.Add(copyMessage);
             menu.Items.Add(copy);
             return menu;
+        }
+
+        private static bool CanCreateBranchWithoutCommits(ViewModels.Repository repo, List<Models.Commit> selected)
+        {
+            if (repo?.CurrentBranch is not { IsLocal: true } || selected == null || selected.Count < 2)
+                return false;
+
+            var lineColor = selected[0].Color;
+            foreach (var commit in selected)
+            {
+                if (commit == null || commit.Parents.Count != 1 || commit.Color != lineColor)
+                    return false;
+            }
+
+            return true;
         }
 
         private ContextMenu CreateContextMenuForSingleCommit(ViewModels.Repository repo, Models.Commit commit, bool copySHAAtTop)
@@ -1546,6 +1573,21 @@ namespace SourceGit.Views
                     e.Handled = true;
                 };
                 menu.Items.Add(revert);
+
+                if (!isHead && current.IsLocal)
+                {
+                    var createBranchWithoutCommit = new MenuItem();
+                    createBranchWithoutCommit.Header = App.Text("CommitCM.CreateBranchWithoutCommit");
+                    createBranchWithoutCommit.Icon = App.CreateMenuIcon("Icons.Branch.Add");
+                    createBranchWithoutCommit.IsEnabled = commit.Parents.Count == 1;
+                    createBranchWithoutCommit.Click += (_, e) =>
+                    {
+                        if (repo.CanCreatePopup())
+                            repo.ShowPopup(new ViewModels.CreateBranchWithoutCommit(repo, current, commit));
+                        e.Handled = true;
+                    };
+                    menu.Items.Add(createBranchWithoutCommit);
+                }
 
                 if (isHead)
                 {

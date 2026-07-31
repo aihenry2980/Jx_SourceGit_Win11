@@ -154,6 +154,8 @@
   <x:String x:Key="Text.CommitCM.CopyCommitter" xml:space="preserve">Committer</x:String>
   <x:String x:Key="Text.CommitCM.CopySHA" xml:space="preserve">SHA</x:String>
   <x:String x:Key="Text.CommitCM.CopySubject" xml:space="preserve">Subject</x:String>
+  <x:String x:Key="Text.CommitCM.CreateBranchWithoutCommit" xml:space="preserve">Create Branch Without This Commit...</x:String>
+  <x:String x:Key="Text.CommitCM.CreateBranchWithoutCommits" xml:space="preserve">Create Branch Without These Commits...</x:String>
   <x:String x:Key="Text.CommitCM.CustomAction" xml:space="preserve">פעולה מותאמת אישית</x:String>
   <x:String x:Key="Text.CommitCM.InteractiveRebase" xml:space="preserve">Interactive Rebase</x:String>
   <x:String x:Key="Text.CommitCM.InteractiveRebase.Drop" xml:space="preserve">Drop...</x:String>

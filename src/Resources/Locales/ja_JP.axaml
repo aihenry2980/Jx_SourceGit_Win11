@@ -164,6 +164,8 @@
   <x:String x:Key="Text.CommitCM.CopyCommitterTime" xml:space="preserve">コミット日時</x:String>
   <x:String x:Key="Text.CommitCM.CopySHA" xml:space="preserve">SHA</x:String>
   <x:String x:Key="Text.CommitCM.CopySubject" xml:space="preserve">タイトル</x:String>
+  <x:String x:Key="Text.CommitCM.CreateBranchWithoutCommit" xml:space="preserve">Create Branch Without This Commit...</x:String>
+  <x:String x:Key="Text.CommitCM.CreateBranchWithoutCommits" xml:space="preserve">Create Branch Without These Commits...</x:String>
   <x:String x:Key="Text.CommitCM.CustomAction" xml:space="preserve">カスタムアクション</x:String>
   <x:String x:Key="Text.CommitCM.InteractiveRebase" xml:space="preserve">対話式リベース</x:String>
   <x:String x:Key="Text.CommitCM.InteractiveRebase.Drop" xml:space="preserve">削除...</x:String>

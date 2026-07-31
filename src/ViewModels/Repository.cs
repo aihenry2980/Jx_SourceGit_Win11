@@ -5287,13 +5287,21 @@ namespace SourceGit.ViewModels
 
                 if (!assignedByLogicalBranch.TryGetValue(logicalBranchKey, out var color))
                 {
-                    color = s_autoHistoryFilterBranchColors[nextAutoColorIndex % s_autoHistoryFilterBranchColors.Length];
+                    color = GetAutoHistoryFilterBranchColor(nextAutoColorIndex, filter.Color);
                     assignedByLogicalBranch[logicalBranchKey] = color;
                     nextAutoColorIndex++;
                 }
 
                 filter.Color = color;
             }
+        }
+
+        private static uint GetAutoHistoryFilterBranchColor(int index, uint fallback)
+        {
+            if (s_autoHistoryFilterBranchColors is { Length: > 0 })
+                return s_autoHistoryFilterBranchColors[index % s_autoHistoryFilterBranchColors.Length];
+
+            return fallback != 0 ? fallback : Models.RepositorySettings.PRESET_BRANCH_EXACT_DEFAULT_COLOR;
         }
 
         private static string ResolveBranchColorGroupKey(

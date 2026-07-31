@@ -91,6 +91,8 @@
   <x:String x:Key="Text.CommitCM.CompareWithHead" xml:space="preserve">தலையுடன் ஒப்பிடுக</x:String>
   <x:String x:Key="Text.CommitCM.CompareWithWorktree" xml:space="preserve">பணிமரத்துடன் ஒப்பிடுக</x:String>
   <x:String x:Key="Text.CommitCM.CopySHA" xml:space="preserve">பாகொவ-வை</x:String>
+  <x:String x:Key="Text.CommitCM.CreateBranchWithoutCommit" xml:space="preserve">Create Branch Without This Commit...</x:String>
+  <x:String x:Key="Text.CommitCM.CreateBranchWithoutCommits" xml:space="preserve">Create Branch Without These Commits...</x:String>
   <x:String x:Key="Text.CommitCM.CustomAction" xml:space="preserve">தனிப்பயன் செயல்</x:String>
   <x:String x:Key="Text.CommitCM.MergeMultiple" xml:space="preserve">ஒன்றிணை ...</x:String>
   <x:String x:Key="Text.CommitCM.Revert" xml:space="preserve">உறுதிமொழி திரும்பபெறு</x:String>
