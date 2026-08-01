@@ -310,6 +310,15 @@ namespace SourceGit.Views
             }
         }
 
+        private void OpenSubmoduleCommitFlow(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+            {
+                repo.OpenSubmoduleCommitFlow();
+                e.Handled = true;
+            }
+        }
+
         private async Task OpenCustomActionsConfigureAsync(ViewModels.Repository repo, bool addNewAction)
         {
             var vm = new ViewModels.RepositoryConfigure(repo);

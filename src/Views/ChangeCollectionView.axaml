@@ -70,15 +70,15 @@
                            FontWeight="{Binding IsSubmodulePointerChange, Converter={x:Static c:BoolConverters.IsBoldToFontWeight}}"/>
                 <Border Height="16"
                         Margin="6,0,0,0"
-                        Background="{DynamicResource Brush.Badge}"
+                        Background="#FF3B82F6"
                         CornerRadius="8"
                         VerticalAlignment="Center"
                         IsVisible="{Binding IsSubmodulePointerChange}">
                   <TextBlock Margin="8,0"
                              FontSize="10"
                              FontWeight="Bold"
-                             Foreground="{DynamicResource Brush.BadgeFG}"
-                             Text="(spp change)"/>
+                             Foreground="White"
+                             Text="SPP"/>
                 </Border>
               </StackPanel>
 
@@ -153,15 +153,15 @@
                            FontWeight="{Binding IsSubmodulePointerChange, Converter={x:Static c:BoolConverters.IsBoldToFontWeight}}"/>
                 <Border Height="16"
                         Margin="6,0,0,0"
-                        Background="{DynamicResource Brush.Badge}"
+                        Background="#FF3B82F6"
                         CornerRadius="8"
                         VerticalAlignment="Center"
                         IsVisible="{Binding IsSubmodulePointerChange}">
                   <TextBlock Margin="8,0"
                              FontSize="10"
                              FontWeight="Bold"
-                             Foreground="{DynamicResource Brush.BadgeFG}"
-                             Text="(spp change)"/>
+                             Foreground="White"
+                             Text="SPP"/>
                 </Border>
               </StackPanel>
 
@@ -240,15 +240,15 @@
                            FontWeight="{Binding IsSubmodulePointerChange, Converter={x:Static c:BoolConverters.IsBoldToFontWeight}}"/>
                 <Border Height="16"
                         Margin="6,0,0,0"
-                        Background="{DynamicResource Brush.Badge}"
+                        Background="#FF3B82F6"
                         CornerRadius="8"
                         VerticalAlignment="Center"
                         IsVisible="{Binding IsSubmodulePointerChange}">
                   <TextBlock Margin="8,0"
                              FontSize="10"
                              FontWeight="Bold"
-                             Foreground="{DynamicResource Brush.BadgeFG}"
-                             Text="(spp change)"/>
+                             Foreground="White"
+                             Text="SPP"/>
                 </Border>
               </StackPanel>
 

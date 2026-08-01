@@ -269,6 +269,10 @@ namespace SourceGit.ViewModels
                     OnPropertyChanged(nameof(IsHistoriesVisible));
                     OnPropertyChanged(nameof(IsWorkingCopyVisible));
                     OnPropertyChanged(nameof(IsStashesVisible));
+                    OnPropertyChanged(nameof(IsSubmoduleCommitFlowVisible));
+
+                    if (value == 3)
+                        _submoduleCommitFlow?.Activate();
                 }
             }
         }
@@ -288,6 +292,11 @@ namespace SourceGit.ViewModels
             get => _stashesPage;
         }
 
+        public SubmoduleCommitFlow SubmoduleCommitFlow
+        {
+            get => _submoduleCommitFlow;
+        }
+
         public bool IsHistoriesVisible
         {
             get => SelectedViewIndex == 0;
@@ -301,6 +310,11 @@ namespace SourceGit.ViewModels
         public bool IsStashesVisible
         {
             get => SelectedViewIndex == 2;
+        }
+
+        public bool IsSubmoduleCommitFlowVisible
+        {
+            get => SelectedViewIndex == 3;
         }
 
         public bool EnableTopoOrderInHistory
@@ -1121,6 +1135,7 @@ namespace SourceGit.ViewModels
             _histories = new Histories(this);
             _workingCopy = new WorkingCopy(this) { CommitMessage = _uiStates.LastCommitMessage };
             _stashesPage = new StashesPage(this);
+            _submoduleCommitFlow = new SubmoduleCommitFlow(this);
             _searchCommitContext = new SearchCommitContext(this);
             _selectedViewIndex = Preferences.Instance.ShowLocalChangesByDefault ? 1 : 0;
             _lastFetchTime = DateTime.Now;
@@ -1177,6 +1192,7 @@ namespace SourceGit.ViewModels
             _histories = null;
             _workingCopy = null;
             _stashesPage = null;
+            _submoduleCommitFlow = null;
 
             _localChangesCount = 0;
             _stashesCount = 0;
@@ -1196,6 +1212,12 @@ namespace SourceGit.ViewModels
         public void SendNotification(string message, bool isError = false)
         {
             Models.Notification.Send(FullPath, message, isError);
+        }
+
+        public void OpenSubmoduleCommitFlow()
+        {
+            SelectedViewIndex = 3;
+            _submoduleCommitFlow?.Activate();
         }
 
         public bool CanCreatePopup()
@@ -5809,6 +5831,7 @@ namespace SourceGit.ViewModels
         private Histories _histories = null;
         private WorkingCopy _workingCopy = null;
         private StashesPage _stashesPage = null;
+        private SubmoduleCommitFlow _submoduleCommitFlow = null;
         private int _selectedViewIndex = 0;
 
         private int _localBranchesCount = 0;

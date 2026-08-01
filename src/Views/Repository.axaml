@@ -404,6 +404,20 @@
                   </Button>
                 </Grid>
               </ListBoxItem>
+
+              <ListBoxItem IsVisible="{Binding !IsBare}">
+                <Grid Classes="view_mode" ColumnDefinitions="Auto,*,Auto">
+                  <Path Grid.Column="0" Classes="icon" Data="{StaticResource Icons.Submodules}"/>
+                  <TextBlock Grid.Column="1" Classes="header" Text="Commit Flow" IsVisible="{Binding !IsLeftSidebarCompact}"/>
+                  <Path Grid.Column="2"
+                        Width="12"
+                        Height="12"
+                        Margin="6,0,10,0"
+                        Data="{StaticResource Icons.Commit}"
+                        Fill="{DynamicResource Brush.FG2}"
+                        IsVisible="{Binding !IsLeftSidebarCompact}"/>
+                </Grid>
+              </ListBoxItem>
             </ListBox>
           </Border>
         </Border>
@@ -1821,6 +1835,14 @@
           <ContentControl.DataTemplates>
             <DataTemplate DataType="vm:StashesPage">
               <v:StashesPage/>
+            </DataTemplate>
+          </ContentControl.DataTemplates>
+        </ContentControl>
+
+        <ContentControl Content="{Binding SubmoduleCommitFlow, Mode=OneWay}" IsVisible="{Binding IsSubmoduleCommitFlowVisible, Mode=OneWay}">
+          <ContentControl.DataTemplates>
+            <DataTemplate DataType="vm:SubmoduleCommitFlow">
+              <v:SubmoduleCommitFlow/>
             </DataTemplate>
           </ContentControl.DataTemplates>
         </ContentControl>

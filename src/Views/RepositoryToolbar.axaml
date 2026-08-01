@@ -118,31 +118,25 @@
     </StackPanel>
 
     <StackPanel x:Name="CenterToolbarGroup" Grid.Column="1" Orientation="Horizontal">
-      <Button x:Name="SuperQuickFetchButton"
+      <Button x:Name="SubmoduleCommitFlowButton"
               Classes="icon_button"
-              Width="56"
-              Click="SuperQuickFetch"
-              Tag="SuperQuickFetch"
-              ContextRequested="OnToolbarGitButtonContextRequested"
-              PointerPressed="OnToolbarGitButtonPointerPressed">
+              Width="86"
+              Click="OpenSubmoduleCommitFlow">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
-            <TextBlock Text="Super quick fetch only the explicitly included branch filters on the preferred remote." TextWrapping="Wrap" MaxWidth="960"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="Use this when you only care about the currently filtered branch targets and want the fastest possible refresh." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
-            <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git fetch --progress --verbose --no-tags &lt;preferred-remote&gt; &lt;filtered-refspecs...&gt;"/>
-            <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcut: Ctrl+Alt+Shift+F." Foreground="{DynamicResource Brush.FG2}"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="If no included branch filters match the preferred remote, it skips the fetch and tells you why." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
+            <TextBlock Text="Open the recursive submodule commit flow." TextWrapping="Wrap" MaxWidth="520"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="Use this to commit the deepest dirty submodule first, then peg submodule pointer updates upward without switching tabs." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="520"/>
           </StackPanel>
         </ToolTip.Tip>
 
         <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
-          <Border Background="#FF5B3CC4" CornerRadius="5" Padding="4">
-            <Path Width="14" Height="14" HorizontalAlignment="Center" Fill="#FFFFE066" Data="{StaticResource Icons.Lightning}"/>
+          <Border Background="#FF0F766E" CornerRadius="5" Padding="4">
+            <Path Width="14" Height="14" HorizontalAlignment="Center" Fill="#FFFFE066" Data="{StaticResource Icons.Commit}"/>
           </Border>
-          <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="SQFetch"/>
+          <TextBlock Classes="toolbar_label" FontWeight="SemiBold" MaxWidth="80" Text="Commit Flow"/>
         </StackPanel>
       </Button>
-      <Button Width="0" Height="0" Click="SuperQuickFetchByHotKey" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+Shift+F, macOS=âŒ˜+âŒ¥+â‡§+F}"/>
+      <Button Width="0" Height="0" Click="OpenSubmoduleCommitFlow" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+Shift+F, macOS=âŒ˜+âŒ¥+â‡§+F}"/>
 
       <Button x:Name="QuickFetchButton"
               Classes="icon_button"

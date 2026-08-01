@@ -14,13 +14,14 @@ namespace SourceGit.Commands
         [GeneratedRegex(@"^submodule\.(\S*)\.(\w+)=(.*)$")]
         private static partial Regex REG_FORMAT_MODULE_INFO();
 
-        public QuerySubmodules(string repo, int maxDepth = 1, bool queryStatus = true)
+        public QuerySubmodules(string repo, int maxDepth = 1, bool queryStatus = true, int maxResults = int.MaxValue)
         {
             WorkingDirectory = repo;
             Context = repo;
             Args = queryStatus ? "submodule status" : "config --file .gitmodules --list";
             _maxDepth = Math.Max(1, maxDepth);
             _queryStatus = queryStatus;
+            _maxResults = maxResults <= 0 ? int.MaxValue : maxResults;
         }
 
         public async Task<List<Models.Submodule>> GetResultAsync()
@@ -28,7 +29,8 @@ namespace SourceGit.Commands
             var comparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
             var visited = new HashSet<string>(comparer);
             var root = NormalizeRepositoryPath(WorkingDirectory);
-            return await QueryRecursivelyAsync(root, string.Empty, _maxDepth, visited, _queryStatus).ConfigureAwait(false);
+            var limit = new QueryLimit(_maxResults);
+            return await QueryRecursivelyAsync(root, string.Empty, _maxDepth, visited, _queryStatus, limit).ConfigureAwait(false);
         }
 
         private static async Task<List<Models.Submodule>> QueryRecursivelyAsync(
@@ -36,30 +38,35 @@ namespace SourceGit.Commands
             string displayPrefix,
             int remainingDepth,
             HashSet<string> visited,
-            bool queryStatus)
+            bool queryStatus,
+            QueryLimit limit)
         {
             var normalizedRepo = NormalizeRepositoryPath(repo);
-            if (string.IsNullOrEmpty(normalizedRepo) || !Directory.Exists(normalizedRepo) || !visited.Add(normalizedRepo))
+            if (limit.IsReached || string.IsNullOrEmpty(normalizedRepo) || !Directory.Exists(normalizedRepo) || !visited.Add(normalizedRepo))
                 return [];
 
             var current = await new QuerySubmodules(normalizedRepo, 1, queryStatus).GetCurrentLevelAsync().ConfigureAwait(false);
             var outs = new List<Models.Submodule>();
             foreach (var module in current)
             {
+                if (limit.IsReached)
+                    break;
+
                 var localPath = module.Path;
                 if (!string.IsNullOrEmpty(displayPrefix))
                     module.Path = CombineGitPath(displayPrefix, localPath);
 
                 outs.Add(module);
+                limit.Count++;
 
-                if (remainingDepth <= 1 || module.Status == Models.SubmoduleStatus.NotInited)
+                if (limit.IsReached || remainingDepth <= 1 || module.Status == Models.SubmoduleStatus.NotInited)
                     continue;
 
                 var submoduleRepo = NormalizeRepositoryPath(Native.OS.GetAbsPath(normalizedRepo, localPath));
                 if (!Directory.Exists(submoduleRepo))
                     continue;
 
-                var children = await QueryRecursivelyAsync(submoduleRepo, module.Path, remainingDepth - 1, visited, queryStatus).ConfigureAwait(false);
+                var children = await QueryRecursivelyAsync(submoduleRepo, module.Path, remainingDepth - 1, visited, queryStatus, limit).ConfigureAwait(false);
                 if (children.Exists(x => x.IsDirty))
                 {
                     module.HasSubmoduleChanges = true;
@@ -340,7 +347,14 @@ namespace SourceGit.Commands
             public string Branch { get; set; } = "HEAD";
         }
 
+        private sealed class QueryLimit(int maxResults)
+        {
+            public int Count { get; set; } = 0;
+            public bool IsReached => Count >= maxResults;
+        }
+
         private readonly int _maxDepth = 1;
         private readonly bool _queryStatus = true;
+        private readonly int _maxResults = int.MaxValue;
     }
 }

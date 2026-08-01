@@ -196,6 +196,12 @@ namespace SourceGit.ViewModels
             set => SetProperty(ref _presetBranchContainsPatterns, value);
         }
 
+        public string CommitMessageIssueTagPattern
+        {
+            get => _commitMessageIssueTagPattern;
+            set => SetProperty(ref _commitMessageIssueTagPattern, value);
+        }
+
         public string PresetBranchExactNameColors
         {
             get => _presetBranchExactNameColors;
@@ -1243,6 +1249,7 @@ namespace SourceGit.ViewModels
         private bool _refreshSubmoduleStatusByDefault = false;
         private string _presetBranchExactNames = string.Empty;
         private string _presetBranchContainsPatterns = string.Empty;
+        private string _commitMessageIssueTagPattern = string.Empty;
         private string _presetBranchExactNameColors = string.Empty;
         private string _autoRevertPullConflictExtensions = DEFAULT_AUTO_REVERT_PULL_CONFLICT_EXTENSIONS;
         private List<string> _recursiveLocalChangesRecentHiddenExtensions = [];
