@@ -394,6 +394,9 @@ namespace SourceGit.Views
                         continue;
 
                     var decorator = refs[i];
+                    if (decorator.Type == Models.DecoratorType.CurrentCommitHead)
+                        continue;
+
                     if (!showTags && decorator.Type == Models.DecoratorType.Tag)
                         continue;
 
@@ -480,15 +483,19 @@ namespace SourceGit.Views
                     if (secondaryDecorator != null)
                     {
                         item.SecondaryIcon = CreateIcon(this.FindResource("Icons.Remote") as StreamGeometry, 11.0);
-                        item.IconBrush = isCurrentCommitHead
-                            ? s_headTagForegroundBrush
-                            : isSuperProjectPointer
-                                ? s_superProjectPointerForegroundBrush
-                                : s_compactLocalIconBrush;
+                        item.IconBrush = s_localIconBrush;
                         item.SecondaryIconBrush = s_compactRemoteIconBrush;
                         item.PrimaryIconBackground = s_compactLocalIconBackgroundBrush;
+                        item.PrimaryIconBorderBrush = s_localIconBorderBrush;
                         item.SecondaryIconBackground = s_compactRemoteIconBackgroundBrush;
                         item.LeadingWidth = 38.0;
+                    }
+                    else if (decorator.Type is Models.DecoratorType.CurrentBranchHead or Models.DecoratorType.LocalBranchHead)
+                    {
+                        item.IconBrush = s_localIconBrush;
+                        item.PrimaryIconBackground = s_compactLocalIconBackgroundBrush;
+                        item.PrimaryIconBorderBrush = s_localIconBorderBrush;
+                        item.LeadingWidth = 20.0;
                     }
                     else if (decorator.Type == Models.DecoratorType.RemoteBranchHead)
                     {
@@ -529,9 +536,7 @@ namespace SourceGit.Views
                     switch (decorator.Type)
                     {
                         case Models.DecoratorType.CurrentBranchHead:
-                            geo = secondaryDecorator != null
-                                ? this.FindResource("Icons.Laptop") as StreamGeometry
-                                : this.FindResource("Icons.Head") as StreamGeometry;
+                            geo = this.FindResource("Icons.Home") as StreamGeometry;
                             break;
                         case Models.DecoratorType.CurrentCommitHead:
                             geo = this.FindResource("Icons.Head") as StreamGeometry;
@@ -550,7 +555,7 @@ namespace SourceGit.Views
                             break;
                         default:
                             geo = secondaryDecorator != null
-                                ? this.FindResource("Icons.Laptop") as StreamGeometry
+                                ? this.FindResource("Icons.Home") as StreamGeometry
                                 : this.FindResource("Icons.Branch") as StreamGeometry;
                             break;
                     }
@@ -856,24 +861,13 @@ namespace SourceGit.Views
         private static readonly IBrush s_incidentalBranchBorderBrush = new SolidColorBrush(Color.Parse("#CC202124"));
         private static readonly IBrush s_remoteIconBackgroundBrush = new SolidColorBrush(Color.Parse("#FF0B57D0"));
         private static readonly IBrush s_remoteIconBorderBrush = new SolidColorBrush(Color.Parse("#FF073B8C"));
-        private static readonly IBrush s_compactLocalIconBrush = Brushes.White;
+        private static readonly IBrush s_localIconBrush = new SolidColorBrush(Color.Parse("#FFD97706"));
+        private static readonly IBrush s_localIconBorderBrush = new SolidColorBrush(Color.Parse("#FFB45309"));
         private static readonly IBrush s_compactRemoteIconBrush = Brushes.White;
         private static readonly IBrush s_compactIconOutlineBrush = new SolidColorBrush(Color.Parse("#AA202124"));
         private static readonly IBrush s_rebaseBaseIconBrush = new SolidColorBrush(Color.Parse("#FFFFC107"));
         private static readonly IBrush s_rebaseBaseIconBorderBrush = new SolidColorBrush(Color.Parse("#FF6D4C00"));
-        private static readonly IBrush s_compactLocalIconBackgroundBrush = new LinearGradientBrush()
-        {
-            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-            EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
-            GradientStops = new GradientStops()
-            {
-                new GradientStop(Color.Parse("#FFE53935"), 0.00),
-                new GradientStop(Color.Parse("#FFFFB300"), 0.24),
-                new GradientStop(Color.Parse("#FF43A047"), 0.48),
-                new GradientStop(Color.Parse("#FF1E88E5"), 0.72),
-                new GradientStop(Color.Parse("#FF8E24AA"), 1.00),
-            },
-        };
+        private static readonly IBrush s_compactLocalIconBackgroundBrush = new SolidColorBrush(Color.Parse("#FFFFF1C2"));
         private static readonly IBrush s_compactRemoteIconBackgroundBrush = new SolidColorBrush(Color.Parse("#FF0B57D0"));
 
         private static bool IsMutedIncidentalBranch(Models.Decorator decorator)

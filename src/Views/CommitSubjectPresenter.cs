@@ -241,12 +241,16 @@ namespace SourceGit.Views
             ClearHoveredIssueLink();
         }
 
-        protected override void OnPointerPressed(PointerPressedEventArgs e)
+        protected override async void OnPointerPressed(PointerPressedEventArgs e)
         {
             base.OnPointerPressed(e);
 
-            if (_lastHover != null)
-                Native.OS.OpenBrowser(_lastHover.Link);
+            var point = e.GetCurrentPoint(this);
+            if (_lastHover != null && point.Properties.IsLeftButtonPressed)
+            {
+                await LinkNavigator.OpenAsync(this, _lastHover.Link, e.KeyModifiers);
+                e.Handled = true;
+            }
         }
 
         protected override void OnPointerExited(PointerEventArgs e)
@@ -431,13 +435,13 @@ namespace SourceGit.Views
                         FlowDirection.LeftToRight,
                         new Typeface(fontFamily, FontStyle.Normal, FontWeight.Bold),
                         fontSize,
-                        linkForeground);
+                        s_countPrefixForeground);
                     _inlines.Add(new Inline(x, prefix, elem)
                     {
                         RawText = raw,
                         Typeface = new Typeface(fontFamily, FontStyle.Normal, FontWeight.Bold),
                         FontSize = fontSize,
-                        Brush = linkForeground,
+                        Brush = s_countPrefixForeground,
                     });
                     x += prefix.WidthIncludingTrailingWhitespace;
                 }
@@ -562,5 +566,6 @@ namespace SourceGit.Views
         private bool _needRebuildInlines = false;
         private static readonly IBrush s_highlightBackground = new SolidColorBrush(Color.Parse("#E6F2C200"));
         private static readonly IBrush s_highlightForeground = Brushes.Black;
+        private static readonly IBrush s_countPrefixForeground = new SolidColorBrush(Color.Parse("#FFD6A300"));
     }
 }

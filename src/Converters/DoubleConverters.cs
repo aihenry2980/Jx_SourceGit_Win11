@@ -24,6 +24,9 @@ namespace SourceGit.Converters
         public static readonly FuncValueConverter<double, double> ToHistoryBadgeIconSize =
             new FuncValueConverter<double, double>(v => Math.Max(7.0, v * 0.55));
 
+        public static readonly FuncValueConverter<double, double> ToHeadSubjectHighlightHeight =
+            new FuncValueConverter<double, double>(v => Math.Max(14.0, v * 0.6));
+
         public static readonly FuncValueConverter<double, string> ToPercentage =
             new FuncValueConverter<double, string>(v => (v * 100).ToString("F0") + "%");
 

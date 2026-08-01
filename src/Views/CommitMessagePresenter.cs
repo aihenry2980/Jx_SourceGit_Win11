@@ -114,7 +114,7 @@ namespace SourceGit.Views
             }
         }
 
-        protected override void OnPointerPressed(PointerPressedEventArgs e)
+        protected override async void OnPointerPressed(PointerPressedEventArgs e)
         {
             var point = e.GetCurrentPoint(this);
 
@@ -164,7 +164,7 @@ namespace SourceGit.Views
                 {
                     if (point.Properties.IsLeftButtonPressed)
                     {
-                        Native.OS.OpenBrowser(link);
+                        await LinkNavigator.OpenAsync(this, link, e.KeyModifiers);
                     }
                     else if (point.Properties.IsRightButtonPressed)
                     {
