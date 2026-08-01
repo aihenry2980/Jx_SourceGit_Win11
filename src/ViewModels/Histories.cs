@@ -690,7 +690,15 @@ namespace SourceGit.ViewModels
         private void PostCommitsChanged()
         {
             if (_selectedCommits.Count == 0)
+            {
+                if (!_didAutoSelectInitialCommit && _commits.Count > 0)
+                {
+                    _didAutoSelectInitialCommit = true;
+                    SelectedCommits = [_commits.Find(x => x.IsCurrentHead) ?? _commits[0]];
+                }
+
                 return;
+            }
 
             if (_commits.Count == 0 || _selectedCommits.Count > 20)
             {
@@ -726,7 +734,7 @@ namespace SourceGit.ViewModels
             {
                 CancelPendingDetailLoad();
                 _repo.SearchCommitContext.Selected = null;
-                DetailContext = new Models.Null();
+                DetailContext = null;
             }
             else if (_selectedCommits.Count == 1)
             {
@@ -894,8 +902,9 @@ namespace SourceGit.ViewModels
         private List<Models.Commit> _selectedCommits = [];
         private Models.Bisect _bisect = null;
         private long _navigationId = 0;
-        private object _detailContext = new Models.Null();
+        private object _detailContext = null;
         private bool _ignoreSelectionChange = false;
+        private bool _didAutoSelectInitialCommit = false;
         private CancellationTokenSource _detailLoadDebounce = null;
         private bool _isDisposed = false;
 

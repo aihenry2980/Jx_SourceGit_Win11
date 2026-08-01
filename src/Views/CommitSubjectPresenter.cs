@@ -566,6 +566,6 @@ namespace SourceGit.Views
         private bool _needRebuildInlines = false;
         private static readonly IBrush s_highlightBackground = new SolidColorBrush(Color.Parse("#E6F2C200"));
         private static readonly IBrush s_highlightForeground = Brushes.Black;
-        private static readonly IBrush s_countPrefixForeground = new SolidColorBrush(Color.Parse("#FFD6A300"));
+        private static readonly IBrush s_countPrefixForeground = new SolidColorBrush(Color.Parse("#FFBDA35C"));
     }
 }

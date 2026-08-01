@@ -248,19 +248,19 @@
                               MinWidth="28"
                               Padding="6,0"
                               CornerRadius="8"
-                              Background="#FFDFF7E7"
-                              BorderBrush="#FF35B86B"
+                              Background="#FFF1F8F3"
+                              BorderBrush="#FFA8D7B8"
                               BorderThickness="1"
                               IsVisible="{Binding HasAddedFileChange}">
                         <StackPanel Orientation="Horizontal" Spacing="3">
                           <TextBlock FontSize="11"
                                      FontWeight="Bold"
-                                     Foreground="#FF15803D"
+                                     Foreground="#FF4D8B62"
                                      VerticalAlignment="Center"
                                      Text="+"/>
                           <TextBlock FontSize="10"
                                      FontWeight="Bold"
-                                     Foreground="#FF15803D"
+                                     Foreground="#FF4D8B62"
                                      VerticalAlignment="Center"
                                      Text="{Binding AddedFileChangeBadgeText}"/>
                         </StackPanel>
@@ -270,19 +270,19 @@
                               MinWidth="30"
                               Padding="6,0"
                               CornerRadius="8"
-                              Background="#FFFFEDD5"
-                              BorderBrush="#FFF97316"
+                              Background="#FFFFF4EA"
+                              BorderBrush="#FFF2B884"
                               BorderThickness="1"
                               IsVisible="{Binding HasModifiedFileChange}">
                         <StackPanel Orientation="Horizontal" Spacing="3">
                           <TextBlock FontSize="10"
                                      FontWeight="Bold"
-                                     Foreground="#FFC2410C"
+                                     Foreground="#FFA36435"
                                      VerticalAlignment="Center"
                                      Text="m"/>
                           <TextBlock FontSize="10"
                                      FontWeight="Bold"
-                                     Foreground="#FFC2410C"
+                                     Foreground="#FFA36435"
                                      VerticalAlignment="Center"
                                      Text="{Binding ModifiedFileChangeBadgeText}"/>
                         </StackPanel>
@@ -292,13 +292,13 @@
                               MinWidth="34"
                               Padding="6,0"
                               CornerRadius="8"
-                              Background="#FFFFF1B8"
-                              BorderBrush="#FFE0A800"
+                              Background="#FFFFF8D9"
+                              BorderBrush="#FFE1C55E"
                               BorderThickness="1"
                               IsVisible="{Binding HasOtherRegularFileChange}">
                         <TextBlock FontSize="10"
                                    FontWeight="Bold"
-                                   Foreground="#FF6A4100"
+                                   Foreground="#FF8C7430"
                                    VerticalAlignment="Center"
                                    Text="{Binding OtherRegularFileChangeBadgeText}"/>
                       </Border>
@@ -343,13 +343,13 @@
                       <Border Width="16"
                               Height="16"
                               CornerRadius="8"
-                              Background="#FFE9D5FF"
-                              BorderBrush="#FFB45CFF"
+                              Background="#FFF3EAFE"
+                              BorderBrush="#FFD2A6F2"
                               BorderThickness="1"
                               IsVisible="{Binding HasRenameOrCopyChange}">
                         <TextBlock FontSize="10"
                                    FontWeight="Bold"
-                                   Foreground="#FF6C1FB1"
+                                   Foreground="#FF8C5BA7"
                                    HorizontalAlignment="Center"
                                    VerticalAlignment="Center"
                                    Text="R"/>
@@ -358,13 +358,13 @@
                       <Border Width="16"
                               Height="16"
                               CornerRadius="8"
-                              Background="#FFD6E4FF"
-                              BorderBrush="#FF5B8DEF"
+                              Background="#FFEFF4FF"
+                              BorderBrush="#FFAFC6EF"
                               BorderThickness="1"
                               IsVisible="{Binding HasTypeChange}">
                         <TextBlock FontSize="10"
                                    FontWeight="Bold"
-                                   Foreground="#FF244F9E"
+                                   Foreground="#FF617AA7"
                                    HorizontalAlignment="Center"
                                    VerticalAlignment="Center"
                                    Text="T"/>

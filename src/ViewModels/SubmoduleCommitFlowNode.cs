@@ -52,19 +52,40 @@ namespace SourceGit.ViewModels
             set
             {
                 if (SetProperty(ref _upstream, value))
-                {
-                    OnPropertyChanged(nameof(HasPushRemote));
-                    OnPropertyChanged(nameof(PushRemote));
-                    OnPropertyChanged(nameof(PushRemoteBranch));
-                    OnPropertyChanged(nameof(PushTargetDescription));
-                }
+                    NotifyPushTargetChanged();
             }
         }
 
-        public bool HasPushRemote => TrySplitUpstream(_upstream, out _, out _);
-        public string PushRemote => TrySplitUpstream(_upstream, out var remote, out _) ? remote : string.Empty;
-        public string PushRemoteBranch => TrySplitUpstream(_upstream, out _, out var branch) ? branch : string.Empty;
-        public string PushTargetDescription => HasPushRemote ? $"Push to {Upstream}" : "No upstream remote";
+        public string PushRemote
+        {
+            get => _pushRemote;
+            set
+            {
+                if (SetProperty(ref _pushRemote, value))
+                    NotifyPushTargetChanged();
+            }
+        }
+
+        public string PushRemoteBranch
+        {
+            get => _pushRemoteBranch;
+            set
+            {
+                if (SetProperty(ref _pushRemoteBranch, value))
+                    NotifyPushTargetChanged();
+            }
+        }
+
+        public bool SetPushTracking
+        {
+            get => _setPushTracking;
+            set => SetProperty(ref _setPushTracking, value);
+        }
+
+        public bool HasPushRemote => !string.IsNullOrWhiteSpace(PushRemote) && !string.IsNullOrWhiteSpace(PushRemoteBranch);
+        public string PushTargetDescription => HasPushRemote
+            ? SetPushTracking ? $"Push to {PushRemote}/{PushRemoteBranch} and set upstream" : $"Push to {PushRemote}/{PushRemoteBranch}"
+            : "No remote is available";
 
         public int ChangeCount
         {
@@ -162,26 +183,20 @@ namespace SourceGit.ViewModels
             _ => Brushes.Transparent,
         };
 
-        private static bool TrySplitUpstream(string upstream, out string remote, out string branch)
+        private void NotifyPushTargetChanged()
         {
-            remote = string.Empty;
-            branch = string.Empty;
-
-            if (string.IsNullOrWhiteSpace(upstream))
-                return false;
-
-            var idx = upstream.IndexOf('/');
-            if (idx <= 0 || idx == upstream.Length - 1)
-                return false;
-
-            remote = upstream.Substring(0, idx);
-            branch = upstream.Substring(idx + 1);
-            return true;
+            OnPropertyChanged(nameof(HasPushRemote));
+            OnPropertyChanged(nameof(PushRemote));
+            OnPropertyChanged(nameof(PushRemoteBranch));
+            OnPropertyChanged(nameof(PushTargetDescription));
         }
 
         private string _branch = "--";
         private string _head = string.Empty;
         private string _upstream = string.Empty;
+        private string _pushRemote = string.Empty;
+        private string _pushRemoteBranch = string.Empty;
+        private bool _setPushTracking = false;
         private int _changeCount = 0;
         private int _fileChangeCount = 0;
         private int _submodulePointerChangeCount = 0;

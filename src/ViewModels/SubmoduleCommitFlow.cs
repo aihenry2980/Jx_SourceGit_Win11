@@ -276,7 +276,7 @@ namespace SourceGit.ViewModels
                             node.PushRemoteBranch,
                             false,
                             node.Children.Count > 0,
-                            false,
+                            node.SetPushTracking,
                             false)
                         .Use(log)
                         .RunAsync()
@@ -434,15 +434,20 @@ namespace SourceGit.ViewModels
 
             var requestedDepth = Preferences.Instance.RecursiveSubmoduleDisplayDepth;
             var depth = Math.Clamp(requestedDepth, 1, MAX_SCAN_DEPTH);
+            var queryDepth = requestedDepth > MAX_SCAN_DEPTH ? MAX_SCAN_DEPTH + 1 : depth;
             var maxSubmodules = MAX_SCAN_NODES - 1;
-            var submodules = await new Commands.QuerySubmodules(_repo.FullPath, depth, false, maxSubmodules + 1)
+            var submodules = await new Commands.QuerySubmodules(_repo.FullPath, queryDepth, false, maxSubmodules + 1)
                 .GetResultAsync()
                 .ConfigureAwait(false);
-            var wasNodeLimited = submodules.Count > maxSubmodules;
             var limitedSubmodules = submodules
+                .Select(x => new { Submodule = x, Path = NormalizePath(x.Path) })
+                .Where(x => GetSubmoduleDepth(x.Path) <= MAX_SCAN_DEPTH)
                 .OrderBy(x => x.Path, StringComparer.Ordinal)
                 .Take(maxSubmodules)
+                .Select(x => x.Submodule)
                 .ToList();
+            var wasDepthLimited = submodules.Exists(x => GetSubmoduleDepth(NormalizePath(x.Path)) > MAX_SCAN_DEPTH);
+            var wasNodeLimited = submodules.Count(x => GetSubmoduleDepth(NormalizePath(x.Path)) <= MAX_SCAN_DEPTH) > maxSubmodules;
 
             foreach (var submodule in limitedSubmodules)
             {
@@ -468,7 +473,7 @@ namespace SourceGit.ViewModels
             var nodes = new List<SubmoduleCommitFlowNode>();
             Flatten(root, nodes);
             var warnings = new List<string>();
-            if (requestedDepth > MAX_SCAN_DEPTH)
+            if (wasDepthLimited)
                 warnings.Add($"depth limited to {MAX_SCAN_DEPTH}");
             if (wasNodeLimited)
                 warnings.Add($"first {maxSubmodules} submodules scanned");
@@ -544,7 +549,7 @@ namespace SourceGit.ViewModels
         private async Task<NodeStatus> QueryNodeStatusAsync(SubmoduleCommitFlowNode node)
         {
             if (!Directory.Exists(node.RepoPath))
-                return new NodeStatus("missing", string.Empty, string.Empty, 0, 0, 0, SubmoduleCommitFlowNodeState.Error, []);
+                return new NodeStatus("missing", string.Empty, string.Empty, string.Empty, string.Empty, false, 0, 0, 0, SubmoduleCommitFlowNodeState.Error, []);
 
             var changes = await new Commands.QueryLocalChanges(node.RepoPath, true, true, false).GetResultAsync().ConfigureAwait(false);
             changes.Sort((l, r) => Models.NumericSort.Compare(l.Path, r.Path));
@@ -552,18 +557,38 @@ namespace SourceGit.ViewModels
             var state = ResolveNodeState(node, changes);
 
             if (state == SubmoduleCommitFlowNodeState.Clean && node.Depth > 0)
-                return new NodeStatus("--", string.Empty, string.Empty, changes.Count, fileChangeCount, submodulePointerChangeCount, state, changes);
+                return new NodeStatus("--", string.Empty, string.Empty, string.Empty, string.Empty, false, changes.Count, fileChangeCount, submodulePointerChangeCount, state, changes);
 
             var branch = await new Commands.QueryCurrentBranch(node.RepoPath).GetResultAsync().ConfigureAwait(false);
             var head = await new Commands.QueryRevisionByRefName(node.RepoPath, "HEAD").GetResultAsync().ConfigureAwait(false);
             var upstream = string.IsNullOrWhiteSpace(branch)
                 ? string.Empty
                 : await new Commands.QueryBranchUpstream(node.RepoPath).GetResultAsync().ConfigureAwait(false);
+            var pushRemote = string.Empty;
+            var pushRemoteBranch = string.Empty;
+            var setPushTracking = false;
+            if (!string.IsNullOrWhiteSpace(branch))
+            {
+                if (TrySplitUpstream(upstream, out pushRemote, out pushRemoteBranch))
+                {
+                    setPushTracking = false;
+                }
+                else
+                {
+                    var remotes = await new Commands.QueryRemoteNames(node.RepoPath).GetResultAsync().ConfigureAwait(false);
+                    pushRemote = PickPushRemote(remotes);
+                    pushRemoteBranch = string.IsNullOrWhiteSpace(pushRemote) ? string.Empty : branch;
+                    setPushTracking = !string.IsNullOrWhiteSpace(pushRemote);
+                }
+            }
 
             return new NodeStatus(
                 string.IsNullOrWhiteSpace(branch) ? "(detached)" : branch,
                 head ?? string.Empty,
                 upstream,
+                pushRemote,
+                pushRemoteBranch,
+                setPushTracking,
                 changes.Count,
                 fileChangeCount,
                 submodulePointerChangeCount,
@@ -576,6 +601,9 @@ namespace SourceGit.ViewModels
             node.Branch = status.Branch;
             node.Head = status.Head;
             node.Upstream = status.Upstream;
+            node.PushRemote = status.PushRemote;
+            node.PushRemoteBranch = status.PushRemoteBranch;
+            node.SetPushTracking = status.SetPushTracking;
             node.ChangeCount = status.ChangeCount;
             node.FileChangeCount = status.FileChangeCount;
             node.SubmodulePointerChangeCount = status.SubmodulePointerChangeCount;
@@ -684,7 +712,7 @@ namespace SourceGit.ViewModels
             }
             else
             {
-                message = node.DisplayPath == "root" ? string.Empty : $"Update {node.Name}";
+                message = $"Update {node.Name}";
             }
 
             return PrefixIssueTagFromBranch(node.Branch, message);
@@ -912,9 +940,36 @@ namespace SourceGit.ViewModels
             return (path ?? string.Empty).Replace('\\', '/').Trim('/');
         }
 
+        private static int GetSubmoduleDepth(string path)
+        {
+            return string.IsNullOrWhiteSpace(path) ? 0 : path.Count(c => c == '/') + 1;
+        }
+
         private static string ShortenSHA(string sha)
         {
             return string.IsNullOrWhiteSpace(sha) ? "--" : sha.Substring(0, Math.Min(8, sha.Length));
+        }
+
+        private static string PickPushRemote(List<string> remotes)
+        {
+            return remotes.Find(x => x.Equals("origin", StringComparison.Ordinal)) ?? remotes.FirstOrDefault() ?? string.Empty;
+        }
+
+        private static bool TrySplitUpstream(string upstream, out string remote, out string branch)
+        {
+            remote = string.Empty;
+            branch = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(upstream))
+                return false;
+
+            var idx = upstream.IndexOf('/');
+            if (idx <= 0 || idx == upstream.Length - 1)
+                return false;
+
+            remote = upstream.Substring(0, idx);
+            branch = upstream.Substring(idx + 1);
+            return true;
         }
 
         private void ShowFlowToast(string message, bool isError = false)
@@ -980,7 +1035,7 @@ namespace SourceGit.ViewModels
             OnPropertyChanged(nameof(CommitAndPushButtonForeground));
         }
 
-        private sealed record NodeStatus(string Branch, string Head, string Upstream, int ChangeCount, int FileChangeCount, int SubmodulePointerChangeCount, SubmoduleCommitFlowNodeState State, List<Models.Change> Changes);
+        private sealed record NodeStatus(string Branch, string Head, string Upstream, string PushRemote, string PushRemoteBranch, bool SetPushTracking, int ChangeCount, int FileChangeCount, int SubmodulePointerChangeCount, SubmoduleCommitFlowNodeState State, List<Models.Change> Changes);
         private sealed record NodeBuildResult(List<SubmoduleCommitFlowNode> Nodes, string Warning);
         private sealed record UndoCommit(string BeforeHead, string AfterHead, string Message, bool WasPushed, string Remote, string RemoteBranch);
 

@@ -211,22 +211,20 @@ namespace SourceGit.Views
 
                 if (dot.FoldedCommitsBelow > 0)
                 {
-                    // Render a high-contrast horizontal ellipsis between rows.
-                    var dots = Math.Clamp(dot.FoldedCommitsBelow, 3, 5);
-                    var radius = 2.2;
-                    var startX = center.X + 3.8;
-                    var y = center.Y + rowHeight * 0.38;
-                    var spacing = 4.4;
-                    var fill = new SolidColorBrush(Color.FromArgb(0xFF, 54, 54, 54));
-                    var outline = new Pen(Brushes.White, 1);
-                    for (var i = 0; i < dots; i++)
-                    {
-                        var x = startX + i * spacing;
-                        if (y >= bottom)
-                            break;
+                    // Mark folded history on the line itself, so it reads as a fold marker instead of a stray dot.
+                    var markerCenter = new Point(center.X, center.Y + rowHeight * 0.38);
+                    if (markerCenter.Y >= bottom)
+                        continue;
 
-                        context.DrawEllipse(fill, outline, new Point(x, y), radius, radius);
-                    }
+                    var markerBrush = new SolidColorBrush(Color.FromArgb(0xEE, 255, 251, 232));
+                    var markerPen = dot.IsHighlighted ? pen : grayedPen;
+                    var markerRect = new Rect(markerCenter.X - 4, markerCenter.Y - 7, 8, 14);
+                    context.DrawRectangle(markerBrush, markerPen, new RoundedRect(markerRect, 4));
+
+                    var fill = markerPen.Brush;
+                    context.DrawEllipse(fill, null, new Point(markerCenter.X, markerCenter.Y - 3.5), 1.6, 1.6);
+                    context.DrawEllipse(fill, null, markerCenter, 1.6, 1.6);
+                    context.DrawEllipse(fill, null, new Point(markerCenter.X, markerCenter.Y + 3.5), 1.6, 1.6);
                 }
             }
         }

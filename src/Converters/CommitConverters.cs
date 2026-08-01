@@ -14,12 +14,9 @@ namespace SourceGit.Converters
             new(commit =>
             {
                 if (commit is { IsCurrentHead: true })
-                    return new SolidColorBrush(Color.Parse("#FFD13438"));
+                    return s_headForegroundBrush;
 
-                if (commit is { HasSubmodulePointerChange: true })
-                    return new SolidColorBrush(Color.Parse("#FF7C3AED"));
-
-                return Application.Current?.FindResource("Brush.FG1") as IBrush;
+                return s_mutedSHAForegroundBrush;
             });
 
         public static readonly FuncValueConverter<Models.Commit, FontWeight> SHAFontWeight =
@@ -80,5 +77,6 @@ namespace SourceGit.Converters
         private static readonly IBrush s_headSubjectBackground = new SolidColorBrush(Color.Parse("#FFFFE9E9"));
         private static readonly IBrush s_headSubjectSelectedBackground = new SolidColorBrush(Color.Parse("#FFFFC7C7"));
         private static readonly IBrush s_headForegroundBrush = new SolidColorBrush(Color.Parse("#FFD13438"));
+        private static readonly IBrush s_mutedSHAForegroundBrush = new SolidColorBrush(Color.Parse("#FF686F77"));
     }
 }
