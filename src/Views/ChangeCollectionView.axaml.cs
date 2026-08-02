@@ -39,6 +39,16 @@ namespace SourceGit.Views
 
         protected override void OnKeyDown(KeyEventArgs e)
         {
+            if (e.Key == Key.Space && e.KeyModifiers == KeyModifiers.None)
+            {
+                var owner = this.FindAncestorOfType<ChangeCollectionView>();
+                if (owner?.ToggleCommitIncludeForSelectedItems(this) == true)
+                {
+                    e.Handled = true;
+                    return;
+                }
+            }
+
             if (SelectedItems is [ViewModels.ChangeTreeNode node] && e.KeyModifiers == KeyModifiers.None)
             {
                 if (e.Key == Key.Left)
@@ -130,6 +140,18 @@ namespace SourceGit.Views
             set => SetAndRaise(EnableCompactFoldersProperty, ref _enableCompactFolders, value);
         }
 
+        public static readonly DirectProperty<ChangeCollectionView, bool> ShowCommitIncludeCheckBoxesProperty =
+            AvaloniaProperty.RegisterDirect<ChangeCollectionView, bool>(
+                nameof(ShowCommitIncludeCheckBoxes),
+                static o => o.ShowCommitIncludeCheckBoxes,
+                static (o, v) => o.ShowCommitIncludeCheckBoxes = v);
+
+        public bool ShowCommitIncludeCheckBoxes
+        {
+            get => _showCommitIncludeCheckBoxes;
+            set => SetAndRaise(ShowCommitIncludeCheckBoxesProperty, ref _showCommitIncludeCheckBoxes, value);
+        }
+
         public static readonly DirectProperty<ChangeCollectionView, List<Models.Change>> ChangesProperty =
             AvaloniaProperty.RegisterDirect<ChangeCollectionView, List<Models.Change>>(
                 nameof(Changes),
@@ -163,10 +185,19 @@ namespace SourceGit.Views
         public static readonly RoutedEvent<RoutedEventArgs> ChangeDoubleTappedEvent =
             RoutedEvent.Register<ChangeCollectionView, RoutedEventArgs>(nameof(ChangeDoubleTapped), RoutingStrategies.Tunnel | RoutingStrategies.Bubble);
 
+        public static readonly RoutedEvent<RoutedEventArgs> CommitIncludeToggledEvent =
+            RoutedEvent.Register<ChangeCollectionView, RoutedEventArgs>(nameof(CommitIncludeToggled), RoutingStrategies.Tunnel | RoutingStrategies.Bubble);
+
         public event EventHandler<RoutedEventArgs> ChangeDoubleTapped
         {
             add { AddHandler(ChangeDoubleTappedEvent, value); }
             remove { RemoveHandler(ChangeDoubleTappedEvent, value); }
+        }
+
+        public event EventHandler<RoutedEventArgs> CommitIncludeToggled
+        {
+            add { AddHandler(CommitIncludeToggledEvent, value); }
+            remove { RemoveHandler(CommitIncludeToggledEvent, value); }
         }
 
         public ChangeCollectionView()
@@ -277,6 +308,31 @@ namespace SourceGit.Views
                 container.Focus();
         }
 
+        public bool ToggleCommitIncludeForSelectedItems(ListBox list)
+        {
+            if (!ShowCommitIncludeCheckBoxes || list.SelectedItems is not { Count: > 0 } selectedItems)
+                return false;
+
+            var changes = new List<Models.Change>();
+            foreach (var item in selectedItems)
+            {
+                if (item is Models.Change change)
+                    AddChangeIfMissing(changes, change);
+                else if (item is ViewModels.ChangeTreeNode node)
+                    CollectChangesInNode(changes, node);
+            }
+
+            if (changes.Count == 0)
+                return false;
+
+            var include = changes.Exists(x => !x.IsCommitFlowIncluded);
+            foreach (var change in changes)
+                change.IsCommitFlowIncluded = include;
+
+            RaiseEvent(new RoutedEventArgs(CommitIncludeToggledEvent));
+            return true;
+        }
+
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
         {
             base.OnPropertyChanged(change);
@@ -340,6 +396,20 @@ namespace SourceGit.Views
             {
                 RaiseEvent(new RoutedEventArgs(ChangeDoubleTappedEvent));
             }
+        }
+
+        private void OnCommitIncludeCheckChanged(object sender, RoutedEventArgs e)
+        {
+            if (sender is CheckBox checkbox)
+            {
+                var included = checkbox.IsChecked == true;
+                if (checkbox.DataContext is Models.Change change)
+                    change.IsCommitFlowIncluded = included;
+                else if (checkbox.DataContext is ViewModels.ChangeTreeNode { Change: { } nodeChange })
+                    nodeChange.IsCommitFlowIncluded = included;
+            }
+
+            RaiseEvent(new RoutedEventArgs(CommitIncludeToggledEvent));
         }
 
         private void OnRowSelectionChanged(object sender, SelectionChangedEventArgs _)
@@ -521,6 +591,12 @@ namespace SourceGit.Views
             }
         }
 
+        private static void AddChangeIfMissing(List<Models.Change> outs, Models.Change change)
+        {
+            if (!outs.Contains(change))
+                outs.Add(change);
+        }
+
         private void UpdateRowTips(Control control, Models.Change change)
         {
             var tip = new TextBlock() { TextWrapping = TextWrapping.Wrap };
@@ -539,6 +615,7 @@ namespace SourceGit.Views
         private bool _isUnstagedChange = false;
         private Models.ChangeViewMode _viewMode = Models.ChangeViewMode.Tree;
         private bool _enableCompactFolders = false;
+        private bool _showCommitIncludeCheckBoxes = false;
         private List<Models.Change> _changes = null;
         private List<Models.Change> _selectedChanges = null;
         private bool _disableSelectionChangingEvent = false;

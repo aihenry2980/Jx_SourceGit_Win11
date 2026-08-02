@@ -39,7 +39,7 @@
         public string ParentSHA { get; set; } = "";
     }
 
-    public class Change
+    public class Change : CommunityToolkit.Mvvm.ComponentModel.ObservableObject
     {
         public ChangeState Index { get; set; } = ChangeState.None;
         public ChangeState WorkTree { get; set; } = ChangeState.None;
@@ -54,6 +54,11 @@
         public string WorkTreeSubmodulePointerNewSHA { get; set; } = string.Empty;
         public string AddedLines { get; set; } = string.Empty;
         public string DeletedLines { get; set; } = string.Empty;
+        public bool IsCommitFlowIncluded
+        {
+            get => _isCommitFlowIncluded;
+            set => SetProperty(ref _isCommitFlowIncluded, value);
+        }
 
         public bool IsConflicted => WorkTree == ChangeState.Conflicted;
         public bool HasLineStats => !string.IsNullOrEmpty(AddedLines) || !string.IsNullOrEmpty(DeletedLines);
@@ -133,5 +138,7 @@
             var newDisplay = newSHA.Length > 10 ? newSHA.Substring(0, 10) : newSHA;
             return $"SHA {oldDisplay} -> {newDisplay}";
         }
+
+        private bool _isCommitFlowIncluded = true;
     }
 }

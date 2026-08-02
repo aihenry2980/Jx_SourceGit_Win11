@@ -115,6 +115,18 @@ namespace SourceGit.Models
             set;
         } = string.Empty;
 
+        public double SubmoduleCommitFlowSidebarWidth
+        {
+            get;
+            set;
+        } = 360;
+
+        public double SubmoduleCommitFlowChangesWidth
+        {
+            get;
+            set;
+        } = 360;
+
         public int PreferredGitIgnoreStorageKind
         {
             get;

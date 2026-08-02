@@ -688,6 +688,12 @@
   <Style Selector="Button.flat:disabled /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="Transparent"/>
   </Style>
+  <Style Selector="Button.flat TextBlock">
+    <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+  </Style>
+  <Style Selector="Button.flat Path">
+    <Setter Property="Fill" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+  </Style>
   <Style Selector="Button.flat.primary">
     <Setter Property="Foreground" Value="{DynamicResource AccentButtonForeground}"/>
     <Setter Property="BorderBrush" Value="{DynamicResource AccentButtonBorderBrush}"/>

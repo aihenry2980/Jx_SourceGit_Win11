@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -26,7 +27,29 @@ namespace SourceGit.ViewModels
         public string SubmodulePathInParent { get; set; } = string.Empty;
         public int Depth { get; set; } = 0;
         public double Indent => Depth * 18;
+        public List<SubmoduleCommitFlowHierarchyDot> HierarchyDots => Enumerable
+            .Range(0, Depth)
+            .Select(i => new SubmoduleCommitFlowHierarchyDot(i))
+            .ToList();
         public List<SubmoduleCommitFlowNode> Children { get; } = [];
+
+        public bool IsSelectedInCommitFlow
+        {
+            get => _isSelectedInCommitFlow;
+            set
+            {
+                if (SetProperty(ref _isSelectedInCommitFlow, value))
+                {
+                    OnPropertyChanged(nameof(SelectionArrow));
+                    OnPropertyChanged(nameof(SelectionBorderBrush));
+                    OnPropertyChanged(nameof(SelectionBorderThickness));
+                }
+            }
+        }
+
+        public string SelectionArrow => _isSelectedInCommitFlow ? ">" : string.Empty;
+        public IBrush SelectionBorderBrush => _isSelectedInCommitFlow ? BorderBrush : Brushes.Transparent;
+        public Avalonia.Thickness SelectionBorderThickness => _isSelectedInCommitFlow ? new Avalonia.Thickness(1.5) : new Avalonia.Thickness(0);
 
         public string Branch
         {
@@ -128,6 +151,7 @@ namespace SourceGit.ViewModels
                     OnPropertyChanged(nameof(StatusForeground));
                     OnPropertyChanged(nameof(StatusBackground));
                     OnPropertyChanged(nameof(BorderBrush));
+                    OnPropertyChanged(nameof(SelectionBorderBrush));
                 }
             }
         }
@@ -197,9 +221,20 @@ namespace SourceGit.ViewModels
         private string _pushRemote = string.Empty;
         private string _pushRemoteBranch = string.Empty;
         private bool _setPushTracking = false;
+        private bool _isSelectedInCommitFlow = false;
         private int _changeCount = 0;
         private int _fileChangeCount = 0;
         private int _submodulePointerChangeCount = 0;
         private SubmoduleCommitFlowNodeState _state = SubmoduleCommitFlowNodeState.Scanning;
+    }
+
+    public class SubmoduleCommitFlowHierarchyDot
+    {
+        public SubmoduleCommitFlowHierarchyDot(int index)
+        {
+            Index = index;
+        }
+
+        public int Index { get; }
     }
 }

@@ -24,7 +24,10 @@ namespace SourceGit.ViewModels
             private set
             {
                 if (SetProperty(ref _nodes, value))
+                {
                     NotifyCommitPlanChanged();
+                    UpdateParentChain();
+                }
             }
         }
 
@@ -33,14 +36,26 @@ namespace SourceGit.ViewModels
             get => _selectedNode;
             set
             {
+                if (ReferenceEquals(_selectedNode, value))
+                    return;
+
+                if (_selectedNode != null)
+                    _selectedNode.IsSelectedInCommitFlow = false;
+
+                if (value != null)
+                    value.IsSelectedInCommitFlow = true;
+
                 if (SetProperty(ref _selectedNode, value))
                 {
                     OnPropertyChanged(nameof(HasSelectedNode));
                     OnPropertyChanged(nameof(SelectedNodeTitle));
                     OnPropertyChanged(nameof(CanCommitSelectedNode));
+                    OnPropertyChanged(nameof(CommitButtonToolTip));
                     NotifyCommitAndPushStateChanged();
                     OnPropertyChanged(nameof(CanUndoSelectedNodeCommit));
+                    OnPropertyChanged(nameof(UndoCommitToolTip));
                     NotifyCommitPlanChanged();
+                    UpdateParentChain();
                     _ = LoadSelectedNodeChangesAsync();
                 }
             }
@@ -67,7 +82,11 @@ namespace SourceGit.ViewModels
                 if (SetProperty(ref _changes, value))
                 {
                     OnPropertyChanged(nameof(HasChanges));
+                    OnPropertyChanged(nameof(IncludedChangeCount));
+                    OnPropertyChanged(nameof(ExcludedChangeCount));
+                    OnPropertyChanged(nameof(CommitIncludeSummary));
                     OnPropertyChanged(nameof(CanCommitSelectedNode));
+                    OnPropertyChanged(nameof(CommitButtonToolTip));
                     NotifyCommitAndPushStateChanged();
                     NotifyCommitPlanChanged();
                 }
@@ -85,6 +104,29 @@ namespace SourceGit.ViewModels
         }
 
         public bool HasChanges => _changes.Count > 0;
+        public int IncludedChangeCount => _changes.Count(x => x.IsCommitFlowIncluded);
+        public int ExcludedChangeCount => _changes.Count - IncludedChangeCount;
+        public string CommitIncludeSummary => ExcludedChangeCount > 0
+            ? $"{IncludedChangeCount}/{_changes.Count} selected, {ExcludedChangeCount} skipped"
+            : $"{IncludedChangeCount}/{_changes.Count} selected";
+
+        public List<SubmoduleCommitFlowChainStep> ParentChainSteps
+        {
+            get => _parentChainSteps;
+            private set
+            {
+                if (SetProperty(ref _parentChainSteps, value))
+                    OnPropertyChanged(nameof(HasParentChain));
+            }
+        }
+
+        public bool HasParentChain => _parentChainSteps.Count > 0;
+
+        public string ParentChainSummary
+        {
+            get => _parentChainSummary;
+            private set => SetProperty(ref _parentChainSummary, value);
+        }
 
         public object DetailContext
         {
@@ -100,6 +142,7 @@ namespace SourceGit.ViewModels
                 if (SetProperty(ref _commitMessage, value))
                 {
                     OnPropertyChanged(nameof(CanCommitSelectedNode));
+                    OnPropertyChanged(nameof(CommitButtonToolTip));
                     NotifyCommitAndPushStateChanged();
                     NotifyCommitPlanChanged();
                 }
@@ -112,11 +155,20 @@ namespace SourceGit.ViewModels
             !_isCommitting &&
             _undoCommits.ContainsKey(_selectedNode.DisplayPath);
 
+        public string UndoCommitToolTip => CanUndoSelectedNodeCommit
+            ? "Reset the selected repository back to the commit before this Commit Flow commit, leaving the files modified but uncommitted."
+            : GetUndoCommitDisabledReason();
         public bool CanCommitAndPushSelectedNode => CanCommitSelectedNode && _selectedNode.HasPushRemote;
         public IBrush CommitAndPushButtonBackground => CanCommitAndPushSelectedNode ? _commitAndPushEnabledBackground : _commitAndPushDisabledBackground;
         public IBrush CommitAndPushButtonForeground => CanCommitAndPushSelectedNode ? Brushes.White : _commitAndPushDisabledForeground;
         public string CommitAndPushButtonText => GetNextActionNodeAfterSelected() != null ? "Commit & Push -> Next" : "Commit & Push";
         public string CommitButtonText => GetNextActionNodeAfterSelected() != null ? "Stage All & Commit -> Next" : "Stage All & Commit";
+        public string CommitButtonToolTip => CanCommitSelectedNode
+            ? "Stage the included changes and commit the selected repository."
+            : GetCommitDisabledReason(false);
+        public string CommitAndPushButtonToolTip => CanCommitAndPushSelectedNode
+            ? _selectedNode.PushTargetDescription
+            : GetCommitDisabledReason(true);
         public string CommitPlanPreview
         {
             get
@@ -128,7 +180,7 @@ namespace SourceGit.ViewModels
                 var builder = new StringBuilder();
                 builder.Append("Target: ").Append(node.DisplayPath)
                     .Append("  |  Branch: ").Append(node.Branch)
-                    .Append("  |  Changes: ").Append(_changes.Count);
+                    .Append("  |  Included: ").Append(IncludedChangeCount).Append('/').Append(_changes.Count);
 
                 builder.AppendLine();
                 builder.Append("Message: ").Append(ToSingleLine(_commitMessage));
@@ -176,8 +228,10 @@ namespace SourceGit.ViewModels
                 if (SetProperty(ref _isCommitting, value))
                 {
                     OnPropertyChanged(nameof(CanCommitSelectedNode));
+                    OnPropertyChanged(nameof(CommitButtonToolTip));
                     NotifyCommitAndPushStateChanged();
                     OnPropertyChanged(nameof(CanUndoSelectedNodeCommit));
+                    OnPropertyChanged(nameof(UndoCommitToolTip));
                     NotifyCommitPlanChanged();
                 }
             }
@@ -185,7 +239,7 @@ namespace SourceGit.ViewModels
 
         public bool CanCommitSelectedNode =>
             _selectedNode != null &&
-            _changes.Count > 0 &&
+            IncludedChangeCount > 0 &&
             !string.IsNullOrWhiteSpace(_commitMessage) &&
             !_isLoadingChanges &&
             !_isCommitting;
@@ -220,9 +274,30 @@ namespace SourceGit.ViewModels
             private set => SetProperty(ref _toastBackground, value);
         }
 
+        public double SavedModuleListWidth => ClampLayoutWidth(_repo.Settings.SubmoduleCommitFlowSidebarWidth, 240, 900);
+
         public SubmoduleCommitFlow(Repository repo)
         {
             _repo = repo;
+        }
+
+        public void SaveLayoutWidths(double moduleListWidth)
+        {
+            var settings = _repo.Settings;
+            if (settings == null)
+                return;
+
+            var nextModuleListWidth = ClampLayoutWidth(moduleListWidth, 240, 900);
+            var changed = false;
+
+            if (Math.Abs(settings.SubmoduleCommitFlowSidebarWidth - nextModuleListWidth) > 0.5)
+            {
+                settings.SubmoduleCommitFlowSidebarWidth = nextModuleListWidth;
+                changed = true;
+            }
+
+            if (changed)
+                _ = settings.SaveAsync();
         }
 
         public void Activate()
@@ -278,6 +353,63 @@ namespace SourceGit.ViewModels
             await CommitSelectedNodeAsync(true);
         }
 
+        public void NotifyCommitIncludeChanged()
+        {
+            SaveCommitIncludeState();
+            OnPropertyChanged(nameof(IncludedChangeCount));
+            OnPropertyChanged(nameof(ExcludedChangeCount));
+            OnPropertyChanged(nameof(CommitIncludeSummary));
+            if (_selectedNode != null && string.IsNullOrWhiteSpace(_commitMessage))
+                CommitMessage = BuildDefaultCommitMessage(_selectedNode, GetIncludedChanges());
+
+            OnPropertyChanged(nameof(CanCommitSelectedNode));
+            OnPropertyChanged(nameof(CommitButtonToolTip));
+            NotifyCommitAndPushStateChanged();
+            NotifyCommitPlanChanged();
+        }
+
+        public void IncludeAllSelectedNodeChanges()
+        {
+            if (_changes.Count == 0)
+                return;
+
+            foreach (var change in _changes)
+                change.IsCommitFlowIncluded = true;
+
+            SaveCommitIncludeState();
+            Changes = _changes.ToList();
+            SelectedChanges = _selectedChanges.Where(x => _changes.Contains(x)).ToList();
+            NotifyCommitIncludeChanged();
+        }
+
+        public void ExcludeAllSelectedNodeChanges()
+        {
+            if (_changes.Count == 0)
+                return;
+
+            foreach (var change in _changes)
+                change.IsCommitFlowIncluded = false;
+
+            SaveCommitIncludeState();
+            Changes = _changes.ToList();
+            SelectedChanges = _selectedChanges.Where(x => _changes.Contains(x)).ToList();
+            NotifyCommitIncludeChanged();
+        }
+
+        public void OpenGitGraphForNode(SubmoduleCommitFlowNode node)
+        {
+            if (node == null)
+                return;
+
+            if (node.DisplayPath == "root")
+            {
+                _repo.SelectedViewIndex = 0;
+                return;
+            }
+
+            _repo.OpenSubmodule(node.DisplayPath);
+        }
+
         private async Task CommitSelectedNodeAsync(bool pushAfterCommit)
         {
             if (!CanCommitSelectedNode)
@@ -302,19 +434,41 @@ namespace SourceGit.ViewModels
             var afterHead = string.Empty;
             try
             {
-                var commitChanges = _changes.ToList();
+                var commitChanges = GetIncludedChanges();
+                var excludedStagedChanges = GetExcludedStagedChanges();
                 beforeHead = await new Commands.QueryRevisionByRefName(node.RepoPath, "HEAD").GetResultAsync().ConfigureAwait(false);
-                var pathspecFile = await WriteCommitFlowPathspecAsync(commitChanges).ConfigureAwait(false);
-                try
+                succ = true;
+
+                if (excludedStagedChanges.Count > 0)
                 {
-                    succ = await new Commands.Add(node.RepoPath, pathspecFile)
-                        .Use(log)
-                        .ExecAsync()
-                        .ConfigureAwait(false);
+                    var resetPathspecFile = await WriteCommitFlowPathspecAsync(excludedStagedChanges).ConfigureAwait(false);
+                    try
+                    {
+                        succ = await new Commands.Reset(node.RepoPath, resetPathspecFile)
+                            .Use(log)
+                            .ExecAsync()
+                            .ConfigureAwait(false);
+                    }
+                    finally
+                    {
+                        DeleteTempFile(resetPathspecFile);
+                    }
                 }
-                finally
+
+                if (succ)
                 {
-                    DeleteTempFile(pathspecFile);
+                    var pathspecFile = await WriteCommitFlowPathspecAsync(commitChanges).ConfigureAwait(false);
+                    try
+                    {
+                        succ = await new Commands.Add(node.RepoPath, pathspecFile)
+                            .Use(log)
+                            .ExecAsync()
+                            .ConfigureAwait(false);
+                    }
+                    finally
+                    {
+                        DeleteTempFile(pathspecFile);
+                    }
                 }
 
                 if (succ)
@@ -368,8 +522,11 @@ namespace SourceGit.ViewModels
                     node.ChangeCount = 0;
                     node.FileChangeCount = 0;
                     node.SubmodulePointerChangeCount = 0;
+                    _excludedChangeKeysByNode.Remove(node.DisplayPath);
+                    UpdateParentChain();
                     CommitMessage = string.Empty;
                     OnPropertyChanged(nameof(CanUndoSelectedNodeCommit));
+                    OnPropertyChanged(nameof(UndoCommitToolTip));
                     if (pushAfterCommit && !pushed)
                         ShowFlowToast($"Committed {node.DisplayPath}, but push failed.", true);
                     else
@@ -468,6 +625,7 @@ namespace SourceGit.ViewModels
                     _changeCache.Remove(node.DisplayPath);
                     CommitMessage = string.Empty;
                     OnPropertyChanged(nameof(CanUndoSelectedNodeCommit));
+                    OnPropertyChanged(nameof(UndoCommitToolTip));
                     ShowFlowToast($"Undid commit for {node.DisplayPath}.");
                     _repo.RefreshBranches();
                     _repo.RefreshCommits();
@@ -578,6 +736,7 @@ namespace SourceGit.ViewModels
                         NotifyCommitAndPushStateChanged();
                         NotifyCommitPlanChanged();
                     }
+                    UpdateParentChain();
 
                     _changeCache[node.DisplayPath] = status.Changes;
                     if (done % 5 == 0 || status.State != SubmoduleCommitFlowNodeState.Clean || done == nodes.Count)
@@ -731,6 +890,7 @@ namespace SourceGit.ViewModels
         private void ApplySelectedNodeChanges(SubmoduleCommitFlowNode node, List<Models.Change> changes)
         {
             UpdateChangeKinds(node, changes, out var fileChangeCount, out var submodulePointerChangeCount);
+            ApplyCommitIncludeState(node, changes);
             Changes = changes;
             node.ChangeCount = changes.Count;
             node.FileChangeCount = fileChangeCount;
@@ -738,9 +898,58 @@ namespace SourceGit.ViewModels
             node.State = ResolveNodeState(node, changes);
             if (node.State == SubmoduleCommitFlowNodeState.Clean && HasActionableDescendant(node))
                 node.State = SubmoduleCommitFlowNodeState.HasChildChanges;
-            CommitMessage = BuildDefaultCommitMessage(node, changes);
+            CommitMessage = BuildDefaultCommitMessage(node, GetIncludedChanges());
             NotifyCommitPlanChanged();
+            UpdateParentChain();
             Summary = BuildSummary(_allNodes.Count > 0 ? _allNodes : _nodes);
+        }
+
+        private List<Models.Change> GetIncludedChanges()
+        {
+            return _changes.Where(x => x.IsCommitFlowIncluded).ToList();
+        }
+
+        private List<Models.Change> GetExcludedStagedChanges()
+        {
+            return _changes
+                .Where(x => !x.IsCommitFlowIncluded && x.Index != Models.ChangeState.None)
+                .ToList();
+        }
+
+        private void SaveCommitIncludeState()
+        {
+            var node = _selectedNode;
+            if (node == null)
+                return;
+
+            var excluded = _changes
+                .Where(x => !x.IsCommitFlowIncluded)
+                .Select(GetChangeKey)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .ToHashSet(StringComparer.Ordinal);
+
+            if (excluded.Count == 0)
+                _excludedChangeKeysByNode.Remove(node.DisplayPath);
+            else
+                _excludedChangeKeysByNode[node.DisplayPath] = excluded;
+        }
+
+        private void ApplyCommitIncludeState(SubmoduleCommitFlowNode node, List<Models.Change> changes)
+        {
+            if (!_excludedChangeKeysByNode.TryGetValue(node.DisplayPath, out var excluded))
+            {
+                foreach (var change in changes)
+                    change.IsCommitFlowIncluded = true;
+                return;
+            }
+
+            foreach (var change in changes)
+                change.IsCommitFlowIncluded = !excluded.Contains(GetChangeKey(change));
+        }
+
+        private static string GetChangeKey(Models.Change change)
+        {
+            return NormalizePath(string.IsNullOrWhiteSpace(change.Path) ? change.OriginalPath : change.Path);
         }
 
         private void UpdateDetailContext()
@@ -1257,6 +1466,14 @@ namespace SourceGit.ViewModels
             return true;
         }
 
+        private static double ClampLayoutWidth(double width, double min, double max)
+        {
+            if (double.IsNaN(width) || double.IsInfinity(width) || width <= 0)
+                return min;
+
+            return Math.Min(Math.Max(width, min), max);
+        }
+
         private void ShowFlowToast(string message, bool isError = false)
         {
             if (!Dispatcher.UIThread.CheckAccess())
@@ -1297,8 +1514,10 @@ namespace SourceGit.ViewModels
             _isScanning = value;
             OnPropertyChanged(nameof(IsLoading));
             OnPropertyChanged(nameof(CanCommitSelectedNode));
+            OnPropertyChanged(nameof(CommitButtonToolTip));
             NotifyCommitAndPushStateChanged();
             OnPropertyChanged(nameof(CanUndoSelectedNodeCommit));
+            OnPropertyChanged(nameof(UndoCommitToolTip));
         }
 
         private void SetLoadingChanges(bool value)
@@ -1309,8 +1528,10 @@ namespace SourceGit.ViewModels
             _isLoadingChanges = value;
             OnPropertyChanged(nameof(IsLoading));
             OnPropertyChanged(nameof(CanCommitSelectedNode));
+            OnPropertyChanged(nameof(CommitButtonToolTip));
             NotifyCommitAndPushStateChanged();
             OnPropertyChanged(nameof(CanUndoSelectedNodeCommit));
+            OnPropertyChanged(nameof(UndoCommitToolTip));
         }
 
         private void NotifyCommitAndPushStateChanged()
@@ -1319,6 +1540,7 @@ namespace SourceGit.ViewModels
             OnPropertyChanged(nameof(CommitAndPushButtonBackground));
             OnPropertyChanged(nameof(CommitAndPushButtonForeground));
             OnPropertyChanged(nameof(CommitAndPushButtonText));
+            OnPropertyChanged(nameof(CommitAndPushButtonToolTip));
         }
 
         private void NotifyCommitPlanChanged()
@@ -1326,6 +1548,88 @@ namespace SourceGit.ViewModels
             OnPropertyChanged(nameof(CommitPlanPreview));
             OnPropertyChanged(nameof(CommitButtonText));
             OnPropertyChanged(nameof(CommitAndPushButtonText));
+        }
+
+        private string GetCommitDisabledReason(bool withPush)
+        {
+            if (_selectedNode == null)
+                return "Select a repository or submodule first.";
+
+            if (_isLoadingChanges)
+                return "Changes are still loading for the selected repository.";
+
+            if (_isCommitting)
+                return "Commit Flow is already running a commit.";
+
+            if (withPush && !_selectedNode.HasPushRemote)
+                return "Commit & Push is unavailable because no push-capable remote target was found for this branch.";
+
+            if (IncludedChangeCount == 0)
+                return _changes.Count == 0
+                    ? "There are no changes to commit in the selected repository."
+                    : "All changes are skipped. Include at least one change to commit.";
+
+            if (string.IsNullOrWhiteSpace(_commitMessage))
+                return "Enter a commit message before committing.";
+
+            return "Commit is unavailable.";
+        }
+
+        private string GetUndoCommitDisabledReason()
+        {
+            if (_selectedNode == null)
+                return "Select a repository or submodule first.";
+
+            if (_isLoadingChanges)
+                return "Changes are still loading for the selected repository.";
+
+            if (_isCommitting)
+                return "Commit Flow is already running a commit.";
+
+            return "There is no Commit Flow commit to undo for the selected repository.";
+        }
+
+        private void UpdateParentChain()
+        {
+            var selected = _selectedNode;
+            if (selected == null)
+            {
+                ParentChainSteps = [];
+                ParentChainSummary = string.Empty;
+                return;
+            }
+
+            var nodes = _allNodes.Count > 0 ? _allNodes : _nodes;
+            var byPath = nodes.ToDictionary(x => x.DisplayPath, StringComparer.Ordinal);
+            var chain = new List<SubmoduleCommitFlowNode>();
+            var cursor = selected;
+            var guard = 0;
+            while (cursor != null && guard++ < MAX_SCAN_DEPTH + 2)
+            {
+                chain.Add(cursor);
+                if (string.IsNullOrEmpty(cursor.ParentDisplayPath) ||
+                    !byPath.TryGetValue(cursor.ParentDisplayPath, out cursor))
+                    break;
+            }
+
+            chain.Reverse();
+
+            var steps = chain
+                .Select(x => new SubmoduleCommitFlowChainStep(
+                    x.DisplayPath == "root" ? "root" : x.Name,
+                    x.DisplayPath,
+                    x.StatusText,
+                    x.State,
+                    ReferenceEquals(x, selected)))
+                .ToList();
+
+            ParentChainSteps = steps;
+
+            var complete = chain.Count(x => x.State is SubmoduleCommitFlowNodeState.Clean or SubmoduleCommitFlowNodeState.Done);
+            var pending = chain.Count - complete;
+            ParentChainSummary = pending > 0
+                ? $"{complete}/{chain.Count} complete, {pending} pending upward"
+                : $"{chain.Count}/{chain.Count} complete";
         }
 
         private sealed record NodeStatus(string Branch, string Head, string Upstream, string PushRemote, string PushRemoteBranch, bool SetPushTracking, int ChangeCount, int FileChangeCount, int SubmodulePointerChangeCount, SubmoduleCommitFlowNodeState State, List<Models.Change> Changes);
@@ -1336,12 +1640,15 @@ namespace SourceGit.ViewModels
         private List<SubmoduleCommitFlowNode> _allNodes = [];
         private List<SubmoduleCommitFlowNode> _nodes = [];
         private readonly Dictionary<string, List<Models.Change>> _changeCache = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, HashSet<string>> _excludedChangeKeysByNode = new(StringComparer.Ordinal);
         private SubmoduleCommitFlowNode _selectedNode = null;
         private List<Models.Change> _changes = [];
         private List<Models.Change> _selectedChanges = [];
+        private List<SubmoduleCommitFlowChainStep> _parentChainSteps = [];
         private object _detailContext = null;
         private string _commitMessage = string.Empty;
         private string _summary = string.Empty;
+        private string _parentChainSummary = string.Empty;
         private string _toastMessage = string.Empty;
         private double _toastOpacity = 0.0;
         private bool _isToastVisible = false;
@@ -1358,5 +1665,61 @@ namespace SourceGit.ViewModels
         private int _toastVersion = 0;
         private readonly HashSet<string> _donePaths = new(StringComparer.Ordinal);
         private readonly Dictionary<string, UndoCommit> _undoCommits = new(StringComparer.Ordinal);
+    }
+
+    public class SubmoduleCommitFlowChainStep
+    {
+        public SubmoduleCommitFlowChainStep(string name, string fullPath, string status, SubmoduleCommitFlowNodeState state, bool isCurrent)
+        {
+            Name = name;
+            FullPath = fullPath;
+            Status = status;
+            IsCurrent = isCurrent;
+            Foreground = GetForeground(state);
+            Background = GetBackground(state);
+            BorderBrush = isCurrent ? Brushes.Black : Foreground;
+            CurrentMarker = isCurrent ? ">" : string.Empty;
+        }
+
+        public string Name { get; }
+        public string FullPath { get; }
+        public string Status { get; }
+        public bool IsCurrent { get; }
+        public string CurrentMarker { get; }
+        public IBrush Foreground { get; }
+        public IBrush Background { get; }
+        public IBrush BorderBrush { get; }
+
+        private static IBrush GetForeground(SubmoduleCommitFlowNodeState state)
+        {
+            return state switch
+            {
+                SubmoduleCommitFlowNodeState.Scanning => Brushes.Gray,
+                SubmoduleCommitFlowNodeState.Clean => Brushes.Gray,
+                SubmoduleCommitFlowNodeState.HasChildChanges => Brushes.DarkCyan,
+                SubmoduleCommitFlowNodeState.HasChanges => Brushes.DarkOrange,
+                SubmoduleCommitFlowNodeState.HasSubmodulePointerChanges => Brushes.RoyalBlue,
+                SubmoduleCommitFlowNodeState.HasMixedChanges => Brushes.DarkMagenta,
+                SubmoduleCommitFlowNodeState.Done => Brushes.ForestGreen,
+                SubmoduleCommitFlowNodeState.Error => Brushes.Red,
+                _ => Brushes.Gray,
+            };
+        }
+
+        private static IBrush GetBackground(SubmoduleCommitFlowNodeState state)
+        {
+            return state switch
+            {
+                SubmoduleCommitFlowNodeState.Scanning => new SolidColorBrush(Color.FromArgb(20, 120, 120, 120)),
+                SubmoduleCommitFlowNodeState.Clean => new SolidColorBrush(Color.FromArgb(20, 120, 120, 120)),
+                SubmoduleCommitFlowNodeState.HasChildChanges => new SolidColorBrush(Color.FromArgb(42, 0, 139, 139)),
+                SubmoduleCommitFlowNodeState.HasChanges => new SolidColorBrush(Color.FromArgb(40, 255, 152, 0)),
+                SubmoduleCommitFlowNodeState.HasSubmodulePointerChanges => new SolidColorBrush(Color.FromArgb(40, 30, 144, 255)),
+                SubmoduleCommitFlowNodeState.HasMixedChanges => new SolidColorBrush(Color.FromArgb(40, 186, 85, 211)),
+                SubmoduleCommitFlowNodeState.Done => new SolidColorBrush(Color.FromArgb(42, 34, 139, 34)),
+                SubmoduleCommitFlowNodeState.Error => new SolidColorBrush(Color.FromArgb(42, 255, 0, 0)),
+                _ => Brushes.Transparent,
+            };
+        }
     }
 }

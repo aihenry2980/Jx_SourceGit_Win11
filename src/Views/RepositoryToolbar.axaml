@@ -120,7 +120,7 @@
     <StackPanel x:Name="CenterToolbarGroup" Grid.Column="1" Orientation="Horizontal">
       <Button x:Name="SubmoduleCommitFlowButton"
               Classes="icon_button"
-              Width="156"
+              Width="88"
               Click="OpenSubmoduleCommitFlow">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
@@ -133,7 +133,7 @@
           <Border Background="#FF0F766E" CornerRadius="5" Padding="4">
             <Path Width="14" Height="14" HorizontalAlignment="Center" Fill="#FFFFE066" Data="{StaticResource Icons.Commit}"/>
           </Border>
-          <TextBlock Classes="toolbar_label" FontWeight="SemiBold" MaxWidth="147" Text="Commit Flow"/>
+          <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Commit"/>
         </StackPanel>
       </Button>
       <Button Width="0" Height="0" Click="OpenSubmoduleCommitFlow" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+Shift+F, macOS=âŒ˜+âŒ¥+â‡§+F}"/>
