@@ -47,7 +47,7 @@
           <TabItem.Header>
             <TextBlock Classes="tab_header" Text="{DynamicResource Text.Preferences.General}"/>
           </TabItem.Header>
-          <Grid Margin="8" RowDefinitions="32,32,32,32,32,32,32,32,32,32,32,32,32,32,64,32,32,Auto,Auto,Auto" ColumnDefinitions="Auto,*">
+          <Grid Margin="8" RowDefinitions="32,32,32,32,32,32,32,32,32,32,32,32,32,32,64,32,32,Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*">
             <TextBlock Grid.Row="0" Grid.Column="0"
                        Text="{DynamicResource Text.Preferences.General.Locale}"
                        HorizontalAlignment="Right"
@@ -218,10 +218,26 @@
 
             <TextBlock Grid.Row="17" Grid.Column="0"
                        Margin="0,8,16,0"
-                       Text="{DynamicResource Text.Preferences.General.PresetBranchExactNames}"
+                       Text="Commit Flow generated filters"
                        HorizontalAlignment="Right"
                        VerticalAlignment="Top"/>
             <TextBox Grid.Row="17" Grid.Column="1"
+                     Height="112"
+                     Margin="0,8,0,0"
+                     CornerRadius="3"
+                     VerticalContentAlignment="Top"
+                     ToolTip.Tip="One glob per line. Commit Flow hides matching untracked files and does not include them in Commit Flow commits. Directory rules end with /."
+                     Text="{Binding CommitFlowGeneratedFileFilters, Mode=TwoWay}"
+                     AcceptsReturn="True"
+                     AcceptsTab="False"
+                     TextWrapping="Wrap"/>
+
+            <TextBlock Grid.Row="18" Grid.Column="0"
+                       Margin="0,8,16,0"
+                       Text="{DynamicResource Text.Preferences.General.PresetBranchExactNames}"
+                       HorizontalAlignment="Right"
+                       VerticalAlignment="Top"/>
+            <TextBox Grid.Row="18" Grid.Column="1"
                      Height="88"
                      Margin="0,8,0,0"
                      CornerRadius="3"
@@ -231,12 +247,12 @@
                      AcceptsTab="False"
                      TextWrapping="Wrap"/>
 
-            <TextBlock Grid.Row="18" Grid.Column="0"
+            <TextBlock Grid.Row="19" Grid.Column="0"
                        Margin="0,8,16,0"
                        Text="{DynamicResource Text.Preferences.General.PresetBranchContainsPatterns}"
                        HorizontalAlignment="Right"
                        VerticalAlignment="Top"/>
-            <TextBox Grid.Row="18" Grid.Column="1"
+            <TextBox Grid.Row="19" Grid.Column="1"
                      Height="88"
                      Margin="0,8,0,0"
                      CornerRadius="3"
@@ -246,7 +262,7 @@
                      AcceptsTab="False"
                      TextWrapping="Wrap"/>
 
-            <TextBlock Grid.Row="19" Grid.Column="1"
+            <TextBlock Grid.Row="20" Grid.Column="1"
                        Margin="0,6,0,0"
                        Classes="small"
                        Foreground="{DynamicResource Brush.FG2}"

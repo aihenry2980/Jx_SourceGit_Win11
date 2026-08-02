@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,7 +21,11 @@ namespace SourceGit.ViewModels
         public List<SubmoduleCommitFlowNode> Nodes
         {
             get => _nodes;
-            private set => SetProperty(ref _nodes, value);
+            private set
+            {
+                if (SetProperty(ref _nodes, value))
+                    NotifyCommitPlanChanged();
+            }
         }
 
         public SubmoduleCommitFlowNode SelectedNode
@@ -35,6 +40,7 @@ namespace SourceGit.ViewModels
                     OnPropertyChanged(nameof(CanCommitSelectedNode));
                     NotifyCommitAndPushStateChanged();
                     OnPropertyChanged(nameof(CanUndoSelectedNodeCommit));
+                    NotifyCommitPlanChanged();
                     _ = LoadSelectedNodeChangesAsync();
                 }
             }
@@ -63,6 +69,7 @@ namespace SourceGit.ViewModels
                     OnPropertyChanged(nameof(HasChanges));
                     OnPropertyChanged(nameof(CanCommitSelectedNode));
                     NotifyCommitAndPushStateChanged();
+                    NotifyCommitPlanChanged();
                 }
             }
         }
@@ -94,6 +101,7 @@ namespace SourceGit.ViewModels
                 {
                     OnPropertyChanged(nameof(CanCommitSelectedNode));
                     NotifyCommitAndPushStateChanged();
+                    NotifyCommitPlanChanged();
                 }
             }
         }
@@ -107,6 +115,53 @@ namespace SourceGit.ViewModels
         public bool CanCommitAndPushSelectedNode => CanCommitSelectedNode && _selectedNode.HasPushRemote;
         public IBrush CommitAndPushButtonBackground => CanCommitAndPushSelectedNode ? _commitAndPushEnabledBackground : _commitAndPushDisabledBackground;
         public IBrush CommitAndPushButtonForeground => CanCommitAndPushSelectedNode ? Brushes.White : _commitAndPushDisabledForeground;
+        public string CommitAndPushButtonText => GetNextActionNodeAfterSelected() != null ? "Commit & Push -> Next" : "Commit & Push";
+        public string CommitButtonText => GetNextActionNodeAfterSelected() != null ? "Stage All & Commit -> Next" : "Stage All & Commit";
+        public string CommitPlanPreview
+        {
+            get
+            {
+                var node = _selectedNode;
+                if (node == null)
+                    return "Select a repository or submodule to preview the commit commands.";
+
+                var builder = new StringBuilder();
+                builder.Append("Target: ").Append(node.DisplayPath)
+                    .Append("  |  Branch: ").Append(node.Branch)
+                    .Append("  |  Changes: ").Append(_changes.Count);
+
+                builder.AppendLine();
+                builder.Append("Message: ").Append(ToSingleLine(_commitMessage));
+
+                builder.AppendLine();
+                builder.Append("Commit: stage listed changes; git commit --file=<message>");
+
+                if (node.HasPushRemote)
+                {
+                    builder.AppendLine();
+                    builder.Append("Commit & Push adds: git push --progress --verbose ");
+                    if (node.Children.Count > 0)
+                        builder.Append("--recurse-submodules=check ");
+                    if (node.SetPushTracking)
+                        builder.Append("-u ");
+                    builder.Append(node.PushRemote).Append(' ').Append(node.Branch).Append(':').Append(node.PushRemoteBranch);
+                }
+                else
+                {
+                    builder.AppendLine();
+                    builder.Append("Commit & Push: unavailable because no remote target was found.");
+                }
+
+                var next = GetNextActionNodeAfterSelected();
+                if (next != null)
+                {
+                    builder.AppendLine();
+                    builder.Append("After success: select next node ").Append(next.DisplayPath).Append('.');
+                }
+
+                return builder.ToString();
+            }
+        }
 
         public bool IsLoading
         {
@@ -123,6 +178,7 @@ namespace SourceGit.ViewModels
                     OnPropertyChanged(nameof(CanCommitSelectedNode));
                     NotifyCommitAndPushStateChanged();
                     OnPropertyChanged(nameof(CanUndoSelectedNodeCommit));
+                    NotifyCommitPlanChanged();
                 }
             }
         }
@@ -246,14 +302,20 @@ namespace SourceGit.ViewModels
             var afterHead = string.Empty;
             try
             {
+                var commitChanges = _changes.ToList();
                 beforeHead = await new Commands.QueryRevisionByRefName(node.RepoPath, "HEAD").GetResultAsync().ConfigureAwait(false);
-                var add = new Commands.Command()
+                var pathspecFile = await WriteCommitFlowPathspecAsync(commitChanges).ConfigureAwait(false);
+                try
                 {
-                    WorkingDirectory = node.RepoPath,
-                    Context = node.RepoPath,
-                    Args = "add --all",
-                };
-                succ = await add.Use(log).ExecAsync().ConfigureAwait(false);
+                    succ = await new Commands.Add(node.RepoPath, pathspecFile)
+                        .Use(log)
+                        .ExecAsync()
+                        .ConfigureAwait(false);
+                }
+                finally
+                {
+                    DeleteTempFile(pathspecFile);
+                }
 
                 if (succ)
                 {
@@ -317,6 +379,7 @@ namespace SourceGit.ViewModels
                     _repo.RefreshCommits();
                     _repo.RefreshSubmodules(true);
                     _repo.RefreshWorkingCopyChanges();
+                    _selectNextActionAfterScan = true;
                     await RefreshAsync();
                 }
                 else
@@ -511,7 +574,10 @@ namespace SourceGit.ViewModels
 
                     ApplyNodeStatus(node, status);
                     if (SelectedNode == node)
+                    {
                         NotifyCommitAndPushStateChanged();
+                        NotifyCommitPlanChanged();
+                    }
 
                     _changeCache[node.DisplayPath] = status.Changes;
                     if (done % 5 == 0 || status.State != SubmoduleCommitFlowNodeState.Clean || done == nodes.Count)
@@ -539,8 +605,17 @@ namespace SourceGit.ViewModels
                     return;
 
                 Nodes = BuildVisibleNodes(nodes);
-                if (SelectedNode == null || !Nodes.Contains(SelectedNode) || SelectedNode.State is SubmoduleCommitFlowNodeState.Clean or SubmoduleCommitFlowNodeState.Scanning)
-                    SelectedNode = PickNextActionNode(Nodes) ?? Nodes.FirstOrDefault();
+                var next = PickNextActionNode(Nodes);
+                if (_selectNextActionAfterScan)
+                {
+                    _selectNextActionAfterScan = false;
+                    SelectedNode = next ?? Nodes.FirstOrDefault();
+                }
+                else if (SelectedNode == null || !Nodes.Contains(SelectedNode) || SelectedNode.State is SubmoduleCommitFlowNodeState.Clean or SubmoduleCommitFlowNodeState.Scanning)
+                {
+                    SelectedNode = next ?? Nodes.FirstOrDefault();
+                }
+
                 Summary = BuildSummary(nodes);
                 SetScanning(false);
             });
@@ -552,6 +627,7 @@ namespace SourceGit.ViewModels
                 return new NodeStatus("missing", string.Empty, string.Empty, string.Empty, string.Empty, false, 0, 0, 0, SubmoduleCommitFlowNodeState.Error, []);
 
             var changes = await new Commands.QueryLocalChanges(node.RepoPath, true, true, false).GetResultAsync().ConfigureAwait(false);
+            changes = FilterGeneratedUntrackedChanges(changes);
             changes.Sort((l, r) => Models.NumericSort.Compare(l.Path, r.Path));
             UpdateChangeKinds(node, changes, out var fileChangeCount, out var submodulePointerChangeCount);
             var state = ResolveNodeState(node, changes);
@@ -569,13 +645,14 @@ namespace SourceGit.ViewModels
             var setPushTracking = false;
             if (!string.IsNullOrWhiteSpace(branch))
             {
-                if (TrySplitUpstream(upstream, out pushRemote, out pushRemoteBranch))
+                var remotes = await new Commands.QueryRemotes(node.RepoPath).GetResultAsync().ConfigureAwait(false);
+                if (TrySplitUpstream(upstream, out pushRemote, out pushRemoteBranch) &&
+                    IsPushServerRemote(remotes, pushRemote))
                 {
                     setPushTracking = false;
                 }
                 else
                 {
-                    var remotes = await new Commands.QueryRemoteNames(node.RepoPath).GetResultAsync().ConfigureAwait(false);
                     pushRemote = PickPushRemote(remotes);
                     pushRemoteBranch = string.IsNullOrWhiteSpace(pushRemote) ? string.Empty : branch;
                     setPushTracking = !string.IsNullOrWhiteSpace(pushRemote);
@@ -627,6 +704,7 @@ namespace SourceGit.ViewModels
                 try
                 {
                     changes = await new Commands.QueryLocalChanges(node.RepoPath, true, true, false).GetResultAsync().ConfigureAwait(false);
+                    changes = FilterGeneratedUntrackedChanges(changes);
                     changes.Sort((l, r) => Models.NumericSort.Compare(l.Path, r.Path));
                     UpdateChangeKinds(node, changes, out _, out _);
                     _changeCache[node.DisplayPath] = changes;
@@ -661,6 +739,7 @@ namespace SourceGit.ViewModels
             if (node.State == SubmoduleCommitFlowNodeState.Clean && HasActionableDescendant(node))
                 node.State = SubmoduleCommitFlowNodeState.HasChildChanges;
             CommitMessage = BuildDefaultCommitMessage(node, changes);
+            NotifyCommitPlanChanged();
             Summary = BuildSummary(_allNodes.Count > 0 ? _allNodes : _nodes);
         }
 
@@ -706,9 +785,8 @@ namespace SourceGit.ViewModels
             string message;
             if (submodulePointerChanges.Count == changes.Count && submodulePointerChanges.Count > 0)
             {
-                message = submodulePointerChanges.Count == 1
-                    ? $"Update {submodulePointerChanges[0]} submodule pointer"
-                    : $"Update {submodulePointerChanges.Count} submodule pointers";
+                message = BuildSubmodulePointerCommitMessage(node, submodulePointerChanges);
+                return PrefixIssueTagFromBranchOrChildren(node, submodulePointerChanges, message);
             }
             else
             {
@@ -716,6 +794,63 @@ namespace SourceGit.ViewModels
             }
 
             return PrefixIssueTagFromBranch(node.Branch, message);
+        }
+
+        private static string BuildSubmodulePointerCommitMessage(SubmoduleCommitFlowNode node, List<string> paths)
+        {
+            if (paths.Count == 1)
+            {
+                var path = paths[0];
+                var child = node.Children.Find(x => x.SubmodulePathInParent.Equals(path, StringComparison.Ordinal));
+                return child != null && !string.IsNullOrWhiteSpace(child.Head)
+                    ? $"Peg {path} SPP to {child.HeadShort}"
+                    : $"Peg {path} SPP";
+            }
+
+            if (paths.Count <= 3)
+                return $"Peg {string.Join(", ", paths)} SPP";
+
+            return $"Peg {paths.Count} submodule SPP updates";
+        }
+
+        private static string PrefixIssueTagFromBranchOrChildren(SubmoduleCommitFlowNode node, List<string> paths, string message)
+        {
+            var prefixed = PrefixIssueTagFromBranch(node.Branch, message);
+            if (!prefixed.Equals(message, StringComparison.Ordinal))
+                return prefixed;
+
+            var issue = ExtractIssueTagFromSubmodulePointerChildren(node, paths);
+            if (string.IsNullOrWhiteSpace(issue))
+                return message;
+
+            var prefix = $"[{issue}]";
+            return message.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ? message : $"{prefix} {message}";
+        }
+
+        private static string ExtractIssueTagFromSubmodulePointerChildren(SubmoduleCommitFlowNode node, List<string> paths)
+        {
+            var issue = string.Empty;
+            foreach (var path in paths)
+            {
+                var child = node.Children.Find(x => x.SubmodulePathInParent.Equals(path, StringComparison.Ordinal));
+                if (child == null)
+                    continue;
+
+                var childIssue = ExtractIssueTagFromBranch(child.Branch);
+                if (string.IsNullOrWhiteSpace(childIssue))
+                    continue;
+
+                if (string.IsNullOrWhiteSpace(issue))
+                {
+                    issue = childIssue;
+                    continue;
+                }
+
+                if (!issue.Equals(childIssue, StringComparison.OrdinalIgnoreCase))
+                    return string.Empty;
+            }
+
+            return issue;
         }
 
         private static string PrefixIssueTagFromBranch(string branch, string message)
@@ -795,6 +930,116 @@ namespace SourceGit.ViewModels
             return node.Children.Exists(x => x.SubmodulePathInParent.Equals(change.Path, StringComparison.Ordinal));
         }
 
+        private static List<Models.Change> FilterGeneratedUntrackedChanges(List<Models.Change> changes)
+        {
+            var rules = GetGeneratedFileFilterRules();
+            if (rules.Count == 0 || changes.Count == 0)
+                return changes;
+
+            return changes
+                .Where(x => !IsGeneratedUntrackedChange(x, rules))
+                .ToList();
+        }
+
+        private static bool IsGeneratedUntrackedChange(Models.Change change, List<string> rules)
+        {
+            if (change.WorkTree != Models.ChangeState.Untracked)
+                return false;
+
+            var path = NormalizePath(change.Path);
+            if (string.IsNullOrWhiteSpace(path))
+                return false;
+
+            return rules.Exists(x => MatchesGeneratedFileRule(path, x));
+        }
+
+        private static List<string> GetGeneratedFileFilterRules()
+        {
+            var raw = Preferences.Instance.CommitFlowGeneratedFileFilters ?? string.Empty;
+            return raw
+                .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => NormalizePath(x.Trim()))
+                .Where(x => x.Length > 0 && !x.StartsWith("#", StringComparison.Ordinal))
+                .ToList();
+        }
+
+        private static bool MatchesGeneratedFileRule(string path, string rule)
+        {
+            rule = rule.TrimStart('/');
+            if (rule.Length == 0)
+                return false;
+
+            if (rule.EndsWith('/'))
+            {
+                var dir = rule.TrimEnd('/');
+                return path.Equals(dir, StringComparison.OrdinalIgnoreCase) ||
+                    path.StartsWith($"{dir}/", StringComparison.OrdinalIgnoreCase) ||
+                    path.Contains($"/{dir}/", StringComparison.OrdinalIgnoreCase);
+            }
+
+            var fileName = GetFileNameFromNormalizedPath(path);
+            if (rule.Contains('*') || rule.Contains('?'))
+            {
+                return rule.Contains('/')
+                    ? WildcardMatch(path, rule)
+                    : WildcardMatch(fileName, rule);
+            }
+
+            return rule.Contains('/')
+                ? path.Equals(rule, StringComparison.OrdinalIgnoreCase)
+                : fileName.Equals(rule, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool WildcardMatch(string text, string pattern)
+        {
+            try
+            {
+                var regex = "^" + Regex.Escape(pattern)
+                    .Replace("\\*", ".*")
+                    .Replace("\\?", ".") + "$";
+                return Regex.IsMatch(text, regex, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(50));
+            }
+            catch (RegexMatchTimeoutException)
+            {
+                return false;
+            }
+        }
+
+        private static string GetFileNameFromNormalizedPath(string path)
+        {
+            var idx = path.LastIndexOf('/');
+            return idx >= 0 ? path[(idx + 1)..] : path;
+        }
+
+        private static async Task<string> WriteCommitFlowPathspecAsync(List<Models.Change> changes)
+        {
+            var paths = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var change in changes)
+            {
+                if (!string.IsNullOrWhiteSpace(change.OriginalPath))
+                    paths.Add(change.OriginalPath);
+                if (!string.IsNullOrWhiteSpace(change.Path))
+                    paths.Add(change.Path);
+            }
+
+            var pathspecFile = Path.GetTempFileName();
+            await File.WriteAllLinesAsync(pathspecFile, paths).ConfigureAwait(false);
+            return pathspecFile;
+        }
+
+        private static void DeleteTempFile(string path)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(path) && File.Exists(path))
+                    File.Delete(path);
+            }
+            catch
+            {
+                // Best effort cleanup.
+            }
+        }
+
         private static void UpdateChangeKinds(SubmoduleCommitFlowNode node, List<Models.Change> changes, out int fileChangeCount, out int submodulePointerChangeCount)
         {
             fileChangeCount = 0;
@@ -828,12 +1073,20 @@ namespace SourceGit.ViewModels
             return true;
         }
 
-        private static SubmoduleCommitFlowNode PickNextActionNode(List<SubmoduleCommitFlowNode> nodes)
+        private static SubmoduleCommitFlowNode PickNextActionNode(IEnumerable<SubmoduleCommitFlowNode> nodes)
         {
             return nodes
                 .Where(x => x.State is SubmoduleCommitFlowNodeState.HasChanges or SubmoduleCommitFlowNodeState.HasSubmodulePointerChanges or SubmoduleCommitFlowNodeState.HasMixedChanges)
                 .OrderByDescending(x => x.Depth)
                 .FirstOrDefault();
+        }
+
+        private SubmoduleCommitFlowNode GetNextActionNodeAfterSelected()
+        {
+            if (_nodes.Count == 0)
+                return null;
+
+            return PickNextActionNode(_nodes.Where(x => !ReferenceEquals(x, _selectedNode)));
         }
 
         private static string BuildSummary(List<SubmoduleCommitFlowNode> nodes)
@@ -950,9 +1203,41 @@ namespace SourceGit.ViewModels
             return string.IsNullOrWhiteSpace(sha) ? "--" : sha.Substring(0, Math.Min(8, sha.Length));
         }
 
-        private static string PickPushRemote(List<string> remotes)
+        private static string ToSingleLine(string message)
         {
-            return remotes.Find(x => x.Equals("origin", StringComparison.Ordinal)) ?? remotes.FirstOrDefault() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(message))
+                return "(empty)";
+
+            var single = message.Replace('\r', ' ').Replace('\n', ' ').Trim();
+            return single.Length <= 96 ? single : $"{single.Substring(0, 93)}...";
+        }
+
+        private static string PickPushRemote(List<Models.Remote> remotes)
+        {
+            var serverRemotes = remotes
+                .Where(x => IsPushServerRemoteURL(x.URL))
+                .ToList();
+
+            return serverRemotes.Find(x => x.Name.Equals("origin", StringComparison.Ordinal))?.Name ??
+                serverRemotes.FirstOrDefault()?.Name ??
+                string.Empty;
+        }
+
+        private static bool IsPushServerRemote(List<Models.Remote> remotes, string name)
+        {
+            var remote = remotes.Find(x => x.Name.Equals(name, StringComparison.Ordinal));
+            return remote != null && IsPushServerRemoteURL(remote.URL);
+        }
+
+        private static bool IsPushServerRemoteURL(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+                return false;
+
+            return url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
+                url.StartsWith("git://", StringComparison.OrdinalIgnoreCase) ||
+                Models.Remote.IsSSH(url);
         }
 
         private static bool TrySplitUpstream(string upstream, out string remote, out string branch)
@@ -1033,6 +1318,14 @@ namespace SourceGit.ViewModels
             OnPropertyChanged(nameof(CanCommitAndPushSelectedNode));
             OnPropertyChanged(nameof(CommitAndPushButtonBackground));
             OnPropertyChanged(nameof(CommitAndPushButtonForeground));
+            OnPropertyChanged(nameof(CommitAndPushButtonText));
+        }
+
+        private void NotifyCommitPlanChanged()
+        {
+            OnPropertyChanged(nameof(CommitPlanPreview));
+            OnPropertyChanged(nameof(CommitButtonText));
+            OnPropertyChanged(nameof(CommitAndPushButtonText));
         }
 
         private sealed record NodeStatus(string Branch, string Head, string Upstream, string PushRemote, string PushRemoteBranch, bool SetPushTracking, int ChangeCount, int FileChangeCount, int SubmodulePointerChangeCount, SubmoduleCommitFlowNodeState State, List<Models.Change> Changes);
@@ -1059,6 +1352,7 @@ namespace SourceGit.ViewModels
         private bool _isScanning = false;
         private bool _isLoadingChanges = false;
         private bool _isCommitting = false;
+        private bool _selectNextActionAfterScan = false;
         private int _version = 0;
         private int _loadChangesVersion = 0;
         private int _toastVersion = 0;

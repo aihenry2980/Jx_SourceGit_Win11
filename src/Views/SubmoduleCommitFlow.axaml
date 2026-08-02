@@ -135,7 +135,7 @@
                     VerticalAlignment="Stretch"
                     Focusable="False"/>
 
-      <Grid Grid.Column="2" RowDefinitions="Auto,*,4,136,40" Margin="8,6,8,8">
+      <Grid Grid.Column="2" RowDefinitions="Auto,*,4,136,Auto,40" Margin="8,6,8,8">
       <Border Grid.Row="0"
               Padding="10,7"
               BorderBrush="{DynamicResource Brush.Border2}"
@@ -232,11 +232,26 @@
                               ShowAdvancedOptions="False"
                               CommitMessage="{Binding CommitMessage, Mode=TwoWay}"/>
 
-      <Grid Grid.Row="4" ColumnDefinitions="*,Auto,Auto,Auto,Auto" Margin="0,8,0,0">
+      <Border Grid.Row="4"
+              Margin="0,6,0,0"
+              Padding="8,5"
+              BorderBrush="{DynamicResource Brush.Border0}"
+              BorderThickness="1"
+              CornerRadius="4"
+              Background="{DynamicResource Brush.Contents}">
+        <TextBlock Text="{Binding CommitPlanPreview}"
+                   FontFamily="{DynamicResource Fonts.Monospace}"
+                   FontSize="11"
+                   Foreground="{DynamicResource Brush.FG2}"
+                   TextWrapping="Wrap"
+                   MaxHeight="54"/>
+      </Border>
+
+      <Grid Grid.Row="5" ColumnDefinitions="*,Auto,Auto,Auto,Auto" Margin="0,8,0,0">
         <TextBlock Grid.Column="0"
                    VerticalAlignment="Center"
                    Foreground="{DynamicResource Brush.FG2}"
-                   Text="Commit uses git add -A for the selected repository."/>
+                   Text="Commit stages the listed changes; generated untracked files matching preferences are skipped."/>
         <Button Grid.Column="1"
                 Classes="flat"
                 Height="28"
@@ -253,7 +268,7 @@
                 Padding="12,0"
                 Background="{Binding CommitAndPushButtonBackground}"
                 Foreground="{Binding CommitAndPushButtonForeground}"
-                Content="Commit &amp; Push"
+                Content="{Binding CommitAndPushButtonText}"
                 ToolTip.Tip="{Binding SelectedNode.PushTargetDescription}"
                 Click="OnCommitAndPushClicked"
                 IsEnabled="{Binding CanCommitAndPushSelectedNode}"/>
@@ -266,7 +281,7 @@
                 Classes="flat primary"
                 Height="28"
                 Padding="12,0"
-                Content="Stage All &amp; Commit"
+                Content="{Binding CommitButtonText}"
                 Click="OnCommitClicked"
                 IsEnabled="{Binding CanCommitSelectedNode}"/>
       </Grid>

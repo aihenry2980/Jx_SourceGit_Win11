@@ -19,6 +19,33 @@ namespace SourceGit.ViewModels
         public const int MIN_RECURSIVE_SUBMODULE_DISPLAY_DEPTH = 1;
         public const int MAX_RECURSIVE_SUBMODULE_DISPLAY_DEPTH = 20;
         public const int DEFAULT_RECURSIVE_SUBMODULE_DISPLAY_DEPTH = 5;
+        public const string DEFAULT_COMMIT_FLOW_GENERATED_FILE_FILTERS =
+            "# One glob per line. These filters only hide untracked files in Commit Flow.\n" +
+            "bin/\n" +
+            "obj/\n" +
+            ".vs/\n" +
+            "Debug/\n" +
+            "Release/\n" +
+            "x64/\n" +
+            "x86/\n" +
+            "build/\n" +
+            "out/\n" +
+            "CMakeFiles/\n" +
+            "CMakeCache.txt\n" +
+            "*.log\n" +
+            "*.tmp\n" +
+            "*.cache\n" +
+            "*.user\n" +
+            "*.suo\n" +
+            "*.obj\n" +
+            "*.pch\n" +
+            "*.pdb\n" +
+            "*.ilk\n" +
+            "*.idb\n" +
+            "*.iobj\n" +
+            "*.ipdb\n" +
+            "*.tlog\n" +
+            "*.lastbuildstate";
 
         [JsonIgnore]
         public static Preferences Instance
@@ -200,6 +227,12 @@ namespace SourceGit.ViewModels
         {
             get => _commitMessageIssueTagPattern;
             set => SetProperty(ref _commitMessageIssueTagPattern, value);
+        }
+
+        public string CommitFlowGeneratedFileFilters
+        {
+            get => _commitFlowGeneratedFileFilters;
+            set => SetProperty(ref _commitFlowGeneratedFileFilters, value?.ReplaceLineEndings("\n") ?? string.Empty);
         }
 
         public string PresetBranchExactNameColors
@@ -1250,6 +1283,7 @@ namespace SourceGit.ViewModels
         private string _presetBranchExactNames = string.Empty;
         private string _presetBranchContainsPatterns = string.Empty;
         private string _commitMessageIssueTagPattern = string.Empty;
+        private string _commitFlowGeneratedFileFilters = DEFAULT_COMMIT_FLOW_GENERATED_FILE_FILTERS;
         private string _presetBranchExactNameColors = string.Empty;
         private string _autoRevertPullConflictExtensions = DEFAULT_AUTO_REVERT_PULL_CONFLICT_EXTENSIONS;
         private List<string> _recursiveLocalChangesRecentHiddenExtensions = [];

@@ -85,7 +85,7 @@ namespace SourceGit.ViewModels
         public bool HasPushRemote => !string.IsNullOrWhiteSpace(PushRemote) && !string.IsNullOrWhiteSpace(PushRemoteBranch);
         public string PushTargetDescription => HasPushRemote
             ? SetPushTracking ? $"Push to {PushRemote}/{PushRemoteBranch} and set upstream" : $"Push to {PushRemote}/{PushRemoteBranch}"
-            : "No remote is available";
+            : "No remote server is available";
 
         public int ChangeCount
         {
