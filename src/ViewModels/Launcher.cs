@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
@@ -188,7 +189,7 @@ namespace SourceGit.ViewModels
             _ignoreIndexChange = true;
 
             foreach (var one in Pages)
-                CloseRepositoryInTab(one, false);
+                CloseRepositoryInTab(one, false, false);
 
             _ignoreIndexChange = false;
         }
@@ -208,7 +209,7 @@ namespace SourceGit.ViewModels
             to.IsActive = true;
 
             foreach (var one in Pages)
-                CloseRepositoryInTab(one, false);
+                CloseRepositoryInTab(one, false, false);
 
             Pages.Clear();
             AddNewTab();
@@ -292,6 +293,8 @@ namespace SourceGit.ViewModels
                 var last = Pages[0];
                 if (last.Data is Repository repo)
                 {
+                    RememberClosedRepository(repo, 0);
+
                     _activeWorkspace.Repositories.Clear();
                     _activeWorkspace.ActiveIdx = 0;
 
@@ -326,6 +329,16 @@ namespace SourceGit.ViewModels
             CloseRepositoryInTab(page);
             Pages.RemoveAt(removeIdx);
             GC.Collect();
+        }
+
+        public void ReopenLastClosedTab()
+        {
+            _ = ReopenLastClosedTabAndReportAsync();
+        }
+
+        public void OpenDroppedFolders(string[] paths)
+        {
+            _ = OpenDroppedFoldersAndReportAsync(paths);
         }
 
         public void CloseOtherTabs()
@@ -580,10 +593,194 @@ namespace SourceGit.ViewModels
             return await new Commands.QueryGitDir(repo).GetResultAsync();
         }
 
-        private void CloseRepositoryInTab(LauncherPage page, bool removeFromWorkspace = true)
+        private async Task ReopenLastClosedTabAndReportAsync()
+        {
+            try
+            {
+                await ReopenLastClosedTabAsync();
+            }
+            catch (Exception ex)
+            {
+                App.LogException(ex);
+            }
+        }
+
+        private async Task OpenDroppedFoldersAndReportAsync(string[] paths)
+        {
+            try
+            {
+                await OpenDroppedFoldersAsync(paths);
+            }
+            catch (Exception ex)
+            {
+                App.LogException(ex);
+            }
+        }
+
+        private async Task OpenDroppedFoldersAsync(string[] paths)
+        {
+            if (paths == null || paths.Length == 0)
+                return;
+
+            if (!Preferences.Instance.IsGitConfigured())
+            {
+                Models.Notification.Send(null, App.Text("NotConfigured"), true);
+                return;
+            }
+
+            var fileCount = 0;
+            foreach (var path in paths)
+            {
+                if (string.IsNullOrWhiteSpace(path))
+                    continue;
+
+                if (!Directory.Exists(path))
+                {
+                    if (File.Exists(path))
+                        fileCount++;
+
+                    continue;
+                }
+
+                await TryOpenRepositoryFolderAsTabAsync(path, "Dropped folder is not a git repository");
+            }
+
+            if (fileCount > 0)
+            {
+                ActivePage.Notifications.Add(new Models.Notification
+                {
+                    Message = fileCount == 1
+                        ? "Dropped item is a file. Please drop a git repository folder."
+                        : $"Dropped {fileCount} files. Please drop git repository folders.",
+                    IsError = true,
+                });
+            }
+        }
+
+        private async Task<bool> TryOpenRepositoryFolderAsTabAsync(string path, string invalidMessage)
+        {
+            if (!Preferences.Instance.IsGitConfigured())
+            {
+                Models.Notification.Send(null, App.Text("NotConfigured"), true);
+                return false;
+            }
+
+            var isBare = await new Commands.IsBareRepository(path).GetResultAsync();
+            if (isBare)
+            {
+                var node = Preferences.Instance.FindOrAddNodeByRepositoryPath(path, null, false);
+                Welcome.Instance.Refresh();
+                await OpenRepositoryInTabAsync(node, null);
+                return true;
+            }
+
+            var test = await new Commands.QueryRepositoryRootPath(path).GetResultAsync();
+            if (test.IsSuccess && !string.IsNullOrWhiteSpace(test.StdOut))
+            {
+                var node = Preferences.Instance.FindOrAddNodeByRepositoryPath(test.StdOut.Trim(), null, false);
+                Welcome.Instance.Refresh();
+                await OpenRepositoryInTabAsync(node, null);
+                return true;
+            }
+
+            ActivePage.Notifications.Add(new Models.Notification
+            {
+                Message = $"{invalidMessage}: {path}",
+                IsError = true,
+            });
+            return false;
+        }
+
+        private async Task ReopenLastClosedTabAsync()
+        {
+            while (_recentlyClosedRepositories.Count > 0)
+            {
+                var lastIdx = _recentlyClosedRepositories.Count - 1;
+                var repo = _recentlyClosedRepositories[lastIdx];
+                _recentlyClosedRepositories.RemoveAt(lastIdx);
+
+                if (string.IsNullOrWhiteSpace(repo.Repository) || !Directory.Exists(repo.Repository))
+                    continue;
+
+                foreach (var page in Pages)
+                {
+                    if (page.Data is Repository opened &&
+                        string.Equals(NormalizeRepositoryPath(opened.FullPath), repo.Repository, StringComparison.OrdinalIgnoreCase))
+                    {
+                        ActivePage = page;
+                        return;
+                    }
+                }
+
+                await OpenRepositoryInTabAsync(repo.Repository, null);
+
+                var reopened = ActivePage;
+                MoveReopenedPageToOriginalIndex(reopened, repo.Index);
+                FocusReopenedPage(reopened);
+                return;
+            }
+        }
+
+        private void RememberClosedRepository(Repository repo, int index)
+        {
+            if (repo == null || string.IsNullOrWhiteSpace(repo.FullPath))
+                return;
+
+            var path = NormalizeRepositoryPath(repo.FullPath);
+            _recentlyClosedRepositories.RemoveAll(x => string.Equals(x.Repository, path, StringComparison.OrdinalIgnoreCase));
+            _recentlyClosedRepositories.Add(new ClosedRepositoryTab(path, Math.Max(0, index)));
+
+            while (_recentlyClosedRepositories.Count > 30)
+                _recentlyClosedRepositories.RemoveAt(0);
+        }
+
+        private void MoveReopenedPageToOriginalIndex(LauncherPage page, int index)
+        {
+            var fromIdx = Pages.IndexOf(page);
+            if (fromIdx < 0)
+                return;
+
+            var toIdx = Math.Clamp(index, 0, Pages.Count - 1);
+            if (fromIdx == toIdx)
+                return;
+
+            _ignoreIndexChange = true;
+            Pages.Move(fromIdx, toIdx);
+
+            _activeWorkspace.Repositories.Clear();
+            foreach (var p in Pages)
+            {
+                if (p.Data is Repository r)
+                    _activeWorkspace.Repositories.Add(r.FullPath);
+            }
+
+            _ignoreIndexChange = false;
+            PostActivePageChanged();
+        }
+
+        private void FocusReopenedPage(LauncherPage page)
+        {
+            if (page == null || !Pages.Contains(page))
+                return;
+
+            if (_activePage != page)
+                ActivePage = page;
+            else
+                OnPropertyChanged(nameof(ActivePage));
+        }
+
+        private static string NormalizeRepositoryPath(string path)
+        {
+            return path.Replace('\\', '/').TrimEnd('/');
+        }
+
+        private void CloseRepositoryInTab(LauncherPage page, bool removeFromWorkspace = true, bool rememberClosedRepository = true)
         {
             if (page.Data is Repository repo)
             {
+                if (rememberClosedRepository)
+                    RememberClosedRepository(repo, Pages.IndexOf(page));
+
                 if (removeFromWorkspace)
                     _activeWorkspace.Repositories.Remove(repo.FullPath);
 
@@ -669,5 +866,8 @@ namespace SourceGit.ViewModels
         private ICommandPalette _commandPalette;
         private RepositoryNode _subscribedNode;
         private Models.Version _newVersion = null;
+        private readonly List<ClosedRepositoryTab> _recentlyClosedRepositories = new();
+
+        private readonly record struct ClosedRepositoryTab(string Repository, int Index);
     }
 }

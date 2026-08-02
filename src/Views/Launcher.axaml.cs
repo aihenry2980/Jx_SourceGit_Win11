@@ -1,5 +1,8 @@
 ﻿using System;
 
+using System.Collections.Generic;
+using System.IO;
+
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Data;
@@ -44,6 +47,17 @@ namespace SourceGit.Views
                 CaptionHeight = new GridLength(38);
 
             InitializeComponent();
+            DragDrop.SetAllowDrop(this, true);
+            AddHandler(
+                DragDrop.DragOverEvent,
+                OnLauncherDragOver,
+                RoutingStrategies.Tunnel | RoutingStrategies.Bubble,
+                true);
+            AddHandler(
+                DragDrop.DropEvent,
+                OnLauncherDrop,
+                RoutingStrategies.Tunnel | RoutingStrategies.Bubble,
+                true);
             PositionChanged += OnPositionChanged;
 
             if (OperatingSystem.IsWindows() && OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
@@ -76,6 +90,126 @@ namespace SourceGit.Views
             }
 
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        }
+
+        private void OnLauncherDragOver(object sender, DragEventArgs e)
+        {
+            if (e.Handled)
+                return;
+
+            if (HasDroppedFileSystemItems(e))
+            {
+                e.DragEffects = DragDropEffects.Copy;
+                e.Handled = true;
+            }
+        }
+
+        private void OnLauncherDrop(object sender, DragEventArgs e)
+        {
+            if (e.Handled)
+                return;
+
+            if (DataContext is not ViewModels.Launcher launcher)
+                return;
+
+            var items = e.DataTransfer.TryGetFiles() ?? [];
+            var paths = new List<string>();
+            foreach (var item in items)
+            {
+                var path = item.Path.LocalPath;
+                if (string.IsNullOrWhiteSpace(path))
+                    continue;
+
+                paths.Add(path);
+            }
+
+            if (paths.Count > 0)
+            {
+                launcher.OpenDroppedFolders(paths.ToArray());
+                e.DragEffects = DragDropEffects.Copy;
+                e.Handled = true;
+            }
+        }
+
+        private static bool HasDroppedFileSystemItems(DragEventArgs e)
+        {
+            if (!e.DataTransfer.Contains(DataFormat.File))
+                return false;
+
+            var items = e.DataTransfer.TryGetFiles() ?? [];
+            foreach (var item in items)
+            {
+                var path = item.Path.LocalPath;
+                if (Directory.Exists(path) || File.Exists(path))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private void OnMainMenuOpened(object sender, EventArgs e)
+        {
+            var repos = DataContext is ViewModels.Launcher launcher
+                ? new ViewModels.LauncherPagesCommandPalette(launcher).VisibleRepos
+                : [];
+            OpenRecentReposHeader.Header = "Open Recent Repos";
+            OpenRecentReposHeader.Items.Clear();
+            if (repos.Count == 0)
+            {
+                OpenRecentReposHeader.Items.Add(new MenuItem { Header = "(none)", IsEnabled = false });
+            }
+            else
+            {
+                for (var i = 0; i < repos.Count && i < 10; i++)
+                    OpenRecentReposHeader.Items.Add(CreateRecentRepositoryMenuItem(repos[i], false));
+            }
+
+            var items = new[] { RecentRepo0, RecentRepo1, RecentRepo2, RecentRepo3, RecentRepo4 };
+            var bookmarks = new[] { RecentRepo0Bookmark, RecentRepo1Bookmark, RecentRepo2Bookmark, RecentRepo3Bookmark, RecentRepo4Bookmark };
+            for (var i = 0; i < items.Length; i++)
+            {
+                var item = items[i];
+                var bookmark = bookmarks[i];
+                if (i >= repos.Count)
+                {
+                    item.IsVisible = false;
+                    item.CommandParameter = null;
+                    bookmark.Value = 0;
+                    ToolTip.SetTip(item, null);
+                    continue;
+                }
+
+                var repo = repos[i];
+                item.Header = repo.Name;
+                item.CommandParameter = repo;
+                bookmark.Value = repo.Bookmark;
+                item.IsVisible = true;
+                ToolTip.SetTip(item, repo.Id);
+            }
+        }
+
+        private void OnOpenRecentRepository(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem { CommandParameter: ViewModels.RepositoryNode repo } &&
+                DataContext is ViewModels.Launcher launcher)
+            {
+                launcher.OpenRepositoryInTab(repo, null);
+                e.Handled = true;
+            }
+        }
+
+        private MenuItem CreateRecentRepositoryMenuItem(ViewModels.RepositoryNode repo, bool indented)
+        {
+            var item = new MenuItem
+            {
+                Header = repo.Name,
+                Icon = new Bookmark { Width = 12, Height = 12, Value = repo.Bookmark },
+                CommandParameter = repo,
+                Margin = indented ? new Thickness(16, 0, 0, 0) : default,
+            };
+            item.Click += OnOpenRecentRepository;
+            ToolTip.SetTip(item, repo.Id);
+            return item;
         }
 
         public void BringToTop()
@@ -240,6 +374,13 @@ namespace SourceGit.Views
                         vm.AddNewTab();
 
                     ViewModels.Welcome.Instance.OpenLocalRepository();
+                    e.Handled = true;
+                    return;
+                }
+
+                if (e.Key == Key.T && e.KeyModifiers == (cmdKey | KeyModifiers.Shift))
+                {
+                    vm.ReopenLastClosedTab();
                     e.Handled = true;
                     return;
                 }

@@ -130,14 +130,16 @@
         </StackPanel>
       </Border>
 
-      <ListBox Grid.Row="3"
+      <ListBox x:Name="ModuleList"
+               Grid.Row="3"
                MaxHeight="420"
                Background="{DynamicResource Brush.Contents}"
                BorderThickness="0,0,1,0"
                BorderBrush="{DynamicResource Brush.Border0}"
                ItemsSource="{Binding Nodes}"
                SelectedItem="{Binding SelectedNode, Mode=TwoWay}"
-               SelectionMode="AlwaysSelected">
+               SelectionMode="AlwaysSelected"
+               KeyDown="OnModuleListKeyDown">
         <ListBox.Styles>
           <Style Selector="ListBoxItem">
             <Setter Property="MinHeight" Value="46"/>
@@ -175,10 +177,10 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                   <DataTemplate DataType="vm:SubmoduleCommitFlowHierarchyDot">
-                    <Ellipse Width="3.5"
-                             Height="3.5"
-                             Margin="7,0,7.5,0"
-                             Fill="#CCFF3B30"/>
+                    <Ellipse Width="7"
+                             Height="7"
+                             Margin="5.5,0"
+                             Fill="#E85D5B"/>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
@@ -315,7 +317,8 @@
           </WrapPanel>
         </Border>
 
-        <v:ChangeCollectionView Grid.Row="2"
+        <v:ChangeCollectionView x:Name="ChangesList"
+                                Grid.Row="2"
                                 IsUnstagedChange="True"
                                 Background="{DynamicResource Brush.Contents}"
                                 ViewMode="List"

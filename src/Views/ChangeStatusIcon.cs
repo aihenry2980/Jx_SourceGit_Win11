@@ -56,7 +56,11 @@ namespace SourceGit.Views
                 return;
 
             var typeface = new Typeface("fonts:SourceGit#JetBrains Mono NL");
-            var idx = (int)(_isUnstagedChange ? _change.WorkTree : _change.Index);
+            var state = _isUnstagedChange ? _change.WorkTree : _change.Index;
+            if (state == Models.ChangeState.None)
+                state = _change.WorkTree != Models.ChangeState.None ? _change.WorkTree : _change.Index;
+
+            var idx = (int)state;
             var isSubmodulePointerChange = _change.IsSubmodulePointerChange;
             var indicator = isSubmodulePointerChange ? SUBMODULE_POINTER_INDICATOR : INDICATOR[idx];
             var color = isSubmodulePointerChange ? SUBMODULE_POINTER_COLOR : COLOR[idx];

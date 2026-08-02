@@ -2141,6 +2141,7 @@ namespace SourceGit.Views
             AddLevel1BranchFilterModeMenuItem(menu, filterModeVm, actionBackground);
             AddLevel1CheckoutBranchMenuItem(menu, repo, branch, branch.Name, actionBackground);
             AddLevel1SetRebaseBaseBranchMenuItem(menu, repo, branch, actionBackground);
+            AddLevel1MergeBranchMenuItem(menu, repo, branch, current, merged, actionBackground);
             AddLevel1PushBranchMenuItem(menu, repo, branch, actionBackground);
             AddLevel1CheckoutRebaseAndForcePushMenuItem(menu, repo, branch, actionBackground);
             AddLevel1ForcePushBranchMenuItem(menu, repo, branch, actionBackground);
@@ -2205,6 +2206,7 @@ namespace SourceGit.Views
             AddLevel1BranchFilterModeMenuItem(menu, filterModeVm, actionBackground, remoteIndent);
             AddLevel1CheckoutBranchMenuItem(menu, repo, branch, name, actionBackground, remoteIndent);
             AddLevel1SetRebaseBaseBranchMenuItem(menu, repo, branch, actionBackground, remoteIndent);
+            AddLevel1MergeBranchMenuItem(menu, repo, branch, current, merged, actionBackground, remoteIndent);
             AddLevel1CopyBranchNameMenuItem(menu, name, actionBackground, remoteIndent);
         }
 
@@ -2235,6 +2237,25 @@ namespace SourceGit.Views
                 e.Handled = true;
             };
             menu.Items.Add(checkout);
+        }
+
+        private static void AddLevel1MergeBranchMenuItem(ContextMenu menu, ViewModels.Repository repo, Models.Branch branch, Models.Branch current, bool merged, IBrush background, Thickness? margin = null)
+        {
+            var merge = new MenuItem();
+            merge.Classes.Add("branch_action");
+            merge.Header = App.Text("BranchCM.Merge", branch.FriendlyName, current.Name);
+            merge.Icon = CreateBranchActionIcon(merge, "Icons.Merge");
+            merge.IsEnabled = !repo.IsBare && !merged;
+            merge.Background = background;
+            if (margin.HasValue)
+                merge.Margin = margin.Value;
+            merge.Click += (_, e) =>
+            {
+                if (repo.CanCreatePopup())
+                    repo.ShowPopup(new ViewModels.Merge(repo, branch, current.Name, false));
+                e.Handled = true;
+            };
+            menu.Items.Add(merge);
         }
 
         private static void AddLevel1PushBranchMenuItem(ContextMenu menu, ViewModels.Repository repo, Models.Branch branch, IBrush background)

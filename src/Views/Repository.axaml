@@ -291,13 +291,16 @@
                             Padding="9,0"
                             CornerRadius="9"
                             VerticalAlignment="Center"
-                            Background="{DynamicResource Brush.Badge}">
+                            Background="#FFFF3B30"
+                            BorderBrush="White"
+                            BorderThickness="1">
                       <Border.IsVisible>
                         <Binding Path="LocalChangesCount" Converter="{x:Static c:IntConverters.IsGreaterThanZero}"/>
                       </Border.IsVisible>
                       <TextBlock Text="{Binding LocalChangesCount, Mode=OneWay}"
-                                 Foreground="{DynamicResource Brush.BadgeFG}"
+                                 Foreground="White"
                                  FontFamily="{DynamicResource Fonts.Monospace}"
+                                 FontWeight="Bold"
                                  FontSize="10"/>
                     </Border>
                     <Path Width="12"

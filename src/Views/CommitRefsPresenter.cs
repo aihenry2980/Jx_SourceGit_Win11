@@ -637,23 +637,16 @@ namespace SourceGit.Views
                     rect);
 
                 var localBackground = item.TrackingLocalBackground ?? item.Brush;
-                var curve = new StreamGeometry();
-                using (var geo = curve.Open())
+                var localArea = new StreamGeometry();
+                using (var geo = localArea.Open())
                 {
-                    var leftY = rect.Top + rect.Height * 0.66;
-                    var rightY = rect.Top + rect.Height * 0.66;
-                    var controlY = rect.Bottom - rect.Height * 0.06;
-
-                    geo.BeginFigure(new Point(rect.Left, leftY), true);
-                    geo.QuadraticBezierTo(
-                        new Point(rect.Left + rect.Width * 0.5, controlY),
-                        new Point(rect.Right, rightY));
+                    geo.BeginFigure(rect.BottomLeft, true);
+                    geo.LineTo(rect.TopRight);
                     geo.LineTo(rect.BottomRight);
-                    geo.LineTo(rect.BottomLeft);
                     geo.EndFigure(true);
                 }
 
-                context.DrawGeometry(localBackground, null, curve);
+                context.DrawGeometry(localBackground, null, localArea);
             }
         }
 

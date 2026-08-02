@@ -10,10 +10,10 @@
              x:DataType="vm:Repository">
   <UserControl.Styles>
     <Style Selector="TextBlock.toolbar_label">
-      <Setter Property="FontSize" Value="9"/>
+      <Setter Property="FontSize" Value="13.5"/>
       <Setter Property="HorizontalAlignment" Value="Center"/>
       <Setter Property="TextAlignment" Value="Center"/>
-      <Setter Property="MaxWidth" Value="56"/>
+      <Setter Property="MaxWidth" Value="78"/>
       <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
     </Style>
     <Style Selector="TextBlock.tooltip_cmd">
@@ -412,7 +412,7 @@
               Tag="StashAll"
               ContextRequested="OnToolbarGitButtonContextRequested"
               PointerPressed="OnToolbarGitButtonPointerPressed"
-              IsVisible="{Binding !IsBare}">
+              IsVisible="False">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Stash all current working-tree and index changes into a temporary WIP snapshot." TextWrapping="Wrap" MaxWidth="960"/>
@@ -430,7 +430,7 @@
       </Button>
       <Button Width="0" Height="0" Click="StashAllByHotKey" IsVisible="False" IsEnabled="{Binding !IsBare}" HotKey="{OnPlatform Ctrl+Alt+S, macOS=⌘+⌥+S}"/>
 
-      <Button Classes="icon_button" Width="32" Margin="16,0,0,0" Command="{Binding ApplyPatch}" IsVisible="{Binding !IsBare}" ToolTip.Tip="{DynamicResource Text.Apply.Title}">
+      <Button Classes="icon_button" Width="32" Margin="16,0,0,0" Command="{Binding ApplyPatch}" IsVisible="False" ToolTip.Tip="{DynamicResource Text.Apply.Title}">
         <Path Width="14" Height="14" Data="{StaticResource Icons.ApplyPatch}"/>
       </Button>
 

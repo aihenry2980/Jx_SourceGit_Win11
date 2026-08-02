@@ -124,6 +124,15 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
+        private void OnModuleListKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key != Key.Tab || e.KeyModifiers != KeyModifiers.None)
+                return;
+
+            ChangesList.TakeFocus();
+            e.Handled = true;
+        }
+
         private void OnNodeDoubleTapped(object sender, TappedEventArgs e)
         {
             if (DataContext is ViewModels.SubmoduleCommitFlow vm &&

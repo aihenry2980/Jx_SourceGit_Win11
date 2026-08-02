@@ -2007,15 +2007,15 @@ namespace SourceGit.Views
 
             var buttonWidth = density switch
             {
-                ToolbarDensity.Narrow => 48,
-                ToolbarDensity.Compact => 52,
-                _ => 56,
+                ToolbarDensity.Narrow => 56,
+                ToolbarDensity.Compact => 62,
+                _ => 68,
             };
             var utilityButtonWidth = density switch
             {
-                ToolbarDensity.Narrow => 36,
-                ToolbarDensity.Compact => 40,
-                _ => 44,
+                ToolbarDensity.Narrow => 48,
+                ToolbarDensity.Compact => 54,
+                _ => 60,
             };
             var primaryGap = density switch
             {

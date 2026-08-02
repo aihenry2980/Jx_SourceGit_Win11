@@ -304,8 +304,18 @@ namespace SourceGit.Views
         public void TakeFocus()
         {
             var container = this.FindDescendantOfType<ChangeCollectionContainer>();
-            if (container is { IsFocused: false })
-                container.Focus();
+            if (container == null)
+                return;
+
+            if (container.SelectedItem == null && container.Items.Count > 0)
+            {
+                var first = container.Items[0];
+                container.SelectedItem = first;
+                container.ScrollIntoView(first);
+            }
+
+            if (!container.IsFocused)
+                container.Focus(NavigationMethod.Tab);
         }
 
         public bool ToggleCommitIncludeForSelectedItems(ListBox list)
@@ -602,7 +612,7 @@ namespace SourceGit.Views
             var tip = new TextBlock() { TextWrapping = TextWrapping.Wrap };
             tip.Inlines!.Add(new Run(change.Path));
             tip.Inlines!.Add(new Run(" • ") { Foreground = Brushes.Gray });
-            tip.Inlines!.Add(new Run(IsUnstagedChange ? change.WorkTreeDesc : change.IndexDesc) { Foreground = Brushes.Gray });
+            tip.Inlines!.Add(new Run(GetDisplayChangeStateDesc(change, IsUnstagedChange)) { Foreground = Brushes.Gray });
             if (change.IsConflicted)
             {
                 tip.Inlines!.Add(new Run(" • ") { Foreground = Brushes.Gray });
@@ -610,6 +620,26 @@ namespace SourceGit.Views
             }
 
             ToolTip.SetTip(control, tip);
+        }
+
+        private static string GetDisplayChangeStateDesc(Models.Change change, bool isUnstagedChange)
+        {
+            var state = isUnstagedChange ? change.WorkTree : change.Index;
+            if (state == Models.ChangeState.None)
+                state = change.WorkTree != Models.ChangeState.None ? change.WorkTree : change.Index;
+
+            return state switch
+            {
+                Models.ChangeState.Modified => "Modified",
+                Models.ChangeState.TypeChanged => "Type Changed",
+                Models.ChangeState.Added => "Added",
+                Models.ChangeState.Deleted => "Deleted",
+                Models.ChangeState.Renamed => "Renamed",
+                Models.ChangeState.Copied => "Copied",
+                Models.ChangeState.Untracked => "Untracked",
+                Models.ChangeState.Conflicted => "Conflict",
+                _ => "Unknown",
+            };
         }
 
         private bool _isUnstagedChange = false;
