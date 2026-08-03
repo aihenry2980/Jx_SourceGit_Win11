@@ -249,7 +249,7 @@
       </Button>
       <Button Width="0" Height="0" Click="PullDirectlyByHotKey" IsVisible="False" IsEnabled="{Binding !IsBare}" HotKey="{OnPlatform Ctrl+Shift+Down, macOS=⌘+Shift+Down}"/>
 
-      <Button x:Name="SyncAllButton" Classes="icon_button" Width="56" Margin="8,0,0,0" Tapped="SyncAll" Tag="SyncAll" ContextRequested="OnSyncAllContextRequested" PointerPressed="OnSyncAllPointerPressed" IsVisible="{Binding !IsBare}" IsEnabled="{Binding !IsBare}">
+      <Button x:Name="SyncAllButton" Classes="icon_button" Width="56" Margin="8,0,0,0" Tapped="SyncAll" Tag="SyncAll" ContextRequested="OnSyncAllContextRequested" PointerPressed="OnSyncAllPointerPressed" IsVisible="False" IsEnabled="{Binding !IsBare}">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Click: pull current branch, then update selected submodules recursively." TextWrapping="Wrap" MaxWidth="960"/>

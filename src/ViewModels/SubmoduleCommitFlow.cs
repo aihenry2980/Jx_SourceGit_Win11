@@ -15,7 +15,7 @@ namespace SourceGit.ViewModels
 {
     public class SubmoduleCommitFlow : ObservableObject
     {
-        private const int MAX_SCAN_DEPTH = 4;
+        private const int MAX_SCAN_DEPTH = 5;
         private const int MAX_SCAN_NODES = 200;
 
         public List<SubmoduleCommitFlowNode> Nodes
@@ -109,6 +109,12 @@ namespace SourceGit.ViewModels
         public string CommitIncludeSummary => ExcludedChangeCount > 0
             ? $"{IncludedChangeCount}/{_changes.Count} selected, {ExcludedChangeCount} skipped"
             : $"{IncludedChangeCount}/{_changes.Count} selected";
+
+        public Models.ChangeViewMode ChangeViewMode
+        {
+            get => _changeViewMode;
+            set => SetProperty(ref _changeViewMode, value);
+        }
 
         public List<SubmoduleCommitFlowChainStep> ParentChainSteps
         {
@@ -660,15 +666,22 @@ namespace SourceGit.ViewModels
             var submodules = await new Commands.QuerySubmodules(_repo.FullPath, queryDepth, false, maxSubmodules + 1)
                 .GetResultAsync()
                 .ConfigureAwait(false);
-            var limitedSubmodules = submodules
+            var normalizedSubmodules = submodules
                 .Select(x => new { Submodule = x, Path = NormalizePath(x.Path) })
-                .Where(x => GetSubmoduleDepth(x.Path) <= MAX_SCAN_DEPTH)
+                .Where(x => !string.IsNullOrWhiteSpace(x.Path))
+                .ToList();
+            var submodulePaths = normalizedSubmodules
+                .Select(x => x.Path)
+                .ToHashSet(StringComparer.Ordinal);
+            var submoduleDepthMemo = new Dictionary<string, int>(StringComparer.Ordinal);
+            var limitedSubmodules = normalizedSubmodules
+                .Where(x => GetSubmoduleChainDepth(x.Path, submodulePaths, submoduleDepthMemo) <= MAX_SCAN_DEPTH)
                 .OrderBy(x => x.Path, StringComparer.Ordinal)
                 .Take(maxSubmodules)
                 .Select(x => x.Submodule)
                 .ToList();
-            var wasDepthLimited = submodules.Exists(x => GetSubmoduleDepth(NormalizePath(x.Path)) > MAX_SCAN_DEPTH);
-            var wasNodeLimited = submodules.Count(x => GetSubmoduleDepth(NormalizePath(x.Path)) <= MAX_SCAN_DEPTH) > maxSubmodules;
+            var wasDepthLimited = normalizedSubmodules.Exists(x => GetSubmoduleChainDepth(x.Path, submodulePaths, submoduleDepthMemo) > MAX_SCAN_DEPTH);
+            var wasNodeLimited = normalizedSubmodules.Count(x => GetSubmoduleChainDepth(x.Path, submodulePaths, submoduleDepthMemo) <= MAX_SCAN_DEPTH) > maxSubmodules;
 
             foreach (var submodule in limitedSubmodules)
             {
@@ -677,6 +690,7 @@ namespace SourceGit.ViewModels
                     continue;
 
                 var parentPath = GetParentPath(path, nodesByPath);
+                var parentNode = nodesByPath[parentPath];
                 var node = new SubmoduleCommitFlowNode()
                 {
                     Name = Path.GetFileName(path),
@@ -684,11 +698,11 @@ namespace SourceGit.ViewModels
                     ParentDisplayPath = string.IsNullOrEmpty(parentPath) ? "root" : parentPath,
                     SubmodulePathInParent = path.Substring(parentPath.Length).TrimStart('/'),
                     RepoPath = Native.OS.GetAbsPath(_repo.FullPath, path),
-                    Depth = path.Count(c => c == '/') + 1,
+                    Depth = parentNode.Depth + 1,
                 };
 
                 nodesByPath[path] = node;
-                nodesByPath[parentPath].Children.Add(node);
+                parentNode.Children.Add(node);
             }
 
             var nodes = new List<SubmoduleCommitFlowNode>();
@@ -1008,18 +1022,12 @@ namespace SourceGit.ViewModels
         private static string BuildSubmodulePointerCommitMessage(SubmoduleCommitFlowNode node, List<string> paths)
         {
             if (paths.Count == 1)
-            {
-                var path = paths[0];
-                var child = node.Children.Find(x => x.SubmodulePathInParent.Equals(path, StringComparison.Ordinal));
-                return child != null && !string.IsNullOrWhiteSpace(child.Head)
-                    ? $"Peg {path} SPP to {child.HeadShort}"
-                    : $"Peg {path} SPP";
-            }
+                return $"Submodule Update ({paths[0]})";
 
             if (paths.Count <= 3)
-                return $"Peg {string.Join(", ", paths)} SPP";
+                return $"Submodule Update ({string.Join(", ", paths)})";
 
-            return $"Peg {paths.Count} submodule SPP updates";
+            return $"Submodule Update ({paths.Count})";
         }
 
         private static string PrefixIssueTagFromBranchOrChildren(SubmoduleCommitFlowNode node, List<string> paths, string message)
@@ -1397,14 +1405,38 @@ namespace SourceGit.ViewModels
             }
         }
 
+        private static string GetParentPath(string path, HashSet<string> known)
+        {
+            var test = path;
+            while (true)
+            {
+                var idx = test.LastIndexOf('/');
+                if (idx <= 0)
+                    return string.Empty;
+
+                test = test.Substring(0, idx);
+                if (known.Contains(test))
+                    return test;
+            }
+        }
+
         private static string NormalizePath(string path)
         {
             return (path ?? string.Empty).Replace('\\', '/').Trim('/');
         }
 
-        private static int GetSubmoduleDepth(string path)
+        private static int GetSubmoduleChainDepth(string path, HashSet<string> known, Dictionary<string, int> memo)
         {
-            return string.IsNullOrWhiteSpace(path) ? 0 : path.Count(c => c == '/') + 1;
+            if (string.IsNullOrWhiteSpace(path))
+                return 0;
+
+            if (memo.TryGetValue(path, out var depth))
+                return depth;
+
+            var parentPath = GetParentPath(path, known);
+            depth = string.IsNullOrEmpty(parentPath) ? 1 : GetSubmoduleChainDepth(parentPath, known, memo) + 1;
+            memo[path] = depth;
+            return depth;
         }
 
         private static string ShortenSHA(string sha)
@@ -1645,6 +1677,7 @@ namespace SourceGit.ViewModels
         private List<Models.Change> _changes = [];
         private List<Models.Change> _selectedChanges = [];
         private List<SubmoduleCommitFlowChainStep> _parentChainSteps = [];
+        private Models.ChangeViewMode _changeViewMode = Models.ChangeViewMode.Tree;
         private object _detailContext = null;
         private string _commitMessage = string.Empty;
         private string _summary = string.Empty;

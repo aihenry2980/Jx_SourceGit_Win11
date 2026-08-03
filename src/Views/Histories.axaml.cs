@@ -1016,7 +1016,7 @@ namespace SourceGit.Views
                 }
                 else if (selected.Count == 1)
                 {
-                    var menu = CreateContextMenuForSingleCommit(repo, commits[0], IsCommitSHAContextSource(e.Source));
+                    var menu = CreateContextMenuForSingleCommit(repo, commits[0], IsCommitSHAContextSource(e.Source), GetPreferredDecoratorFromContextSource(e));
                     menu.Open(CommitListContainer);
                 }
             }
@@ -1374,7 +1374,62 @@ namespace SourceGit.Views
             return true;
         }
 
-        private ContextMenu CreateContextMenuForSingleCommit(ViewModels.Repository repo, Models.Commit commit, bool copySHAAtTop)
+        private static Models.Decorator GetPreferredDecoratorFromContextSource(ContextRequestedEventArgs e)
+        {
+            if (e.Source is CommitRefsPresenter presenter &&
+                e.TryGetPosition(presenter, out var point))
+            {
+                return presenter.DecoratorAt(point);
+            }
+
+            return null;
+        }
+
+        private static IEnumerable<Models.Decorator> OrderDecoratorsForContextMenu(
+            List<Models.Decorator> decorators,
+            Models.Decorator preferred)
+        {
+            if (decorators == null)
+                yield break;
+
+            if (IsBranchDecorator(preferred))
+            {
+                var preferredIndex = decorators.FindIndex(x => IsSameDecorator(x, preferred));
+                if (preferredIndex >= 0)
+                    yield return decorators[preferredIndex];
+
+                for (var i = 0; i < decorators.Count; i++)
+                {
+                    if (i != preferredIndex && !IsBranchDecorator(decorators[i]))
+                        yield return decorators[i];
+                }
+            }
+            else
+            {
+                foreach (var decorator in decorators)
+                    yield return decorator;
+            }
+        }
+
+        private static bool IsSameDecorator(Models.Decorator lhs, Models.Decorator rhs)
+        {
+            return lhs != null &&
+                rhs != null &&
+                lhs.Type == rhs.Type &&
+                lhs.Name.Equals(rhs.Name, StringComparison.Ordinal);
+        }
+
+        private static bool IsBranchDecorator(Models.Decorator decorator)
+        {
+            return decorator is
+            {
+                Type: Models.DecoratorType.CurrentBranchHead or
+                    Models.DecoratorType.LocalBranchHead or
+                    Models.DecoratorType.RemoteBranchHead,
+            };
+        }
+
+        private ContextMenu CreateContextMenuForSingleCommit(ViewModels.Repository repo, Models.Commit commit, bool copySHAAtTop, Models.Decorator preferredDecorator = null)
         {
             var current = repo.CurrentBranch;
             var vm = DataContext as ViewModels.Histories;
@@ -1401,7 +1456,7 @@ namespace SourceGit.Views
 
             if (commit.HasDecorators)
             {
-                foreach (var d in commit.Decorators)
+                foreach (var d in OrderDecoratorsForContextMenu(commit.Decorators, preferredDecorator))
                 {
                     switch (d.Type)
                     {

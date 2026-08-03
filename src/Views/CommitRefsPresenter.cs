@@ -4,6 +4,7 @@ using System.Globalization;
 
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Media;
 
 namespace SourceGit.Views
@@ -36,6 +37,7 @@ namespace SourceGit.Views
             public bool IsHead { get; set; } = false;
             public bool IsCurrentCommitHead { get; set; } = false;
             public bool IsBranch { get; set; } = false;
+            public bool IsAbbreviated { get; set; } = false;
             public bool UseSolidBackground { get; set; } = false;
             public bool CanFold { get; set; } = false;
             public bool IsFolded { get; set; } = false;
@@ -165,6 +167,28 @@ namespace SourceGit.Views
 
             decorator = item.Decorator;
             return decorator != null;
+        }
+
+        protected override void OnPointerMoved(PointerEventArgs e)
+        {
+            base.OnPointerMoved(e);
+
+            if (TryGetItemAtPoint(e.GetPosition(this), out var item, out _) &&
+                item.IsBranch &&
+                !string.IsNullOrWhiteSpace(item.RawLabel))
+            {
+                ToolTip.SetTip(this, item.RawLabel);
+            }
+            else
+            {
+                ToolTip.SetTip(this, null);
+            }
+        }
+
+        protected override void OnPointerExited(PointerEventArgs e)
+        {
+            base.OnPointerExited(e);
+            ToolTip.SetTip(this, null);
         }
 
         public override void Render(DrawingContext context)
@@ -431,8 +455,10 @@ namespace SourceGit.Views
                     var labelTypeface = isHead || isSuperProjectPointer ? typefaceBold : typeface;
                     var labelSizeForItem = isHead ? labelSize + 1 : labelSize;
                     FormattedText prefixLabel = null;
-                    var labelText = decorator.Name;
-                    if (decorator.Type == Models.DecoratorType.RemoteBranchHead)
+                    var labelText = isMutedIncidentalBranch
+                        ? AbbreviateMutedBranchName(decorator.Name)
+                        : decorator.Name;
+                    if (!isMutedIncidentalBranch && decorator.Type == Models.DecoratorType.RemoteBranchHead)
                     {
                         var slashIdx = decorator.Name.IndexOf('/');
                         if (slashIdx > 0 && slashIdx + 1 < decorator.Name.Length)
@@ -477,6 +503,7 @@ namespace SourceGit.Views
                         IsHead = isHead,
                         IsCurrentCommitHead = isCurrentCommitHead,
                         IsBranch = isBranch,
+                        IsAbbreviated = isMutedIncidentalBranch,
                         Decorator = decorator,
                     };
 
@@ -698,7 +725,7 @@ namespace SourceGit.Views
         private void DrawLabelHighlights(DrawingContext context, RenderItem item, double x, double y)
         {
             var query = HighlightText;
-            if (string.IsNullOrWhiteSpace(query) || string.IsNullOrEmpty(item.RawLabel))
+            if (item.IsAbbreviated || string.IsNullOrWhiteSpace(query) || string.IsNullOrEmpty(item.RawLabel))
                 return;
 
             var start = 0;
@@ -838,6 +865,15 @@ namespace SourceGit.Views
             return slashIdx >= 0 && slashIdx + 1 < remoteName.Length
                 ? remoteName.Substring(slashIdx + 1)
                 : remoteName;
+        }
+
+        private static string AbbreviateMutedBranchName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return string.Empty;
+
+            const int tailLength = 12;
+            return name.Length > tailLength + 3 ? $"...{name.Substring(name.Length - tailLength)}" : name;
         }
 
         private List<RenderItem> _items = new List<RenderItem>();

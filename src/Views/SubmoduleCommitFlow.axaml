@@ -299,6 +299,11 @@
                        Text="{Binding CommitIncludeSummary}"
                        TextTrimming="CharacterEllipsis"/>
 
+            <v:ChangeViewModeSwitcher Width="28"
+                                      Height="24"
+                                      Margin="0,2,4,2"
+                                      ViewMode="{Binding ChangeViewMode, Mode=TwoWay}"/>
+
             <Button Classes="flat"
                     Height="24"
                     Margin="0,2,4,2"
@@ -321,7 +326,7 @@
                                 Grid.Row="2"
                                 IsUnstagedChange="True"
                                 Background="{DynamicResource Brush.Contents}"
-                                ViewMode="List"
+                                ViewMode="{Binding ChangeViewMode, Mode=TwoWay}"
                                 ShowCommitIncludeCheckBoxes="True"
                                 CommitIncludeToggled="OnCommitIncludeToggled"
                                 EnableCompactFolders="{Binding Source={x:Static vm:Preferences.Instance}, Path=EnableCompactFoldersInChangesTree}"
