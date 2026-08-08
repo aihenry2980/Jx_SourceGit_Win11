@@ -165,6 +165,29 @@
       </Button>
       <Button Width="0" Height="0" Click="QuickFetchByHotKey" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+F, macOS=⌘+⌥+F}"/>
 
+      <Button x:Name="FastFetchButton"
+              Classes="icon_button"
+              Width="56"
+              Margin="8,0,0,0"
+              Tapped="FastFetch"
+              IsVisible="{Binding !IsBare}"
+              IsEnabled="{Binding !IsBare}">
+        <ToolTip.Tip>
+          <StackPanel Orientation="Vertical">
+            <TextBlock Text="Fetch only the current branch's origin tracking ref." TextWrapping="Wrap" MaxWidth="520"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="Uses one exact refspec instead of updating every origin branch. No tags, prune, or submodules are touched." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="520"/>
+            <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git fetch --progress --verbose --no-tags origin refs/heads/&lt;branch&gt;:refs/remotes/origin/&lt;branch&gt;"/>
+          </StackPanel>
+        </ToolTip.Tip>
+
+        <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
+          <Border Background="#FF2563EB" CornerRadius="5" Padding="4">
+            <Path Width="14" Height="14" HorizontalAlignment="Center" Fill="White" Data="{StaticResource Icons.Lightning}"/>
+          </Border>
+          <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Fast Fetch"/>
+        </StackPanel>
+      </Button>
+
       <Button x:Name="FetchButton"
               Classes="icon_button"
               Width="56"
@@ -469,6 +492,12 @@
           <TextBlock Classes="toolbar_label" Text="Actions"/>
         </StackPanel>
       </Button>
+
+      <StackPanel x:Name="CustomActionSlots" Orientation="Horizontal">
+        <Button x:Name="CustomActionSlot0Button" Classes="icon_button" Width="68" Margin="8,0,0,0" Click="ExecuteToolbarCustomAction" Tag="0"/>
+        <Button x:Name="CustomActionSlot1Button" Classes="icon_button" Width="68" Margin="8,0,0,0" Click="ExecuteToolbarCustomAction" Tag="1"/>
+        <Button x:Name="CustomActionSlot2Button" Classes="icon_button" Width="68" Margin="8,0,0,0" Click="ExecuteToolbarCustomAction" Tag="2"/>
+      </StackPanel>
 
       <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Click="Cleanup" IsVisible="False">
         <ToolTip.Tip>

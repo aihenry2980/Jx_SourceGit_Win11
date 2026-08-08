@@ -25,6 +25,7 @@ namespace SourceGit.ViewModels
         public string RepoPath { get; set; } = string.Empty;
         public string ParentDisplayPath { get; set; } = string.Empty;
         public string SubmodulePathInParent { get; set; } = string.Empty;
+        public string DisplayName => DisplayPath == "root" ? "root" : SubmodulePathInParent;
         public int Depth { get; set; } = 0;
         public double Indent => Depth * 18;
         public List<SubmoduleCommitFlowHierarchyDot> HierarchyDots => Enumerable

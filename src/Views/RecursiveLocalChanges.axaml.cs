@@ -107,12 +107,30 @@ namespace SourceGit.Views
                 return;
 
             var confirmed = await App.AskConfirmAsync(
+                this,
                 $"Revert all {entry.Changes.Count} listed change{(entry.Changes.Count == 1 ? string.Empty : "s")} in '{entry.DisplayName}'?\n\nThis cannot be undone.",
                 Models.ConfirmButtonType.YesNo);
             if (!confirmed)
                 return;
 
             await RevertChangesAsync(vm, () => vm.RevertRepositoryChangesAsync(entry));
+            e.Handled = true;
+        }
+
+        private async void OnRevertAllChangesRecursively(object _, RoutedEventArgs e)
+        {
+            if (DataContext is not ViewModels.RecursiveLocalChanges vm || !vm.CanRevertAllChanges)
+                return;
+
+            var repositoryText = vm.AllRepositoryCount == 1 ? "repository" : "repositories";
+            var confirmed = await App.AskConfirmAsync(
+                this,
+                $"Revert all {vm.AllChangeCount} change{(vm.AllChangeCount == 1 ? string.Empty : "s")} across {vm.AllRepositoryCount} {repositoryText} recursively?\n\nThis includes changes hidden by extension filters and cannot be undone.",
+                Models.ConfirmButtonType.YesNo);
+            if (!confirmed)
+                return;
+
+            await RevertChangesAsync(vm, vm.RevertAllChangesRecursivelyAsync);
             e.Handled = true;
         }
 
@@ -143,6 +161,7 @@ namespace SourceGit.Views
             revert.Click += async (_, ev) =>
             {
                 var confirmed = await App.AskConfirmAsync(
+                    this,
                     $"Revert '{change.Path}' in '{entry.DisplayName}'?\n\nThis cannot be undone.",
                     Models.ConfirmButtonType.YesNo);
                 if (confirmed)
@@ -175,6 +194,13 @@ namespace SourceGit.Views
             {
                 App.LogException(ex);
                 await RefreshAsync(vm);
+            }
+            finally
+            {
+                // Reverting refreshes the owning repository and may activate its main window.
+                // Restore this utility window after the refresh has settled.
+                if (IsVisible)
+                    Activate();
             }
         }
 

@@ -51,6 +51,8 @@ namespace SourceGit.ViewModels
                     OnPropertyChanged(nameof(SelectedNodeTitle));
                     OnPropertyChanged(nameof(CanCommitSelectedNode));
                     OnPropertyChanged(nameof(CommitButtonToolTip));
+                    OnPropertyChanged(nameof(CanSaveSelectedChangesWithEncoding));
+                    OnPropertyChanged(nameof(SaveSelectedChangesEncodingToolTip));
                     NotifyCommitAndPushStateChanged();
                     OnPropertyChanged(nameof(CanUndoSelectedNodeCommit));
                     OnPropertyChanged(nameof(UndoCommitToolTip));
@@ -99,7 +101,11 @@ namespace SourceGit.ViewModels
             set
             {
                 if (SetProperty(ref _selectedChanges, value))
+                {
                     UpdateDetailContext();
+                    OnPropertyChanged(nameof(CanSaveSelectedChangesWithEncoding));
+                    OnPropertyChanged(nameof(SaveSelectedChangesEncodingToolTip));
+                }
             }
         }
 
@@ -115,6 +121,53 @@ namespace SourceGit.ViewModels
             get => _changeViewMode;
             set => SetProperty(ref _changeViewMode, value);
         }
+
+        public bool IncludeUntrackedChanges
+        {
+            get => _includeUntrackedChanges;
+            set
+            {
+                if (SetProperty(ref _includeUntrackedChanges, value))
+                    _ = RefreshAsync();
+            }
+        }
+
+        public List<string> SaveEncodingOptions { get; } = ["UTF-8", "UTF-8 BOM", "UTF-16 LE", "System Default"];
+
+        public string SelectedSaveEncoding
+        {
+            get => NormalizeSaveEncoding(Preferences.Instance.CommitFlowSaveEncoding);
+            set
+            {
+                var next = NormalizeSaveEncoding(value);
+                if (Preferences.Instance.CommitFlowSaveEncoding.Equals(next, StringComparison.Ordinal))
+                    return;
+
+                Preferences.Instance.CommitFlowSaveEncoding = next;
+                Preferences.Instance.Save();
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(SaveEncodingButtonText));
+                OnPropertyChanged(nameof(SaveSelectedChangesEncodingToolTip));
+            }
+        }
+
+        public string SaveEncodingButtonText => $"Save {SelectedSaveEncoding}";
+
+        public string SelectedChangeEncoding
+        {
+            get => _selectedChangeEncoding;
+            private set => SetProperty(ref _selectedChangeEncoding, value);
+        }
+
+        public bool CanSaveSelectedChangesWithEncoding =>
+            _selectedNode != null &&
+            _selectedChanges.Count > 0 &&
+            !_isLoadingChanges &&
+            !_isCommitting;
+
+        public string SaveSelectedChangesEncodingToolTip => CanSaveSelectedChangesWithEncoding
+            ? $"Save selected text file changes as {SelectedSaveEncoding}."
+            : GetSaveEncodingDisabledReason();
 
         public List<SubmoduleCommitFlowChainStep> ParentChainSteps
         {
@@ -414,6 +467,77 @@ namespace SourceGit.ViewModels
             }
 
             _repo.OpenSubmodule(node.DisplayPath);
+        }
+
+        public async Task SaveSelectedChangesWithEncodingAsync()
+        {
+            if (!CanSaveSelectedChangesWithEncoding)
+                return;
+
+            var node = _selectedNode;
+            var changes = _selectedChanges.ToList();
+            var selectedChangeKeys = changes
+                .Select(GetChangeKey)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .ToHashSet(StringComparer.Ordinal);
+            var encodingName = SelectedSaveEncoding;
+            var encoding = GetEncodingByName(encodingName);
+            var saved = 0;
+            var skipped = 0;
+
+            foreach (var change in changes)
+            {
+                var path = GetChangeKey(change);
+                if (string.IsNullOrWhiteSpace(path) ||
+                    change.IsSubmodulePointerChange ||
+                    change.Index == Models.ChangeState.Deleted ||
+                    change.WorkTree == Models.ChangeState.Deleted)
+                {
+                    skipped++;
+                    continue;
+                }
+
+                var fullPath = Native.OS.GetAbsPath(node.RepoPath, path);
+                if (!File.Exists(fullPath))
+                {
+                    skipped++;
+                    continue;
+                }
+
+                try
+                {
+                    var bytes = await File.ReadAllBytesAsync(fullPath).ConfigureAwait(false);
+                    if (IsLikelyBinary(bytes))
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    await File.WriteAllTextAsync(fullPath, DecodeText(bytes), encoding).ConfigureAwait(false);
+                    saved++;
+                }
+                catch
+                {
+                    skipped++;
+                }
+            }
+
+            await Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                if (saved > 0)
+                {
+                    _changeCache.Remove(node.DisplayPath);
+                    ShowFlowToast(skipped > 0
+                        ? $"Saved {saved} file(s) as {encodingName}; skipped {skipped}."
+                        : $"Saved {saved} file(s) as {encodingName}.");
+                    await LoadSelectedNodeChangesAsync(selectedChangeKeys);
+                    _repo.RefreshWorkingCopyChanges();
+                }
+                else
+                {
+                    ShowFlowToast("No selected text files could be saved with the requested encoding.", true);
+                }
+            });
         }
 
         private async Task CommitSelectedNodeAsync(bool pushAfterCommit)
@@ -799,7 +923,7 @@ namespace SourceGit.ViewModels
             if (!Directory.Exists(node.RepoPath))
                 return new NodeStatus("missing", string.Empty, string.Empty, string.Empty, string.Empty, false, 0, 0, 0, SubmoduleCommitFlowNodeState.Error, []);
 
-            var changes = await new Commands.QueryLocalChanges(node.RepoPath, true, true, false).GetResultAsync().ConfigureAwait(false);
+            var changes = await new Commands.QueryLocalChanges(node.RepoPath, _includeUntrackedChanges, true, false).GetResultAsync().ConfigureAwait(false);
             changes = FilterGeneratedUntrackedChanges(changes);
             changes.Sort((l, r) => Models.NumericSort.Compare(l.Path, r.Path));
             UpdateChangeKinds(node, changes, out var fileChangeCount, out var submodulePointerChangeCount);
@@ -860,7 +984,7 @@ namespace SourceGit.ViewModels
             node.State = status.State;
         }
 
-        private async Task LoadSelectedNodeChangesAsync()
+        private async Task LoadSelectedNodeChangesAsync(IReadOnlySet<string> selectedChangeKeys = null)
         {
             var requestId = Interlocked.Increment(ref _loadChangesVersion);
             var node = _selectedNode;
@@ -876,7 +1000,7 @@ namespace SourceGit.ViewModels
             {
                 try
                 {
-                    changes = await new Commands.QueryLocalChanges(node.RepoPath, true, true, false).GetResultAsync().ConfigureAwait(false);
+                    changes = await new Commands.QueryLocalChanges(node.RepoPath, _includeUntrackedChanges, true, false).GetResultAsync().ConfigureAwait(false);
                     changes = FilterGeneratedUntrackedChanges(changes);
                     changes.Sort((l, r) => Models.NumericSort.Compare(l.Path, r.Path));
                     UpdateChangeKinds(node, changes, out _, out _);
@@ -897,6 +1021,12 @@ namespace SourceGit.ViewModels
                 }
 
                 ApplySelectedNodeChanges(node, changes);
+                if (selectedChangeKeys != null)
+                {
+                    SelectedChanges = changes
+                        .Where(change => selectedChangeKeys.Contains(GetChangeKey(change)))
+                        .ToList();
+                }
                 SetLoadingChanges(false);
             });
         }
@@ -972,12 +1102,66 @@ namespace SourceGit.ViewModels
             if (node == null || _selectedChanges is not { Count: 1 })
             {
                 DetailContext = null;
+                Interlocked.Increment(ref _selectedChangeEncodingVersion);
+                SelectedChangeEncoding = "No file";
                 return;
             }
 
             var change = _selectedChanges[0];
             var isUnstaged = change.WorkTree != Models.ChangeState.None;
             DetailContext = new DiffContext(node.RepoPath, new Models.DiffOption(change, isUnstaged), _detailContext as DiffContext);
+            _ = UpdateSelectedChangeEncodingAsync(node, change);
+        }
+
+        private async Task UpdateSelectedChangeEncodingAsync(SubmoduleCommitFlowNode node, Models.Change change)
+        {
+            var requestId = Interlocked.Increment(ref _selectedChangeEncodingVersion);
+            var path = GetChangeKey(change);
+            if (node == null || string.IsNullOrWhiteSpace(path) || change.IsSubmodulePointerChange)
+            {
+                SelectedChangeEncoding = "Unavailable";
+                return;
+            }
+
+            var encoding = "Unavailable";
+            try
+            {
+                var fullPath = Native.OS.GetAbsPath(node.RepoPath, path);
+                if (File.Exists(fullPath))
+                    encoding = DetectEncodingName(await File.ReadAllBytesAsync(fullPath).ConfigureAwait(false));
+            }
+            catch
+            {
+                // Keep the encoding hint non-blocking when a file is inaccessible.
+            }
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (requestId == _selectedChangeEncodingVersion && ReferenceEquals(node, _selectedNode) && _selectedChanges.Count == 1)
+                    SelectedChangeEncoding = encoding;
+            });
+        }
+
+        private static string DetectEncodingName(byte[] bytes)
+        {
+            if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+                return "UTF-8 BOM";
+            if (bytes.Length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE)
+                return "UTF-16 LE";
+            if (bytes.Length >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF)
+                return "UTF-16 BE";
+            if (IsLikelyBinary(bytes))
+                return "Binary";
+
+            try
+            {
+                _ = new UTF8Encoding(false, true).GetString(bytes);
+                return "UTF-8";
+            }
+            catch (DecoderFallbackException)
+            {
+                return "System Default";
+            }
         }
 
         private SubmoduleCommitFlowNodeState ResolveNodeState(SubmoduleCommitFlowNode node, List<Models.Change> changes)
@@ -1425,6 +1609,68 @@ namespace SourceGit.ViewModels
             return (path ?? string.Empty).Replace('\\', '/').Trim('/');
         }
 
+        private static string NormalizeSaveEncoding(string encoding)
+        {
+            if (string.IsNullOrWhiteSpace(encoding))
+                return Preferences.DEFAULT_COMMIT_FLOW_SAVE_ENCODING;
+
+            return encoding.Trim() switch
+            {
+                "UTF-8" => "UTF-8",
+                "UTF-8 BOM" => "UTF-8 BOM",
+                "UTF-16 LE" => "UTF-16 LE",
+                "System Default" => "System Default",
+                _ => Preferences.DEFAULT_COMMIT_FLOW_SAVE_ENCODING,
+            };
+        }
+
+        private static Encoding GetEncodingByName(string encoding)
+        {
+            return NormalizeSaveEncoding(encoding) switch
+            {
+                "UTF-8 BOM" => new UTF8Encoding(true),
+                "UTF-16 LE" => Encoding.Unicode,
+                "System Default" => Encoding.Default,
+                _ => new UTF8Encoding(false),
+            };
+        }
+
+        private static string DecodeText(byte[] bytes)
+        {
+            if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+                return Encoding.UTF8.GetString(bytes, 3, bytes.Length - 3);
+
+            if (bytes.Length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE)
+                return Encoding.Unicode.GetString(bytes, 2, bytes.Length - 2);
+
+            if (bytes.Length >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF)
+                return Encoding.BigEndianUnicode.GetString(bytes, 2, bytes.Length - 2);
+
+            try
+            {
+                return new UTF8Encoding(false, true).GetString(bytes);
+            }
+            catch (DecoderFallbackException)
+            {
+                return Encoding.Default.GetString(bytes);
+            }
+        }
+
+        private static bool IsLikelyBinary(byte[] bytes)
+        {
+            if (bytes.Length == 0)
+                return false;
+
+            var check = Math.Min(bytes.Length, 8192);
+            for (var i = 0; i < check; i++)
+            {
+                if (bytes[i] == 0)
+                    return true;
+            }
+
+            return false;
+        }
+
         private static int GetSubmoduleChainDepth(string path, HashSet<string> known, Dictionary<string, int> memo)
         {
             if (string.IsNullOrWhiteSpace(path))
@@ -1547,6 +1793,8 @@ namespace SourceGit.ViewModels
             OnPropertyChanged(nameof(IsLoading));
             OnPropertyChanged(nameof(CanCommitSelectedNode));
             OnPropertyChanged(nameof(CommitButtonToolTip));
+            OnPropertyChanged(nameof(CanSaveSelectedChangesWithEncoding));
+            OnPropertyChanged(nameof(SaveSelectedChangesEncodingToolTip));
             NotifyCommitAndPushStateChanged();
             OnPropertyChanged(nameof(CanUndoSelectedNodeCommit));
             OnPropertyChanged(nameof(UndoCommitToolTip));
@@ -1561,6 +1809,8 @@ namespace SourceGit.ViewModels
             OnPropertyChanged(nameof(IsLoading));
             OnPropertyChanged(nameof(CanCommitSelectedNode));
             OnPropertyChanged(nameof(CommitButtonToolTip));
+            OnPropertyChanged(nameof(CanSaveSelectedChangesWithEncoding));
+            OnPropertyChanged(nameof(SaveSelectedChangesEncodingToolTip));
             NotifyCommitAndPushStateChanged();
             OnPropertyChanged(nameof(CanUndoSelectedNodeCommit));
             OnPropertyChanged(nameof(UndoCommitToolTip));
@@ -1605,6 +1855,23 @@ namespace SourceGit.ViewModels
                 return "Enter a commit message before committing.";
 
             return "Commit is unavailable.";
+        }
+
+        private string GetSaveEncodingDisabledReason()
+        {
+            if (_selectedNode == null)
+                return "Select a repository or submodule first.";
+
+            if (_isLoadingChanges)
+                return "Changes are still loading for the selected repository.";
+
+            if (_isCommitting)
+                return "Commit Flow is already running a commit.";
+
+            if (_selectedChanges.Count == 0)
+                return "Select one or more changed text files to save with this encoding.";
+
+            return "Save encoding is unavailable.";
         }
 
         private string GetUndoCommitDisabledReason()
@@ -1678,7 +1945,9 @@ namespace SourceGit.ViewModels
         private List<Models.Change> _selectedChanges = [];
         private List<SubmoduleCommitFlowChainStep> _parentChainSteps = [];
         private Models.ChangeViewMode _changeViewMode = Models.ChangeViewMode.Tree;
+        private bool _includeUntrackedChanges = false;
         private object _detailContext = null;
+        private string _selectedChangeEncoding = "No file";
         private string _commitMessage = string.Empty;
         private string _summary = string.Empty;
         private string _parentChainSummary = string.Empty;
@@ -1695,6 +1964,7 @@ namespace SourceGit.ViewModels
         private bool _selectNextActionAfterScan = false;
         private int _version = 0;
         private int _loadChangesVersion = 0;
+        private int _selectedChangeEncodingVersion = 0;
         private int _toastVersion = 0;
         private readonly HashSet<string> _donePaths = new(StringComparer.Ordinal);
         private readonly Dictionary<string, UndoCommit> _undoCommits = new(StringComparer.Ordinal);

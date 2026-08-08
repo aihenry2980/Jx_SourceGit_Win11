@@ -61,6 +61,7 @@ namespace SourceGit.Views
                     {
                         Models.InlineElementType.Link => "issue_link",
                         Models.InlineElementType.CommitSHA => "commit_link",
+                        Models.InlineElementType.Keyword => "issue_tag",
                         Models.InlineElementType.Code => "inline_code",
                         _ => "normal"
                     };
@@ -284,7 +285,7 @@ namespace SourceGit.Views
 
         private void SetHoveredIssueLink(Models.InlineElement link)
         {
-            if (link == _lastHover || link.Type == Models.InlineElementType.Code)
+            if (link == _lastHover || link.Type is Models.InlineElementType.Code or Models.InlineElementType.Keyword)
                 return;
 
             SetCurrentValue(CursorProperty, Cursor.Parse("Hand"));

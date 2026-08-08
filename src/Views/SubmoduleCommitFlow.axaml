@@ -200,18 +200,18 @@
                   <TextBlock Grid.Row="0"
                              Grid.Column="0"
                              FontWeight="SemiBold"
-                             Text="{Binding DisplayPath}"
+                             Text="{Binding DisplayName}"
                              TextTrimming="CharacterEllipsis"/>
                   <Border Grid.Row="0"
                           Grid.Column="1"
                           Margin="8,0,0,0"
-                          Padding="8,1"
-                          CornerRadius="8"
+                          Padding="10,2"
+                          CornerRadius="10"
                           Background="{Binding StatusBackground}"
                           BorderBrush="{Binding StatusForeground}"
-                          BorderThickness="1">
+                          BorderThickness="1.25">
                     <TextBlock Text="{Binding StatusText}"
-                               FontSize="10"
+                               FontSize="12"
                                FontWeight="Bold"
                                Foreground="{Binding StatusForeground}"/>
                   </Border>
@@ -299,6 +299,12 @@
                        Text="{Binding CommitIncludeSummary}"
                        TextTrimming="CharacterEllipsis"/>
 
+            <CheckBox VerticalAlignment="Center"
+                      Margin="0,2,8,2"
+                      Content="Untracked"
+                      IsChecked="{Binding IncludeUntrackedChanges, Mode=TwoWay}"
+                      ToolTip.Tip="Include untracked files in Commit Flow scan"/>
+
             <v:ChangeViewModeSwitcher Width="28"
                                       Height="24"
                                       Margin="0,2,4,2"
@@ -366,6 +372,40 @@
               </DataTemplate>
             </ContentControl.DataTemplates>
           </ContentControl>
+
+          <Border HorizontalAlignment="Center"
+                  VerticalAlignment="Top"
+                  Margin="0,2,0,0"
+                  Padding="5,4"
+                  CornerRadius="4"
+                  BorderThickness="1"
+                  BorderBrush="{DynamicResource Brush.Border1}"
+                  Background="{DynamicResource Brush.Contents}">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <TextBlock Width="112"
+                         VerticalAlignment="Center"
+                         TextTrimming="CharacterEllipsis"
+                         Foreground="{DynamicResource Brush.FG2}"
+                         Text="{Binding SelectedChangeEncoding}"
+                         ToolTip.Tip="Detected encoding of the selected file"/>
+
+              <ComboBox Width="104"
+                        Height="30"
+                        VerticalContentAlignment="Center"
+                        ItemsSource="{Binding SaveEncodingOptions}"
+                        SelectedItem="{Binding SelectedSaveEncoding, Mode=TwoWay}"
+                        ToolTip.Tip="Encoding used when saving the selected file(s)"/>
+
+              <Button Classes="flat"
+                      Height="30"
+                      Padding="8,0"
+                      VerticalContentAlignment="Center"
+                      Content="Save"
+                      Click="OnSaveSelectedChangesEncodingClicked"
+                      IsEnabled="{Binding CanSaveSelectedChangesWithEncoding}"
+                      ToolTip.Tip="{Binding SaveSelectedChangesEncodingToolTip}"/>
+            </StackPanel>
+          </Border>
         </Grid>
 
       <GridSplitter Grid.Row="1"
@@ -387,12 +427,15 @@
               BorderThickness="1"
               CornerRadius="4"
               Background="{DynamicResource Brush.Contents}">
-        <TextBlock Text="{Binding CommitPlanPreview}"
-                   FontFamily="{DynamicResource Fonts.Monospace}"
-                   FontSize="11"
-                   Foreground="{DynamicResource Brush.FG2}"
-                   TextWrapping="Wrap"
-                   MaxHeight="54"/>
+        <ScrollViewer MaxHeight="54"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+          <SelectableTextBlock Text="{Binding CommitPlanPreview}"
+                               FontFamily="{DynamicResource Fonts.Monospace}"
+                               FontSize="11"
+                               Foreground="{DynamicResource Brush.FG2}"
+                               TextWrapping="Wrap"/>
+        </ScrollViewer>
       </Border>
 
       <Grid Grid.Row="4" ColumnDefinitions="*,Auto,Auto,Auto,Auto" Margin="0,8,0,0">

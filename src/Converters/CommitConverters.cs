@@ -14,10 +14,13 @@ namespace SourceGit.Converters
             new(commit =>
             {
                 if (commit is { IsCurrentHead: true })
-                    return s_headForegroundBrush;
+                    return Brushes.White;
 
                 return s_mutedSHAForegroundBrush;
             });
+
+        public static readonly FuncValueConverter<Models.Commit, IBrush> SHABackground =
+            new(commit => commit is { IsCurrentHead: true } ? s_headSHABackgroundBrush : Brushes.Transparent);
 
         public static readonly FuncValueConverter<Models.Commit, FontWeight> SHAFontWeight =
             new(commit => commit is { IsCurrentHead: true } ? FontWeight.Bold : FontWeight.Regular);
@@ -76,6 +79,7 @@ namespace SourceGit.Converters
 
         private static readonly IBrush s_headSubjectBackground = new SolidColorBrush(Color.Parse("#FFFFE9E9"));
         private static readonly IBrush s_headSubjectSelectedBackground = new SolidColorBrush(Color.Parse("#FFFFC7C7"));
+        private static readonly IBrush s_headSHABackgroundBrush = new SolidColorBrush(Color.Parse("#FFD13438"));
         private static readonly IBrush s_headForegroundBrush = new SolidColorBrush(Color.Parse("#FFD13438"));
         private static readonly IBrush s_mutedSHAForegroundBrush = new SolidColorBrush(Color.Parse("#FF686F77"));
     }

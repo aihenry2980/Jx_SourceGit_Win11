@@ -604,6 +604,15 @@ namespace SourceGit.ViewModels
                     rule.Matches(inlines, message);
             }
 
+            var issueTagMatches = REG_ISSUE_TAG_FORMAT().Matches(message);
+            foreach (Match match in issueTagMatches)
+            {
+                var start = match.Index;
+                var len = match.Length;
+                if (inlines.Intersect(start, len) == null)
+                    inlines.Add(new Models.InlineElement(Models.InlineElementType.Keyword, start, len, string.Empty));
+            }
+
             var urlMatches = REG_URL_FORMAT().Matches(message);
             foreach (Match match in urlMatches)
             {
@@ -833,6 +842,9 @@ namespace SourceGit.ViewModels
 
         [GeneratedRegex(@"`.*?`")]
         private static partial Regex REG_INLINECODE_FORMAT();
+
+        [GeneratedRegex(@"(?<!\S)\[[^]\r\n]{1,48}\]")]
+        private static partial Regex REG_ISSUE_TAG_FORMAT();
 
         private Repository _repo = null;
         private CommitDetailSharedData _sharedData = null;

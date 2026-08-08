@@ -573,6 +573,9 @@
                   <TextBlock Text="{DynamicResource Text.Configure.CustomAction.Name}"/>
                   <TextBox Margin="0,4,0,0" CornerRadius="3" Height="28" Text="{Binding Name, Mode=TwoWay}"/>
 
+                  <TextBlock Margin="0,12,0,0" Text="Toolbar color"/>
+                  <v:ColorPicker Margin="0,4,0,0" HorizontalAlignment="Left" Value="{Binding Color, Mode=TwoWay}"/>
+
                   <TextBlock Margin="0,12,0,0" Text="{DynamicResource Text.Configure.CustomAction.Scope}"/>
                   <ComboBox Margin="0,4,0,0" Height="28" HorizontalAlignment="Stretch" SelectedIndex="{Binding Scope, Mode=TwoWay}">
                     <ComboBoxItem Content="{DynamicResource Text.Configure.CustomAction.Scope.Repository}"/>

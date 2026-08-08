@@ -239,7 +239,7 @@ namespace SourceGit.Views
                             context.DrawRectangle(bg, null, entireRect);
 
                         if (hasCompactTrackingBadge)
-                            DrawTrackingBranchBackground(context, entireRect, item, .78);
+                            DrawTrackingBranchBackground(context, entireRect, item, .68);
                         else
                         {
                             using (context.PushOpacity(.6))
@@ -270,7 +270,7 @@ namespace SourceGit.Views
 
                         if (hasCompactTrackingBadge)
                         {
-                            DrawTrackingBranchBackground(context, entireRect, item, .55);
+                            DrawTrackingBranchBackground(context, entireRect, item, .48);
                         }
                         else
                         {
@@ -682,8 +682,8 @@ namespace SourceGit.Views
             if (item.Brush is not ISolidColorBrush solid)
                 return;
 
-            item.TrackingRemoteBackground = new SolidColorBrush(BlendColor(solid.Color, Colors.White, 0.55));
-            item.TrackingLocalBackground = new SolidColorBrush(BlendColor(solid.Color, Colors.Black, 0.38));
+            item.TrackingRemoteBackground = new SolidColorBrush(BlendColor(solid.Color, Colors.White, 0.58));
+            item.TrackingLocalBackground = new SolidColorBrush(BlendColor(solid.Color, Colors.Black, 0.26));
         }
 
         private static Color BlendColor(Color source, Color target, double amount)

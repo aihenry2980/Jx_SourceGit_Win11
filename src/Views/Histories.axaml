@@ -165,7 +165,12 @@
 
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate DataType="m:Commit">
-                <Border Classes="commit_sha_cell" Padding="8,0,0,0" Background="Transparent" ClipToBounds="True">
+                <Border Classes="commit_sha_cell"
+                        Padding="6,0"
+                        Margin="4,0,0,0"
+                        Background="{Binding ., Converter={x:Static c:CommitConverters.SHABackground}}"
+                        CornerRadius="3"
+                        ClipToBounds="True">
                   <v:CommitSubjectPresenter Subject="{Binding SHA, Converter={x:Static c:StringConverters.ToShortSHA5}}"
                                             HighlightText="{Binding $parent[v:Repository].((vm:Repository)DataContext).HistoryQuickFindAppliedText}"
                                             FontFamily="{DynamicResource Fonts.Monospace}"

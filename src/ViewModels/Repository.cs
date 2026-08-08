@@ -1473,6 +1473,81 @@ namespace SourceGit.ViewModels
                 App.SendNotification(FullPath, $"{operationName} failed. Review the repository log for details.");
         }
 
+        public async Task FastFetchCurrentUpstreamAsync()
+        {
+            const string originPrefix = "refs/remotes/origin/";
+            var current = CurrentBranch;
+            if (current is not { IsLocal: true } || string.IsNullOrWhiteSpace(current.Upstream))
+            {
+                App.SendNotification(FullPath, "Fast Fetch requires the current local branch to track origin/<branch>.");
+                return;
+            }
+
+            if (!current.Upstream.StartsWith(originPrefix, StringComparison.Ordinal) || current.Upstream.Length == originPrefix.Length)
+            {
+                App.SendNotification(FullPath, "Fast Fetch supports branches tracking origin/<branch> only.");
+                return;
+            }
+
+            var remoteBranch = current.Upstream[originPrefix.Length..];
+            var log = CreateLog("Fast Fetch");
+            var succeeded = false;
+            var sawRefStatus = 0;
+            var refsChanged = 0;
+            var gitStopwatch = Stopwatch.StartNew();
+            AutoBackgroundOperationText = "Fast Fetch";
+            IsQuickFetching = true;
+            using var lockWatcher = LockWatcher();
+
+            try
+            {
+                var fetch = new Commands.Fetch(
+                    FullPath,
+                    "origin",
+                    true,
+                    false,
+                    false,
+                    false,
+                    [$"refs/heads/{remoteBranch}:{current.Upstream}"]);
+                fetch.OnOutputLine = line =>
+                {
+                    if (!IsFetchRefStatusLine(line, out var changed))
+                        return;
+
+                    Interlocked.Exchange(ref sawRefStatus, 1);
+                    if (changed)
+                        Interlocked.Exchange(ref refsChanged, 1);
+                };
+                succeeded = await fetch.Use(log).RunAsync();
+            }
+            finally
+            {
+                gitStopwatch.Stop();
+                IsQuickFetching = false;
+                log.Complete();
+            }
+
+            if (!succeeded)
+            {
+                App.SendNotification(FullPath, "Fast Fetch failed. Review the repository log for details.");
+                return;
+            }
+
+            TimeSpan refreshDuration;
+            if (sawRefStatus != 0 && refsChanged == 0)
+            {
+                _lastFetchTime = DateTime.Now;
+                _watcher?.MarkBranchUpdated();
+                refreshDuration = TimeSpan.Zero;
+            }
+            else
+            {
+                refreshDuration = await MarkFetchedAndMeasureRefreshAsync();
+            }
+
+            ShowFetchDurationToast(gitStopwatch.Elapsed, refreshDuration);
+        }
+
         public string GetPreferredRemoteNameForToolbarCommandEditor()
         {
             return GetPreferredRemoteName();
@@ -5153,6 +5228,8 @@ namespace SourceGit.ViewModels
             if (commits == null || commits.Count == 0)
                 return;
 
+            EnsureIncludedBranchFiltersHaveColors(commits);
+
             var branchColors = new Dictionary<string, uint>(StringComparer.Ordinal);
             var includedBranches = new HashSet<string>(StringComparer.Ordinal);
             var branchesByFullName = new Dictionary<string, Models.Branch>(StringComparer.Ordinal);
@@ -5201,6 +5278,7 @@ namespace SourceGit.ViewModels
             var hasIncludedBranches = includedBranches.Count > 0;
             var rebaseBaseBranchFullName = GetRebaseBaseBranch()?.FullName;
             const uint incidentalBranchColor = 0x18808080;
+            ApplyAutoColorsToVisibleBranchDecorators(commits, branchColors, includedBranches, hasIncludedBranches, branchesByFullName, localBranchesByUpstream);
 
             foreach (var commit in commits)
             {
@@ -5268,7 +5346,57 @@ namespace SourceGit.ViewModels
             return false;
         }
 
-        private void EnsureIncludedBranchFiltersHaveColors()
+        private void ApplyAutoColorsToVisibleBranchDecorators(
+            List<Models.Commit> commits,
+            Dictionary<string, uint> branchColors,
+            HashSet<string> includedBranches,
+            bool hasIncludedBranches,
+            Dictionary<string, Models.Branch> branchesByFullName,
+            Dictionary<string, Models.Branch> localBranchesByUpstream)
+        {
+            var conflictsByLogicalBranch = BuildBranchColorConflictMap(commits, branchesByFullName, localBranchesByUpstream);
+            var assignedByLogicalBranch = new Dictionary<string, uint>(StringComparer.Ordinal);
+            var usedColors = new HashSet<uint>();
+
+            foreach (var pair in branchColors)
+            {
+                var logicalKey = ResolveBranchColorGroupKey(pair.Key, branchesByFullName, localBranchesByUpstream);
+                if (string.IsNullOrWhiteSpace(logicalKey))
+                    logicalKey = pair.Key;
+
+                assignedByLogicalBranch[logicalKey] = pair.Value;
+                usedColors.Add(pair.Value);
+            }
+
+            foreach (var commit in commits)
+            {
+                foreach (var decorator in commit.Decorators)
+                {
+                    var fullRefName = GetFullRefNameFromDecorator(decorator);
+                    if (string.IsNullOrWhiteSpace(fullRefName) ||
+                        branchColors.ContainsKey(fullRefName) ||
+                        (hasIncludedBranches && !ShouldKeepBranchVisibleColor(fullRefName, decorator.Type != Models.DecoratorType.RemoteBranchHead, includedBranches, branchesByFullName, localBranchesByUpstream)))
+                    {
+                        continue;
+                    }
+
+                    var logicalKey = ResolveBranchColorGroupKey(fullRefName, branchesByFullName, localBranchesByUpstream);
+                    if (string.IsNullOrWhiteSpace(logicalKey))
+                        logicalKey = fullRefName;
+
+                    if (!assignedByLogicalBranch.TryGetValue(logicalKey, out var color))
+                    {
+                        color = ChooseAutoHistoryFilterBranchColor(logicalKey, assignedByLogicalBranch, usedColors, conflictsByLogicalBranch, 0);
+                        assignedByLogicalBranch[logicalKey] = color;
+                        usedColors.Add(color);
+                    }
+
+                    branchColors[fullRefName] = color;
+                }
+            }
+        }
+
+        private void EnsureIncludedBranchFiltersHaveColors(List<Models.Commit> commits = null)
         {
             if (_uiStates == null || _uiStates.HistoryFilters.Count == 0)
                 return;
@@ -5288,8 +5416,9 @@ namespace SourceGit.ViewModels
                 }
             }
 
+            var conflictsByLogicalBranch = BuildBranchColorConflictMap(commits, branchesByFullName, localBranchesByUpstream);
             var assignedByLogicalBranch = new Dictionary<string, uint>(StringComparer.Ordinal);
-            var nextAutoColorIndex = 0;
+            var usedColors = new HashSet<uint>();
             foreach (var filter in _uiStates.HistoryFilters)
             {
                 if (filter.Mode != Models.FilterMode.Included ||
@@ -5305,26 +5434,165 @@ namespace SourceGit.ViewModels
                 if (filter.Color != 0)
                 {
                     assignedByLogicalBranch[logicalBranchKey] = filter.Color;
+                    usedColors.Add(filter.Color);
+                    continue;
+                }
+            }
+
+            foreach (var filter in _uiStates.HistoryFilters)
+            {
+                if (filter.Mode != Models.FilterMode.Included ||
+                    filter.Type is not (Models.FilterType.LocalBranch or Models.FilterType.RemoteBranch))
+                {
                     continue;
                 }
 
+                var logicalBranchKey = ResolveBranchColorGroupKey(filter.Pattern, branchesByFullName, localBranchesByUpstream);
+                if (string.IsNullOrWhiteSpace(logicalBranchKey))
+                    logicalBranchKey = filter.Pattern;
+
+                if (filter.Color != 0)
+                    continue;
+
                 if (!assignedByLogicalBranch.TryGetValue(logicalBranchKey, out var color))
                 {
-                    color = GetAutoHistoryFilterBranchColor(nextAutoColorIndex, filter.Color);
+                    color = ChooseAutoHistoryFilterBranchColor(logicalBranchKey, assignedByLogicalBranch, usedColors, conflictsByLogicalBranch, filter.Color);
                     assignedByLogicalBranch[logicalBranchKey] = color;
-                    nextAutoColorIndex++;
+                    usedColors.Add(color);
                 }
 
                 filter.Color = color;
             }
         }
 
+        private Dictionary<string, HashSet<string>> BuildBranchColorConflictMap(
+            List<Models.Commit> commits,
+            Dictionary<string, Models.Branch> branchesByFullName,
+            Dictionary<string, Models.Branch> localBranchesByUpstream)
+        {
+            var conflicts = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+            if (commits == null || commits.Count == 0)
+                return conflicts;
+
+            foreach (var commit in commits)
+            {
+                List<string> logicalKeys = null;
+                foreach (var decorator in commit.Decorators)
+                {
+                    var fullRefName = GetFullRefNameFromDecorator(decorator);
+
+                    if (string.IsNullOrWhiteSpace(fullRefName))
+                        continue;
+
+                    var logicalKey = ResolveBranchColorGroupKey(fullRefName, branchesByFullName, localBranchesByUpstream);
+                    if (string.IsNullOrWhiteSpace(logicalKey))
+                        continue;
+
+                    logicalKeys ??= [];
+                    if (!logicalKeys.Exists(x => x.Equals(logicalKey, StringComparison.Ordinal)))
+                        logicalKeys.Add(logicalKey);
+                }
+
+                if (logicalKeys is not { Count: > 1 })
+                    continue;
+
+                for (var i = 0; i < logicalKeys.Count - 1; i++)
+                {
+                    for (var j = i + 1; j < logicalKeys.Count; j++)
+                    {
+                        AddBranchColorConflict(conflicts, logicalKeys[i], logicalKeys[j]);
+                        AddBranchColorConflict(conflicts, logicalKeys[j], logicalKeys[i]);
+                    }
+                }
+            }
+
+            return conflicts;
+        }
+
+        private static void AddBranchColorConflict(Dictionary<string, HashSet<string>> conflicts, string left, string right)
+        {
+            if (left.Equals(right, StringComparison.Ordinal))
+                return;
+
+            if (!conflicts.TryGetValue(left, out var set))
+            {
+                set = new HashSet<string>(StringComparer.Ordinal);
+                conflicts[left] = set;
+            }
+
+            set.Add(right);
+        }
+
+        private static string GetFullRefNameFromDecorator(Models.Decorator decorator)
+        {
+            return decorator.Type switch
+            {
+                Models.DecoratorType.CurrentBranchHead or Models.DecoratorType.LocalBranchHead => $"refs/heads/{decorator.Name}",
+                Models.DecoratorType.RemoteBranchHead => $"refs/remotes/{decorator.Name}",
+                _ => string.Empty,
+            };
+        }
+
+        private static uint ChooseAutoHistoryFilterBranchColor(
+            string logicalBranchKey,
+            Dictionary<string, uint> assignedByLogicalBranch,
+            HashSet<uint> usedColors,
+            Dictionary<string, HashSet<string>> conflictsByLogicalBranch,
+            uint fallback)
+        {
+            var bestColor = GetAutoHistoryFilterBranchColorAt(0);
+            var bestScore = int.MaxValue;
+            for (var i = 0; i < AUTO_HISTORY_FILTER_BRANCH_COLOR_COUNT; i++)
+            {
+                var color = GetAutoHistoryFilterBranchColorAt(i);
+                var score = usedColors.Contains(color) ? 100 : 0;
+
+                if (conflictsByLogicalBranch.TryGetValue(logicalBranchKey, out var conflicts))
+                {
+                    foreach (var conflict in conflicts)
+                    {
+                        if (assignedByLogicalBranch.TryGetValue(conflict, out var conflictColor) && conflictColor == color)
+                            score += 10000;
+                    }
+                }
+
+                score += i;
+                if (score < bestScore)
+                {
+                    bestScore = score;
+                    bestColor = color;
+                }
+            }
+
+            return bestColor;
+        }
+
         private static uint GetAutoHistoryFilterBranchColor(int index, uint fallback)
         {
-            if (s_autoHistoryFilterBranchColors is { Length: > 0 })
-                return s_autoHistoryFilterBranchColors[index % s_autoHistoryFilterBranchColors.Length];
+            return GetAutoHistoryFilterBranchColorAt(index);
+        }
 
-            return fallback != 0 ? fallback : Models.RepositorySettings.PRESET_BRANCH_EXACT_DEFAULT_COLOR;
+        private static uint GetAutoHistoryFilterBranchColorAt(int index)
+        {
+            return (index % AUTO_HISTORY_FILTER_BRANCH_COLOR_COUNT) switch
+            {
+                0 => 0xFF10893E, // green
+                1 => 0xFF0078D7, // blue
+                2 => 0xFF744DA9, // purple
+                3 => 0xFFF7630C, // orange
+                4 => 0xFFC239B3, // magenta
+                5 => 0xFF0099BC, // cyan
+                6 => 0xFFD13438, // red
+                7 => 0xFF00B294, // mint
+                8 => 0xFF4F6BED, // indigo
+                9 => 0xFFFFB900, // gold
+                10 => 0xFF7FBA00, // lime
+                11 => 0xFF8E562E, // brown
+                12 => 0xFF00B7C3, // sky
+                13 => 0xFF8764B8, // violet
+                14 => 0xFFFF6F61, // coral
+                _ => 0xFF008272, // teal
+            };
         }
 
         private static string ResolveBranchColorGroupKey(
@@ -5948,24 +6216,6 @@ namespace SourceGit.ViewModels
         private static readonly TimeSpan SPLIT_SUBMODULE_UPDATE_TIMEOUT = TimeSpan.FromMinutes(5);
         private static readonly int SPLIT_SUBMODULE_UPDATE_MAX_PARALLELISM = Math.Max(1, Math.Min(4, Environment.ProcessorCount));
         private const int MAX_INCREMENTAL_HISTORY_METADATA_COMMITS = 256;
-        private static readonly uint[] s_autoHistoryFilterBranchColors =
-        [
-            0xFF10893E, // green
-            0xFF0078D7, // blue
-            0xFF744DA9, // purple
-            0xFFF7630C, // orange
-            0xFFC239B3, // magenta
-            0xFF0099BC, // cyan
-            0xFFD13438, // red
-            0xFF00B294, // mint
-            0xFF4F6BED, // indigo
-            0xFFFFB900, // gold
-            0xFF7FBA00, // lime
-            0xFF8E562E, // brown
-            0xFF00B7C3, // sky
-            0xFF8764B8, // violet
-            0xFFFF6F61, // coral
-            0xFF008272, // teal
-        ];
+        private const int AUTO_HISTORY_FILTER_BRANCH_COLOR_COUNT = 16;
     }
 }

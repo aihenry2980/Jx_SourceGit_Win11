@@ -109,10 +109,17 @@ namespace SourceGit.Models
             set => SetProperty(ref _waitForExit, value);
         }
 
+        public uint Color
+        {
+            get => _color;
+            set => SetProperty(ref _color, value);
+        }
+
         private string _name = string.Empty;
         private CustomActionScope _scope = CustomActionScope.Repository;
         private string _executable = string.Empty;
         private string _arguments = string.Empty;
         private bool _waitForExit = true;
+        private uint _color = 0xFF0F766E;
     }
 }

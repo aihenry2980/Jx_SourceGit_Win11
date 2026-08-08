@@ -19,6 +19,7 @@ namespace SourceGit.ViewModels
         public const int MIN_RECURSIVE_SUBMODULE_DISPLAY_DEPTH = 1;
         public const int MAX_RECURSIVE_SUBMODULE_DISPLAY_DEPTH = 20;
         public const int DEFAULT_RECURSIVE_SUBMODULE_DISPLAY_DEPTH = 5;
+        public const string DEFAULT_COMMIT_FLOW_SAVE_ENCODING = "UTF-8";
         public const string DEFAULT_COMMIT_FLOW_GENERATED_FILE_FILTERS =
             "# One glob per line. These filters only hide untracked files in Commit Flow.\n" +
             "bin/\n" +
@@ -233,6 +234,12 @@ namespace SourceGit.ViewModels
         {
             get => _commitFlowGeneratedFileFilters;
             set => SetProperty(ref _commitFlowGeneratedFileFilters, value?.ReplaceLineEndings("\n") ?? string.Empty);
+        }
+
+        public string CommitFlowSaveEncoding
+        {
+            get => _commitFlowSaveEncoding;
+            set => SetProperty(ref _commitFlowSaveEncoding, string.IsNullOrWhiteSpace(value) ? DEFAULT_COMMIT_FLOW_SAVE_ENCODING : value);
         }
 
         public string PresetBranchExactNameColors
@@ -1284,6 +1291,7 @@ namespace SourceGit.ViewModels
         private string _presetBranchContainsPatterns = string.Empty;
         private string _commitMessageIssueTagPattern = string.Empty;
         private string _commitFlowGeneratedFileFilters = DEFAULT_COMMIT_FLOW_GENERATED_FILE_FILTERS;
+        private string _commitFlowSaveEncoding = DEFAULT_COMMIT_FLOW_SAVE_ENCODING;
         private string _presetBranchExactNameColors = string.Empty;
         private string _autoRevertPullConflictExtensions = DEFAULT_AUTO_REVERT_PULL_CONFLICT_EXTENSIONS;
         private List<string> _recursiveLocalChangesRecentHiddenExtensions = [];

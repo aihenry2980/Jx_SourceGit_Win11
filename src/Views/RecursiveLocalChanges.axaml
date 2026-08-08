@@ -50,7 +50,7 @@
             BorderThickness="1"
             CornerRadius="6">
       <Grid RowDefinitions="Auto,Auto,Auto"
-            ColumnDefinitions="*,Auto"
+            ColumnDefinitions="*,Auto,Auto,Auto"
             RowSpacing="8">
         <StackPanel Grid.Row="0"
                     Grid.ColumnSpan="2"
@@ -123,8 +123,39 @@
           </Grid>
         </Border>
 
+        <CheckBox Grid.Row="1"
+                  Grid.Column="1"
+                  Margin="12,0,0,0"
+                  VerticalAlignment="Center"
+                  Content="Untracked"
+                  IsChecked="{Binding IncludeUntracked, Mode=TwoWay}"
+                  ToolTip.Tip="Include untracked files in the recursive list. Reverting them deletes the files."/>
+
         <Button Grid.Row="1"
-                Grid.Column="1"
+                Grid.Column="2"
+                Classes="flat"
+                Height="46"
+                Margin="12,0,0,0"
+                Padding="14,0"
+                Click="OnRevertAllChangesRecursively"
+                IsEnabled="{Binding CanRevertAllChanges}"
+                ToolTip.Tip="Revert every detected change in the parent repository and changed submodules">
+          <StackPanel Orientation="Horizontal">
+            <Path Width="20"
+                  Height="20"
+                  Margin="0,0,8,0"
+                  VerticalAlignment="Center"
+                  Fill="Tomato"
+                  Data="{StaticResource Icons.Undo}"/>
+            <TextBlock Text="Revert all recursively"
+                       Foreground="Tomato"
+                       FontSize="30"
+                       FontWeight="SemiBold"/>
+          </StackPanel>
+        </Button>
+
+        <Button Grid.Row="1"
+                Grid.Column="3"
                 Classes="icon_button"
                 Width="28"
                 Height="28"
@@ -236,23 +267,23 @@
 
                     <Button Grid.Column="2"
                             Classes="flat"
-                            MinWidth="72"
-                            Height="22"
+                            MinWidth="154"
+                            Height="42"
                             Margin="8,0,0,0"
-                            Padding="8,0"
+                            Padding="12,0"
                             VerticalAlignment="Center"
                             Click="OnRevertRepositoryEntryChanges"
                             ToolTip.Tip="Revert all listed changes in this repository">
                       <StackPanel Orientation="Horizontal">
-                        <Path Width="10"
-                              Height="10"
-                              Margin="0,0,5,0"
+                        <Path Width="18"
+                              Height="18"
+                              Margin="0,0,8,0"
                               VerticalAlignment="Center"
                               Fill="Tomato"
                               Data="{StaticResource Icons.Undo}"/>
                         <TextBlock Text="Revert all"
                                    Foreground="Tomato"
-                                   FontSize="10"
+                                   FontSize="30"
                                    FontWeight="SemiBold"/>
                       </StackPanel>
                     </Button>

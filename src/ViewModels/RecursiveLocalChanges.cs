@@ -81,7 +81,11 @@ namespace SourceGit.ViewModels
         public bool IsLoading
         {
             get => _isLoading;
-            set => SetProperty(ref _isLoading, value);
+            set
+            {
+                if (SetProperty(ref _isLoading, value))
+                    OnPropertyChanged(nameof(CanRevertAllChanges));
+            }
         }
 
         public bool HasRepositories
@@ -94,6 +98,20 @@ namespace SourceGit.ViewModels
         {
             get => _showEmptyState;
             set => SetProperty(ref _showEmptyState, value);
+        }
+
+        public bool CanRevertAllChanges => !IsLoading && _allEntries.Any(x => x.AllChanges.Count > 0);
+        public int AllChangeCount => _allEntries.Sum(x => x.AllChanges.Count);
+        public int AllRepositoryCount => _allEntries.Count(x => x.AllChanges.Count > 0);
+
+        public bool IncludeUntracked
+        {
+            get => _includeUntracked;
+            set
+            {
+                if (SetProperty(ref _includeUntracked, value))
+                    _ = RefreshAsync();
+            }
         }
 
         public string HiddenExtensionFilterText
@@ -134,7 +152,10 @@ namespace SourceGit.ViewModels
         public async Task RefreshAsync()
         {
             if (IsLoading)
+            {
+                _refreshRequested = true;
                 return;
+            }
 
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
@@ -154,6 +175,9 @@ namespace SourceGit.ViewModels
                     _allEntries.AddRange(entries);
                     ApplyExtensionFilter();
                     IsLoading = false;
+                    OnPropertyChanged(nameof(CanRevertAllChanges));
+                    OnPropertyChanged(nameof(AllChangeCount));
+                    OnPropertyChanged(nameof(AllRepositoryCount));
                 });
             }
             catch (Exception ex)
@@ -166,6 +190,12 @@ namespace SourceGit.ViewModels
                     SummaryText = "Failed to load recursive local changes.";
                     IsLoading = false;
                 });
+            }
+
+            if (_refreshRequested)
+            {
+                _refreshRequested = false;
+                await RefreshAsync().ConfigureAwait(false);
             }
         }
 
@@ -242,9 +272,42 @@ namespace SourceGit.ViewModels
             await RevertChangesAsync(entry.RepositoryPath, entry.DisplayName, [change]).ConfigureAwait(false);
         }
 
+        public async Task RevertAllChangesRecursivelyAsync()
+        {
+            var entries = _allEntries
+                .Where(x => x.AllChanges.Count > 0)
+                .OrderByDescending(x => x.RepositoryPath.Count(c => c == Path.DirectorySeparatorChar || c == Path.AltDirectorySeparatorChar))
+                .Select(x => (x.RepositoryPath, x.DisplayName, Changes: new List<Models.Change>(x.AllChanges)))
+                .ToList();
+            if (entries.Count == 0)
+                return;
+
+            using var lockWatcher = _repo.LockWatcher();
+            var log = _repo.CreateLog("Revert All Changes Recursively");
+            try
+            {
+                foreach (var entry in entries)
+                    await RevertSelectedChangesToHeadAsync(entry.RepositoryPath, entry.Changes, log).ConfigureAwait(false);
+            }
+            finally
+            {
+                log.Complete();
+            }
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                _repo.MarkWorkingCopyDirtyManually();
+                _repo.MarkSubmodulesDirtyManually();
+            });
+
+            // Every touched repository is already known. Re-querying only those paths avoids
+            // walking the entire submodule tree again after an otherwise quick revert.
+            await RefreshRepositoryEntriesAsync(entries.Select(x => x.RepositoryPath)).ConfigureAwait(false);
+        }
+
         private async Task CollectRepoChangesAsync(string repoPath, bool isRoot, List<RepositoryEntry> entries)
         {
-            var changes = await new Commands.QueryLocalChanges(repoPath, _repo.IncludeUntracked, true, true)
+            var changes = await new Commands.QueryLocalChanges(repoPath, IncludeUntracked, true, true)
                 .GetResultAsync()
                 .ConfigureAwait(false);
 
@@ -268,7 +331,11 @@ namespace SourceGit.ViewModels
             if (!File.Exists(Path.Combine(repoPath, ".gitmodules")))
                 return;
 
-            var submodules = await new Commands.QuerySubmodules(repoPath).GetResultAsync().ConfigureAwait(false);
+            // This scan already queries every initialized repository directly. Asking Git for
+            // `submodule status` here makes each parent inspect its descendants again, which
+            // becomes quadratic for deeply nested trees. `.gitmodules` is sufficient to find
+            // the direct children; their own status is collected by the recursive call below.
+            var submodules = await new Commands.QuerySubmodules(repoPath, 1, false).GetResultAsync().ConfigureAwait(false);
             foreach (var submodule in submodules)
             {
                 if (submodule.Status == Models.SubmoduleStatus.NotInited)
@@ -305,7 +372,89 @@ namespace SourceGit.ViewModels
                 _repo.MarkSubmodulesDirtyManually();
             });
 
-            await RefreshAsync().ConfigureAwait(false);
+            await RefreshRepositoryEntriesAsync([repoPath]).ConfigureAwait(false);
+        }
+
+        private async Task RefreshRepositoryEntriesAsync(IEnumerable<string> repositoryPaths)
+        {
+            var paths = repositoryPaths
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (paths.Count == 0)
+                return;
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                IsLoading = true;
+                SummaryText = paths.Count == 1 ? "Refreshing reverted repository..." : "Refreshing reverted repositories...";
+            });
+
+            try
+            {
+                var refreshed = new Dictionary<string, RepositoryEntry>(StringComparer.OrdinalIgnoreCase);
+                foreach (var path in paths)
+                {
+                    var entry = await QueryRepositoryEntryAsync(
+                        path,
+                        path.Equals(_repo.FullPath, StringComparison.OrdinalIgnoreCase)).ConfigureAwait(false);
+                    if (entry != null)
+                        refreshed[path] = entry;
+                }
+
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    foreach (var path in paths)
+                    {
+                        var index = _allEntries.FindIndex(x => x.RepositoryPath.Equals(path, StringComparison.OrdinalIgnoreCase));
+                        if (refreshed.TryGetValue(path, out var entry))
+                        {
+                            if (index >= 0)
+                                _allEntries[index] = entry;
+                            else
+                                _allEntries.Add(entry);
+                        }
+                        else if (index >= 0)
+                        {
+                            _allEntries.RemoveAt(index);
+                        }
+                    }
+
+                    ApplyExtensionFilter();
+                    IsLoading = false;
+                    OnPropertyChanged(nameof(CanRevertAllChanges));
+                    OnPropertyChanged(nameof(AllChangeCount));
+                    OnPropertyChanged(nameof(AllRepositoryCount));
+                });
+            }
+            catch (Exception ex)
+            {
+                App.LogException(ex);
+                await Dispatcher.UIThread.InvokeAsync(() => IsLoading = false);
+            }
+        }
+
+        private async Task<RepositoryEntry> QueryRepositoryEntryAsync(string repoPath, bool isRoot)
+        {
+            var changes = await new Commands.QueryLocalChanges(repoPath, IncludeUntracked, true, true)
+                .GetResultAsync()
+                .ConfigureAwait(false);
+
+            await MarkSubmodulePointerChangesAsync(repoPath, changes).ConfigureAwait(false);
+            changes.Sort((l, r) => Models.NumericSort.Compare(l.Path, r.Path));
+            if (changes.Count == 0)
+                return null;
+
+            var relative = Path.GetRelativePath(_repo.FullPath, repoPath).Replace('\\', '/');
+            return new RepositoryEntry()
+            {
+                IsRoot = isRoot,
+                RepositoryPath = repoPath,
+                DisplayName = isRoot ? "Parent repository" : relative,
+                Description = repoPath,
+                AllChanges = changes,
+                Changes = changes,
+            };
         }
 
         private static async Task RevertSelectedChangesToHeadAsync(string repoPath, List<Models.Change> changes, Models.ICommandLog log)
@@ -516,6 +665,8 @@ namespace SourceGit.ViewModels
         private bool _isLoading = false;
         private bool _hasRepositories = false;
         private bool _showEmptyState = false;
+        private bool _includeUntracked = false;
+        private bool _refreshRequested = false;
         private string _hiddenExtensionFilterText = string.Empty;
         private string _hiddenExtensionInputText = string.Empty;
 

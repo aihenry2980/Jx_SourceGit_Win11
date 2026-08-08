@@ -49,6 +49,7 @@ namespace SourceGit.Views
         public RepositoryToolbar()
         {
             InitializeComponent();
+            DataContextChanged += (_, _) => RefreshCustomActionSlots();
         }
 
         protected override void OnSizeChanged(SizeChangedEventArgs e)
@@ -331,6 +332,76 @@ namespace SourceGit.Views
             };
             dialog.OpenCustomActionTab();
             await App.ShowDialog(dialog);
+            RefreshCustomActionSlots();
+        }
+
+        private void RefreshCustomActionSlots()
+        {
+            if (DataContext is not ViewModels.Repository repo)
+                return;
+
+            var actions = repo.GetCustomActions(Models.CustomActionScope.Repository);
+            var slots = new[] { CustomActionSlot0Button, CustomActionSlot1Button, CustomActionSlot2Button };
+            for (var i = 0; i < slots.Length; i++)
+            {
+                var slot = slots[i];
+                var action = i < actions.Count ? actions[i].Item1 : null;
+                slot.Tag = action;
+                slot.Content = CreateToolbarCustomActionContent(action);
+                ToolTip.SetTip(slot, action == null ? "Add a repository custom action" : action.Name);
+            }
+        }
+
+        private static Control CreateToolbarCustomActionContent(Models.CustomAction action)
+        {
+            var isConfigured = action != null;
+            var color = isConfigured && action.Color != 0 ? Color.FromUInt32(action.Color) : Color.Parse("#FF7A818C");
+            var foreground = isConfigured && (color.R * 0.299 + color.G * 0.587 + color.B * 0.114) > 168 ? Brushes.Black : Brushes.White;
+            var icon = new Avalonia.Controls.Shapes.Path
+            {
+                Width = 14,
+                Height = 14,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Fill = foreground,
+                Data = App.Current?.FindResource(isConfigured ? "Icons.Action" : "Icons.Plus") as StreamGeometry,
+            };
+
+            return new StackPanel
+            {
+                Orientation = Orientation.Vertical,
+                Spacing = 1,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Children =
+                {
+                    new Border
+                    {
+                        Background = new SolidColorBrush(color),
+                        CornerRadius = new CornerRadius(5),
+                        Padding = new Thickness(4),
+                        Child = icon,
+                    },
+                    new TextBlock
+                    {
+                        Classes = { "toolbar_label" },
+                        FontWeight = isConfigured ? FontWeight.SemiBold : FontWeight.Normal,
+                        Opacity = isConfigured ? 1 : 0.55,
+                        Text = isConfigured ? action.Name : "Add action",
+                    },
+                },
+            };
+        }
+
+        private async void ExecuteToolbarCustomAction(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button button || DataContext is not ViewModels.Repository repo)
+                return;
+
+            if (button.Tag is Models.CustomAction action)
+                await repo.ExecCustomActionAsync(action, null);
+            else
+                await OpenCustomActionsConfigureAsync(repo, true);
+
+            e.Handled = true;
         }
 
         private Control CreateCustomActionMenuHeader(ViewModels.CustomActionContextMenuLabel label, EventHandler<RoutedEventArgs> onDelete)
@@ -417,6 +488,8 @@ namespace SourceGit.Views
                 repo.Settings.RemoveCustomAction(action);
                 await repo.Settings.SaveAsync();
             }
+
+            RefreshCustomActionSlots();
         }
 
         private async void Fetch(object sender, TappedEventArgs e)
@@ -482,6 +555,15 @@ namespace SourceGit.Views
             {
                 if (!TryLaunchQuickFetchInTerminal(repo))
                     await repo.QuickFetchAsync();
+                e.Handled = true;
+            }
+        }
+
+        private async void FastFetch(object sender, TappedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+            {
+                await repo.FastFetchCurrentUpstreamAsync();
                 e.Handled = true;
             }
         }
@@ -2035,6 +2117,7 @@ namespace SourceGit.Views
             RightToolbarGroup.Margin = new Thickness(0, 0, sideMargin, 0);
             UpdateToolbarButtons(LeftToolbarGroup, utilityButtonWidth, 0);
             UpdateToolbarButtons(CenterToolbarGroup, buttonWidth, primaryGap);
+            UpdateToolbarButtons(CustomActionSlots, buttonWidth, primaryGap);
             UpdateToolbarButtons(RightToolbarGroup, buttonWidth, secondaryGap);
             ActionSeparator.Margin = new Thickness(primaryGap, 0, 0, 0);
         }

@@ -535,6 +535,10 @@
     <Setter Property="Foreground" Value="DarkOrange"/>
     <Setter Property="TextDecorations" Value="Underline"/>
   </Style>
+  <Style Selector="Run.issue_tag">
+    <Setter Property="FontWeight" Value="Bold"/>
+    <Setter Property="Foreground" Value="{DynamicResource Brush.FG1}"/>
+  </Style>
   <Style Selector="Run.inline_code">
     <Setter Property="FontFamily" Value="{DynamicResource Fonts.Monospace}"/>
     <Setter Property="Foreground" Value="{DynamicResource Brush.InlineCodeFG}"/>

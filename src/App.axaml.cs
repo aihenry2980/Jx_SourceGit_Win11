@@ -144,19 +144,25 @@ namespace SourceGit
             window.Show();
         }
 
-        public static async Task<bool> AskConfirmAsync(string message, Models.ConfirmButtonType buttonType = Models.ConfirmButtonType.OkCancel)
+        public static async Task<bool> AskConfirmAsync(Window owner, string message, Models.ConfirmButtonType buttonType = Models.ConfirmButtonType.OkCancel)
         {
             if (!Dispatcher.UIThread.CheckAccess())
-                return await Dispatcher.UIThread.InvokeAsync(() => AskConfirmAsync(message, buttonType));
+                return await Dispatcher.UIThread.InvokeAsync(() => AskConfirmAsync(owner, message, buttonType));
 
+            if (owner == null)
+                return false;
+
+            var confirm = new Views.Confirm();
+            confirm.SetData(message, buttonType);
+            return await confirm.ShowDialog<bool>(owner);
+        }
+
+        public static Task<bool> AskConfirmAsync(string message, Models.ConfirmButtonType buttonType = Models.ConfirmButtonType.OkCancel)
+        {
             if (Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: { } owner })
-            {
-                var confirm = new Views.Confirm();
-                confirm.SetData(message, buttonType);
-                return await confirm.ShowDialog<bool>(owner);
-            }
+                return AskConfirmAsync(owner, message, buttonType);
 
-            return false;
+            return Task.FromResult(false);
         }
 
         public static async Task<Models.ConfirmEmptyCommitResult> AskConfirmEmptyCommitAsync(bool hasLocalChanges, bool hasSelectedUnstaged)
