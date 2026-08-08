@@ -463,7 +463,10 @@ namespace SourceGit.Views
                 if (vm.CommandPalette != null)
                     vm.CancelCommandPalette();
                 else
+                {
                     vm.ActivePage.CancelPopup();
+                    vm.ActivePage.Notifications.Clear();
+                }
 
                 e.Handled = true;
                 return;

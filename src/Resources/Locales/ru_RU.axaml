@@ -52,7 +52,6 @@
   <x:String x:Key="Text.AssumeUnchanged.Empty" xml:space="preserve">СПИСОК ПУСТ</x:String>
   <x:String x:Key="Text.Avatar.Load" xml:space="preserve">Загрузить картинку...</x:String>
   <x:String x:Key="Text.Avatar.Refetch" xml:space="preserve">Обновить</x:String>
-  <x:String x:Key="Text.BinaryNotSupported" xml:space="preserve">ДВОИЧНЫЙ ФАЙЛ НЕ ПОДДЕРЖИВАЕТСЯ!!!</x:String>
   <x:String x:Key="Text.Bisect">Раздвоить</x:String>
   <x:String x:Key="Text.Bisect.Abort">О</x:String>
   <x:String x:Key="Text.Bisect.Bad">Плохая</x:String>
@@ -347,10 +346,10 @@
   <x:String x:Key="Text.DeinitSubmodule.Force" xml:space="preserve">Принудительно удалить даже если содержит локальные изменения.</x:String>
   <x:String x:Key="Text.DeinitSubmodule.Path" xml:space="preserve">Подмодуль:</x:String>
   <x:String x:Key="Text.DeleteBranch" xml:space="preserve">Удалить ветку</x:String>
-  <x:String x:Key="Text.DeleteBranch.AskForRemote" xml:space="preserve">Вы хотите также удалить следующую удалённую ветку?</x:String>
   <x:String x:Key="Text.DeleteBranch.Branch" xml:space="preserve">Ветка:</x:String>
   <x:String x:Key="Text.DeleteBranch.Force" xml:space="preserve">Принудительно удалить, даже если содержит неслитые ревизии</x:String>
   <x:String x:Key="Text.DeleteBranch.IsRemoteTip" xml:space="preserve">Вы собираетесь удалить внешнюю ветку!!!</x:String>
+  <x:String x:Key="Text.DeleteBranch.WithTrackingRemote" xml:space="preserve">Также удалите внешнюю ветку ${0}$</x:String>
   <x:String x:Key="Text.DeleteMultiBranch" xml:space="preserve">Удаление нескольких веток</x:String>
   <x:String x:Key="Text.DeleteMultiBranch.Tip" xml:space="preserve">Вы пытаетесь удалить несколько веток одновременно. Обязательно перепроверьте, прежде чем предпринимать какие-либо действия!</x:String>
   <x:String x:Key="Text.DeleteMultiTags" xml:space="preserve">Удалить несколько меток</x:String>
@@ -370,6 +369,7 @@
   <x:String x:Key="Text.DeleteTag.Tag" xml:space="preserve">Метка:</x:String>
   <x:String x:Key="Text.DeleteTag.WithRemote" xml:space="preserve">Удалить из внешнего репозитория</x:String>
   <x:String x:Key="Text.Diff.Binary" xml:space="preserve">СРАВНЕНИЕ БИНАРНИКОВ</x:String>
+  <x:String x:Key="Text.Diff.Binary.ViewContentOfNew" xml:space="preserve">ПРОСМОТР НОВОГО СОДЕРЖИМОГО</x:String>
   <x:String x:Key="Text.Diff.EmptyFile" xml:space="preserve">ФАЙЛ ПУСТ</x:String>
   <x:String x:Key="Text.Diff.First" xml:space="preserve">Первое сравнение</x:String>
   <x:String x:Key="Text.Diff.IgnoreWhitespace" xml:space="preserve">Игнорировать изменения пробелов</x:String>
@@ -429,6 +429,9 @@
   <x:String x:Key="Text.Repository.FetchAndPruneRecursively" xml:space="preserve">Fetch and prune recursively</x:String>
   <x:String x:Key="Text.Repository.FetchRecursively" xml:space="preserve">Fetch recursively</x:String>
   <x:String x:Key="Text.Repository.UpdateSubmodulesRecursively" xml:space="preserve">Submodules update recursively</x:String>
+  <x:String x:Key="Text.File.Binary" xml:space="preserve">ДВОИЧНЫЙ ФАЙЛ</x:String>
+  <x:String x:Key="Text.File.HexViewer" xml:space="preserve">ПРОСМОТР В ШЕСТНАДЦАТЕРИЧНОМ ФОРМАТЕ</x:String>
+  <x:String x:Key="Text.File.HexViewer.GotoAddress" xml:space="preserve">Перейти по адресу...</x:String>
   <x:String x:Key="Text.FileCM.AssumeUnchanged" xml:space="preserve">Не отслеживать</x:String>
   <x:String x:Key="Text.FileCM.CustomAction" xml:space="preserve">Пользовательское действие</x:String>
   <x:String x:Key="Text.FileCM.Discard" xml:space="preserve">Отклонить...</x:String>

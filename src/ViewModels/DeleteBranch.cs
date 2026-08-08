@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 
 namespace SourceGit.ViewModels
 {
@@ -7,6 +8,22 @@ namespace SourceGit.ViewModels
         public Models.Branch Target
         {
             get;
+        }
+
+        public Models.Branch Upstream
+        {
+            get;
+        }
+
+        public string DeleteUpstreamTip
+        {
+            get;
+        }
+
+        public bool DeleteUpstream
+        {
+            get;
+            set;
         }
 
         public bool Force
@@ -19,6 +36,16 @@ namespace SourceGit.ViewModels
         {
             _repo = repo;
             Target = branch;
+
+            if (branch.IsLocal && !string.IsNullOrEmpty(branch.Upstream))
+            {
+                var upstream = _repo.Branches.Find(x => x.FullName.Equals(branch.Upstream, StringComparison.Ordinal));
+                if (upstream != null && upstream.Name.Equals(branch.Name, StringComparison.Ordinal))
+                {
+                    Upstream = upstream;
+                    DeleteUpstreamTip = App.Text("DeleteBranch.WithTrackingRemote", upstream.FriendlyName);
+                }
+            }
         }
 
         public override async Task<bool> Sure()

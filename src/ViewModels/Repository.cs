@@ -3156,6 +3156,7 @@ namespace SourceGit.ViewModels
                     _uiStates.IncludeUntrackedInLocalChanges,
                     noOptionalLocks,
                     !bypassUntrackedCache)
+                    .WithCancellation(token)
                     .GetResultAsync()
                     .ConfigureAwait(false);
 
