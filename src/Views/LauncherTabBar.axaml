@@ -43,6 +43,16 @@
               <Setter Property="Background" Value="Transparent"/>
               <Setter Property="Opacity" Value=".68"/>
             </Style>
+            <Style Selector="ListBoxItem:not(:selected) Border.launcher_tab">
+              <Setter Property="Background" Value="{DynamicResource Brush.Contents}"/>
+              <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border1}"/>
+              <Setter Property="BorderThickness" Value="1"/>
+              <Setter Property="CornerRadius" Value="6"/>
+            </Style>
+            <Style Selector="ListBoxItem:not(:selected):pointerover Border.launcher_tab">
+              <Setter Property="Background" Value="{DynamicResource Brush.Window}"/>
+              <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}"/>
+            </Style>
             <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
               <Setter Property="Background" Value="Transparent"/>
               <Setter Property="Opacity" Value=".9"/>
@@ -64,9 +74,9 @@
 
           <ListBox.ItemTemplate>
             <DataTemplate DataType="vm:LauncherPage">
-              <v:LauncherTabSizeBox UseFixedWidth="False" Height="30"
+              <v:LauncherTabSizeBox Classes="launcher_tab"
+                                    UseFixedWidth="False" Height="30"
                                     Padding="0,2,0,0"
-                                    Background="Transparent"
                                     PointerPressed="OnPointerPressedTab"
                                     PointerMoved="OnPointerMovedOverTab"
                                     PointerReleased="OnPointerReleasedTab"
