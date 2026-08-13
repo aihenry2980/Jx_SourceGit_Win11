@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 
 namespace SourceGit.Views
 {
@@ -105,6 +106,34 @@ namespace SourceGit.Views
             if (DataContext is ViewModels.SubmoduleCommitFlow vm)
                 vm.NotifyCommitIncludeChanged();
 
+            e.Handled = true;
+        }
+
+        private void OnChangesContextRequested(object sender, ContextRequestedEventArgs e)
+        {
+            if (DataContext is not ViewModels.SubmoduleCommitFlow vm ||
+                sender is not ChangeCollectionView { SelectedChanges: { Count: > 0 } changes } view)
+                return;
+
+            var menu = new ContextMenu();
+            var revert = new MenuItem
+            {
+                Header = $"Revert {changes.Count} selected change{(changes.Count == 1 ? string.Empty : "s")}",
+                Icon = this.CreateMenuIcon("Icons.Undo"),
+            };
+            revert.Click += async (_, ev) =>
+            {
+                var confirmed = await App.AskConfirmAsync(
+                    this.FindAncestorOfType<Window>(),
+                    $"Revert {changes.Count} selected change{(changes.Count == 1 ? string.Empty : "s")} in Commit Flow?\n\nThis cannot be undone.",
+                    Models.ConfirmButtonType.YesNo);
+                if (confirmed)
+                    await vm.RevertSelectedChangesAsync();
+
+                ev.Handled = true;
+            };
+            menu.Items.Add(revert);
+            menu.Open(view);
             e.Handled = true;
         }
 

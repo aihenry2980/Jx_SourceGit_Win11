@@ -3,15 +3,15 @@
                     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                     xmlns:v="using:SourceGit.Views"
-                    mc:Ignorable="d" d:DesignWidth="760" d:DesignHeight="430"
+                    mc:Ignorable="d" d:DesignWidth="760" d:DesignHeight="620"
                     x:Class="SourceGit.Views.About"
                     x:Name="ThisControl"
                     Icon="/App.ico"
                     Title="{DynamicResource Text.About}"
-                    Width="760" Height="430"
-                    CanResize="False"
+                    Width="760" Height="620"
+                    MinHeight="500"
                     WindowStartupLocation="CenterOwner">
-  <StackPanel Orientation="Vertical">
+  <Grid RowDefinitions="Auto,*">
     <!-- TitleBar -->
     <Grid Height="28" IsVisible="{Binding !#ThisControl.UseSystemWindowFrame}">
       <Border Background="{DynamicResource Brush.TitleBar}"
@@ -34,6 +34,8 @@
                         IsVisible="{OnPlatform True, macOS=False}"/>
     </Grid>
 
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+    <StackPanel>
     <Grid ColumnDefinitions="Auto,*">
       <Image Grid.Column="0"
              Width="200" Height="200"
@@ -92,5 +94,33 @@
         </StackPanel>
       </Grid>
     </Grid>
-  </StackPanel>
+    
+    <Border Margin="16,4,16,16"
+            Padding="12"
+            BorderBrush="{DynamicResource Brush.Border1}"
+            BorderThickness="1"
+            CornerRadius="4"
+            Background="{DynamicResource Brush.Contents}">
+      <StackPanel Spacing="5">
+        <TextBlock Classes="bold" FontSize="18" Text="Changelog"/>
+
+        <TextBlock Margin="0,5,0,0" FontWeight="Bold" Text="2026-08-13:"/>
+        <TextBlock Margin="12,0,0,0" TextWrapping="Wrap" Text="1. Merged upstream updates: Avalonia 11.3.20, SSH agent key support, Clone path improvements, chart labels, and diff inline-chunk refinements."/>
+        <TextBlock Margin="12,0,0,0" TextWrapping="Wrap" Text="2. Kept the forked AvaloniaEdit integration current without switching away from the custom fork."/>
+
+        <TextBlock Margin="0,7,0,0" FontWeight="Bold" Text="2026-08-10:"/>
+        <TextBlock Margin="12,0,0,0" TextWrapping="Wrap" Text="1. Updated the forked AvaloniaEdit submodule with upstream caret, IME, and .NET 10 compatibility changes."/>
+        <TextBlock Margin="12,0,0,0" TextWrapping="Wrap" Text="2. Added Swift, OCamllex, and OCamlyacc syntax grammars; refreshed AvaloniaUI 11.3.19 and folder-path copy behavior."/>
+
+        <TextBlock Margin="0,7,0,0" FontWeight="Bold" Text="2026-08-09:"/>
+        <TextBlock Margin="12,0,0,0" TextWrapping="Wrap" Text="1. Improved workspace tab focus by giving inactive tabs a neutral background and clear boundaries."/>
+
+        <TextBlock Margin="0,7,0,0" FontWeight="Bold" Text="2026-08-08:"/>
+        <TextBlock Margin="12,0,0,0" TextWrapping="Wrap" Text="1. Enhanced Commit Flow with selective file inclusion, per-file encoding detection and save conversion, custom action slots, and focused navigation."/>
+        <TextBlock Margin="12,0,0,0" TextWrapping="Wrap" Text="2. Accelerated recursive local-change workflows with lightweight submodule discovery, targeted post-revert refreshes, and Fast Fetch for the tracked origin branch."/>
+      </StackPanel>
+    </Border>
+    </StackPanel>
+    </ScrollViewer>
+  </Grid>
 </v:ChromelessWindow>

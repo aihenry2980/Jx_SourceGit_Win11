@@ -335,6 +335,7 @@
                                 ViewMode="{Binding ChangeViewMode, Mode=TwoWay}"
                                 ShowCommitIncludeCheckBoxes="True"
                                 CommitIncludeToggled="OnCommitIncludeToggled"
+                                ContextRequested="OnChangesContextRequested"
                                 EnableCompactFolders="{Binding Source={x:Static vm:Preferences.Instance}, Path=EnableCompactFoldersInChangesTree}"
                                 Changes="{Binding Changes}"
                                 SelectedChanges="{Binding SelectedChanges, Mode=TwoWay}"/>

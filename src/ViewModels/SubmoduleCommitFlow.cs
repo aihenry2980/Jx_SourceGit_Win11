@@ -540,6 +540,53 @@ namespace SourceGit.ViewModels
             });
         }
 
+        public async Task RevertSelectedChangesAsync()
+        {
+            var node = _selectedNode;
+            var changes = _selectedChanges.ToList();
+            if (node == null || changes.Count == 0 || _isCommitting)
+                return;
+
+            using var lockWatcher = _repo.LockWatcher();
+            var log = _repo.CreateLog($"Commit Flow - revert changes in {node.DisplayPath}");
+            try
+            {
+                var pathspecFile = await WriteCommitFlowPathspecAsync(changes).ConfigureAwait(false);
+                try
+                {
+                    if (changes.Exists(x => x.Index != Models.ChangeState.None))
+                        await new Commands.Reset(node.RepoPath, pathspecFile).Use(log).ExecAsync().ConfigureAwait(false);
+                }
+                finally
+                {
+                    DeleteTempFile(pathspecFile);
+                }
+
+                var refreshed = await new Commands.QueryLocalChanges(node.RepoPath, _includeUntrackedChanges, true, false)
+                    .GetResultAsync()
+                    .ConfigureAwait(false);
+                var revertedKeys = changes.Select(GetChangeKey).ToHashSet(StringComparer.Ordinal);
+                var matched = refreshed
+                    .Where(x => revertedKeys.Contains(GetChangeKey(x)))
+                    .ToList();
+                if (matched.Count > 0)
+                    await Commands.Discard.ChangesAsync(node.RepoPath, matched, log).ConfigureAwait(false);
+            }
+            finally
+            {
+                log.Complete();
+            }
+
+            await Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                _changeCache.Remove(node.DisplayPath);
+                ShowFlowToast($"Reverted {changes.Count} selected change{(changes.Count == 1 ? string.Empty : "s")}.");
+                await LoadSelectedNodeChangesAsync();
+                _repo.RefreshWorkingCopyChanges();
+                _repo.RefreshSubmodules(true);
+            });
+        }
+
         private async Task CommitSelectedNodeAsync(bool pushAfterCommit)
         {
             if (!CanCommitSelectedNode)
@@ -1043,6 +1090,8 @@ namespace SourceGit.ViewModels
             if (node.State == SubmoduleCommitFlowNodeState.Clean && HasActionableDescendant(node))
                 node.State = SubmoduleCommitFlowNodeState.HasChildChanges;
             CommitMessage = BuildDefaultCommitMessage(node, GetIncludedChanges());
+            if (changes.Count > 0 && _selectedChanges.Count == 0)
+                SelectedChanges = [changes[0]];
             NotifyCommitPlanChanged();
             UpdateParentChain();
             Summary = BuildSummary(_allNodes.Count > 0 ? _allNodes : _nodes);
