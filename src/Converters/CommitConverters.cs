@@ -16,14 +16,14 @@ namespace SourceGit.Converters
                 if (commit is { IsCurrentHead: true })
                     return Brushes.White;
 
-                return s_mutedSHAForegroundBrush;
+                return commit is { IsMerged: true } ? s_currentBranchSHAForegroundBrush : s_offBranchSHAForegroundBrush;
             });
 
         public static readonly FuncValueConverter<Models.Commit, IBrush> SHABackground =
             new(commit => commit is { IsCurrentHead: true } ? s_headSHABackgroundBrush : Brushes.Transparent);
 
         public static readonly FuncValueConverter<Models.Commit, FontWeight> SHAFontWeight =
-            new(commit => commit is { IsCurrentHead: true } ? FontWeight.Bold : FontWeight.Regular);
+            new(commit => commit is { IsCurrentHead: true } ? FontWeight.Bold : commit is { IsMerged: true } ? FontWeight.Bold : FontWeight.Regular);
 
         public static readonly FuncValueConverter<Models.Commit, string> SHAToolTip =
             new(commit => commit?.HistoryChangeSummaryToolTip ?? string.Empty);
@@ -81,6 +81,7 @@ namespace SourceGit.Converters
         private static readonly IBrush s_headSubjectSelectedBackground = new SolidColorBrush(Color.Parse("#FFFFC7C7"));
         private static readonly IBrush s_headSHABackgroundBrush = new SolidColorBrush(Color.Parse("#FFD13438"));
         private static readonly IBrush s_headForegroundBrush = new SolidColorBrush(Color.Parse("#FFD13438"));
-        private static readonly IBrush s_mutedSHAForegroundBrush = new SolidColorBrush(Color.Parse("#FF686F77"));
+        private static readonly IBrush s_currentBranchSHAForegroundBrush = new SolidColorBrush(Color.Parse("#FF22272E"));
+        private static readonly IBrush s_offBranchSHAForegroundBrush = new SolidColorBrush(Color.Parse("#FFA4ABB3"));
     }
 }

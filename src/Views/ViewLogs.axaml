@@ -128,18 +128,26 @@
       </Border>
     </Grid>
 
-    <Grid Grid.Row="2" Margin="8,0,8,8" ColumnDefinitions="Auto,Auto">
+    <Grid Grid.Row="2" Margin="8,0,8,8" ColumnDefinitions="Auto,Auto,Auto,*">
       <Button Grid.Column="0"
+              Classes="flat primary"
+              Width="132"
+              Height="36"
+              FontSize="16"
+              FontWeight="Bold"
+              Content="{DynamicResource Text.Close}"
+              Click="OnClose"/>
+
+      <Button Grid.Column="1"
               Classes="flat"
               Content="Copy current command"
               Click="OnCopyCurrentCommand"
               IsEnabled="{Binding SelectedLog.LatestCommand, Converter={x:Static c:StringConverters.IsNotNullOrWhitespace}}"/>
 
       <Button Classes="flat primary"
-              Grid.Column="1"
+              Grid.Column="2"
               Margin="8,0,0,0"
               Content="{DynamicResource Text.ViewLogs.Clear}"
-              HorizontalAlignment="Center"
               Command="{Binding ClearAll}"
               IsEnabled="{Binding Logs.Count, Converter={x:Static c:IntConverters.IsGreaterThanZero}}"/>
     </Grid>

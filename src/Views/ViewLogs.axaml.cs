@@ -71,6 +71,12 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
+        private void OnClose(object _, Avalonia.Interactivity.RoutedEventArgs e)
+        {
+            Close();
+            e.Handled = true;
+        }
+
         private void OnLogKeyDown(object _, KeyEventArgs e)
         {
             if (e.Key is not (Key.Delete or Key.Back))

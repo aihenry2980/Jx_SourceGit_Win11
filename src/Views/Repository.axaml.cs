@@ -1174,6 +1174,57 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
+        private void OnPresetBranchRuleDoubleTapped(object sender, TappedEventArgs e)
+        {
+            if (sender is Control { DataContext: string name } && DataContext is ViewModels.Repository repo)
+                NavigateToPresetBranch(repo, name);
+
+            e.Handled = true;
+        }
+
+        private void OnPresetBranchRuleContextRequested(object sender, ContextRequestedEventArgs e)
+        {
+            if (sender is not Control { DataContext: string name } control ||
+                DataContext is not ViewModels.Repository repo ||
+                FindPresetBranch(repo, name) == null)
+            {
+                return;
+            }
+
+            var menu = new ContextMenu();
+            var goToBranch = new MenuItem()
+            {
+                Header = "Go to branch",
+                Icon = this.CreateMenuIcon("Icons.Branch"),
+            };
+            goToBranch.Click += (_, ev) =>
+            {
+                NavigateToPresetBranch(repo, name);
+                ev.Handled = true;
+            };
+            menu.Items.Add(goToBranch);
+            menu.Open(control);
+            e.Handled = true;
+        }
+
+        private static Models.Branch FindPresetBranch(ViewModels.Repository repo, string name)
+        {
+            return repo.Branches.Find(x => x.IsLocal && x.Name.Equals(name, StringComparison.Ordinal)) ??
+                repo.Branches.Find(x => x.Name.Equals(name, StringComparison.Ordinal));
+        }
+
+        private static void NavigateToPresetBranch(ViewModels.Repository repo, string name)
+        {
+            var branch = FindPresetBranch(repo, name);
+            if (branch == null)
+            {
+                App.SendNotification(repo.FullPath, $"Branch `{name}` no longer exists.");
+                return;
+            }
+
+            repo.NavigateToCommit(branch.Head);
+        }
+
         private void OnRemovePresetBranchExcludeName(object sender, RoutedEventArgs e)
         {
             if (sender is not Button { Tag: string name } || DataContext is not ViewModels.Repository repo)
@@ -1724,7 +1775,7 @@ namespace SourceGit.Views
             var token = cts.Token;
             try
             {
-                await Task.Delay(250, token);
+                await Task.Delay(500, token);
                 if (token.IsCancellationRequested)
                     return;
 
