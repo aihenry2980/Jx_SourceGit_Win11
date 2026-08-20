@@ -59,7 +59,7 @@ namespace SourceGit.Commands
                 using var proc = new Process();
                 proc.StartInfo = CreateGitStartInfo(true);
                 proc.Start();
-                using var registration = CancellationToken.Register(() => TryKillProcessTree(proc));
+                using var registration = CancellationToken.Register(() => Native.OS.TerminateProcess(proc));
                 var stderrTask = proc.StandardError.ReadToEndAsync(CancellationToken);
 
                 string currentCommit = null;

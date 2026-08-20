@@ -68,6 +68,7 @@ namespace SourceGit.ViewModels
             _repo = repo;
             Current = repo.CurrentBranch;
             _useRebase = initialUseRebase ?? _repo.UIStates.PreferRebaseInsteadOfMerge;
+            CanTerminate = true;
 
             DealWithLocalChanges = Preferences.Instance.UseStashAndReapplyByDefault ?
                 Models.DealWithLocalChanges.StashAndReapply :
@@ -141,6 +142,11 @@ namespace SourceGit.ViewModels
             if (cancellationToken.IsCancellationRequested)
                 return false;
 
+            using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            _cancellation = cancellation;
+            cancellationToken = cancellation.Token;
+            try
+            {
             var changes = await new Commands.CountLocalChanges(_repo.FullPath, false).GetResultAsync();
             var needPopStash = false;
             if (changes > 0)
@@ -199,6 +205,16 @@ namespace SourceGit.ViewModels
 
             await _repo.RefreshAfterPullAsync().ConfigureAwait(false);
             return true;
+            }
+            finally
+            {
+                _cancellation = null;
+            }
+        }
+
+        public override void Terminate()
+        {
+            var _ = _cancellation?.CancelAsync();
         }
 
         private async Task<bool> RunPullWithAutoRevertAsync(string branchName, int localChangesCount, Models.ICommandLog log, CancellationToken cancellationToken)
@@ -439,5 +455,6 @@ namespace SourceGit.ViewModels
         private List<Models.Branch> _remoteBranches = null;
         private Models.Branch _selectedBranch = null;
         private bool _useRebase = false;
+        private CancellationTokenSource _cancellation = null;
     }
 }

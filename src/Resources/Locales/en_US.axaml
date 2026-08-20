@@ -751,6 +751,7 @@
   <x:String x:Key="Text.Push.Force" xml:space="preserve">Force push</x:String>
   <x:String x:Key="Text.Push.Local" xml:space="preserve">Local Branch:</x:String>
   <x:String x:Key="Text.Push.New" xml:space="preserve">NEW</x:String>
+  <x:String x:Key="Text.Push.NoVerify" xml:space="preserve">Bypass the pre-push hook</x:String>
   <x:String x:Key="Text.Push.Remote" xml:space="preserve">Remote:</x:String>
   <x:String x:Key="Text.Push.Revision" xml:space="preserve">Revision:</x:String>
   <x:String x:Key="Text.Push.Revision.Title" xml:space="preserve">Push Revision To Remote</x:String>
@@ -1000,6 +1001,7 @@
   <x:String x:Key="Text.TagCM.DeleteMultiple" xml:space="preserve">Delete selected {0} tags...</x:String>
   <x:String x:Key="Text.TagCM.Merge" xml:space="preserve">Merge ${0}$ into ${1}$...</x:String>
   <x:String x:Key="Text.TagCM.Push" xml:space="preserve">Push ${0}$...</x:String>
+  <x:String x:Key="Text.Terminate" xml:space="preserve">TERMINATE</x:String>
   <x:String x:Key="Text.UpdateSubmodules" xml:space="preserve">Update Submodules</x:String>
   <x:String x:Key="Text.UpdateSubmodules.All" xml:space="preserve">All submodules</x:String>
   <x:String x:Key="Text.UpdateSubmodules.Init" xml:space="preserve">Initialize as needed</x:String>

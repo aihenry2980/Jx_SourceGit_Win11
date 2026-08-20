@@ -9,7 +9,6 @@ namespace SourceGit.ViewModels
         public override double PopupWidth => 720;
 
         [Required(ErrorMessage = "Branch name is required!")]
-        [RegularExpression(@"^[\w\-/\.#\+]+$", ErrorMessage = "Bad branch name format!")]
         [CustomValidation(typeof(CreateBranch), nameof(ValidateBranchName))]
         public string Name
         {
@@ -118,6 +117,9 @@ namespace SourceGit.ViewModels
         {
             if (ctx.ObjectInstance is CreateBranch creator)
             {
+                if (!Models.RefName.IsValidBranchName(name))
+                    return new ValidationResult("Bad branch name format!");
+
                 if (!creator._allowOverwrite)
                 {
                     foreach (var b in creator._repo.Branches)

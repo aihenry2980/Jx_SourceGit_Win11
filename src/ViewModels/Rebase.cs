@@ -236,7 +236,8 @@ namespace SourceGit.ViewModels
                     false,
                     _repo.Submodules.Count > 0,
                     _setUpstreamAfterForcePush,
-                    true).Use(log).RunAsync();
+                    true,
+                    false).Use(log).RunAsync();
             }
 
             if (succ)

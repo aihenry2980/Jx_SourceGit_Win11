@@ -670,6 +670,7 @@ namespace SourceGit.ViewModels
                             false,
                             node.Children.Count > 0,
                             node.SetPushTracking,
+                            false,
                             false)
                         .Use(log)
                         .RunAsync()
@@ -768,7 +769,8 @@ namespace SourceGit.ViewModels
                                 false,
                                 false,
                                 false,
-                                true)
+                                true,
+                                false)
                             .Use(log)
                             .RunAsync()
                             .ConfigureAwait(false);

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SourceGit.ViewModels
@@ -50,6 +51,7 @@ namespace SourceGit.ViewModels
             _repo.UIStates.FetchWithoutTags = true;
             IsFetchAllRemoteVisible = repo.Remotes.Count > 1 && preferredRemote == null;
             _fetchAllRemotes = IsFetchAllRemoteVisible && _repo.UIStates.FetchAllRemotes;
+            CanTerminate = true;
 
             if (preferredRemote != null)
             {
@@ -80,16 +82,26 @@ namespace SourceGit.ViewModels
             Use(log);
             var gitStopwatch = Stopwatch.StartNew();
 
+            _cancellation = new CancellationTokenSource();
+            var token = _cancellation.Token;
+
             if (FetchAllRemotes)
             {
                 foreach (var remote in _repo.Remotes)
+                {
                     await new Commands.Fetch(_repo.FullPath, remote.Name, notags, force)
+                        .WithCancellation(token)
                         .Use(log)
                         .RunAsync();
+
+                    if (token.IsCancellationRequested)
+                        break;
+                }
             }
             else
             {
                 await new Commands.Fetch(_repo.FullPath, SelectedRemote.Name, notags, force)
+                    .WithCancellation(token)
                     .Use(log)
                     .RunAsync();
             }
@@ -97,7 +109,7 @@ namespace SourceGit.ViewModels
             gitStopwatch.Stop();
             log.Complete();
 
-            if (navigateToUpstreamHEAD)
+            if (navigateToUpstreamHEAD && !token.IsCancellationRequested)
             {
                 var upstream = _repo.CurrentBranch?.Upstream;
                 if (!string.IsNullOrEmpty(upstream))
@@ -107,12 +119,24 @@ namespace SourceGit.ViewModels
                 }
             }
 
-            var refreshDuration = await _repo.MarkFetchedAndMeasureRefreshAsync();
-            _repo.ShowFetchDurationToast(gitStopwatch.Elapsed, refreshDuration);
+            if (!token.IsCancellationRequested)
+            {
+                var refreshDuration = await _repo.MarkFetchedAndMeasureRefreshAsync();
+                _repo.ShowFetchDurationToast(gitStopwatch.Elapsed, refreshDuration);
+            }
+
+            _cancellation = null;
             return true;
+        }
+
+        public override void Terminate()
+        {
+            // Just fire cancel event and UI will auto wait the `Sure` complete
+            var _ = _cancellation?.CancelAsync();
         }
 
         private readonly Repository _repo = null;
         private bool _fetchAllRemotes = false;
+        private CancellationTokenSource _cancellation = null;
     }
 }
