@@ -1604,10 +1604,11 @@
                       <ColumnDefinition Width="Auto" MaxWidth="480"/>
                       <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <Path Grid.Column="0" Width="10" Height="10" Data="{StaticResource Icons.Branch}" IsVisible="{Binding IsBranch}"/>
-                    <Path Grid.Column="0" Width="10" Height="10" Data="{StaticResource Icons.Tag}" IsVisible="{Binding Type, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:FilterType.Tag}}"/>
-                    <Path Grid.Column="0" Width="10" Height="10" Data="{StaticResource Icons.Submodule}" IsVisible="{Binding IsPath}"/>
-
+                    <v:HistoryFilterIcon Grid.Column="0"
+                                         Width="12" Height="12"
+                                         VerticalAlignment="Center"
+                                         Filter="{Binding, Mode=OneWay}"
+                                         IsFilterValid="{Binding IsValid, Mode=OneWay}"/>
                     <TextBlock Grid.Column="1"
                                Text="{Binding Pattern, Converter={x:Static c:StringConverters.TrimRefsPrefix}}"
                                Margin="4,0,8,0"
