@@ -180,6 +180,29 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
+        private async void ManageAssumeUnchangedFiles(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.RepositoryConfigure vm)
+                await this.ShowDialogAsync(new ViewModels.AssumeUnchangedManager(vm.Repository));
+
+            e.Handled = true;
+        }
+
+        private async void ClearLocalIgnoreRules(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.RepositoryConfigure vm)
+            {
+                var confirmed = await App.AskConfirmAsync(
+                    this,
+                    "Clear repository-local ignore rules and restore the matching tracked files?\n\nThis does not modify .gitignore.",
+                    Models.ConfirmButtonType.OkCancel);
+                if (confirmed)
+                    await vm.ClearRepoLocalIgnoreRulesAsync();
+            }
+
+            e.Handled = true;
+        }
+
         private void OnNewCustomIssueTracker(object sender, RoutedEventArgs e)
         {
             if (DataContext is ViewModels.RepositoryConfigure vm)

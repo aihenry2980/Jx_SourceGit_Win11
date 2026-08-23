@@ -28,12 +28,16 @@ namespace SourceGit.ViewModels
             {
                 var log = _repo.CreateLog("Remove Assume Unchanged File");
 
-                await new Commands.AssumeUnchanged(_repo.FullPath, file, false)
+                var success = await new Commands.AssumeUnchanged(_repo.FullPath, file, false)
                     .Use(log)
                     .ExecAsync();
 
                 log.Complete();
-                Files.Remove(file);
+                if (success)
+                {
+                    Files.Remove(file);
+                    _repo.RefreshWorkingCopyChanges(true);
+                }
             }
         }
 

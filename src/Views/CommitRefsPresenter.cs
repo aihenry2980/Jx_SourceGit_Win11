@@ -31,6 +31,7 @@ namespace SourceGit.Views
             public IBrush SecondaryIconBackground { get; set; } = null;
             public IBrush TrackingRemoteBackground { get; set; } = null;
             public IBrush TrackingLocalBackground { get; set; } = null;
+            public IBrush BadgeBackground { get; set; } = null;
             public IBrush LabelBrush { get; set; } = null;
             public IBrush FoldButtonBackground { get; set; } = null;
             public IBrush FoldButtonForeground { get; set; } = null;
@@ -277,14 +278,23 @@ namespace SourceGit.Views
                             var labelRect = new RoundedRect(
                                 new Rect(x + item.LeadingWidth, y, item.Width - item.LeadingWidth, item.Height),
                                 new CornerRadius(0, rightCornerRadius, rightCornerRadius, 0));
-                            using (context.PushOpacity(.2))
-                                context.DrawRectangle(item.Brush, null, labelRect);
+                            if (item.BadgeBackground != null)
+                            {
+                                context.DrawRectangle(item.BadgeBackground, null, labelRect);
+                            }
+                            else
+                            {
+                                using (context.PushOpacity(.2))
+                                    context.DrawRectangle(item.Brush, null, labelRect);
+                            }
                         }
 
                         context.DrawLine(new Pen(item.Brush), new Point(x + item.LeadingWidth, y), new Point(x + item.LeadingWidth, y + item.Height));
                     }
 
-                    if (item.Decorator?.Type == Models.DecoratorType.Tag)
+                    if (item.Decorator?.Type == Models.DecoratorType.RemoteBranchHead)
+                        DrawRemoteStripePattern(context, entireRect);
+                    else if (item.Decorator?.Type == Models.DecoratorType.Tag)
                         DrawTagStripePattern(context, entireRect, fg);
 
                     var labelX = x + item.LeadingWidth + 4;
@@ -559,6 +569,26 @@ namespace SourceGit.Views
                         item.BorderBrush = s_headTagBorderBrush;
                     }
 
+                    if (!isHead && secondaryDecorator == null)
+                    {
+                        if (decorator.Type == Models.DecoratorType.LocalBranchHead)
+                        {
+                            var branchColor = decorator.Color != 0
+                                ? Color.FromUInt32(decorator.Color)
+                                : GetLogicalBranchColor(decorator.Name, false);
+                            item.BadgeBackground = CreateBranchBadgeBackground(branchColor, 0.54);
+                            item.BorderBrush = new SolidColorBrush(branchColor);
+                        }
+                        else if (decorator.Type == Models.DecoratorType.RemoteBranchHead)
+                        {
+                            var branchColor = decorator.Color != 0
+                                ? Color.FromUInt32(decorator.Color)
+                                : GetLogicalBranchColor(decorator.Name, true);
+                            item.BadgeBackground = CreateBranchBadgeBackground(branchColor, 0.78);
+                            item.BorderBrush = new SolidColorBrush(branchColor);
+                        }
+                    }
+
                     StreamGeometry geo;
                     switch (decorator.Type)
                     {
@@ -570,6 +600,9 @@ namespace SourceGit.Views
                             break;
                         case Models.DecoratorType.RemoteBranchHead:
                             geo = this.FindResource("Icons.Remote") as StreamGeometry;
+                            break;
+                        case Models.DecoratorType.LocalBranchHead:
+                            geo = this.FindResource("Icons.Home") as StreamGeometry;
                             break;
                         case Models.DecoratorType.SuperProjectPointer:
                             item.Brush = s_superProjectPointerBackgroundBrush;
@@ -719,6 +752,53 @@ namespace SourceGit.Views
                         new Point(startX, rect.Bottom),
                         new Point(startX + rect.Height, rect.Top));
                 }
+            }
+        }
+
+        private static void DrawRemoteStripePattern(DrawingContext context, RoundedRect clipRect)
+        {
+            var rect = clipRect.Rect;
+            var spacing = Math.Max(7.0, rect.Height * 0.48);
+            var pen = new Pen(s_remoteStripeBrush, 1.0);
+
+            using (context.PushClip(clipRect))
+            using (context.PushOpacity(0.38))
+            {
+                for (var startX = rect.Left - rect.Height; startX < rect.Right; startX += spacing)
+                {
+                    context.DrawLine(
+                        pen,
+                        new Point(startX, rect.Bottom),
+                        new Point(startX + rect.Height, rect.Top));
+                }
+            }
+        }
+
+        private static IBrush CreateBranchBadgeBackground(Color branchColor, double whiteAmount)
+        {
+            return new SolidColorBrush(BlendColor(branchColor, Colors.White, whiteAmount));
+        }
+
+        private static Color GetLogicalBranchColor(string name, bool isRemote)
+        {
+            var logicalName = name ?? string.Empty;
+            if (isRemote)
+            {
+                var slash = logicalName.IndexOf('/');
+                if (slash >= 0 && slash + 1 < logicalName.Length)
+                    logicalName = logicalName.Substring(slash + 1);
+            }
+
+            unchecked
+            {
+                uint hash = 2166136261;
+                foreach (var c in logicalName)
+                {
+                    hash ^= c;
+                    hash *= 16777619;
+                }
+
+                return s_logicalBranchPalette[(int)(hash % (uint)s_logicalBranchPalette.Length)];
             }
         }
 
@@ -890,6 +970,18 @@ namespace SourceGit.Views
         private static readonly IBrush s_incidentalBranchBorderBrush = new SolidColorBrush(Color.Parse("#CC202124"));
         private static readonly IBrush s_remoteIconBackgroundBrush = new SolidColorBrush(Color.Parse("#FF0B57D0"));
         private static readonly IBrush s_remoteIconBorderBrush = new SolidColorBrush(Color.Parse("#FF073B8C"));
+        private static readonly IBrush s_remoteStripeBrush = new SolidColorBrush(Color.Parse("#FF3974A0"));
+        private static readonly Color[] s_logicalBranchPalette =
+        [
+            Color.Parse("#FF2574C9"),
+            Color.Parse("#FF2E8B57"),
+            Color.Parse("#FF8E44AD"),
+            Color.Parse("#FFE67E22"),
+            Color.Parse("#FFC03970"),
+            Color.Parse("#FF168A9A"),
+            Color.Parse("#FFB44343"),
+            Color.Parse("#FF738B21"),
+        ];
         private static readonly IBrush s_localIconBrush = new SolidColorBrush(Color.Parse("#FFD97706"));
         private static readonly IBrush s_localIconBorderBrush = new SolidColorBrush(Color.Parse("#FFB45309"));
         private static readonly IBrush s_compactRemoteIconBrush = Brushes.White;

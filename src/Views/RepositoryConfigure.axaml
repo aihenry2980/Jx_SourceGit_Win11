@@ -277,15 +277,30 @@
                      Text=".gitignore in this repository is not modified by this tab."
                      Foreground="{DynamicResource Brush.FG2}"/>
 
-          <Button Grid.Row="3"
-                  Margin="0,10,0,0"
-                  Height="28"
-                  MinWidth="88"
-                  HorizontalAlignment="Right"
-                  Classes="flat primary"
-                  Click="ApplyLocalIgnoreRules">
-            <TextBlock Text="Apply"/>
-          </Button>
+          <Grid Grid.Row="3" Margin="0,10,0,0" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+            <Button Grid.Column="0"
+                    Height="28"
+                    HorizontalAlignment="Left"
+                    Click="ManageAssumeUnchangedFiles">
+              <TextBlock Text="Manage ignored tracked files..."/>
+            </Button>
+
+            <Button Grid.Column="1"
+                    Height="28"
+                    Foreground="{DynamicResource Brush.Conflict.Foreground}"
+                    Click="ClearLocalIgnoreRules"
+                    ToolTip.Tip="Clear .git/info/exclude and restore tracked files matched by these rules">
+              <TextBlock Text="Clear Local Ignore"/>
+            </Button>
+
+            <Button Grid.Column="2"
+                    Height="28"
+                    MinWidth="88"
+                    Classes="flat primary"
+                    Click="ApplyLocalIgnoreRules">
+              <TextBlock Text="Apply"/>
+            </Button>
+          </Grid>
         </Grid>
       </TabItem>
 

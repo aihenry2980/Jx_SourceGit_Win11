@@ -235,6 +235,8 @@ namespace SourceGit.ViewModels
 
         public string RepoPath => _repo.FullPath;
 
+        public Repository Repository => _repo;
+
         public string RepoLocalIgnoreRules
         {
             get => _repoLocalIgnoreRules;
@@ -415,6 +417,43 @@ namespace SourceGit.ViewModels
             _repo.RefreshWorkingCopyChanges(true);
         }
 
+        public async Task<bool> ClearRepoLocalIgnoreRulesAsync()
+        {
+            var trackedTargets = await GetTrackedTargetsForLocalIgnoreRulesAsync();
+            var failed = new List<string>();
+
+            if (trackedTargets.Count > 0)
+            {
+                using var lockWatcher = _repo.LockWatcher();
+                var log = _repo.CreateLog("Clear Local Ignore Rules");
+                foreach (var file in trackedTargets)
+                {
+                    var success = await new Commands.AssumeUnchanged(_repo.FullPath, file, false)
+                        {
+                            RaiseError = false,
+                        }
+                        .Use(log)
+                        .ExecAsync();
+
+                    if (!success)
+                        failed.Add(file);
+                }
+
+                log.Complete();
+            }
+
+            if (failed.Count > 0)
+            {
+                App.RaiseException(_repo.FullPath, $"Failed to restore local ignore for:\n{string.Join("\n", failed)}");
+                return false;
+            }
+
+            RepoLocalIgnoreRules = string.Empty;
+            await SaveRepoLocalIgnoreRulesAsync();
+            _repo.RefreshWorkingCopyChanges(true);
+            return true;
+        }
+
         private async Task SetIfChangedAsync(string key, string value, string defValue)
         {
             if (value != _cached.GetValueOrDefault(key, defValue))
@@ -502,33 +541,7 @@ namespace SourceGit.ViewModels
 
         private async Task ApplyAssumeUnchangedForTrackedLocalIgnoreRulesAsync()
         {
-            var rules = new List<string>();
-            var dedupeRules = new HashSet<string>(StringComparer.Ordinal);
-
-            var lines = (_repoLocalIgnoreRules ?? string.Empty).ReplaceLineEndings("\n").Split('\n');
-            foreach (var raw in lines)
-            {
-                var rule = raw.Trim();
-                if (!IsLocalIgnoreRuleApplicableToTrackedFiles(rule))
-                    continue;
-
-                rule = rule.Replace('\\', '/');
-                if (!dedupeRules.Add(rule))
-                    continue;
-
-                rules.Add(rule);
-            }
-
-            if (rules.Count == 0)
-                return;
-
-            var trackedTargets = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var rule in rules)
-            {
-                var found = await new Commands.QueryTrackedFiles(_repo.FullPath, rule).GetResultAsync();
-                foreach (var one in found)
-                    trackedTargets.Add(one);
-            }
+            var trackedTargets = await GetTrackedTargetsForLocalIgnoreRulesAsync();
 
             if (trackedTargets.Count == 0)
                 return;
@@ -557,6 +570,33 @@ namespace SourceGit.ViewModels
 
             if (failed.Count > 0)
                 App.RaiseException(_repo.FullPath, $"Failed to mark ignore rules as assume-unchanged:\n{string.Join("\n", failed)}");
+        }
+
+        private async Task<HashSet<string>> GetTrackedTargetsForLocalIgnoreRulesAsync()
+        {
+            var rules = new List<string>();
+            var dedupeRules = new HashSet<string>(StringComparer.Ordinal);
+            var lines = (_repoLocalIgnoreRules ?? string.Empty).ReplaceLineEndings("\n").Split('\n');
+            foreach (var raw in lines)
+            {
+                var rule = raw.Trim();
+                if (!IsLocalIgnoreRuleApplicableToTrackedFiles(rule))
+                    continue;
+
+                rule = rule.Replace('\\', '/');
+                if (dedupeRules.Add(rule))
+                    rules.Add(rule);
+            }
+
+            var trackedTargets = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var rule in rules)
+            {
+                var found = await new Commands.QueryTrackedFiles(_repo.FullPath, rule).GetResultAsync();
+                foreach (var file in found)
+                    trackedTargets.Add(file);
+            }
+
+            return trackedTargets;
         }
 
         private static bool IsLocalIgnoreRuleApplicableToTrackedFiles(string rule)

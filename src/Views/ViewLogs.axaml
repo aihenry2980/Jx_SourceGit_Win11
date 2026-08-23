@@ -14,7 +14,7 @@
                     Width="800" Height="500"
                     CanResize="True"
                     WindowStartupLocation="CenterOwner">
-  <Grid RowDefinitions="Auto,*,Auto">
+  <Grid x:Name="Root" RowDefinitions="Auto,*,Auto">
     <!-- TitleBar -->
     <Grid Grid.Row="0" Height="28" IsVisible="{Binding !#ThisControl.UseSystemWindowFrame}">
       <Border Background="{DynamicResource Brush.TitleBar}"
@@ -150,6 +150,15 @@
               Content="{DynamicResource Text.ViewLogs.Clear}"
               Command="{Binding ClearAll}"
               IsEnabled="{Binding Logs.Count, Converter={x:Static c:IntConverters.IsGreaterThanZero}}"/>
+
+      <TextBlock x:Name="AutoCloseCountdown"
+                 Grid.Column="3"
+                 Margin="12,0,0,0"
+                 VerticalAlignment="Center"
+                 HorizontalAlignment="Right"
+                 FontWeight="Bold"
+                 Foreground="#FF2E7D32"
+                 IsVisible="False"/>
     </Grid>
   </Grid>
 </v:ChromelessWindow>

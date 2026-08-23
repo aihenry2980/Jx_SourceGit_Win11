@@ -1568,7 +1568,7 @@ namespace SourceGit.Views
                 else
                 {
                     var reset = new MenuItem();
-                    reset.Header = App.Text("CommitCM.Reset", current.Name, target);
+                    reset.Header = CreateCommitBranchActionHeader(repo, commit, "Reset", current, "to", target);
                     reset.Icon = App.CreateMenuIcon("Icons.Reset");
                     reset.Click += (_, e) =>
                     {
@@ -1582,7 +1582,7 @@ namespace SourceGit.Views
                 if (!commit.IsMerged)
                 {
                     var rebase = new MenuItem();
-                    rebase.Header = App.Text("CommitCM.Rebase", current.Name, target);
+                    rebase.Header = CreateCommitBranchActionHeader(repo, commit, "Rebase", current, "on", target);
                     rebase.Icon = App.CreateMenuIcon("Icons.Rebase");
                     rebase.Click += (_, e) =>
                     {
@@ -1672,7 +1672,7 @@ namespace SourceGit.Views
                     if (commit.IsMerged && commit.Parents.Count > 0)
                     {
                         var manually = new MenuItem();
-                        manually.Header = App.Text("CommitCM.InteractiveRebase.Manually", current.Name, target);
+                        manually.Header = CreateCommitBranchActionHeader(repo, commit, "Interactively rebase", current, "on", target);
                         manually.Icon = App.CreateMenuIcon("Icons.InteractiveRebase");
                         manually.Click += async (_, e) =>
                         {
@@ -1742,7 +1742,7 @@ namespace SourceGit.Views
                     else
                     {
                         var interactiveRebase = new MenuItem();
-                        interactiveRebase.Header = App.Text("CommitCM.InteractiveRebase.Manually", current.Name, target);
+                        interactiveRebase.Header = CreateCommitBranchActionHeader(repo, commit, "Interactively rebase", current, "on", target);
                         interactiveRebase.Icon = App.CreateMenuIcon("Icons.InteractiveRebase");
                         interactiveRebase.Click += async (_, e) =>
                         {
@@ -2069,9 +2069,9 @@ namespace SourceGit.Views
             menu.Items.Add(submenu);
             AddLevel1BranchFilterModeMenuItem(menu, filterModeVm, actionBackground);
             AddLevel1SetRebaseBaseBranchMenuItem(menu, repo, current, actionBackground);
-            AddLevel1PushBranchMenuItem(menu, repo, current, actionBackground);
-            AddLevel1CheckoutRebaseAndForcePushMenuItem(menu, repo, current, actionBackground);
-            AddLevel1ForcePushBranchMenuItem(menu, repo, current, actionBackground);
+            AddLevel1PushBranchMenuItem(menu, repo, current, actionBackground, color);
+            AddLevel1CheckoutRebaseAndForcePushMenuItem(menu, repo, current, actionBackground, color);
+            AddLevel1ForcePushBranchMenuItem(menu, repo, current, actionBackground, color);
             AddLevel1CopyBranchNameMenuItem(menu, current.Name, actionBackground);
         }
 
@@ -2105,7 +2105,7 @@ namespace SourceGit.Views
             if (!repo.IsBare)
             {
                 var merge = new MenuItem();
-                merge.Header = App.Text("BranchCM.Merge", branch.Name, current.Name);
+                merge.Header = CreateMergeBranchHeader(repo, branch, current, color);
                 merge.Icon = App.CreateMenuIcon("Icons.Merge");
                 merge.IsEnabled = !merged;
                 merge.Click += (_, e) =>
@@ -2194,12 +2194,12 @@ namespace SourceGit.Views
             submenu.Items.Add(copy);
             menu.Items.Add(submenu);
             AddLevel1BranchFilterModeMenuItem(menu, filterModeVm, actionBackground);
-            AddLevel1CheckoutBranchMenuItem(menu, repo, branch, branch.Name, actionBackground);
+            AddLevel1CheckoutBranchMenuItem(menu, repo, branch, branch.Name, actionBackground, color);
             AddLevel1SetRebaseBaseBranchMenuItem(menu, repo, branch, actionBackground);
-            AddLevel1MergeBranchMenuItem(menu, repo, branch, current, merged, actionBackground);
-            AddLevel1PushBranchMenuItem(menu, repo, branch, actionBackground);
-            AddLevel1CheckoutRebaseAndForcePushMenuItem(menu, repo, branch, actionBackground);
-            AddLevel1ForcePushBranchMenuItem(menu, repo, branch, actionBackground);
+            AddLevel1MergeBranchMenuItem(menu, repo, branch, current, merged, actionBackground, color);
+            AddLevel1PushBranchMenuItem(menu, repo, branch, actionBackground, color);
+            AddLevel1CheckoutRebaseAndForcePushMenuItem(menu, repo, branch, actionBackground, color);
+            AddLevel1ForcePushBranchMenuItem(menu, repo, branch, actionBackground, color);
             AddLevel1CopyBranchNameMenuItem(menu, branch.Name, actionBackground);
         }
 
@@ -2235,7 +2235,7 @@ namespace SourceGit.Views
             submenu.Items.Add(new MenuItem() { Header = "-" });
 
             var merge = new MenuItem();
-            merge.Header = App.Text("BranchCM.Merge", name, current.Name);
+            merge.Header = CreateMergeBranchHeader(repo, branch, current, color);
             merge.Icon = App.CreateMenuIcon("Icons.Merge");
             merge.IsEnabled = !merged;
             merge.Click += (_, e) =>
@@ -2259,9 +2259,9 @@ namespace SourceGit.Views
             submenu.Items.Add(delete);
             menu.Items.Add(submenu);
             AddLevel1BranchFilterModeMenuItem(menu, filterModeVm, actionBackground, remoteIndent);
-            AddLevel1CheckoutBranchMenuItem(menu, repo, branch, name, actionBackground, remoteIndent);
+            AddLevel1CheckoutBranchMenuItem(menu, repo, branch, name, actionBackground, color, remoteIndent);
             AddLevel1SetRebaseBaseBranchMenuItem(menu, repo, branch, actionBackground, remoteIndent);
-            AddLevel1MergeBranchMenuItem(menu, repo, branch, current, merged, actionBackground, remoteIndent);
+            AddLevel1MergeBranchMenuItem(menu, repo, branch, current, merged, actionBackground, color, remoteIndent);
             AddLevel1CopyBranchNameMenuItem(menu, name, actionBackground, remoteIndent);
         }
 
@@ -2276,11 +2276,11 @@ namespace SourceGit.Views
             menu.Items.Add(filterMode);
         }
 
-        private static void AddLevel1CheckoutBranchMenuItem(ContextMenu menu, ViewModels.Repository repo, Models.Branch branch, string displayName, IBrush background, Thickness? margin = null)
+        private static void AddLevel1CheckoutBranchMenuItem(ContextMenu menu, ViewModels.Repository repo, Models.Branch branch, string displayName, IBrush background, uint branchColor, Thickness? margin = null)
         {
             var checkout = new MenuItem();
             checkout.Classes.Add("branch_action");
-            checkout.Header = App.Text("BranchCM.Checkout", displayName);
+            checkout.Header = CreateBranchActionHeader(repo, "Checkout", branch, "...", branchColor);
             checkout.Icon = CreateBranchActionIcon(checkout, "Icons.Check");
             checkout.IsEnabled = !repo.IsBare;
             checkout.Background = background;
@@ -2294,11 +2294,11 @@ namespace SourceGit.Views
             menu.Items.Add(checkout);
         }
 
-        private static void AddLevel1MergeBranchMenuItem(ContextMenu menu, ViewModels.Repository repo, Models.Branch branch, Models.Branch current, bool merged, IBrush background, Thickness? margin = null)
+        private static void AddLevel1MergeBranchMenuItem(ContextMenu menu, ViewModels.Repository repo, Models.Branch branch, Models.Branch current, bool merged, IBrush background, uint sourceColor, Thickness? margin = null)
         {
             var merge = new MenuItem();
             merge.Classes.Add("branch_action");
-            merge.Header = App.Text("BranchCM.Merge", branch.FriendlyName, current.Name);
+            merge.Header = CreateMergeBranchHeader(repo, branch, current, sourceColor);
             merge.Icon = CreateBranchActionIcon(merge, "Icons.Merge");
             merge.IsEnabled = !repo.IsBare && !merged;
             merge.Background = background;
@@ -2313,11 +2313,110 @@ namespace SourceGit.Views
             menu.Items.Add(merge);
         }
 
-        private static void AddLevel1PushBranchMenuItem(ContextMenu menu, ViewModels.Repository repo, Models.Branch branch, IBrush background)
+        private static Control CreateMergeBranchHeader(ViewModels.Repository repo, Models.Branch source, Models.Branch destination, uint sourceColor)
+        {
+            return CreateBranchPairActionHeader(repo, "Merge", source, "into", destination, sourceColor);
+        }
+
+        private static Control CreateCommitBranchActionHeader(ViewModels.Repository repo, Models.Commit commit, string action, Models.Branch branch, string connector, string target)
+        {
+            var targetBranch = repo.Branches.Find(x =>
+                x.Name.Equals(target, StringComparison.Ordinal) ||
+                x.FriendlyName.Equals(target, StringComparison.Ordinal));
+            return CreateBranchPairActionHeader(repo, action, branch, connector, targetBranch, 0, target, GetDecoratorColor(commit, targetBranch));
+        }
+
+        private static Control CreateBranchActionHeader(ViewModels.Repository repo, string action, Models.Branch branch, string suffix = null, uint explicitColor = 0)
+        {
+            var header = new StackPanel()
+            {
+                Orientation = Avalonia.Layout.Orientation.Horizontal,
+                Spacing = 4,
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+            };
+
+            header.Children.Add(new TextBlock() { Text = action, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center });
+            header.Children.Add(CreateBranchNameHighlight(repo, branch, explicitColor));
+            if (!string.IsNullOrEmpty(suffix))
+                header.Children.Add(new TextBlock() { Text = suffix, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center });
+            return header;
+        }
+
+        private static Control CreateBranchPairActionHeader(
+            ViewModels.Repository repo,
+            string action,
+            Models.Branch source,
+            string connector,
+            Models.Branch destination,
+            uint sourceColor = 0,
+            string unresolvedDestination = null,
+            uint destinationColor = 0)
+        {
+            var header = new StackPanel()
+            {
+                Orientation = Avalonia.Layout.Orientation.Horizontal,
+                Spacing = 4,
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+            };
+
+            header.Children.Add(new TextBlock() { Text = action, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center });
+            header.Children.Add(CreateBranchNameHighlight(repo, source, sourceColor));
+            header.Children.Add(new TextBlock() { Text = connector, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center });
+            if (destination != null)
+                header.Children.Add(CreateBranchNameHighlight(repo, destination, destinationColor));
+            else if (!string.IsNullOrWhiteSpace(unresolvedDestination))
+                header.Children.Add(new TextBlock() { Text = unresolvedDestination, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center });
+            return header;
+        }
+
+        private static uint GetDecoratorColor(Models.Commit commit, Models.Branch branch)
+        {
+            if (commit == null || branch == null)
+                return 0;
+
+            foreach (var decorator in commit.Decorators)
+            {
+                var matches = branch.IsLocal
+                    ? decorator.Type is Models.DecoratorType.CurrentBranchHead or Models.DecoratorType.LocalBranchHead && decorator.Name.Equals(branch.Name, StringComparison.Ordinal)
+                    : decorator.Type == Models.DecoratorType.RemoteBranchHead && decorator.Name.Equals(branch.FriendlyName, StringComparison.Ordinal);
+                if (matches && decorator.Color != 0)
+                    return decorator.Color;
+            }
+
+            return 0;
+        }
+
+        private static Border CreateBranchNameHighlight(ViewModels.Repository repo, Models.Branch branch, uint explicitColor = 0)
+        {
+            var color = Color.FromUInt32(explicitColor != 0 ? explicitColor : repo.GetEffectiveBranchDisplayColor(branch));
+            var luminance = 0.2126 * color.R + 0.7152 * color.G + 0.0722 * color.B;
+            var name = branch.FriendlyName;
+            var label = new TextBlock()
+            {
+                Text = name,
+                MaxWidth = 300,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                Foreground = luminance < 130 ? Brushes.White : Brushes.Black,
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+            };
+            ToolTip.SetTip(label, name);
+
+            return new Border()
+            {
+                Background = new SolidColorBrush(Color.FromArgb(0xB8, color.R, color.G, color.B)),
+                BorderBrush = new SolidColorBrush(color),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(3),
+                Padding = new Thickness(4, 1),
+                Child = label,
+            };
+        }
+
+        private static void AddLevel1PushBranchMenuItem(ContextMenu menu, ViewModels.Repository repo, Models.Branch branch, IBrush background, uint branchColor)
         {
             var push = new MenuItem();
             push.Classes.Add("branch_action");
-            push.Header = App.Text("BranchCM.Push", branch.Name);
+            push.Header = CreateBranchActionHeader(repo, "Push", branch, "...", branchColor);
             push.Icon = CreateBranchActionIcon(push, "Icons.Push");
             push.IsEnabled = repo.Remotes.Count > 0;
             push.Background = background;
@@ -2330,12 +2429,12 @@ namespace SourceGit.Views
             menu.Items.Add(push);
         }
 
-        private static void AddLevel1ForcePushBranchMenuItem(ContextMenu menu, ViewModels.Repository repo, Models.Branch branch, IBrush background)
+        private static void AddLevel1ForcePushBranchMenuItem(ContextMenu menu, ViewModels.Repository repo, Models.Branch branch, IBrush background, uint branchColor)
         {
             var forcePush = new MenuItem();
             forcePush.Classes.Add("branch_action");
             forcePush.Classes.Add("force_push");
-            forcePush.Header = $"Force Push {branch.Name}";
+            forcePush.Header = CreateBranchActionHeader(repo, "Force Push", branch, null, branchColor);
             forcePush.FontWeight = FontWeight.Bold;
             forcePush.Icon = CreateBranchActionIcon(forcePush, "Icons.Push");
             forcePush.IsEnabled = repo.Remotes.Count > 0;
@@ -2379,7 +2478,8 @@ namespace SourceGit.Views
             ContextMenu menu,
             ViewModels.Repository repo,
             Models.Branch branch,
-            IBrush background)
+            IBrush background,
+            uint branchColor)
         {
             var target = repo.GetRebaseBaseBranch();
             if (target == null || branch.FullName.Equals(target.FullName, StringComparison.Ordinal))
@@ -2388,7 +2488,9 @@ namespace SourceGit.Views
             var item = new MenuItem();
             item.Classes.Add("branch_action");
             item.Classes.Add("force_push");
-            item.Header = $"Checkout {branch.Name} & rebase onto {target.FriendlyName} & force push";
+            var header = CreateBranchPairActionHeader(repo, "Checkout", branch, "& rebase onto", target, branchColor);
+            ((StackPanel)header).Children.Add(new TextBlock() { Text = "& force push", VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center });
+            item.Header = header;
             item.Icon = CreateBranchActionIcon(item, "Icons.Rebase");
             item.Background = background;
             var disabledReason = ViewModels.Rebase.GetCheckoutRebaseAndForcePushDisabledReason(repo, branch, target);

@@ -496,8 +496,8 @@ namespace SourceGit.ViewModels
         {
             get
             {
-                if (CurrentBranch == null)
-                    return Brushes.Transparent;
+                if (CurrentBranch is not { IsDetachedHead: false })
+                    return Brushes.Black;
 
                 var raw = Color.FromUInt32(ResolveCurrentBranchDisplayColor());
                 var alpha = CurrentBranch.IsLocal ? (byte)0xA0 : (byte)0x32;
@@ -509,8 +509,8 @@ namespace SourceGit.ViewModels
         {
             get
             {
-                if (CurrentBranch == null)
-                    return Brushes.Black;
+                if (CurrentBranch is not { IsDetachedHead: false })
+                    return new SolidColorBrush(Color.FromRgb(0xFF, 0xE0, 0x66));
 
                 var raw = Color.FromUInt32(ResolveCurrentBranchDisplayColor());
                 var luminance = 0.2126 * raw.R + 0.7152 * raw.G + 0.0722 * raw.B;
@@ -2407,6 +2407,15 @@ namespace SourceGit.ViewModels
         {
             if (branch == null)
                 return Models.RepositorySettings.PRESET_BRANCH_EXACT_DEFAULT_COLOR;
+
+            // A color explicitly chosen from "Visibility in Graph" must win over
+            // the automatic conflict-avoidance palette used for branch filters.
+            if (_settings != null)
+            {
+                var configuredColors = _settings.GetPresetBranchConfiguredColorMap();
+                if (configuredColors.TryGetValue(branch.Name, out var configuredColor) && configuredColor != 0)
+                    return configuredColor;
+            }
 
             EnsureIncludedBranchFiltersHaveColors();
 

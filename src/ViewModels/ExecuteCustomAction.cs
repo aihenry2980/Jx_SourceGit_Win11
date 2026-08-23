@@ -225,6 +225,7 @@ namespace SourceGit.ViewModels
             }
 
             var log = _repo.CreateLog(CustomAction.Name);
+            log.AutoCloseOnSuccess = true;
             Use(log);
 
             log.AppendLine($"$ {CustomAction.Executable} {cmdline}\n");
@@ -324,15 +325,19 @@ namespace SourceGit.ViewModels
                     else
                         App.RaiseException(_repo.FullPath, $"Custom action exited with code {exitCode}.");
                 }
+
+                log?.Complete(exitCode == 0);
             }
             catch (Exception e)
             {
                 log?.AppendLine(e.Message);
                 App.RaiseException(_repo.FullPath, e.Message);
+                log?.Complete();
             }
             finally
             {
-                log?.Complete();
+                if (!log.IsComplete)
+                    log?.Complete();
             }
         }
 

@@ -68,7 +68,10 @@
               <Border Grid.Column="1" Margin="4,0" ClipToBounds="True">
                 <TextBlock Text="{Binding}" HorizontalAlignment="Left"/>
               </Border>
-              <Button Grid.Column="2" Classes="icon_button" Click="OnRemoveButtonClicked">
+              <Button Grid.Column="2"
+                      Classes="icon_button"
+                      Click="OnRemoveButtonClicked"
+                      ToolTip.Tip="Stop ignoring this tracked file">
                 <Path Width="14" Height="14" Data="{StaticResource Icons.Clear}"/>
               </Button>
             </Grid>

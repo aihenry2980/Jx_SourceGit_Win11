@@ -35,6 +35,18 @@ namespace SourceGit.ViewModels
             private set;
         } = false;
 
+        public bool IsSuccessful
+        {
+            get;
+            private set;
+        } = false;
+
+        public bool AutoCloseOnSuccess
+        {
+            get;
+            set;
+        } = false;
+
         public string LatestCommand
         {
             get;
@@ -86,11 +98,11 @@ namespace SourceGit.ViewModels
                 Dispatcher.UIThread.Post(FlushPendingLines, DispatcherPriority.Background);
         }
 
-        public void Complete()
+        public void Complete(bool succeeded = false)
         {
             if (!Dispatcher.UIThread.CheckAccess())
             {
-                Dispatcher.UIThread.Invoke(Complete);
+                Dispatcher.UIThread.Invoke(() => Complete(succeeded));
                 return;
             }
 
@@ -104,6 +116,7 @@ namespace SourceGit.ViewModels
 
             ApplyPendingLines(pending);
             IsComplete = true;
+            IsSuccessful = succeeded;
             EndTime = DateTime.Now;
 
             _content = _builder.ToString();
@@ -112,6 +125,7 @@ namespace SourceGit.ViewModels
             _builder = null;
 
             OnPropertyChanged(nameof(IsComplete));
+            OnPropertyChanged(nameof(IsSuccessful));
         }
 
         private string _content = string.Empty;
