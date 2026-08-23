@@ -61,7 +61,7 @@
           <Style Selector="ListBoxItem">
             <Setter Property="Margin" Value="0"/>
             <Setter Property="Padding" Value="0"/>
-            <Setter Property="Height" Value="28"/>
+            <Setter Property="Height" Value="48"/>
             <Setter Property="CornerRadius" Value="4"/>
           </Style>
         </ListBox.Styles>
@@ -74,11 +74,11 @@
 
         <ListBox.ItemTemplate>
           <DataTemplate DataType="vm:CommandLog">
-            <Grid Background="Transparent" ContextRequested="OnLogContextRequested">
+            <Grid Background="Transparent" RowDefinitions="Auto,Auto" ContextRequested="OnLogContextRequested">
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto" SharedSizeGroup="StartTimeColumn"/>
+                <ColumnDefinition Width="Auto" SharedSizeGroup="StatusColumn"/>
                 <ColumnDefinition Width="Auto" SharedSizeGroup="DurationColumn"/>
               </Grid.ColumnDefinitions>
 
@@ -88,20 +88,47 @@
                              IsVisible="{Binding !IsComplete}"/>
 
               <TextBlock Grid.Column="1"
-                         Margin="4,0,0,0"
+                         Margin="4,3,0,0"
                          Text="{Binding Name}"
+                         FontWeight="SemiBold"
                          VerticalAlignment="Center"
                          TextTrimming="CharacterEllipsis"/>
 
               <TextBlock Grid.Column="2"
-                         Margin="4,0"
+                         Margin="4,3"
+                         FontSize="11"
+                         FontWeight="SemiBold"
                          Foreground="{DynamicResource Brush.FG2}"
-                         Text="{Binding StartTime, StringFormat=HH:mm:ss}"/>
+                         Text="{Binding StatusText}"/>
 
               <v:CommandLogTime Grid.Column="3"
-                                Margin="4,0"
+                                Margin="4,3"
                                 Foreground="{DynamicResource Brush.FG2}"
                                 HorizontalAlignment="Right" VerticalAlignment="Center"/>
+
+              <StackPanel Grid.Row="1"
+                          Grid.Column="1"
+                          Grid.ColumnSpan="3"
+                          Margin="4,0,4,3"
+                          Orientation="Horizontal">
+                <ToolTip.Tip>
+                  <StackPanel MaxWidth="720">
+                    <TextBlock Text="{Binding RepositoryPath}" TextWrapping="Wrap"/>
+                    <TextBlock Foreground="{DynamicResource Brush.FG2}" Text="{Binding LatestCommand}" TextWrapping="Wrap"/>
+                  </StackPanel>
+                </ToolTip.Tip>
+                <TextBlock FontSize="11"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource Brush.FG2}"
+                           Text="{Binding RepositoryName}"
+                           TextTrimming="CharacterEllipsis"/>
+                <TextBlock Margin="6,0,0,0"
+                           MaxWidth="220"
+                           FontSize="11"
+                           Foreground="{DynamicResource Brush.FG2}"
+                           Text="{Binding LatestCommand}"
+                           TextTrimming="CharacterEllipsis"/>
+              </StackPanel>
             </Grid>
           </DataTemplate>
         </ListBox.ItemTemplate>
@@ -128,7 +155,7 @@
       </Border>
     </Grid>
 
-    <Grid Grid.Row="2" Margin="8,0,8,8" ColumnDefinitions="Auto,Auto,Auto,*">
+    <Grid Grid.Row="2" Margin="8,0,8,8" ColumnDefinitions="Auto,Auto,Auto,Auto,*">
       <Button Grid.Column="0"
               Classes="flat primary"
               Width="132"
@@ -151,8 +178,16 @@
               Command="{Binding ClearAll}"
               IsEnabled="{Binding Logs.Count, Converter={x:Static c:IntConverters.IsGreaterThanZero}}"/>
 
+      <Button Grid.Column="3"
+              Classes="flat"
+              Margin="8,0,0,0"
+              Content="Cancel task"
+              Click="OnCancelSelectedTask"
+              IsEnabled="{Binding SelectedLog.CanCancel}"
+              ToolTip.Tip="Cancel the selected Git operation when supported."/>
+
       <TextBlock x:Name="AutoCloseCountdown"
-                 Grid.Column="3"
+                 Grid.Column="4"
                  Margin="12,0,0,0"
                  VerticalAlignment="Center"
                  HorizontalAlignment="Right"

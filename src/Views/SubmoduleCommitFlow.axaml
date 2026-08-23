@@ -15,7 +15,7 @@
         <ColumnDefinition Width="4"/>
         <ColumnDefinition Width="*"/>
       </Grid.ColumnDefinitions>
-      <Grid Grid.Column="0" RowDefinitions="Auto,Auto,Auto,Auto,4,*">
+      <Grid Grid.Column="0" RowDefinitions="Auto,Auto,Auto,Auto,Auto,4,*">
       <Border Grid.Row="0"
               Height="42"
               Padding="12,0"
@@ -62,6 +62,30 @@
       </Border>
 
       <Border Grid.Row="2"
+              Margin="8,6,8,0"
+              Padding="8,5"
+              CornerRadius="6"
+              BorderBrush="#FF168A63"
+              BorderThickness="1"
+              Background="#1822A06B"
+              IsVisible="{Binding HasRecommendedNode}">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock VerticalAlignment="Center"
+                     FontSize="12"
+                     FontWeight="SemiBold"
+                     Foreground="#FF16724E"
+                     Text="{Binding RecommendedNextText}"
+                     TextTrimming="CharacterEllipsis"/>
+          <Button Grid.Column="1"
+                  Classes="flat"
+                  Margin="8,0,0,0"
+                  Padding="8,2"
+                  Content="Work next"
+                  Click="OnSelectRecommendedNodeClicked"/>
+        </Grid>
+      </Border>
+
+      <Border Grid.Row="3"
               Margin="8,6"
               Padding="8,6"
               CornerRadius="6"
@@ -131,7 +155,7 @@
       </Border>
 
       <ListBox x:Name="ModuleList"
-               Grid.Row="3"
+               Grid.Row="4"
                MaxHeight="420"
                Background="{DynamicResource Brush.Contents}"
                BorderThickness="0,0,1,0"
@@ -238,14 +262,14 @@
         </ListBox.ItemTemplate>
       </ListBox>
 
-      <GridSplitter Grid.Row="4"
+      <GridSplitter Grid.Row="5"
                     MinHeight="1"
                     Background="{DynamicResource Brush.Border0}"
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="Stretch"
                     Focusable="False"/>
 
-      <Grid Grid.Row="5" RowDefinitions="Auto,Auto,*" Background="{DynamicResource Brush.Contents}">
+      <Grid Grid.Row="6" RowDefinitions="Auto,Auto,*" Background="{DynamicResource Brush.Contents}">
         <Border Grid.Row="0"
                 Padding="10,7"
                 BorderBrush="{DynamicResource Brush.Border0}"
@@ -428,12 +452,12 @@
               BorderThickness="1"
               CornerRadius="4"
               Background="{DynamicResource Brush.Contents}">
-        <ScrollViewer MaxHeight="54"
+        <ScrollViewer MaxHeight="108"
                       HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto">
           <SelectableTextBlock Text="{Binding CommitPlanPreview}"
                                FontFamily="{DynamicResource Fonts.Monospace}"
-                               FontSize="11"
+                               FontSize="22"
                                Foreground="{DynamicResource Brush.FG2}"
                                TextWrapping="Wrap"/>
         </ScrollViewer>

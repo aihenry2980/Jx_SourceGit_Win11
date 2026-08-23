@@ -183,6 +183,14 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
+        private void OnCancelSelectedTask(object _, Avalonia.Interactivity.RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.ViewLogs { SelectedLog: { } log })
+                log.Cancel();
+
+            e.Handled = true;
+        }
+
         private void OnLogKeyDown(object _, KeyEventArgs e)
         {
             if (e.Key is not (Key.Delete or Key.Back))

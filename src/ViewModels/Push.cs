@@ -206,6 +206,7 @@ namespace SourceGit.ViewModels
 
             _cancellation = new CancellationTokenSource();
             var token = _cancellation.Token;
+            log.SetCancelAction(Terminate);
 
             var succ = await new Commands.Push(
                 _repo.FullPath,
@@ -218,7 +219,7 @@ namespace SourceGit.ViewModels
                 ForcePush,
                 NoVerify).WithCancellation(token).Use(log).RunAsync();
 
-            log.Complete();
+            log.Complete(succ && !token.IsCancellationRequested);
 
             _cancellation = null;
             return succ;

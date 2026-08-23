@@ -85,6 +85,14 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
+        private void OnSelectRecommendedNodeClicked(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.SubmoduleCommitFlow vm)
+                vm.SelectRecommendedNode();
+
+            e.Handled = true;
+        }
+
         private async void OnCommitAndPushClicked(object sender, RoutedEventArgs e)
         {
             if (DataContext is ViewModels.SubmoduleCommitFlow vm)

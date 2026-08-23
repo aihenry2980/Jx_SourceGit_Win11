@@ -84,30 +84,32 @@ namespace SourceGit.ViewModels
 
             _cancellation = new CancellationTokenSource();
             var token = _cancellation.Token;
+            log.SetCancelAction(Terminate);
+            var succeeded = true;
 
             if (FetchAllRemotes)
             {
                 foreach (var remote in _repo.Remotes)
                 {
-                    await new Commands.Fetch(_repo.FullPath, remote.Name, notags, force)
+                    succeeded &= await new Commands.Fetch(_repo.FullPath, remote.Name, notags, force)
                         .WithCancellation(token)
                         .Use(log)
                         .RunAsync();
 
-                    if (token.IsCancellationRequested)
+                    if (token.IsCancellationRequested || !succeeded)
                         break;
                 }
             }
             else
             {
-                await new Commands.Fetch(_repo.FullPath, SelectedRemote.Name, notags, force)
+                succeeded = await new Commands.Fetch(_repo.FullPath, SelectedRemote.Name, notags, force)
                     .WithCancellation(token)
                     .Use(log)
                     .RunAsync();
             }
 
             gitStopwatch.Stop();
-            log.Complete();
+            log.Complete(succeeded && !token.IsCancellationRequested);
 
             if (navigateToUpstreamHEAD && !token.IsCancellationRequested)
             {

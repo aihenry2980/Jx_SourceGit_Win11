@@ -126,7 +126,7 @@ namespace SourceGit.ViewModels
             var log = _repo.CreateLog("Pull");
             Use(log);
             var rs = await ExecuteAsync(log, true);
-            log.Complete();
+            log.Complete(rs);
 
             if (_repo.SelectedViewIndex == 0)
             {
@@ -144,6 +144,8 @@ namespace SourceGit.ViewModels
 
             using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             _cancellation = cancellation;
+            if (log is CommandLog cancellableLog)
+                cancellableLog.SetCancelAction(Terminate);
             cancellationToken = cancellation.Token;
             try
             {

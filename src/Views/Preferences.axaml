@@ -212,8 +212,8 @@
             <TextBox Grid.Row="16" Grid.Column="1"
                      Height="28"
                      CornerRadius="3"
-                     Watermark="ISSUE_TAG or ISSUE_TAG-\d+"
-                     ToolTip.Tip="Extracts an issue key from the current branch and prefixes generated commit messages, for example [ISSUE_TAG-21356]."
+                     Watermark="ISSUE_TAG or ISSUE_TAG[-_/]?\d+"
+                     ToolTip.Tip="Extracts an issue key from the current branch and prefixes generated Commit Flow messages. A plain marker such as ISSUE_TAG matches ISSUE_TAG-21356, ISSUE_TAG_21356, ISSUE_TAG/21356, or ISSUE_TAG21356. Regex is supported; use a named (?&lt;issue&gt;...) group when the tag is not the whole match."
                      Text="{Binding CommitMessageIssueTagPattern, Mode=TwoWay}"/>
 
             <TextBlock Grid.Row="17" Grid.Column="0"

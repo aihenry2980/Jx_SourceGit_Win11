@@ -1343,7 +1343,7 @@ namespace SourceGit.ViewModels
 
         public CommandLog CreateLog(string name)
         {
-            var log = new CommandLog(name);
+            var log = new CommandLog(name) { RepositoryPath = FullPath };
             Logs.Insert(0, log);
             while (Logs.Count > MAX_LOGS)
                 Logs.RemoveAt(Logs.Count - 1);
@@ -1423,6 +1423,9 @@ namespace SourceGit.ViewModels
             var operationName = onlyFilteredBranches ? "Quick Fetch (Filtered)" : "Quick Fetch";
             var log = CreateLog(operationName);
             var succ = false;
+            using var cancellation = new CancellationTokenSource();
+            _quickFetchCancellation = cancellation;
+            log.SetCancelAction(cancellation.Cancel);
             AutoBackgroundOperationText = operationName;
             IsQuickFetching = true;
             var gitStopwatch = Stopwatch.StartNew();
@@ -1444,13 +1447,14 @@ namespace SourceGit.ViewModels
                     if (changed)
                         Interlocked.Exchange(ref refsChanged, 1);
                 };
-                succ = await fetch.Use(log).RunAsync();
+                succ = await fetch.WithCancellation(cancellation.Token).Use(log).RunAsync();
             }
             finally
             {
                 gitStopwatch.Stop();
                 IsQuickFetching = false;
-                log.Complete();
+                _quickFetchCancellation = null;
+                log.Complete(succ && !cancellation.IsCancellationRequested);
             }
 
             if (succ)
@@ -1492,6 +1496,9 @@ namespace SourceGit.ViewModels
             var remoteBranch = current.Upstream[originPrefix.Length..];
             var log = CreateLog("Fast Fetch");
             var succeeded = false;
+            using var cancellation = new CancellationTokenSource();
+            _quickFetchCancellation = cancellation;
+            log.SetCancelAction(cancellation.Cancel);
             var sawRefStatus = 0;
             var refsChanged = 0;
             var gitStopwatch = Stopwatch.StartNew();
@@ -1518,13 +1525,14 @@ namespace SourceGit.ViewModels
                     if (changed)
                         Interlocked.Exchange(ref refsChanged, 1);
                 };
-                succeeded = await fetch.Use(log).RunAsync();
+                succeeded = await fetch.WithCancellation(cancellation.Token).Use(log).RunAsync();
             }
             finally
             {
                 gitStopwatch.Stop();
                 IsQuickFetching = false;
-                log.Complete();
+                _quickFetchCancellation = null;
+                log.Complete(succeeded && !cancellation.IsCancellationRequested);
             }
 
             if (!succeeded)
@@ -1574,8 +1582,10 @@ namespace SourceGit.ViewModels
                 return;
 
             var log = CreateLog(prune ? "Fetch and Prune Recursively" : "Fetch Recursively");
-            await RunFetchRecursivelyAsync(prune, log);
-            log.Complete();
+            using var cancellation = new CancellationTokenSource();
+            log.SetCancelAction(cancellation.Cancel);
+            var succeeded = await RunFetchRecursivelyAsync(prune, log, cancellationToken: cancellation.Token);
+            log.Complete(succeeded && !cancellation.IsCancellationRequested);
         }
 
         public async Task PullAsync(bool autoStart)
@@ -6203,6 +6213,7 @@ namespace SourceGit.ViewModels
         private readonly object _refreshCommitsLock = new();
         private readonly SemaphoreSlim _refreshCommitsGate = new(1, 1);
         private CancellationTokenSource _cancellationRefreshStashes = null;
+        private CancellationTokenSource _quickFetchCancellation = null;
 
         private sealed class PresetBranchFilterMatchCache
         {

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -53,6 +54,15 @@ namespace SourceGit.ViewModels
             private set;
         } = string.Empty;
 
+        public string RepositoryPath { get; set; } = string.Empty;
+        public string RepositoryName => string.IsNullOrWhiteSpace(RepositoryPath) ? string.Empty : Path.GetFileName(RepositoryPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        public bool IsCancellationRequested { get; private set; } = false;
+        public bool CanCancel => !IsComplete && _cancelAction != null;
+        public string StatusText => !IsComplete
+            ? IsCancellationRequested ? "Canceling..." : "Running"
+            : IsSuccessful ? "Succeeded"
+            : IsCancellationRequested ? "Canceled" : "Finished";
+
         public string Content
         {
             get
@@ -66,6 +76,23 @@ namespace SourceGit.ViewModels
         public CommandLog(string name)
         {
             Name = name;
+        }
+
+        public void SetCancelAction(Action cancelAction)
+        {
+            _cancelAction = cancelAction;
+            OnPropertyChanged(nameof(CanCancel));
+        }
+
+        public void Cancel()
+        {
+            if (!CanCancel || IsCancellationRequested)
+                return;
+
+            IsCancellationRequested = true;
+            OnPropertyChanged(nameof(IsCancellationRequested));
+            OnPropertyChanged(nameof(StatusText));
+            _cancelAction?.Invoke();
         }
 
         public void Subscribe(Models.ICommandLogReceiver receiver)
@@ -118,6 +145,7 @@ namespace SourceGit.ViewModels
             IsComplete = true;
             IsSuccessful = succeeded;
             EndTime = DateTime.Now;
+            _cancelAction = null;
 
             _content = _builder.ToString();
             _builder.Clear();
@@ -126,6 +154,8 @@ namespace SourceGit.ViewModels
 
             OnPropertyChanged(nameof(IsComplete));
             OnPropertyChanged(nameof(IsSuccessful));
+            OnPropertyChanged(nameof(CanCancel));
+            OnPropertyChanged(nameof(StatusText));
         }
 
         private string _content = string.Empty;
@@ -135,6 +165,7 @@ namespace SourceGit.ViewModels
         private readonly List<string> _pendingLines = new List<string>();
         private bool _flushScheduled = false;
         private bool _acceptingLines = true;
+        private Action _cancelAction = null;
 
         private void FlushPendingLines()
         {

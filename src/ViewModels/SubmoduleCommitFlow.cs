@@ -25,6 +25,7 @@ namespace SourceGit.ViewModels
             {
                 if (SetProperty(ref _nodes, value))
                 {
+                    UpdateRecommendedNode();
                     NotifyCommitPlanChanged();
                     UpdateParentChain();
                 }
@@ -62,6 +63,24 @@ namespace SourceGit.ViewModels
                 }
             }
         }
+
+        public SubmoduleCommitFlowNode RecommendedNode
+        {
+            get => _recommendedNode;
+            private set
+            {
+                if (SetProperty(ref _recommendedNode, value))
+                {
+                    OnPropertyChanged(nameof(HasRecommendedNode));
+                    OnPropertyChanged(nameof(RecommendedNextText));
+                }
+            }
+        }
+
+        public bool HasRecommendedNode => _recommendedNode != null;
+        public string RecommendedNextText => _recommendedNode == null
+            ? string.Empty
+            : $"Recommended next: {_recommendedNode.DisplayPath} ({_recommendedNode.StatusText})";
 
         public bool HasSelectedNode => _selectedNode != null;
 
@@ -365,6 +384,12 @@ namespace SourceGit.ViewModels
                 _ = RefreshAsync();
         }
 
+        public void SelectRecommendedNode()
+        {
+            if (_recommendedNode != null)
+                SelectedNode = _recommendedNode;
+        }
+
         public async Task RefreshAsync()
         {
             var version = Interlocked.Increment(ref _version);
@@ -549,6 +574,7 @@ namespace SourceGit.ViewModels
 
             using var lockWatcher = _repo.LockWatcher();
             var log = _repo.CreateLog($"Commit Flow - revert changes in {node.DisplayPath}");
+            log.RepositoryPath = node.RepoPath;
             try
             {
                 var pathspecFile = await WriteCommitFlowPathspecAsync(changes).ConfigureAwait(false);
@@ -604,6 +630,7 @@ namespace SourceGit.ViewModels
 
             using var lockWatcher = _repo.LockWatcher();
             var log = _repo.CreateLog(pushAfterCommit ? $"Commit Flow - commit & push {node.DisplayPath}" : $"Commit Flow - {node.DisplayPath}");
+            log.RepositoryPath = node.RepoPath;
             var succ = false;
             var committed = false;
             var pushed = false;
@@ -680,7 +707,7 @@ namespace SourceGit.ViewModels
             }
             finally
             {
-                log.Complete();
+                log.Complete(succ);
             }
 
             await Dispatcher.UIThread.InvokeAsync(async () =>
@@ -748,6 +775,7 @@ namespace SourceGit.ViewModels
 
             using var lockWatcher = _repo.LockWatcher();
             var log = _repo.CreateLog($"Commit Flow - undo {node.DisplayPath}");
+            log.RepositoryPath = node.RepoPath;
             var succ = false;
             var error = string.Empty;
             try
@@ -791,7 +819,7 @@ namespace SourceGit.ViewModels
             }
             finally
             {
-                log.Complete();
+                log.Complete(succ);
             }
 
             await Dispatcher.UIThread.InvokeAsync(async () =>
@@ -918,6 +946,7 @@ namespace SourceGit.ViewModels
                         return;
 
                     ApplyNodeStatus(node, status);
+                    UpdateRecommendedNode();
                     if (SelectedNode == node)
                     {
                         NotifyCommitAndPushStateChanged();
@@ -952,6 +981,7 @@ namespace SourceGit.ViewModels
 
                 Nodes = BuildVisibleNodes(nodes);
                 var next = PickNextActionNode(Nodes);
+                UpdateRecommendedNode();
                 if (_selectNextActionAfterScan)
                 {
                     _selectNextActionAfterScan = false;
@@ -978,10 +1008,12 @@ namespace SourceGit.ViewModels
             UpdateChangeKinds(node, changes, out var fileChangeCount, out var submodulePointerChangeCount);
             var state = ResolveNodeState(node, changes);
 
-            if (state == SubmoduleCommitFlowNodeState.Clean && node.Depth > 0)
-                return new NodeStatus("--", string.Empty, string.Empty, string.Empty, string.Empty, false, changes.Count, fileChangeCount, submodulePointerChangeCount, state, changes);
-
+            // Parent SPP commits inherit their issue tag from the child branch even after the
+            // child is clean. Querying this lightweight value avoids losing that context.
             var branch = await new Commands.QueryCurrentBranch(node.RepoPath).GetResultAsync().ConfigureAwait(false);
+            if (state == SubmoduleCommitFlowNodeState.Clean && node.Depth > 0)
+                return new NodeStatus(string.IsNullOrWhiteSpace(branch) ? "(detached)" : branch, string.Empty, string.Empty, string.Empty, string.Empty, false, changes.Count, fileChangeCount, submodulePointerChangeCount, state, changes);
+
             var head = await new Commands.QueryRevisionByRefName(node.RepoPath, "HEAD").GetResultAsync().ConfigureAwait(false);
             var upstream = string.IsNullOrWhiteSpace(branch)
                 ? string.Empty
@@ -1328,7 +1360,7 @@ namespace SourceGit.ViewModels
 
             var issue = MatchBranchIssuePattern(branch, pattern);
             if (string.IsNullOrWhiteSpace(issue))
-                issue = MatchBranchIssuePattern(branch, $@"(?<![A-Za-z0-9]){Regex.Escape(pattern)}-\d+(?![A-Za-z0-9])");
+                issue = MatchBranchIssuePattern(branch, $@"(?<![A-Za-z0-9]){Regex.Escape(pattern)}(?:[-_/]?\d+)(?![A-Za-z0-9])");
             else
                 issue = ExpandIssueTagSeed(branch, issue);
 
@@ -1338,10 +1370,10 @@ namespace SourceGit.ViewModels
         private static string ExpandIssueTagSeed(string branch, string seed)
         {
             seed = seed.Trim();
-            if (string.IsNullOrWhiteSpace(seed) || Regex.IsMatch(seed, @"-\d+$", RegexOptions.CultureInvariant))
+            if (string.IsNullOrWhiteSpace(seed) || Regex.IsMatch(seed, @"(?:[-_/]?\d+)$", RegexOptions.CultureInvariant))
                 return seed;
 
-            var expanded = MatchBranchIssuePattern(branch, $@"(?<![A-Za-z0-9]){Regex.Escape(seed)}-\d+(?![A-Za-z0-9])");
+            var expanded = MatchBranchIssuePattern(branch, $@"(?<![A-Za-z0-9]){Regex.Escape(seed)}(?:[-_/]?\d+)(?![A-Za-z0-9])");
             return string.IsNullOrWhiteSpace(expanded) ? seed : expanded;
         }
 
@@ -1353,14 +1385,18 @@ namespace SourceGit.ViewModels
                 if (!match.Success)
                     return string.Empty;
 
-                if (match.Groups.Count > 1)
-                {
-                    for (var i = 1; i < match.Groups.Count; i++)
-                    {
-                        if (match.Groups[i].Success && !string.IsNullOrWhiteSpace(match.Groups[i].Value))
-                            return match.Groups[i].Value;
-                    }
-                }
+                var namedIssue = match.Groups["issue"];
+                if (namedIssue.Success && !string.IsNullOrWhiteSpace(namedIssue.Value))
+                    return namedIssue.Value;
+
+                var captures = match.Groups
+                    .Cast<Group>()
+                    .Skip(1)
+                    .Where(x => x.Success && !string.IsNullOrWhiteSpace(x.Value))
+                    .OrderByDescending(x => x.Value.Length)
+                    .ToList();
+                if (captures.Count > 0)
+                    return captures[0].Value;
 
                 return match.Value;
             }
@@ -1531,6 +1567,15 @@ namespace SourceGit.ViewModels
                 .Where(x => x.State is SubmoduleCommitFlowNodeState.HasChanges or SubmoduleCommitFlowNodeState.HasSubmodulePointerChanges or SubmoduleCommitFlowNodeState.HasMixedChanges)
                 .OrderByDescending(x => x.Depth)
                 .FirstOrDefault();
+        }
+
+        private void UpdateRecommendedNode()
+        {
+            var next = PickNextActionNode(_nodes);
+            if (ReferenceEquals(next, _recommendedNode))
+                OnPropertyChanged(nameof(RecommendedNextText));
+            else
+                RecommendedNode = next;
         }
 
         private SubmoduleCommitFlowNode GetNextActionNodeAfterSelected()
@@ -1989,6 +2034,7 @@ namespace SourceGit.ViewModels
         private readonly Repository _repo;
         private List<SubmoduleCommitFlowNode> _allNodes = [];
         private List<SubmoduleCommitFlowNode> _nodes = [];
+        private SubmoduleCommitFlowNode _recommendedNode = null;
         private readonly Dictionary<string, List<Models.Change>> _changeCache = new(StringComparer.Ordinal);
         private readonly Dictionary<string, HashSet<string>> _excludedChangeKeysByNode = new(StringComparer.Ordinal);
         private SubmoduleCommitFlowNode _selectedNode = null;
