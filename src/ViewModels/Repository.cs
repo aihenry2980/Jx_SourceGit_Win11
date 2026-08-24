@@ -3056,7 +3056,6 @@ namespace SourceGit.ViewModels
             cancellationToken.ThrowIfCancellationRequested();
             var graph = Models.CommitGraph.Generate(
                 commits,
-                true,
                 _uiStates.HistoryShowFlags.HasFlag(Models.HistoryShowFlags.FirstParentOnly),
                 _uiStates.GraphHighlighting,
                 []);

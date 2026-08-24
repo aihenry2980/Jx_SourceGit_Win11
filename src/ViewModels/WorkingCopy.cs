@@ -282,7 +282,9 @@ namespace SourceGit.ViewModels
                 ScheduleUpdateInProgressState();
                 UpdateDetail();
                 return;
+#pragma warning disable CS0162
             } while (false);
+#pragma warning restore CS0162
 
             var lastSelectedUnstaged = new HashSet<string>();
             if (_selectedUnstaged is { Count: > 0 })
