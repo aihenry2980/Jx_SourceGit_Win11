@@ -1998,9 +1998,10 @@ namespace SourceGit.Views
             if (!string.IsNullOrEmpty(current.Upstream))
             {
                 var upstream = current.Upstream.Substring(13);
+                var upstreamBranch = repo.Branches.Find(x => x.FullName.Equals(current.Upstream, StringComparison.Ordinal));
 
                 var fastForward = new MenuItem();
-                fastForward.Header = App.Text("BranchCM.FastForward", upstream);
+                fastForward.Header = CreateLocalizedBranchActionHeader(repo, "BranchCM.FastForward", upstreamBranch, upstream);
                 fastForward.Icon = App.CreateMenuIcon("Icons.FastForward");
                 fastForward.IsEnabled = current.Ahead.Count == 0 && current.Behind.Count > 0;
                 fastForward.Click += async (_, e) =>
@@ -2017,7 +2018,7 @@ namespace SourceGit.Views
                 submenu.Items.Add(fastForward);
 
                 var pull = new MenuItem();
-                pull.Header = App.Text("BranchCM.Pull", upstream);
+                pull.Header = CreateLocalizedBranchActionHeader(repo, "BranchCM.Pull", upstreamBranch, upstream);
                 pull.Icon = App.CreateMenuIcon("Icons.Pull");
                 pull.Click += (_, e) =>
                 {
@@ -2029,7 +2030,7 @@ namespace SourceGit.Views
             }
 
             var rename = new MenuItem();
-            rename.Header = App.Text("BranchCM.Rename", current.Name);
+            rename.Header = CreateLocalizedBranchActionHeader(repo, "BranchCM.Rename", current, current.Name);
             rename.Icon = App.CreateMenuIcon("Icons.Rename");
             rename.Click += (_, e) =>
             {
@@ -2045,7 +2046,7 @@ namespace SourceGit.Views
                 if (type != Models.GitFlowBranchType.None)
                 {
                     var finish = new MenuItem();
-                    finish.Header = App.Text("BranchCM.Finish", current.Name);
+                    finish.Header = CreateLocalizedBranchActionHeader(repo, "BranchCM.Finish", current, current.Name);
                     finish.Icon = this.CreateMenuIcon("Icons.GitFlow.Finish");
                     finish.Click += (_, e) =>
                     {
@@ -2118,7 +2119,7 @@ namespace SourceGit.Views
             }
 
             var push = new MenuItem();
-            push.Header = App.Text("BranchCM.Push", branch.Name);
+            push.Header = CreateLocalizedBranchActionHeader(repo, "BranchCM.Push", branch, branch.Name);
             push.Icon = this.CreateMenuIcon("Icons.Push");
             push.IsEnabled = repo.Remotes.Count > 0;
             push.Click += (_, e) =>
@@ -2130,7 +2131,7 @@ namespace SourceGit.Views
             submenu.Items.Add(push);
 
             var rename = new MenuItem();
-            rename.Header = App.Text("BranchCM.Rename", branch.Name);
+            rename.Header = CreateLocalizedBranchActionHeader(repo, "BranchCM.Rename", branch, branch.Name);
             rename.Icon = App.CreateMenuIcon("Icons.Rename");
             rename.Click += (_, e) =>
             {
@@ -2141,7 +2142,7 @@ namespace SourceGit.Views
             submenu.Items.Add(rename);
 
             var delete = new MenuItem();
-            delete.Header = App.Text("BranchCM.Delete", branch.Name);
+            delete.Header = CreateLocalizedBranchActionHeader(repo, "BranchCM.Delete", branch, branch.Name);
             delete.Icon = App.CreateMenuIcon("Icons.Clear");
             delete.Click += (_, e) =>
             {
@@ -2158,7 +2159,7 @@ namespace SourceGit.Views
                 if (type != Models.GitFlowBranchType.None)
                 {
                     var finish = new MenuItem();
-                    finish.Header = App.Text("BranchCM.Finish", branch.Name);
+                    finish.Header = CreateLocalizedBranchActionHeader(repo, "BranchCM.Finish", branch, branch.Name);
                     finish.Icon = this.CreateMenuIcon("Icons.GitFlow.Finish");
                     finish.Click += (_, e) =>
                     {
@@ -2172,7 +2173,7 @@ namespace SourceGit.Views
             }
 
             var compare = new MenuItem();
-            compare.Header = App.Text("BranchCM.CompareWithSpecial", current.Name);
+            compare.Header = CreateLocalizedBranchActionHeader(repo, "BranchCM.CompareWithSpecial", current, current.Name);
             compare.Icon = this.CreateMenuIcon("Icons.Compare");
             compare.Click += (_, e) =>
             {
@@ -2248,7 +2249,7 @@ namespace SourceGit.Views
             submenu.Items.Add(merge);
 
             var delete = new MenuItem();
-            delete.Header = App.Text("BranchCM.Delete", name);
+            delete.Header = CreateLocalizedBranchActionHeader(repo, "BranchCM.Delete", branch, name);
             delete.Icon = App.CreateMenuIcon("Icons.Clear");
             delete.Click += (_, e) =>
             {
@@ -2339,6 +2340,39 @@ namespace SourceGit.Views
             header.Children.Add(CreateBranchNameHighlight(repo, branch, explicitColor));
             if (!string.IsNullOrEmpty(suffix))
                 header.Children.Add(new TextBlock() { Text = suffix, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center });
+            return header;
+        }
+
+        private static Control CreateLocalizedBranchActionHeader(
+            ViewModels.Repository repo,
+            string resourceKey,
+            Models.Branch branch,
+            string branchName,
+            uint explicitColor = 0)
+        {
+            var text = App.Text(resourceKey, branchName);
+            if (branch == null || string.IsNullOrEmpty(text))
+                return new TextBlock() { Text = text?.Replace("$", string.Empty), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
+
+            var header = new StackPanel()
+            {
+                Orientation = Avalonia.Layout.Orientation.Horizontal,
+                Spacing = 4,
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+            };
+
+            var parts = text.Split('$');
+            for (var i = 0; i < parts.Length; i++)
+            {
+                if (string.IsNullOrEmpty(parts[i]))
+                    continue;
+
+                if (i % 2 == 1)
+                    header.Children.Add(CreateBranchNameHighlight(repo, branch, explicitColor));
+                else
+                    header.Children.Add(new TextBlock() { Text = parts[i], VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center });
+            }
+
             return header;
         }
 

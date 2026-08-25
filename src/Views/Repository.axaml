@@ -375,7 +375,8 @@
                 </Grid>
               </ListBoxItem>
 
-              <ListBoxItem IsVisible="{Binding !IsBare}">
+              <!-- The Stashes page keeps its index, but is opened from the Commit Flow row to save sidebar space. -->
+              <ListBoxItem IsVisible="False">
                 <Grid Classes="view_mode" ColumnDefinitions="Auto,*,Auto,Auto">
                   <Path Grid.Column="0" Classes="icon" Data="{StaticResource Icons.Stashes}"/>
                   <TextBlock Grid.Column="1" Classes="header" Text="{DynamicResource Text.Stashes}" IsVisible="{Binding !IsLeftSidebarCompact}"/>
@@ -409,10 +410,22 @@
               </ListBoxItem>
 
               <ListBoxItem IsVisible="{Binding !IsBare}">
-                <Grid Classes="view_mode" ColumnDefinitions="Auto,*,Auto">
+                <Grid Classes="view_mode" ColumnDefinitions="Auto,*,Auto,Auto">
                   <Path Grid.Column="0" Classes="icon" Data="{StaticResource Icons.Submodules}"/>
                   <TextBlock Grid.Column="1" Classes="header" Text="Commit Flow" IsVisible="{Binding !IsLeftSidebarCompact}"/>
-                  <Path Grid.Column="2"
+                  <Button Grid.Column="2"
+                          Classes="flat"
+                          Margin="4,0,2,0"
+                          Padding="6,1"
+                          IsVisible="{Binding !IsLeftSidebarCompact}"
+                          Click="OnOpenStashes"
+                          ToolTip.Tip="{DynamicResource Text.Stashes}">
+                    <StackPanel Orientation="Horizontal">
+                      <Path Width="11" Height="11" Margin="0,0,4,0" Data="{StaticResource Icons.Stashes}"/>
+                      <TextBlock Classes="small" Text="{DynamicResource Text.Stashes}"/>
+                    </StackPanel>
+                  </Button>
+                  <Path Grid.Column="3"
                         Width="12"
                         Height="12"
                         Margin="6,0,10,0"
@@ -482,7 +495,7 @@
 
         <Border Grid.Row="3"
                 Margin="8,0,4,0"
-                Padding="10,8"
+                Padding="6,5"
                 CornerRadius="4"
                 BorderThickness="1"
                 BorderBrush="{DynamicResource Brush.Border2}">
@@ -493,21 +506,8 @@
             </MultiBinding>
           </Border.IsVisible>
           <StackPanel Orientation="Vertical">
-            <Grid ColumnDefinitions="*,Auto">
-              <TextBlock Grid.Column="0"
-                         Classes="small"
-                         FontWeight="Bold"
-                         Foreground="#FF10893E"
-                         Text="{DynamicResource Text.Repository.BranchesVisibility.ExactNames}"/>
-              <Button Grid.Column="1"
-                      Classes="flat"
-                      Padding="8,2"
-                      Click="OnClearPresetBranchExactNames">
-                <TextBlock Classes="small" Text="Clear"/>
-              </Button>
-            </Grid>
-            <Border Margin="0,4,0,0"
-                    Padding="6,4"
+            <Border Margin="0"
+                    Padding="4,2"
                     CornerRadius="3"
                     BorderThickness="1"
                     BorderBrush="{DynamicResource Brush.Border1}"
@@ -562,33 +562,30 @@
                 </ItemsControl>
 
                 <TextBox x:Name="PresetBranchExactNameInputBox"
-                         MinHeight="26"
+                         MinHeight="22"
                          Padding="0"
                          BorderThickness="0"
                          Background="Transparent"
                          CornerRadius="3"
-                         Watermark="{DynamicResource Text.Repository.BranchesVisibility.ExactNames.Placeholder}"
+                         Watermark="Exact names: type branch name"
                          ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.EditorHint}"
                          TextChanged="OnPresetBranchInputTextChanged"
-                         KeyDown="OnPresetBranchExactNameInputKeyDown"/>
+                         KeyDown="OnPresetBranchExactNameInputKeyDown">
+                  <TextBox.InnerRightContent>
+                    <Button Classes="flat"
+                            Width="44"
+                            Height="20"
+                            Padding="4,0"
+                            Click="OnClearPresetBranchExactNames">
+                      <TextBlock Classes="small" Text="Clear"/>
+                    </Button>
+                  </TextBox.InnerRightContent>
+                </TextBox>
               </StackPanel>
             </Border>
 
-            <Grid Margin="0,8,0,0" ColumnDefinitions="*,Auto">
-              <TextBlock Grid.Column="0"
-                         Classes="small"
-                         FontWeight="Bold"
-                         Foreground="#FF0078D7"
-                         Text="{DynamicResource Text.Repository.BranchesVisibility.ContainsPatterns}"/>
-              <Button Grid.Column="1"
-                      Classes="flat"
-                      Padding="8,2"
-                      Click="OnClearPresetBranchContainsPatterns">
-                <TextBlock Classes="small" Text="Clear"/>
-              </Button>
-            </Grid>
-            <Border Margin="0,4,0,0"
-                    Padding="6,4"
+            <Border Margin="0,5,0,0"
+                    Padding="4,2"
                     CornerRadius="3"
                     BorderThickness="1"
                     BorderBrush="{DynamicResource Brush.Border1}"
@@ -643,33 +640,30 @@
                 </ItemsControl>
 
                 <TextBox x:Name="PresetBranchContainsPatternInputBox"
-                         MinHeight="26"
+                         MinHeight="22"
                          Padding="0"
                          BorderThickness="0"
                          Background="Transparent"
                          CornerRadius="3"
-                         Watermark="{DynamicResource Text.Repository.BranchesVisibility.ContainsPatterns.Placeholder}"
+                         Watermark="Contains patterns: type pattern"
                          ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.EditorHint}"
                          TextChanged="OnPresetBranchInputTextChanged"
-                         KeyDown="OnPresetBranchContainsPatternInputKeyDown"/>
+                         KeyDown="OnPresetBranchContainsPatternInputKeyDown">
+                  <TextBox.InnerRightContent>
+                    <Button Classes="flat"
+                            Width="44"
+                            Height="20"
+                            Padding="4,0"
+                            Click="OnClearPresetBranchContainsPatterns">
+                      <TextBlock Classes="small" Text="Clear"/>
+                    </Button>
+                  </TextBox.InnerRightContent>
+                </TextBox>
               </StackPanel>
             </Border>
 
-            <Grid Margin="0,8,0,0" ColumnDefinitions="*,Auto">
-              <TextBlock Grid.Column="0"
-                         Classes="small"
-                         FontWeight="Bold"
-                         Foreground="#FFD13438"
-                         Text="{DynamicResource Text.Repository.BranchesVisibility.ExcludeNames}"/>
-              <Button Grid.Column="1"
-                      Classes="flat"
-                      Padding="8,2"
-                      Click="OnClearPresetBranchExcludeNames">
-                <TextBlock Classes="small" Text="Clear"/>
-              </Button>
-            </Grid>
-            <Border Margin="0,4,0,0"
-                    Padding="6,4"
+            <Border Margin="0,5,0,0"
+                    Padding="4,2"
                     CornerRadius="3"
                     BorderThickness="1"
                     BorderBrush="{DynamicResource Brush.Border1}"
@@ -724,28 +718,38 @@
                 </ItemsControl>
 
                 <TextBox x:Name="PresetBranchExcludeNameInputBox"
-                         MinHeight="26"
+                         MinHeight="22"
                          Padding="0"
                          BorderThickness="0"
                          Background="Transparent"
                          CornerRadius="3"
-                         Watermark="{DynamicResource Text.Repository.BranchesVisibility.ExcludeNames.Placeholder}"
+                         Watermark="Exclude names: type branch name"
                          ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.EditorHint}"
                          TextChanged="OnPresetBranchInputTextChanged"
-                         KeyDown="OnPresetBranchExcludeNameInputKeyDown"/>
+                         KeyDown="OnPresetBranchExcludeNameInputKeyDown">
+                  <TextBox.InnerRightContent>
+                    <Button Classes="flat"
+                            Width="44"
+                            Height="20"
+                            Padding="4,0"
+                            Click="OnClearPresetBranchExcludeNames">
+                      <TextBlock Classes="small" Text="Clear"/>
+                    </Button>
+                  </TextBox.InnerRightContent>
+                </TextBox>
               </StackPanel>
             </Border>
 
-            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+            <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
               <Button Classes="flat primary"
-                      Padding="10,4"
+                      Padding="8,2"
                       Click="OnApplyPresetBranchFilter">
                 <TextBlock Text="{DynamicResource Text.Repository.BranchesVisibility.ApplyFilter}"/>
               </Button>
 
               <Button Classes="flat"
                       Margin="8,0,0,0"
-                      Padding="10,4"
+                      Padding="8,2"
                       Click="OnToggleShowAllBranches">
                 <Grid>
                   <TextBlock Text="{DynamicResource Text.Repository.BranchesVisibility.UsePresetFilter}"
