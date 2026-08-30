@@ -737,12 +737,14 @@ namespace SourceGit.ViewModels
                     else
                         ShowFlowToast(pushed ? $"Committed and pushed {node.DisplayPath}." : $"Committed {node.DisplayPath}.");
 
-                    _repo.RefreshBranches();
-                    _repo.RefreshCommits();
-                    _repo.RefreshSubmodules(true);
-                    _repo.RefreshWorkingCopyChanges();
-                    _selectNextActionAfterScan = true;
-                    await RefreshAsync();
+                    if (node.Depth == 0)
+                    {
+                        _repo.RefreshBranches();
+                        _repo.RefreshCommits();
+                        _repo.RefreshWorkingCopyChanges();
+                    }
+
+                    await RefreshParentChainAfterCommitAsync(node);
                 }
                 else
                 {
@@ -995,6 +997,68 @@ namespace SourceGit.ViewModels
                 Summary = BuildSummary(nodes);
                 SetScanning(false);
             });
+        }
+
+        private async Task RefreshParentChainAfterCommitAsync(SubmoduleCommitFlowNode committedNode)
+        {
+            var version = Interlocked.Increment(ref _version);
+            var parents = new List<SubmoduleCommitFlowNode>();
+            var parentPath = committedNode.ParentDisplayPath;
+            while (!string.IsNullOrWhiteSpace(parentPath))
+            {
+                var parent = _allNodes.FirstOrDefault(x => x.DisplayPath == parentPath);
+                if (parent == null)
+                    break;
+
+                parents.Add(parent);
+                parentPath = parent.ParentDisplayPath;
+            }
+
+            if (parents.Count == 0)
+            {
+                Summary = BuildSummary(_allNodes);
+                SetScanning(false);
+                return;
+            }
+
+            SetScanning(true);
+            Summary = $"Refreshing {parents.Count} affected parent node(s)...";
+
+            try
+            {
+                var statuses = await Task.WhenAll(parents.Select(async parent =>
+                    (Node: parent, Status: await QueryNodeStatusAsync(parent).ConfigureAwait(false)))).ConfigureAwait(false);
+
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    if (version != _version)
+                        return;
+
+                    foreach (var (parent, status) in statuses)
+                    {
+                        ApplyNodeStatus(parent, status);
+                        _changeCache[parent.DisplayPath] = status.Changes;
+                    }
+
+                    Nodes = BuildVisibleNodes(_allNodes);
+                    UpdateRecommendedNode();
+                    SelectedNode = PickNextActionNode(Nodes) ?? committedNode;
+                    Summary = BuildSummary(_allNodes);
+                    SetScanning(false);
+                });
+            }
+            catch (Exception ex)
+            {
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    if (version != _version)
+                        return;
+
+                    Summary = $"Failed to refresh affected submodules: {ex.Message}";
+                    SetScanning(false);
+                    _repo.SendNotification(Summary, true);
+                });
+            }
         }
 
         private async Task<NodeStatus> QueryNodeStatusAsync(SubmoduleCommitFlowNode node)

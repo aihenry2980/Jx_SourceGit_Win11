@@ -4,10 +4,12 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using System.Threading.Tasks;
 
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Platform;
+using Avalonia.Threading;
 
 namespace SourceGit.Native
 {
@@ -165,15 +167,28 @@ namespace SourceGit.Native
 
         public void OpenWithDefaultEditor(string file)
         {
-            var proc = Process.Start("xdg-open", file.Quoted());
-            if (proc != null)
+            try
             {
-                proc.WaitForExit();
+                var proc = Process.Start("xdg-open", file.Quoted());
+                if (proc != null)
+                    _ = CheckOpenWithDefaultEditorResultAsync(proc, file);
+            }
+            catch (Exception e)
+            {
+                Models.Notification.Send("", $"Failed to open: {file}. Reason: {e.Message}", true);
+            }
+        }
 
+        private static async Task CheckOpenWithDefaultEditorResultAsync(Process proc, string file)
+        {
+            using (proc)
+            {
+                await proc.WaitForExitAsync().ConfigureAwait(false);
                 if (proc.ExitCode != 0)
-                    Models.Notification.Send("", $"Failed to open: {file}", true);
-
-                proc.Close();
+                {
+                    Dispatcher.UIThread.Post(() =>
+                        Models.Notification.Send("", $"Failed to open: {file}", true));
+                }
             }
         }
 
