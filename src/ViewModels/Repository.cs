@@ -424,7 +424,14 @@ namespace SourceGit.ViewModels
         public List<Models.Remote> Remotes
         {
             get => _remotes;
-            private set => SetProperty(ref _remotes, value);
+            private set
+            {
+                if (SetProperty(ref _remotes, value))
+                {
+                    if (_histories != null)
+                        _histories.HasSingleRemote = value != null && value.Count == 1;
+                }
+            }
         }
 
         public List<Models.Branch> Branches

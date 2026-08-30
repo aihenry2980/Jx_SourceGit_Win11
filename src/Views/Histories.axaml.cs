@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Reflection;
@@ -264,6 +264,18 @@ namespace SourceGit.Views
         {
             get => _bisect;
             set => SetAndRaise(BisectProperty, ref _bisect, value);
+        }
+
+        public static readonly DirectProperty<Histories, bool> HasSingleRemoteProperty =
+            AvaloniaProperty.RegisterDirect<Histories, bool>(
+                nameof(HasSingleRemote),
+                static o => o.HasSingleRemote,
+                static (o, v) => o.HasSingleRemote = v);
+
+        public bool HasSingleRemote
+        {
+            get => _hasSingleRemote;
+            set => SetAndRaise(HasSingleRemoteProperty, ref _hasSingleRemote, value);
         }
 
         public static readonly DirectProperty<Histories, AvaloniaList<Models.IssueTracker>> IssueTrackersProperty =
@@ -3176,6 +3188,7 @@ namespace SourceGit.Views
 
         private Models.Branch _currentBranch = null;
         private Models.Bisect _bisect = null;
+        private bool _hasSingleRemote = false;
         private AvaloniaList<Models.IssueTracker> _issueTrackers = null;
         private bool _isScrollToTopVisible = false;
         private double _lastGraphStartY = 0;

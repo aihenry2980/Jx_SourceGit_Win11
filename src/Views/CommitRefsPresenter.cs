@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 
@@ -91,6 +91,15 @@ namespace SourceGit.Views
         {
             get => GetValue(UseCompactBranchNamesProperty);
             set => SetValue(UseCompactBranchNamesProperty, value);
+        }
+
+        public static readonly StyledProperty<bool> HasSingleRemoteProperty =
+            AvaloniaProperty.Register<CommitRefsPresenter, bool>(nameof(HasSingleRemote));
+
+        public bool HasSingleRemote
+        {
+            get => GetValue(HasSingleRemoteProperty);
+            set => SetValue(HasSingleRemoteProperty, value);
         }
 
         public static readonly StyledProperty<bool> UseGraphColorProperty =
@@ -203,6 +212,7 @@ namespace SourceGit.Views
             var allowWrap = AllowWrap;
             var x = 1.5;
             var y = 0.5;
+            var hasSingleRemote = HasSingleRemote;
 
             foreach (var item in _items)
             {
@@ -388,6 +398,7 @@ namespace SourceGit.Views
                 change.Property == ForegroundProperty ||
                 change.Property == UseGraphColorProperty ||
                 change.Property == UseCompactBranchNamesProperty ||
+                change.Property == HasSingleRemoteProperty ||
                 change.Property == BackgroundProperty ||
                 change.Property == ShowTagsProperty)
                 InvalidateMeasure();
