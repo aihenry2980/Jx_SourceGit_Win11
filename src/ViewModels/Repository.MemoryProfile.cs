@@ -108,8 +108,8 @@ namespace SourceGit.ViewModels
             bytes += EstimateChangesForUniquePaths(wc.Staged, wc.Unstaged);
             bytes += MemoryProfileEstimator.EstimateListReferences(wc.VisibleUnstaged);
             bytes += MemoryProfileEstimator.EstimateListReferences(wc.VisibleStaged);
-            bytes += MemoryProfileEstimator.EstimateListReferences(wc.SelectedUnstaged);
-            bytes += MemoryProfileEstimator.EstimateListReferences(wc.SelectedStaged);
+            bytes += MemoryProfileEstimator.EstimateListReferences(wc.SelectedUnstaged.Changes);
+            bytes += MemoryProfileEstimator.EstimateListReferences(wc.SelectedStaged.Changes);
             bytes += MemoryProfileEstimator.EstimateString(wc.Filter);
             bytes += MemoryProfileEstimator.EstimateString(wc.CommitMessage);
 
@@ -144,7 +144,7 @@ namespace SourceGit.ViewModels
             bytes += EstimateStashEntries(stashes.Stashes);
             bytes += MemoryProfileEstimator.EstimateListReferences(stashes.VisibleStashes);
             bytes += EstimateChanges(stashes.Changes);
-            bytes += MemoryProfileEstimator.EstimateListReferences(stashes.SelectedChanges);
+            bytes += MemoryProfileEstimator.EstimateListReferences(stashes.ChangeSelection.Changes);
             bytes += MemoryProfileEstimator.EstimateString(stashes.SearchFilter);
             bytes += EstimateDiffContext(stashes.DiffContext);
             return bytes;
@@ -209,7 +209,7 @@ namespace SourceGit.ViewModels
             bytes += MemoryProfileEstimator.EstimateString(detail.FullMessage?.Message);
             bytes += EstimateChanges(detail.Changes);
             bytes += MemoryProfileEstimator.EstimateListReferences(detail.VisibleChanges);
-            bytes += MemoryProfileEstimator.EstimateListReferences(detail.SelectedChanges);
+            bytes += MemoryProfileEstimator.EstimateListReferences(detail.ChangeSelection.Changes);
             bytes += MemoryProfileEstimator.EstimateString(detail.SearchChangeFilter);
             bytes += MemoryProfileEstimator.EstimateString(detail.ViewRevisionFilePath);
             bytes += EstimateRevisionFileContent(detail.ViewRevisionFileContent);
@@ -227,7 +227,7 @@ namespace SourceGit.ViewModels
 
             long bytes = 0;
             bytes += EstimateChanges(compare.VisibleChanges);
-            bytes += MemoryProfileEstimator.EstimateListReferences(compare.SelectedChanges);
+            bytes += MemoryProfileEstimator.EstimateListReferences(compare.ChangeSelection.Changes);
             bytes += MemoryProfileEstimator.EstimateString(compare.SearchFilter);
             bytes += EstimateDiffContext(compare.DiffContext);
             return bytes;

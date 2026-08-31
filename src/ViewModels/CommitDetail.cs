@@ -48,8 +48,8 @@ namespace SourceGit.ViewModels
                         TrySelectFirstVisibleChange();
                     }
 
-                    if (value == 1 && DiffContext == null && _selectedChanges is { Count: 1 })
-                        DiffContext = new DiffContext(_repo.FullPath, new Models.DiffOption(_commit, _selectedChanges[0]));
+                    if (DiffContext == null)
+                        UpdateDetails();
                 }
             }
         }
@@ -119,20 +119,13 @@ namespace SourceGit.ViewModels
             set => SetProperty(ref _visibleChanges, value);
         }
 
-        public List<Models.Change> SelectedChanges
+        public ChangeSelection ChangeSelection
         {
-            get => _selectedChanges;
+            get => _changeSelection;
             set
             {
-                if (SetProperty(ref _selectedChanges, value))
-                {
-                    if (ActiveTabIndex != 1 || value is not { Count: 1 })
-                        DiffContext = null;
-                    else if (!_changesLoaded)
-                        EnsureChangesLoaded();
-                    else
-                        DiffContext = new DiffContext(_repo.FullPath, new Models.DiffOption(_commit, value[0]), _diffContext);
-                }
+                if (SetProperty(ref _changeSelection, value))
+                    UpdateDetails();
             }
         }
 
@@ -218,7 +211,7 @@ namespace SourceGit.ViewModels
             _commit = null;
             _changes = null;
             _visibleChanges = null;
-            _selectedChanges = null;
+            _changeSelection = new(null);
             _signInfo = null;
             _searchChangeFilter = null;
             _diffContext = null;
@@ -530,7 +523,7 @@ namespace SourceGit.ViewModels
         {
             _changes = [];
             _visibleChanges = [];
-            _selectedChanges = null;
+            _changeSelection = new(null);
             _changesLoaded = false;
             _changesLoading = false;
             _requestingRevisionFiles = false;
@@ -540,7 +533,7 @@ namespace SourceGit.ViewModels
             SignInfo = null;
             Changes = [];
             VisibleChanges = [];
-            SelectedChanges = null;
+            ChangeSelection = new(null);
             DiffContext = null;
             ViewRevisionFileContent = null;
             ViewRevisionFilePath = string.Empty;
@@ -553,7 +546,7 @@ namespace SourceGit.ViewModels
             {
                 Changes = [];
                 VisibleChanges = [];
-                SelectedChanges = null;
+                ChangeSelection = new(null);
                 return;
             }
 
@@ -593,6 +586,14 @@ namespace SourceGit.ViewModels
 
             if (ActiveTabIndex == 1)
                 EnsureChangesLoaded();
+        }
+
+        private void UpdateDetails()
+        {
+            if (ActiveTabIndex == 1 && _changeSelection is { Count: 1, IsSingleFolder: false })
+                DiffContext = new DiffContext(_repo.FullPath, new Models.DiffOption(_commit, _changeSelection.Changes[0]), _diffContext);
+            else
+                DiffContext = null;
         }
 
         private async Task<Models.InlineElementCollector> ParseInlinesInMessageAsync(string message)
@@ -714,17 +715,17 @@ namespace SourceGit.ViewModels
 
             if (VisibleChanges is not { Count: > 0 })
             {
-                SelectedChanges = null;
+                ChangeSelection = new(null);
                 return;
             }
 
-            if (_selectedChanges is { Count: 1 } current &&
-                VisibleChanges.Contains(current[0]))
+            if (_changeSelection is { Count: 1, IsSingleFolder: false } current &&
+                VisibleChanges.Contains(current.Changes[0]))
             {
                 return;
             }
 
-            SelectedChanges = [VisibleChanges[0]];
+            ChangeSelection = new(VisibleChanges.GetRange(0, 1));
         }
 
         private void RefreshRevisionSearchSuggestion()
@@ -853,7 +854,7 @@ namespace SourceGit.ViewModels
         private Models.CommitSignInfo _signInfo = null;
         private List<Models.Change> _changes = [];
         private List<Models.Change> _visibleChanges = [];
-        private List<Models.Change> _selectedChanges = null;
+        private ChangeSelection _changeSelection = new(null);
         private string _searchChangeFilter = string.Empty;
         private DiffContext _diffContext = null;
         private bool _changesLoaded = false;

@@ -44,40 +44,30 @@ namespace SourceGit.Views
 
         private void OnUnstagedContextRequested(object sender, ContextRequestedEventArgs e)
         {
-            if (DataContext is ViewModels.WorkingCopy vm && sender is Control control)
+            if (DataContext is ViewModels.WorkingCopy { Repository: { } repo, SelectedUnstaged: { Count: > 0 } selection } vm)
             {
-                var container = control.FindDescendantOfType<ChangeCollectionContainer>();
-                var selectedSingleFolder = string.Empty;
-                if (container is { SelectedItems.Count: 1, SelectedItem: ViewModels.ChangeTreeNode { IsFolder: true } node })
-                    selectedSingleFolder = node.FullPath;
-
-                var menu = CreateContextMenuForUnstagedChanges(vm, selectedSingleFolder);
-                menu?.Open(control);
+                var menu = CreateContextMenuForUnstagedChanges(repo, vm, selection);
+                menu?.Open(sender as Control);
                 e.Handled = true;
             }
         }
 
         private void OnStagedContextRequested(object sender, ContextRequestedEventArgs e)
         {
-            if (DataContext is ViewModels.WorkingCopy vm && sender is Control control)
+            if (DataContext is ViewModels.WorkingCopy { Repository: { } repo, SelectedStaged: { Count: > 0 } selection } vm)
             {
-                var container = control.FindDescendantOfType<ChangeCollectionContainer>();
-                var selectedSingleFolder = string.Empty;
-                if (container is { SelectedItems.Count: 1, SelectedItem: ViewModels.ChangeTreeNode { IsFolder: true } node })
-                    selectedSingleFolder = node.FullPath;
-
-                var menu = CreateContextMenuForStagedChanges(vm, selectedSingleFolder);
-                menu?.Open(control);
+                var menu = CreateContextMenuForStagedChanges(repo, vm, selection);
+                menu?.Open(sender as Control);
                 e.Handled = true;
             }
         }
 
         private async void OnUnstagedChangeDoubleTapped(object _, RoutedEventArgs e)
         {
-            if (DataContext is ViewModels.WorkingCopy vm)
+            if (DataContext is ViewModels.WorkingCopy { SelectedUnstaged: { Count: > 0 } selection } vm)
             {
                 var next = UnstagedChangesView.GetNextChangeWithoutSelection();
-                await vm.StageChangesAsync(vm.SelectedUnstaged, next);
+                await vm.StageChangesAsync(selection.Changes, next);
                 UnstagedChangesView.TakeFocus();
                 e.Handled = true;
             }
@@ -85,10 +75,10 @@ namespace SourceGit.Views
 
         private async void OnStagedChangeDoubleTapped(object _, RoutedEventArgs e)
         {
-            if (DataContext is ViewModels.WorkingCopy vm)
+            if (DataContext is ViewModels.WorkingCopy { SelectedStaged: { Count: > 0 } selection } vm)
             {
                 var next = StagedChangesView.GetNextChangeWithoutSelection();
-                await vm.UnstageChangesAsync(vm.SelectedStaged, next);
+                await vm.UnstageChangesAsync(selection.Changes, next);
                 StagedChangesView.TakeFocus();
                 e.Handled = true;
             }
@@ -96,25 +86,27 @@ namespace SourceGit.Views
 
         private async void OnUnstagedKeyDown(object _, KeyEventArgs e)
         {
-            if (DataContext is ViewModels.WorkingCopy vm)
+            var cmdKey = OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control;
+
+            if (DataContext is ViewModels.WorkingCopy { SelectedUnstaged: { Count: > 0 } selection } vm)
             {
-                var cmdKey = OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control;
+                var changes = selection.Changes;
 
                 if (e.Key is Key.Space or Key.Enter)
                 {
                     var next = UnstagedChangesView.GetNextChangeWithoutSelection();
-                    await vm.StageChangesAsync(vm.SelectedUnstaged, next);
+                    await vm.StageChangesAsync(changes, next);
                     UnstagedChangesView.TakeFocus();
                     e.Handled = true;
                 }
-                else if (e.Key is Key.Delete or Key.Back && vm.SelectedUnstaged is { Count: > 0 })
+                else if (e.Key is Key.Delete or Key.Back)
                 {
-                    vm.Discard(vm.SelectedUnstaged);
+                    vm.Discard(changes);
                     e.Handled = true;
                 }
-                else if (e.Key is Key.O && e.KeyModifiers == cmdKey && vm.SelectedUnstaged is { Count: 1 })
+                else if (e.Key is Key.O && e.KeyModifiers == cmdKey && changes.Count == 1)
                 {
-                    var change = vm.SelectedUnstaged[0];
+                    var change = changes[0];
                     var fullpath = Native.OS.GetAbsPath(vm.Repository.FullPath, change.Path);
                     if (File.Exists(fullpath))
                         Native.OS.OpenWithDefaultEditor(fullpath);
@@ -124,19 +116,18 @@ namespace SourceGit.Views
                 {
                     var builder = new StringBuilder();
                     var copyAbsPath = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
-                    var container = UnstagedChangesView.FindDescendantOfType<ChangeCollectionContainer>();
-                    if (container is { SelectedItems.Count: 1, SelectedItem: ViewModels.ChangeTreeNode { IsFolder: true } node })
+                    if (selection.IsSingleFolder)
                     {
-                        builder.Append(copyAbsPath ? Native.OS.GetAbsPath(vm.Repository.FullPath, node.FullPath) : node.FullPath);
+                        builder.Append(copyAbsPath ? Native.OS.GetAbsPath(vm.Repository.FullPath, selection.SingleFolderPath) : selection.SingleFolderPath);
                     }
-                    else if (vm.SelectedUnstaged is { Count: 1 })
+                    else if (changes.Count == 1)
                     {
-                        var change = vm.SelectedUnstaged[0];
+                        var change = changes[0];
                         builder.Append(copyAbsPath ? Native.OS.GetAbsPath(vm.Repository.FullPath, change.Path) : change.Path);
                     }
-                    else if (vm.SelectedUnstaged is { Count: > 0 })
+                    else
                     {
-                        foreach (var c in vm.SelectedUnstaged)
+                        foreach (var c in changes)
                             builder.AppendLine(copyAbsPath ? Native.OS.GetAbsPath(vm.Repository.FullPath, c.Path) : c.Path);
                     }
 
@@ -146,30 +137,32 @@ namespace SourceGit.Views
                         e.Handled = true;
                     }
                 }
-                else if (e.Key is Key.F && e.KeyModifiers == cmdKey)
-                {
-                    LocalChangesSearchBox.Focus();
-                    e.Handled = true;
-                }
+            }
+            else if (e.Key is Key.F && e.KeyModifiers == cmdKey)
+            {
+                LocalChangesSearchBox.Focus();
+                e.Handled = true;
             }
         }
 
         private async void OnStagedKeyDown(object _, KeyEventArgs e)
         {
-            if (DataContext is ViewModels.WorkingCopy vm)
+            var cmdKey = OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control;
+
+            if (DataContext is ViewModels.WorkingCopy { SelectedStaged: { Count: > 0 } selection } vm)
             {
-                var cmdKey = OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control;
+                var changes = selection.Changes;
 
                 if (e.Key is Key.Space or Key.Enter)
                 {
                     var next = StagedChangesView.GetNextChangeWithoutSelection();
-                    await vm.UnstageChangesAsync(vm.SelectedStaged, next);
+                    await vm.UnstageChangesAsync(changes, next);
                     StagedChangesView.TakeFocus();
                     e.Handled = true;
                 }
-                else if (e.Key is Key.O && e.KeyModifiers == cmdKey && vm.SelectedStaged is { Count: 1 })
+                else if (e.Key is Key.O && e.KeyModifiers == cmdKey && changes.Count == 1)
                 {
-                    var change = vm.SelectedStaged[0];
+                    var change = changes[0];
                     var fullpath = Native.OS.GetAbsPath(vm.Repository.FullPath, change.Path);
                     if (File.Exists(fullpath))
                         Native.OS.OpenWithDefaultEditor(fullpath);
@@ -179,19 +172,18 @@ namespace SourceGit.Views
                 {
                     var builder = new StringBuilder();
                     var copyAbsPath = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
-                    var container = StagedChangesView.FindDescendantOfType<ChangeCollectionContainer>();
-                    if (container is { SelectedItems.Count: 1, SelectedItem: ViewModels.ChangeTreeNode { IsFolder: true } node })
+                    if (selection.IsSingleFolder)
                     {
-                        builder.Append(copyAbsPath ? Native.OS.GetAbsPath(vm.Repository.FullPath, node.FullPath) : node.FullPath);
+                        builder.Append(copyAbsPath ? Native.OS.GetAbsPath(vm.Repository.FullPath, selection.SingleFolderPath) : selection.SingleFolderPath);
                     }
-                    else if (vm.SelectedStaged is { Count: 1 })
+                    else if (changes.Count == 1)
                     {
-                        var change = vm.SelectedStaged[0];
+                        var change = changes[0];
                         builder.Append(copyAbsPath ? Native.OS.GetAbsPath(vm.Repository.FullPath, change.Path) : change.Path);
                     }
-                    else if (vm.SelectedStaged is { Count: > 0 })
+                    else
                     {
-                        foreach (var c in vm.SelectedStaged)
+                        foreach (var c in changes)
                             builder.AppendLine(copyAbsPath ? Native.OS.GetAbsPath(vm.Repository.FullPath, c.Path) : c.Path);
                     }
 
@@ -201,20 +193,20 @@ namespace SourceGit.Views
                         e.Handled = true;
                     }
                 }
-                else if (e.Key is Key.F && e.KeyModifiers == cmdKey)
-                {
-                    LocalChangesSearchBox.Focus();
-                    e.Handled = true;
-                }
+            }
+            else if (e.Key is Key.F && e.KeyModifiers == cmdKey)
+            {
+                LocalChangesSearchBox.Focus();
+                e.Handled = true;
             }
         }
 
         private async void OnStageSelectedButtonClicked(object _, RoutedEventArgs e)
         {
-            if (DataContext is ViewModels.WorkingCopy vm)
+            if (DataContext is ViewModels.WorkingCopy { SelectedUnstaged: { Count: > 0 } selection } vm)
             {
                 var next = UnstagedChangesView.GetNextChangeWithoutSelection();
-                await vm.StageChangesAsync(vm.SelectedUnstaged, next);
+                await vm.StageChangesAsync(selection.Changes, next);
                 UnstagedChangesView.TakeFocus();
             }
 
@@ -231,10 +223,10 @@ namespace SourceGit.Views
 
         private async void OnUnstageSelectedButtonClicked(object _, RoutedEventArgs e)
         {
-            if (DataContext is ViewModels.WorkingCopy vm)
+            if (DataContext is ViewModels.WorkingCopy { SelectedStaged: { Count: > 0 } selection } vm)
             {
                 var next = StagedChangesView.GetNextChangeWithoutSelection();
-                await vm.UnstageChangesAsync(vm.SelectedStaged, next);
+                await vm.UnstageChangesAsync(selection.Changes, next);
                 StagedChangesView.TakeFocus();
             }
 
@@ -298,21 +290,19 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
-        private ContextMenu CreateContextMenuForUnstagedChanges(ViewModels.WorkingCopy vm, string selectedSingleFolder)
+        private ContextMenu CreateContextMenuForUnstagedChanges(ViewModels.Repository repo, ViewModels.WorkingCopy vm, ViewModels.ChangeSelection selection)
         {
-            var repo = vm.Repository;
-            var selectedUnstaged = vm.SelectedUnstaged;
-            if (repo == null || selectedUnstaged == null || selectedUnstaged.Count == 0)
-                return null;
+            var hasSelectedFolder = selection.IsSingleFolder;
+            var selectedSingleFolder = hasSelectedFolder ? selection.SingleFolderPath : string.Empty;
+            var changes = selection.Changes;
 
-            var hasSelectedFolder = !string.IsNullOrEmpty(selectedSingleFolder);
             var menu = new ContextMenu();
-            if (selectedUnstaged.Count == 1)
+            if (changes.Count == 1)
             {
-                var change = selectedUnstaged[0];
+                var change = changes[0];
                 var path = Native.OS.GetAbsPath(repo.FullPath, change.Path);
 
-                if (!change.IsConflicted)
+                if (!change.IsConflicted && !hasSelectedFolder)
                 {
                     TryAddOpenFileToContextMenu(menu, path);
 
@@ -332,7 +322,7 @@ namespace SourceGit.Views
                 var explore = new MenuItem();
                 explore.Header = App.Text("RevealFile");
                 explore.Icon = this.CreateMenuIcon("Icons.Explore");
-                explore.IsEnabled = File.Exists(path) || Directory.Exists(path);
+                explore.IsEnabled = Path.Exists(path);
                 explore.Click += (_, e) =>
                 {
                     var target = hasSelectedFolder ? Native.OS.GetAbsPath(repo.FullPath, selectedSingleFolder) : path;
@@ -348,7 +338,7 @@ namespace SourceGit.Views
                     useTheirs.Icon = this.CreateMenuIcon("Icons.Incoming");
                     useTheirs.Click += async (_, e) =>
                     {
-                        await vm.UseTheirsAsync(selectedUnstaged);
+                        await vm.UseTheirsAsync(changes);
                         e.Handled = true;
                     };
 
@@ -356,7 +346,7 @@ namespace SourceGit.Views
                     useMine.Icon = this.CreateMenuIcon("Icons.Local");
                     useMine.Click += async (_, e) =>
                     {
-                        await vm.UseMineAsync(selectedUnstaged);
+                        await vm.UseMineAsync(changes);
                         e.Handled = true;
                     };
 
@@ -422,7 +412,7 @@ namespace SourceGit.Views
                     stage.Tag = "Enter/Space";
                     stage.Click += async (_, e) =>
                     {
-                        await vm.StageChangesAsync(selectedUnstaged, null);
+                        await vm.StageChangesAsync(changes, null);
                         e.Handled = true;
                     };
 
@@ -432,7 +422,7 @@ namespace SourceGit.Views
                     discard.Tag = "Back/Delete";
                     discard.Click += (_, e) =>
                     {
-                        vm.Discard(selectedUnstaged);
+                        vm.Discard(changes);
                         e.Handled = true;
                     };
 
@@ -442,7 +432,7 @@ namespace SourceGit.Views
                     stash.Click += (_, e) =>
                     {
                         if (repo.CanCreatePopup())
-                            repo.ShowPopup(new ViewModels.StashChanges(repo, selectedUnstaged));
+                            repo.ShowPopup(new ViewModels.StashChanges(repo, changes));
 
                         e.Handled = true;
                     };
@@ -465,7 +455,7 @@ namespace SourceGit.Views
                         {
                             var storageFile = await storageProvider.SaveFilePickerAsync(options);
                             if (storageFile != null)
-                                await vm.SaveChangesToPatchAsync(selectedUnstaged, true, storageFile.Path.LocalPath);
+                                await vm.SaveChangesToPatchAsync(changes, true, storageFile.Path.LocalPath);
                         }
                         catch (Exception exception)
                         {
@@ -778,7 +768,7 @@ namespace SourceGit.Views
             {
                 var hasConflicts = false;
                 var hasNonConflicts = false;
-                foreach (var change in selectedUnstaged)
+                foreach (var change in changes)
                 {
                     if (change.IsConflicted)
                         hasConflicts = true;
@@ -798,7 +788,7 @@ namespace SourceGit.Views
                     useTheirs.Icon = this.CreateMenuIcon("Icons.Incoming");
                     useTheirs.Click += async (_, e) =>
                     {
-                        await vm.UseTheirsAsync(selectedUnstaged);
+                        await vm.UseTheirsAsync(changes);
                         e.Handled = true;
                     };
 
@@ -806,7 +796,7 @@ namespace SourceGit.Views
                     useMine.Icon = this.CreateMenuIcon("Icons.Local");
                     useMine.Click += async (_, e) =>
                     {
-                        await vm.UseMineAsync(selectedUnstaged);
+                        await vm.UseMineAsync(changes);
                         e.Handled = true;
                     };
 
@@ -856,32 +846,32 @@ namespace SourceGit.Views
                 }
 
                 var stage = new MenuItem();
-                stage.Header = App.Text("FileCM.StageMulti", selectedUnstaged.Count);
+                stage.Header = App.Text("FileCM.StageMulti", changes.Count);
                 stage.Icon = this.CreateMenuIcon("Icons.File.Add");
                 stage.Tag = "Enter/Space";
                 stage.Click += async (_, e) =>
                 {
-                    await vm.StageChangesAsync(selectedUnstaged, null);
+                    await vm.StageChangesAsync(changes, null);
                     e.Handled = true;
                 };
 
                 var discard = new MenuItem();
-                discard.Header = App.Text("FileCM.DiscardMulti", selectedUnstaged.Count);
+                discard.Header = App.Text("FileCM.DiscardMulti", changes.Count);
                 discard.Icon = this.CreateMenuIcon("Icons.Undo");
                 discard.Tag = "Back/Delete";
                 discard.Click += (_, e) =>
                 {
-                    vm.Discard(selectedUnstaged);
+                    vm.Discard(changes);
                     e.Handled = true;
                 };
 
                 var stash = new MenuItem();
-                stash.Header = App.Text("FileCM.StashMulti", selectedUnstaged.Count);
+                stash.Header = App.Text("FileCM.StashMulti", changes.Count);
                 stash.Icon = this.CreateMenuIcon("Icons.Stashes.Add");
                 stash.Click += (_, e) =>
                 {
                     if (repo.CanCreatePopup())
-                        repo.ShowPopup(new ViewModels.StashChanges(repo, selectedUnstaged));
+                        repo.ShowPopup(new ViewModels.StashChanges(repo, changes));
 
                     e.Handled = true;
                 };
@@ -904,7 +894,7 @@ namespace SourceGit.Views
                     {
                         var storageFile = await storageProvider.SaveFilePickerAsync(options);
                         if (storageFile != null)
-                            await vm.SaveChangesToPatchAsync(selectedUnstaged, true, storageFile.Path.LocalPath);
+                            await vm.SaveChangesToPatchAsync(changes, true, storageFile.Path.LocalPath);
                     }
                     catch (Exception exception)
                     {
@@ -921,7 +911,7 @@ namespace SourceGit.Views
 
                 if (!hasSelectedFolder)
                 {
-                    var addToLocalIgnore = CreateLocalGitIgnoreMenu(repo, selectedUnstaged);
+                    var addToLocalIgnore = CreateLocalGitIgnoreMenu(repo, selection.Changes);
                     if (addToLocalIgnore != null)
                     {
                         menu.Items.Add(new MenuItem() { Header = "-" });
@@ -987,13 +977,11 @@ namespace SourceGit.Views
             return menu;
         }
 
-        public ContextMenu CreateContextMenuForStagedChanges(ViewModels.WorkingCopy vm, string selectedSingleFolder)
+        public ContextMenu CreateContextMenuForStagedChanges(ViewModels.Repository repo, ViewModels.WorkingCopy vm, ViewModels.ChangeSelection selection)
         {
-            var repo = vm.Repository;
-            var selectedStaged = vm.SelectedStaged;
-            if (repo == null || selectedStaged == null || selectedStaged.Count == 0)
-                return null;
-
+            var changes = selection.Changes;
+            var hasSelectedFolder = selection.IsSingleFolder;
+            var selectedSingleFolder = hasSelectedFolder ? selection.SingleFolderPath : null;
             var menu = new ContextMenu();
 
             MenuItem ai = null;
@@ -1008,7 +996,7 @@ namespace SourceGit.Views
                 {
                     ai.Click += (_, e) =>
                     {
-                        DoOpenAIAssistant(repo, services[0], selectedStaged);
+                        DoOpenAIAssistant(repo, services[0], changes);
                         e.Handled = true;
                     };
                 }
@@ -1022,7 +1010,7 @@ namespace SourceGit.Views
                         item.Header = service.Name;
                         item.Click += (_, e) =>
                         {
-                            DoOpenAIAssistant(repo, dup, selectedStaged);
+                            DoOpenAIAssistant(repo, dup, changes);
                             e.Handled = true;
                         };
 
@@ -1031,10 +1019,9 @@ namespace SourceGit.Views
                 }
             }
 
-            var hasSelectedFolder = !string.IsNullOrEmpty(selectedSingleFolder);
-            if (selectedStaged.Count == 1)
+            if (changes.Count == 1)
             {
-                var change = selectedStaged[0];
+                var change = changes[0];
                 var path = Native.OS.GetAbsPath(repo.FullPath, change.Path);
 
                 var openWithMerger = new MenuItem();
@@ -1064,7 +1051,7 @@ namespace SourceGit.Views
                 unstage.Tag = "Enter/Space";
                 unstage.Click += async (_, e) =>
                 {
-                    await vm.UnstageChangesAsync(selectedStaged, null);
+                    await vm.UnstageChangesAsync(changes, null);
                     e.Handled = true;
                 };
 
@@ -1075,7 +1062,7 @@ namespace SourceGit.Views
                 stash.Click += (_, e) =>
                 {
                     if (repo.CanCreatePopup())
-                        repo.ShowPopup(new ViewModels.StashChanges(repo, selectedStaged));
+                        repo.ShowPopup(new ViewModels.StashChanges(repo, changes));
 
                     e.Handled = true;
                 };
@@ -1098,7 +1085,7 @@ namespace SourceGit.Views
                     {
                         var storageFile = await storageProvider.SaveFilePickerAsync(options);
                         if (storageFile != null)
-                            await vm.SaveChangesToPatchAsync(selectedStaged, false, storageFile.Path.LocalPath);
+                            await vm.SaveChangesToPatchAsync(changes, false, storageFile.Path.LocalPath);
                     }
                     catch (Exception exception)
                     {
@@ -1277,23 +1264,23 @@ namespace SourceGit.Views
                 }
 
                 var unstage = new MenuItem();
-                unstage.Header = App.Text("FileCM.UnstageMulti", selectedStaged.Count);
+                unstage.Header = App.Text("FileCM.UnstageMulti", changes.Count);
                 unstage.Icon = this.CreateMenuIcon("Icons.File.Remove");
                 unstage.Tag = "Enter/Space";
                 unstage.Click += async (_, e) =>
                 {
-                    await vm.UnstageChangesAsync(selectedStaged, null);
+                    await vm.UnstageChangesAsync(changes, null);
                     e.Handled = true;
                 };
 
                 var stash = new MenuItem();
-                stash.Header = App.Text("FileCM.StashMulti", selectedStaged.Count);
+                stash.Header = App.Text("FileCM.StashMulti", changes.Count);
                 stash.Icon = this.CreateMenuIcon("Icons.Stashes.Add");
                 stash.IsEnabled = !vm.UseAmend;
                 stash.Click += (_, e) =>
                 {
                     if (repo.CanCreatePopup())
-                        repo.ShowPopup(new ViewModels.StashChanges(repo, selectedStaged));
+                        repo.ShowPopup(new ViewModels.StashChanges(repo, changes));
 
                     e.Handled = true;
                 };
@@ -1316,7 +1303,7 @@ namespace SourceGit.Views
                     {
                         var storageFile = await storageProvider.SaveFilePickerAsync(options);
                         if (storageFile != null)
-                            await vm.SaveChangesToPatchAsync(selectedStaged, false, storageFile.Path.LocalPath);
+                            await vm.SaveChangesToPatchAsync(changes, false, storageFile.Path.LocalPath);
                     }
                     catch (Exception exception)
                     {
@@ -1332,7 +1319,7 @@ namespace SourceGit.Views
 
                 if (!hasSelectedFolder)
                 {
-                    var addToLocalIgnore = CreateLocalGitIgnoreMenu(repo, selectedStaged);
+                    var addToLocalIgnore = CreateLocalGitIgnoreMenu(repo, selection.Changes);
                     if (addToLocalIgnore != null)
                     {
                         menu.Items.Add(new MenuItem() { Header = "-" });

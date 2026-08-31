@@ -164,6 +164,18 @@ namespace SourceGit.Views
             set => SetAndRaise(ChangesProperty, ref _changes, value);
         }
 
+        public static readonly DirectProperty<ChangeCollectionView, ViewModels.ChangeSelection> SelectionProperty =
+            AvaloniaProperty.RegisterDirect<ChangeCollectionView, ViewModels.ChangeSelection>(
+                nameof(Selection),
+                static o => o.Selection,
+                static (o, v) => o.Selection = v);
+
+        public ViewModels.ChangeSelection Selection
+        {
+            get => _selection;
+            set => SetAndRaise(SelectionProperty, ref _selection, value);
+        }
+
         public static readonly DirectProperty<ChangeCollectionView, List<Models.Change>> SelectedChangesProperty =
             AvaloniaProperty.RegisterDirect<ChangeCollectionView, List<Models.Change>>(
                 nameof(SelectedChanges),
@@ -173,7 +185,11 @@ namespace SourceGit.Views
         public List<Models.Change> SelectedChanges
         {
             get => _selectedChanges;
-            set => SetAndRaise(SelectedChangesProperty, ref _selectedChanges, value);
+            set
+            {
+                if (SetAndRaise(SelectedChangesProperty, ref _selectedChanges, value))
+                    Selection = new(value);
+            }
         }
 
         public KeyModifiers LastDoubleTappedKeyModifiers
@@ -241,7 +257,7 @@ namespace SourceGit.Views
 
         public Models.Change GetNextChangeWithoutSelection()
         {
-            var selected = _selectedChanges;
+            var selected = _selection.Changes;
             var changes = Changes;
             if (selected == null || selected.Count == 0)
                 return changes.Count > 0 ? changes[0] : null;
@@ -351,7 +367,7 @@ namespace SourceGit.Views
                 UpdateDataSource(true);
             else if (change.Property == ChangesProperty)
                 UpdateDataSource(false);
-            else if (change.Property == SelectedChangesProperty)
+            else if (change.Property == SelectionProperty)
                 UpdateSelection();
 
             if (change.Property == EnableCompactFoldersProperty && ViewMode == Models.ChangeViewMode.Tree)
@@ -424,42 +440,16 @@ namespace SourceGit.Views
 
         private void OnRowSelectionChanged(object sender, SelectionChangedEventArgs _)
         {
-            if (_disableSelectionChangingEvent)
+            if (_disableSelectionChangingEvent || sender is not ListBox listBox)
                 return;
 
             _disableSelectionChangingEvent = true;
 
-            var selected = new List<Models.Change>();
-            if (sender is ListBox { SelectedItems: { } selectedItems })
+            var selection = new ViewModels.ChangeSelection(listBox.SelectedItems);
+            if (selection.IsChanged(_selection))
             {
-                foreach (var item in selectedItems)
-                {
-                    if (item is Models.Change c)
-                        selected.Add(c);
-                    else if (item is ViewModels.ChangeTreeNode node)
-                        CollectChangesInNode(selected, node);
-                }
-            }
-
-            var old = SelectedChanges ?? [];
-            if (old.Count != selected.Count)
-            {
-                SelectedChanges = selected;
-            }
-            else
-            {
-                bool allEquals = true;
-                foreach (var c in old)
-                {
-                    if (!selected.Contains(c))
-                    {
-                        allEquals = false;
-                        break;
-                    }
-                }
-
-                if (!allEquals)
-                    SelectedChanges = selected;
+                Selection = selection;
+                SetAndRaise(SelectedChangesProperty, ref _selectedChanges, selection.Changes);
             }
 
             _disableSelectionChangingEvent = false;
@@ -490,7 +480,7 @@ namespace SourceGit.Views
                 return;
             }
 
-            var selected = _selectedChanges ?? [];
+            var selected = _selection?.Changes ?? [];
             if (ViewMode == Models.ChangeViewMode.Tree)
             {
                 var oldFolded = new HashSet<string>();
@@ -554,7 +544,7 @@ namespace SourceGit.Views
 
             _disableSelectionChangingEvent = true;
 
-            var selected = _selectedChanges ?? [];
+            var selected = _selection?.Changes ?? [];
             if (Content is ViewModels.ChangeCollectionAsTree tree)
             {
                 tree.SelectedRows.Clear();
@@ -647,7 +637,8 @@ namespace SourceGit.Views
         private bool _enableCompactFolders = false;
         private bool _showCommitIncludeCheckBoxes = false;
         private List<Models.Change> _changes = null;
-        private List<Models.Change> _selectedChanges = null;
+        private ViewModels.ChangeSelection _selection = new(null);
+        private List<Models.Change> _selectedChanges = [];
         private bool _disableSelectionChangingEvent = false;
     }
 }

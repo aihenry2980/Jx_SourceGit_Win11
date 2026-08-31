@@ -426,7 +426,7 @@ namespace SourceGit.ViewModels
             {
                 foreach (var branch in branches)
                 {
-                    if (Current.Upstream == branch.FullName)
+                    if (Current.Upstream.Equals(branch.FullName, System.StringComparison.Ordinal))
                     {
                         SelectedBranch = branch;
                         autoSelectedBranch = true;
