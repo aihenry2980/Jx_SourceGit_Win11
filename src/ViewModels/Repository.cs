@@ -3945,7 +3945,6 @@ namespace SourceGit.ViewModels
             var skippedAutomaticallyTargets = 0;
             var failedTargets = 0;
             var progressLock = new object();
-            var maxParallelism = stopOnError ? 1 : Math.Min(SPLIT_SUBMODULE_UPDATE_MAX_PARALLELISM, Math.Max(1, totalTargets));
 
             Models.RecursiveOperationProgress CreateProgress(
                 string target,
@@ -4064,8 +4063,8 @@ namespace SourceGit.ViewModels
             }
 
             var batches = BuildOrderedSubmoduleTargetBatches(targets);
-            log?.AppendLine($"Running up to {maxParallelism} submodule update(s) in parallel.");
-            log?.AppendLine("Execution order is parent-first. A selected submodule is updated before its selected nested submodules.");
+            log?.AppendLine("Running submodule updates sequentially with one Git job at a time.");
+            log?.AppendLine("Execution order is parent-first. Each selected submodule must finish successfully before the next one starts.");
             for (var batchIndex = 0; batchIndex < batches.Count; batchIndex++)
             {
                 var batch = batches[batchIndex];
@@ -4075,49 +4074,14 @@ namespace SourceGit.ViewModels
                 if (batch.Count > 0)
                     log?.AppendLine($"--- Submodule update wave {batchIndex + 1}/{batches.Count}: {string.Join(", ", batch)} ---");
 
-                if (stopOnError)
-                {
-                    foreach (var target in batch)
-                    {
-                        if (string.IsNullOrWhiteSpace(target))
-                            continue;
-
-                        var state = await RunOneAsync(target).ConfigureAwait(false);
-                        if (state == Models.RecursiveOperationTargetState.Failed)
-                            return false;
-                    }
-
-                    continue;
-                }
-
-                using var parallelLimiter = new SemaphoreSlim(maxParallelism);
-                var tasks = new List<Task>();
                 foreach (var target in batch)
                 {
                     if (string.IsNullOrWhiteSpace(target))
                         continue;
 
-                    tasks.Add(Task.Run(async () =>
-                    {
-                        await parallelLimiter.WaitAsync(cancellationToken).ConfigureAwait(false);
-                        try
-                        {
-                            await RunOneAsync(target).ConfigureAwait(false);
-                        }
-                        finally
-                        {
-                            parallelLimiter.Release();
-                        }
-                    }, CancellationToken.None));
-                }
-
-                try
-                {
-                    await Task.WhenAll(tasks).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                {
-                    return false;
+                    var state = await RunOneAsync(target).ConfigureAwait(false);
+                    if (state == Models.RecursiveOperationTargetState.Failed)
+                        return false;
                 }
             }
 
@@ -6274,7 +6238,6 @@ namespace SourceGit.ViewModels
 
         private static readonly TimeSpan SPLIT_FETCH_TIMEOUT = TimeSpan.FromMinutes(5);
         private static readonly TimeSpan SPLIT_SUBMODULE_UPDATE_TIMEOUT = TimeSpan.FromMinutes(5);
-        private static readonly int SPLIT_SUBMODULE_UPDATE_MAX_PARALLELISM = Math.Max(1, Math.Min(4, Environment.ProcessorCount));
         private const int MAX_INCREMENTAL_HISTORY_METADATA_COMMITS = 256;
         private const int AUTO_HISTORY_FILTER_BRANCH_COLOR_COUNT = 16;
     }

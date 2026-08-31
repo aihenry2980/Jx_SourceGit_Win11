@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -215,6 +214,7 @@ namespace SourceGit.ViewModels
 
         public override Task<bool> Sure()
         {
+            using var lockWatcher = _repo.LockWatcher();
             ProgressDescription = "Run custom action ...";
 
             var cmdline = PrepareStringByTarget(CustomAction.Arguments);
@@ -224,13 +224,6 @@ namespace SourceGit.ViewModels
                 cmdline = cmdline.Replace($"${i + 1}", param.GetValue());
             }
 
-            if (ShouldRunInExternalTerminal())
-            {
-                RunInExternalTerminal(cmdline);
-                return Task.FromResult(true);
-            }
-
-            using var lockWatcher = _repo.LockWatcher();
             var log = _repo.CreateLog(CustomAction.Name);
             log.AutoCloseOnSuccess = true;
             Use(log);
@@ -239,35 +232,6 @@ namespace SourceGit.ViewModels
             ShowOrFocusLogs(log);
             _ = Task.Run(() => RunAsync(cmdline, log));
             return Task.FromResult(true);
-        }
-
-        private bool ShouldRunInExternalTerminal()
-        {
-            if (!OperatingSystem.IsWindows())
-                return false;
-
-            var extension = Path.GetExtension(CustomAction.Executable);
-            return extension.Equals(".bat", StringComparison.OrdinalIgnoreCase) ||
-                extension.Equals(".cmd", StringComparison.OrdinalIgnoreCase);
-        }
-
-        private void RunInExternalTerminal(string args)
-        {
-            try
-            {
-                Process.Start(new ProcessStartInfo()
-                {
-                    FileName = "cmd.exe",
-                    Arguments = $"/d /k call {CustomAction.Executable.Quoted()} {args}",
-                    WorkingDirectory = _repo.FullPath,
-                    UseShellExecute = true,
-                });
-                _repo.SendNotification($"Started {CustomAction.Name} in an external terminal.");
-            }
-            catch (Exception e)
-            {
-                _repo.SendNotification(e.Message, true);
-            }
         }
 
         private string PrepareStringByTarget(string org)

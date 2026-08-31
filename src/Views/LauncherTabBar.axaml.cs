@@ -8,6 +8,7 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Styling;
+using Avalonia.VisualTree;
 
 namespace SourceGit.Views
 {
@@ -64,6 +65,24 @@ namespace SourceGit.Views
         public LauncherTabBar()
         {
             InitializeComponent();
+            LauncherTabsList.AddHandler(InputElement.PointerPressedEvent, OnTabsPointerPressed, RoutingStrategies.Tunnel, true);
+            LauncherTabsList.AddHandler(ContextRequestedEvent, OnTabsContextRequested, RoutingStrategies.Tunnel, true);
+            AddHandler(InputElement.PointerPressedEvent, OnTabBarPointerPressed, RoutingStrategies.Tunnel, true);
+        }
+
+        protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+        {
+            base.OnAttachedToVisualTree(e);
+
+            _topLevel = TopLevel.GetTopLevel(this);
+            _topLevel?.AddHandler(InputElement.PointerPressedEvent, OnTopLevelPointerPressed, RoutingStrategies.Tunnel, true);
+        }
+
+        protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+        {
+            _topLevel?.RemoveHandler(InputElement.PointerPressedEvent, OnTopLevelPointerPressed);
+            _topLevel = null;
+            base.OnDetachedFromVisualTree(e);
         }
 
         public override void Render(DrawingContext context)
@@ -239,6 +258,58 @@ namespace SourceGit.Views
             InvalidateVisual();
         }
 
+        private void OnTabsPointerPressed(object sender, PointerPressedEventArgs e)
+        {
+            if (!e.GetCurrentPoint(LauncherTabsList).Properties.IsRightButtonPressed)
+                return;
+
+            var tab = FindTabAt(e.GetPosition(LauncherTabsList));
+            if (tab == null)
+                return;
+
+            OpenTabContextMenu(tab);
+            e.Handled = true;
+        }
+
+        private void OnTabsContextRequested(object sender, ContextRequestedEventArgs e)
+        {
+            var source = e.Source as Visual;
+            var tab = source as LauncherTabSizeBox ?? source?.FindAncestorOfType<LauncherTabSizeBox>();
+            if (tab == null)
+                return;
+
+            OpenTabContextMenu(tab);
+            e.Handled = true;
+        }
+
+        private void OnTabBarPointerPressed(object sender, PointerPressedEventArgs e)
+        {
+            if (_tabContextMenu?.IsOpen == true)
+                _tabContextMenu.Close();
+        }
+
+        private void OnTopLevelPointerPressed(object sender, PointerPressedEventArgs e)
+        {
+            if (_tabContextMenu?.IsOpen == true)
+                _tabContextMenu.Close();
+        }
+
+        private LauncherTabSizeBox FindTabAt(Point position)
+        {
+            for (var i = 0; i < LauncherTabsList.ItemCount; i++)
+            {
+                var container = LauncherTabsList.ContainerFromIndex(i);
+                if (container == null)
+                    continue;
+
+                var topLeft = container.TranslatePoint(default, LauncherTabsList);
+                if (topLeft.HasValue && new Rect(topLeft.Value, container.Bounds.Size).Contains(position))
+                    return container.FindDescendantOfType<LauncherTabSizeBox>();
+            }
+
+            return null;
+        }
+
         private void OnPointerPressedTab(object sender, PointerPressedEventArgs e)
         {
             if (sender is Border border)
@@ -254,6 +325,11 @@ namespace SourceGit.Views
                     _pressedTabEvent = e;
                     _startDragTab = false;
                     _pressedTabPosition = e.GetPosition(border);
+                }
+                else if (point.Properties.IsRightButtonPressed)
+                {
+                    OpenTabContextMenu(border);
+                    e.Handled = true;
                 }
                 else
                 {
@@ -323,12 +399,20 @@ namespace SourceGit.Views
 
         private void OnTabContextRequested(object sender, ContextRequestedEventArgs e)
         {
-            if (sender is Border { DataContext: ViewModels.LauncherPage page } border &&
+            if (sender is Border border)
+                OpenTabContextMenu(border);
+
+            e.Handled = true;
+        }
+
+        private void OpenTabContextMenu(Border border)
+        {
+            if (border.DataContext is ViewModels.LauncherPage page &&
                 DataContext is ViewModels.Launcher vm)
             {
                 var menu = new ContextMenu();
 
-                if (vm.ActivePage.Data is ViewModels.Repository repo)
+                if (page.Data is ViewModels.Repository repo)
                 {
                     var refresh = new MenuItem();
                     refresh.Header = App.Text("PageTabBar.Tab.Refresh");
@@ -451,10 +535,15 @@ namespace SourceGit.Views
                     ev.Handled = true;
                 };
                 menu.Items.Add(closeRight);
+                _tabContextMenu?.Close();
+                _tabContextMenu = menu;
+                menu.Closed += (_, _) =>
+                {
+                    if (ReferenceEquals(_tabContextMenu, menu))
+                        _tabContextMenu = null;
+                };
                 menu.Open(border);
             }
-
-            e.Handled = true;
         }
 
         private void OnCloseTab(object sender, RoutedEventArgs e)
@@ -521,6 +610,8 @@ namespace SourceGit.Views
         private PointerPressedEventArgs _pressedTabEvent = null;
         private Point _pressedTabPosition = new();
         private bool _startDragTab = false;
+        private ContextMenu _tabContextMenu = null;
+        private TopLevel _topLevel = null;
         private readonly DataFormat<string> _dndMainTabFormat = DataFormat.CreateStringApplicationFormat("sourcegit-dnd-main-tab");
         private TabRenderState _lastTabRenderState = TabRenderState.Empty;
 

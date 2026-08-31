@@ -51,7 +51,7 @@ namespace SourceGit.Commands
             if (init)
                 builder.Append(" --init");
             if (recursive)
-                builder.Append(" --recursive");
+                builder.Append(" --recursive --jobs=1");
             if (useRemote)
                 builder.Append(" --remote");
             if (modules.Count > 0)
