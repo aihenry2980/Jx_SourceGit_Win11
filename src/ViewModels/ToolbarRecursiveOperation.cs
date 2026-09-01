@@ -292,6 +292,34 @@ namespace SourceGit.ViewModels
             IsSingleOperationSubmoduleProgressVisible &&
             !IsSubmoduleProgressBoardVisible;
         public bool CanEditSubmoduleSelection => _showSubmoduleSelection && !_submoduleSelectionLocked;
+        public bool IsSubmoduleUpdateConcurrencySelectionVisible =>
+            _kind == ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively;
+        public bool EnableParallelRecursiveSubmoduleUpdates
+        {
+            get => _repo.Settings?.EnableParallelRecursiveSubmoduleUpdates ?? true;
+            set
+            {
+                if (_repo.Settings == null || _repo.Settings.EnableParallelRecursiveSubmoduleUpdates == value)
+                    return;
+
+                _repo.Settings.EnableParallelRecursiveSubmoduleUpdates = value;
+                _repo.Settings.Save();
+                OnPropertyChanged();
+            }
+        }
+        public bool StopRecursiveSubmoduleUpdateOnFirstError
+        {
+            get => _repo.Settings?.StopRecursiveSubmoduleUpdateOnFirstError ?? false;
+            set
+            {
+                if (_repo.Settings == null || _repo.Settings.StopRecursiveSubmoduleUpdateOnFirstError == value)
+                    return;
+
+                _repo.Settings.StopRecursiveSubmoduleUpdateOnFirstError = value;
+                _repo.Settings.Save();
+                OnPropertyChanged();
+            }
+        }
         public bool AreSubmoduleStatusesVisible => _submoduleSelectionLocked;
         public bool IsOperationSummaryVisible => _mode == ToolbarRecursiveOperationMode.Run && _summaryTotal > 0;
         public string CurrentSubmoduleName => _currentSubmoduleName;
@@ -561,7 +589,7 @@ namespace SourceGit.ViewModels
                     ToolbarRecursiveOperationKind.PullUpdateAndFetchPruneRecursively => await _repo.RunPullUpdateAndFetchPruneRecursivelyAsync(log, SetCombinedPhase, selectedTargets, _runCancellation.Token, UpdateSubmoduleProgress),
                     ToolbarRecursiveOperationKind.FetchAndPruneRecursively => await _repo.RunFetchRecursivelyAsync(true, log, false, selectedTargets, _runCancellation.Token, UpdateSubmoduleProgress),
                     ToolbarRecursiveOperationKind.FetchRecursively => await _repo.RunFetchRecursivelyAsync(false, log, false, selectedTargets, _runCancellation.Token, UpdateSubmoduleProgress),
-                    ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively => await _repo.RunUpdateSubmodulesRecursivelyAsync(log, selectedTargets, false, _runCancellation.Token, UpdateSubmoduleProgress),
+                    ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively => await _repo.RunUpdateSubmodulesRecursivelyAsync(log, selectedTargets, StopRecursiveSubmoduleUpdateOnFirstError, _runCancellation.Token, UpdateSubmoduleProgress, EnableParallelRecursiveSubmoduleUpdates),
                     ToolbarRecursiveOperationKind.RestoreCleanStateRecursively => await _repo.RunRestoreCleanStateRecursivelyAsync(log, _runCancellation.Token),
                     _ => false,
                 };

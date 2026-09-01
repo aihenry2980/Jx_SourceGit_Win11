@@ -260,7 +260,21 @@ namespace SourceGit.Views
 
         private void OnTabsPointerPressed(object sender, PointerPressedEventArgs e)
         {
-            if (!e.GetCurrentPoint(LauncherTabsList).Properties.IsRightButtonPressed)
+            var point = e.GetCurrentPoint(LauncherTabsList);
+            if (point.Properties.IsMiddleButtonPressed)
+            {
+                var middleClickedTab = FindTabAt(e.GetPosition(LauncherTabsList));
+                if (middleClickedTab?.DataContext is ViewModels.LauncherPage page &&
+                    DataContext is ViewModels.Launcher vm)
+                {
+                    vm.CloseTab(page);
+                    e.Handled = true;
+                }
+
+                return;
+            }
+
+            if (!point.Properties.IsRightButtonPressed)
                 return;
 
             var tab = FindTabAt(e.GetPosition(LauncherTabsList));

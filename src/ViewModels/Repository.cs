@@ -3890,7 +3890,8 @@ namespace SourceGit.ViewModels
             List<string> selectedTargets = null,
             bool stopOnError = false,
             CancellationToken cancellationToken = default,
-            Action<Models.RecursiveOperationProgress> onProgressChanged = null)
+            Action<Models.RecursiveOperationProgress> onProgressChanged = null,
+            bool runInParallel = true)
         {
             if (cancellationToken.IsCancellationRequested)
                 return false;
@@ -3936,6 +3937,11 @@ namespace SourceGit.ViewModels
                 log?.AppendLine(selectedTargets == null ? "No submodules found." : "No submodules selected.");
                 return true;
             }
+
+            var requestedTargetCount = targets.Count;
+            targets = BuildRecursiveSubmoduleUpdateRoots(targets, sourceSubmodules);
+            if (targets.Count < requestedTargetCount)
+                log?.AppendLine($"Collapsed {requestedTargetCount - targets.Count} nested submodule target(s) into their recursive parent update.");
 
             using var lockWatcher = _watcher?.Lock();
             var succ = true;
@@ -4063,8 +4069,20 @@ namespace SourceGit.ViewModels
             }
 
             var batches = BuildOrderedSubmoduleTargetBatches(targets);
-            log?.AppendLine("Running submodule updates sequentially with one Git job at a time.");
-            log?.AppendLine("Execution order is parent-first. Each selected submodule must finish successfully before the next one starts.");
+            var maxParallelism = runInParallel && !stopOnError
+                ? Math.Min(MAX_RECURSIVE_SUBMODULE_UPDATE_PARALLELISM, Math.Max(1, totalTargets))
+                : 1;
+            if (maxParallelism == 1)
+            {
+                log?.AppendLine("Running submodule updates sequentially with one Git job at a time.");
+                log?.AppendLine("Execution order is parent-first. Each selected submodule must finish successfully before the next one starts.");
+            }
+            else
+            {
+                log?.AppendLine($"Running up to {maxParallelism} top-level submodule updates in parallel.");
+                log?.AppendLine("Each Git command updates nested submodules with one job at a time.");
+            }
+
             for (var batchIndex = 0; batchIndex < batches.Count; batchIndex++)
             {
                 var batch = batches[batchIndex];
@@ -4074,14 +4092,49 @@ namespace SourceGit.ViewModels
                 if (batch.Count > 0)
                     log?.AppendLine($"--- Submodule update wave {batchIndex + 1}/{batches.Count}: {string.Join(", ", batch)} ---");
 
-                foreach (var target in batch)
+                if (maxParallelism == 1)
                 {
-                    if (string.IsNullOrWhiteSpace(target))
-                        continue;
+                    foreach (var target in batch)
+                    {
+                        if (string.IsNullOrWhiteSpace(target))
+                            continue;
 
-                    var state = await RunOneAsync(target).ConfigureAwait(false);
-                    if (state == Models.RecursiveOperationTargetState.Failed)
+                        var state = await RunOneAsync(target).ConfigureAwait(false);
+                        if (state == Models.RecursiveOperationTargetState.Failed)
+                            return false;
+                    }
+                }
+                else
+                {
+                    using var limiter = new SemaphoreSlim(maxParallelism);
+                    var tasks = new List<Task>();
+                    foreach (var target in batch)
+                    {
+                        if (string.IsNullOrWhiteSpace(target))
+                            continue;
+
+                        tasks.Add(Task.Run(async () =>
+                        {
+                            await limiter.WaitAsync(cancellationToken).ConfigureAwait(false);
+                            try
+                            {
+                                await RunOneAsync(target).ConfigureAwait(false);
+                            }
+                            finally
+                            {
+                                limiter.Release();
+                            }
+                        }, cancellationToken));
+                    }
+
+                    try
+                    {
+                        await Task.WhenAll(tasks).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
                         return false;
+                    }
                 }
             }
 
@@ -4129,6 +4182,56 @@ namespace SourceGit.ViewModels
                 ordered.Add(batch);
 
             return ordered;
+        }
+
+        private static List<string> BuildRecursiveSubmoduleUpdateRoots(
+            List<string> targets,
+            List<Models.Submodule> knownSubmodules)
+        {
+            var comparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+            var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+            var knownPaths = new HashSet<string>(comparer);
+            foreach (var module in knownSubmodules)
+            {
+                if (!string.IsNullOrWhiteSpace(module.Path))
+                    knownPaths.Add(module.Path);
+            }
+
+            var roots = new HashSet<string>(comparer);
+            foreach (var target in targets)
+            {
+                var root = target;
+                var parent = FindDirectSubmoduleAncestor(root, knownPaths, comparison);
+                while (parent != null)
+                {
+                    root = parent;
+                    parent = FindDirectSubmoduleAncestor(root, knownPaths, comparison);
+                }
+
+                roots.Add(root);
+            }
+
+            var ordered = new List<string>(roots);
+            ordered.Sort(comparer);
+            return ordered;
+        }
+
+        private static string FindDirectSubmoduleAncestor(
+            string path,
+            HashSet<string> knownPaths,
+            StringComparison comparison)
+        {
+            string best = null;
+            foreach (var candidate in knownPaths)
+            {
+                if (!IsSubmodulePathAncestor(candidate, path, comparison))
+                    continue;
+
+                if (best == null || candidate.Length > best.Length)
+                    best = candidate;
+            }
+
+            return best;
         }
 
         private static bool IsSubmodulePathAncestor(string maybeAncestor, string path, StringComparison comparison)
@@ -6238,6 +6341,7 @@ namespace SourceGit.ViewModels
 
         private static readonly TimeSpan SPLIT_FETCH_TIMEOUT = TimeSpan.FromMinutes(5);
         private static readonly TimeSpan SPLIT_SUBMODULE_UPDATE_TIMEOUT = TimeSpan.FromMinutes(5);
+        private static readonly int MAX_RECURSIVE_SUBMODULE_UPDATE_PARALLELISM = Math.Max(1, Math.Min(4, Environment.ProcessorCount));
         private const int MAX_INCREMENTAL_HISTORY_METADATA_COMMITS = 256;
         private const int AUTO_HISTORY_FILTER_BRANCH_COLOR_COUNT = 16;
     }

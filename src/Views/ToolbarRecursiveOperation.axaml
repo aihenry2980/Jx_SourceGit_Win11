@@ -256,8 +256,23 @@
             <TextBlock FontWeight="Bold"
                        Foreground="{DynamicResource Brush.FG1}"
                        Text="Select submodules to update recursively"/>
-            <TextBlock Foreground="{DynamicResource Brush.FG2}"
-                       Text="Selection is remembered for this repository."/>
+            <StackPanel Orientation="Horizontal"
+                        Spacing="14">
+              <TextBlock VerticalAlignment="Center"
+                         Foreground="{DynamicResource Brush.FG2}"
+                         Text="Selection is remembered for this repository."/>
+              <CheckBox VerticalAlignment="Center"
+                        IsChecked="{Binding EnableParallelRecursiveSubmoduleUpdates, Mode=TwoWay}"
+                        IsVisible="{Binding IsSubmoduleUpdateConcurrencySelectionVisible}">
+                <TextBlock Text="Parallel updates"/>
+              </CheckBox>
+              <CheckBox VerticalAlignment="Center"
+                        IsChecked="{Binding StopRecursiveSubmoduleUpdateOnFirstError, Mode=TwoWay}"
+                        IsVisible="{Binding IsSubmoduleUpdateConcurrencySelectionVisible}"
+                        ToolTip.Tip="Runs sequentially so no later submodule starts after an error.">
+                <TextBlock Text="Stop on first error"/>
+              </CheckBox>
+            </StackPanel>
           </StackPanel>
 
           <Button Grid.Column="1"

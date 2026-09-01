@@ -73,6 +73,18 @@ namespace SourceGit.Models
             set;
         } = true;
 
+        public bool EnableParallelRecursiveSubmoduleUpdates
+        {
+            get;
+            set;
+        } = true;
+
+        public bool StopRecursiveSubmoduleUpdateOnFirstError
+        {
+            get;
+            set;
+        } = false;
+
         public bool AskBeforeAutoUpdatingSubmodules
         {
             get;
