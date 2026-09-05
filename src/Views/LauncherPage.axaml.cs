@@ -102,14 +102,6 @@ namespace SourceGit.Views
             OnPopupCancel(sender, e);
         }
 
-        private async void OnCopyNotification(object sender, RoutedEventArgs e)
-        {
-            if (sender is Button { DataContext: Models.Notification notice })
-                await this.CopyTextAsync(notice.Message);
-
-            e.Handled = true;
-        }
-
         private void OnDismissNotification(object sender, RoutedEventArgs e)
         {
             if (sender is Button { DataContext: Models.Notification notice } &&

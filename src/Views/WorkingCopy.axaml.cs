@@ -27,10 +27,10 @@ namespace SourceGit.Views
 
             var layout = ViewModels.Preferences.Instance.Layout;
             var width = grid.Bounds.Width;
-            var maxLeft = width - 304;
+            var leftWidth = Math.Max(width - 304, 300);
 
-            if (layout.WorkingCopyLeftWidth.Value - maxLeft > 1.0)
-                layout.WorkingCopyLeftWidth = new GridLength(maxLeft, GridUnitType.Pixel);
+            if (layout.WorkingCopyLeftWidth.Value - leftWidth > 1.0)
+                layout.WorkingCopyLeftWidth = new GridLength(leftWidth, GridUnitType.Pixel);
         }
 
         private async void OnOpenAssumeUnchanged(object sender, RoutedEventArgs e)
@@ -292,17 +292,15 @@ namespace SourceGit.Views
 
         private ContextMenu CreateContextMenuForUnstagedChanges(ViewModels.Repository repo, ViewModels.WorkingCopy vm, ViewModels.ChangeSelection selection)
         {
-            var hasSelectedFolder = selection.IsSingleFolder;
-            var selectedSingleFolder = hasSelectedFolder ? selection.SingleFolderPath : string.Empty;
             var changes = selection.Changes;
-
             var menu = new ContextMenu();
+
             if (changes.Count == 1)
             {
                 var change = changes[0];
                 var path = Native.OS.GetAbsPath(repo.FullPath, change.Path);
 
-                if (!change.IsConflicted && !hasSelectedFolder)
+                if (!change.IsConflicted && !selection.HasFolder)
                 {
                     TryAddOpenFileToContextMenu(menu, path);
 
@@ -319,18 +317,23 @@ namespace SourceGit.Views
                     menu.Items.Add(diffWithMerger);
                 }
 
-                var explore = new MenuItem();
-                explore.Header = App.Text("RevealFile");
-                explore.Icon = this.CreateMenuIcon("Icons.Explore");
-                explore.IsEnabled = Path.Exists(path);
-                explore.Click += (_, e) =>
+                if (!selection.HasFolder || selection.IsSingleFolder)
                 {
-                    var target = hasSelectedFolder ? Native.OS.GetAbsPath(repo.FullPath, selectedSingleFolder) : path;
-                    Native.OS.OpenInFileManager(target);
-                    e.Handled = true;
-                };
-                menu.Items.Add(explore);
-                menu.Items.Add(new MenuItem() { Header = "-" });
+                    var absPath = selection.IsSingleFolder ? Native.OS.GetAbsPath(repo.FullPath, selection.SingleFolderPath) : path;
+                    var explore = new MenuItem();
+                    explore.Header = App.Text("RevealFile");
+                    explore.Icon = this.CreateMenuIcon("Icons.Explore");
+                    explore.IsEnabled = Path.Exists(absPath);
+                    explore.Click += (_, e) =>
+                    {
+                        Native.OS.OpenInFileManager(absPath);
+                        e.Handled = true;
+                    };
+                    menu.Items.Add(explore);
+                }
+
+                if (menu.Items.Count > 0)
+                    menu.Items.Add(new MenuItem() { Header = "-" });
 
                 if (change.IsConflicted)
                 {
@@ -486,7 +489,7 @@ namespace SourceGit.Views
 
                     var extension = Path.GetExtension(change.Path);
                     var hasExtra = false;
-                    if (!hasSelectedFolder)
+                    if (!selection.HasFolder)
                     {
                         var addToLocalIgnore = CreateLocalGitIgnoreMenu(repo, change.Path, extension);
                         if (addToLocalIgnore != null)
@@ -496,81 +499,7 @@ namespace SourceGit.Views
                         }
                     }
 
-                    if (change.WorkTree == Models.ChangeState.Untracked)
-                    {
-                        var addToIgnore = new MenuItem();
-                        addToIgnore.Header = App.Text("WorkingCopy.AddToGitIgnore");
-                        addToIgnore.Icon = this.CreateMenuIcon("Icons.GitIgnore");
-
-                        if (hasSelectedFolder)
-                        {
-                            var ignoreFolder = new MenuItem();
-                            ignoreFolder.Header = App.Text("WorkingCopy.AddToGitIgnore.InFolder");
-                            ignoreFolder.Click += (_, e) =>
-                            {
-                                if (repo.CanCreatePopup())
-                                    repo.ShowPopup(new ViewModels.AddToIgnore(repo, $"{selectedSingleFolder}/"));
-                                e.Handled = true;
-                            };
-                            addToIgnore.Items.Add(ignoreFolder);
-                        }
-                        else
-                        {
-                            var isRooted = change.Path!.IndexOf('/') <= 0;
-                            var singleFile = new MenuItem();
-                            singleFile.Header = App.Text("WorkingCopy.AddToGitIgnore.SingleFile");
-                            singleFile.Click += (_, e) =>
-                            {
-                                if (repo.CanCreatePopup())
-                                    repo.ShowPopup(new ViewModels.AddToIgnore(repo, change.Path));
-                                e.Handled = true;
-                            };
-                            addToIgnore.Items.Add(singleFile);
-
-                            if (!string.IsNullOrEmpty(extension))
-                            {
-                                var byExtension = new MenuItem();
-                                byExtension.Header = App.Text("WorkingCopy.AddToGitIgnore.Extension", extension);
-                                byExtension.Click += (_, e) =>
-                                {
-                                    if (repo.CanCreatePopup())
-                                        repo.ShowPopup(new ViewModels.AddToIgnore(repo, $"*{extension}"));
-                                    e.Handled = true;
-                                };
-                                addToIgnore.Items.Add(byExtension);
-
-                                var byExtensionInSameFolder = new MenuItem();
-                                byExtensionInSameFolder.Header = App.Text("WorkingCopy.AddToGitIgnore.ExtensionInSameFolder", extension);
-                                byExtensionInSameFolder.IsVisible = !isRooted;
-                                byExtensionInSameFolder.Click += (_, e) =>
-                                {
-                                    var dir = Path.GetDirectoryName(change.Path)!.Replace('\\', '/').TrimEnd('/');
-                                    if (repo.CanCreatePopup())
-                                        repo.ShowPopup(new ViewModels.AddToIgnore(repo, $"{dir}/*{extension}"));
-                                    e.Handled = true;
-                                };
-                                addToIgnore.Items.Add(byExtensionInSameFolder);
-                            }
-
-                            if (!isRooted)
-                            {
-                                var untrackedInSameFolder = new MenuItem();
-                                untrackedInSameFolder.Header = App.Text("WorkingCopy.AddToGitIgnore.UntrackedInSameFolder");
-                                untrackedInSameFolder.Click += (_, e) =>
-                                {
-                                    var dir = Path.GetDirectoryName(change.Path)!.Replace('\\', '/').TrimEnd('/');
-                                    if (repo.CanCreatePopup())
-                                        repo.ShowPopup(new ViewModels.AddToIgnore(repo, $"{dir}/"));
-                                    e.Handled = true;
-                                };
-                                addToIgnore.Items.Add(untrackedInSameFolder);
-                            }
-                        }
-
-                        menu.Items.Add(addToIgnore);
-                        hasExtra = true;
-                    }
-                    else if (hasSelectedFolder)
+                    if (selection.IsSingleFolder)
                     {
                         var addToIgnore = new MenuItem();
                         addToIgnore.Header = App.Text("WorkingCopy.AddToGitIgnore");
@@ -581,7 +510,7 @@ namespace SourceGit.Views
                         ignoreFolder.Click += (_, e) =>
                         {
                             if (repo.CanCreatePopup())
-                                repo.ShowPopup(new ViewModels.AddToIgnore(repo, $"{selectedSingleFolder}/"));
+                                repo.ShowPopup(new ViewModels.AddToIgnore(repo, $"{selection.SingleFolderPath}/"));
                             e.Handled = true;
                         };
                         addToIgnore.Items.Add(ignoreFolder);
@@ -589,8 +518,67 @@ namespace SourceGit.Views
                         menu.Items.Add(addToIgnore);
                         hasExtra = true;
                     }
+                    else if (!selection.HasFolder && change.WorkTree == Models.ChangeState.Untracked)
+                    {
+                        var addToIgnore = new MenuItem();
+                        addToIgnore.Header = App.Text("WorkingCopy.AddToGitIgnore");
+                        addToIgnore.Icon = this.CreateMenuIcon("Icons.GitIgnore");
 
-                    if (File.Exists(path) && repo.IsLFSEnabled())
+                        var isRooted = change.Path!.IndexOf('/') <= 0;
+                        var singleFile = new MenuItem();
+                        singleFile.Header = App.Text("WorkingCopy.AddToGitIgnore.SingleFile");
+                        singleFile.Click += (_, e) =>
+                        {
+                            if (repo.CanCreatePopup())
+                                repo.ShowPopup(new ViewModels.AddToIgnore(repo, change.Path));
+                            e.Handled = true;
+                        };
+                        addToIgnore.Items.Add(singleFile);
+
+                        if (!string.IsNullOrEmpty(extension))
+                        {
+                            var byExtension = new MenuItem();
+                            byExtension.Header = App.Text("WorkingCopy.AddToGitIgnore.Extension", extension);
+                            byExtension.Click += (_, e) =>
+                            {
+                                if (repo.CanCreatePopup())
+                                    repo.ShowPopup(new ViewModels.AddToIgnore(repo, $"*{extension}"));
+                                e.Handled = true;
+                            };
+                            addToIgnore.Items.Add(byExtension);
+
+                            var byExtensionInSameFolder = new MenuItem();
+                            byExtensionInSameFolder.Header = App.Text("WorkingCopy.AddToGitIgnore.ExtensionInSameFolder", extension);
+                            byExtensionInSameFolder.IsVisible = !isRooted;
+                            byExtensionInSameFolder.Click += (_, e) =>
+                            {
+                                var dir = Path.GetDirectoryName(change.Path)!.Replace('\\', '/').TrimEnd('/');
+                                if (repo.CanCreatePopup())
+                                    repo.ShowPopup(new ViewModels.AddToIgnore(repo, $"{dir}/*{extension}"));
+                                e.Handled = true;
+                            };
+                            addToIgnore.Items.Add(byExtensionInSameFolder);
+                        }
+
+                        if (!isRooted)
+                        {
+                            var untrackedInSameFolder = new MenuItem();
+                            untrackedInSameFolder.Header = App.Text("WorkingCopy.AddToGitIgnore.UntrackedInSameFolder");
+                            untrackedInSameFolder.Click += (_, e) =>
+                            {
+                                var dir = Path.GetDirectoryName(change.Path)!.Replace('\\', '/').TrimEnd('/');
+                                if (repo.CanCreatePopup())
+                                    repo.ShowPopup(new ViewModels.AddToIgnore(repo, $"{dir}/"));
+                                e.Handled = true;
+                            };
+                            addToIgnore.Items.Add(untrackedInSameFolder);
+                        }
+
+                        menu.Items.Add(addToIgnore);
+                        hasExtra = true;
+                    }
+
+                    if (!selection.HasFolder && File.Exists(path) && repo.IsLFSEnabled())
                     {
                         var lfs = new MenuItem();
                         lfs.Header = App.Text("GitLFS");
@@ -699,14 +687,14 @@ namespace SourceGit.Views
                         menu.Items.Add(new MenuItem() { Header = "-" });
                 }
 
-                if (hasSelectedFolder)
+                if (selection.IsSingleFolder)
                 {
                     var history = new MenuItem();
                     history.Header = App.Text("DirHistories");
                     history.Icon = this.CreateMenuIcon("Icons.Histories");
                     history.Click += (_, e) =>
                     {
-                        this.ShowWindow(new ViewModels.DirHistories(repo, selectedSingleFolder));
+                        this.ShowWindow(new ViewModels.DirHistories(repo, selection.SingleFolderPath));
                         e.Handled = true;
                     };
 
@@ -747,7 +735,7 @@ namespace SourceGit.Views
                 copy.Tag = OperatingSystem.IsMacOS() ? "⌘+C" : "Ctrl+C";
                 copy.Click += async (_, e) =>
                 {
-                    await this.CopyTextAsync(hasSelectedFolder ? selectedSingleFolder : change.Path);
+                    await this.CopyTextAsync(selection.IsSingleFolder ? selection.SingleFolderPath : change.Path);
                     e.Handled = true;
                 };
 
@@ -757,7 +745,7 @@ namespace SourceGit.Views
                 copyFullPath.Tag = OperatingSystem.IsMacOS() ? "⌘+⇧+C" : "Ctrl+Shift+C";
                 copyFullPath.Click += async (_, e) =>
                 {
-                    await this.CopyTextAsync(hasSelectedFolder ? Native.OS.GetAbsPath(repo.FullPath, selectedSingleFolder) : path);
+                    await this.CopyTextAsync(selection.IsSingleFolder ? Native.OS.GetAbsPath(repo.FullPath, selection.SingleFolderPath) : path);
                     e.Handled = true;
                 };
 
@@ -829,9 +817,9 @@ namespace SourceGit.Views
                     return menu;
                 }
 
-                if (hasSelectedFolder)
+                if (selection.IsSingleFolder)
                 {
-                    var dir = Path.Combine(repo.FullPath, selectedSingleFolder);
+                    var dir = Path.Combine(repo.FullPath, selection.SingleFolderPath);
                     var explore = new MenuItem();
                     explore.Header = App.Text("RevealFile");
                     explore.Icon = this.CreateMenuIcon("Icons.Explore");
@@ -909,7 +897,7 @@ namespace SourceGit.Views
                 menu.Items.Add(stash);
                 menu.Items.Add(patch);
 
-                if (!hasSelectedFolder)
+                if (!selection.HasFolder)
                 {
                     var addToLocalIgnore = CreateLocalGitIgnoreMenu(repo, selection.Changes);
                     if (addToLocalIgnore != null)
@@ -919,14 +907,14 @@ namespace SourceGit.Views
                     }
                 }
 
-                if (hasSelectedFolder)
+                if (selection.IsSingleFolder)
                 {
                     var ignoreFolder = new MenuItem();
                     ignoreFolder.Header = App.Text("WorkingCopy.AddToGitIgnore.InFolder");
                     ignoreFolder.Click += (_, e) =>
                     {
                         if (repo.CanCreatePopup())
-                            repo.ShowPopup(new ViewModels.AddToIgnore(repo, $"{selectedSingleFolder}/"));
+                            repo.ShowPopup(new ViewModels.AddToIgnore(repo, $"{selection.SingleFolderPath}/"));
                         e.Handled = true;
                     };
 
@@ -940,7 +928,7 @@ namespace SourceGit.Views
                     history.Icon = this.CreateMenuIcon("Icons.Histories");
                     history.Click += (_, e) =>
                     {
-                        this.ShowWindow(new ViewModels.DirHistories(repo, selectedSingleFolder));
+                        this.ShowWindow(new ViewModels.DirHistories(repo, selection.SingleFolderPath));
                         e.Handled = true;
                     };
 
@@ -950,7 +938,7 @@ namespace SourceGit.Views
                     copy.Tag = OperatingSystem.IsMacOS() ? "⌘+C" : "Ctrl+C";
                     copy.Click += async (_, e) =>
                     {
-                        await this.CopyTextAsync(selectedSingleFolder);
+                        await this.CopyTextAsync(selection.SingleFolderPath);
                         e.Handled = true;
                     };
 
@@ -960,7 +948,7 @@ namespace SourceGit.Views
                     copyFullPath.Tag = OperatingSystem.IsMacOS() ? "⌘+⇧+C" : "Ctrl+Shift+C";
                     copyFullPath.Click += async (_, e) =>
                     {
-                        await this.CopyTextAsync(Native.OS.GetAbsPath(repo.FullPath, selectedSingleFolder));
+                        await this.CopyTextAsync(Native.OS.GetAbsPath(repo.FullPath, selection.SingleFolderPath));
                         e.Handled = true;
                     };
 
@@ -980,8 +968,6 @@ namespace SourceGit.Views
         public ContextMenu CreateContextMenuForStagedChanges(ViewModels.Repository repo, ViewModels.WorkingCopy vm, ViewModels.ChangeSelection selection)
         {
             var changes = selection.Changes;
-            var hasSelectedFolder = selection.IsSingleFolder;
-            var selectedSingleFolder = hasSelectedFolder ? selection.SingleFolderPath : null;
             var menu = new ContextMenu();
 
             MenuItem ai = null;
@@ -1024,26 +1010,40 @@ namespace SourceGit.Views
                 var change = changes[0];
                 var path = Native.OS.GetAbsPath(repo.FullPath, change.Path);
 
-                var openWithMerger = new MenuItem();
-                openWithMerger.Header = App.Text("OpenInExternalMergeTool");
-                openWithMerger.Icon = this.CreateMenuIcon("Icons.OpenWith");
-                openWithMerger.Tag = OperatingSystem.IsMacOS() ? "⌘+⇧+D" : "Ctrl+Shift+D";
-                openWithMerger.Click += (_, ev) =>
+                if (!selection.HasFolder)
                 {
-                    vm.UseExternalDiffTool(change, false);
-                    ev.Handled = true;
-                };
+                    TryAddOpenFileToContextMenu(menu, path);
 
-                var explore = new MenuItem();
-                explore.IsEnabled = File.Exists(path) || Directory.Exists(path);
-                explore.Header = App.Text("RevealFile");
-                explore.Icon = this.CreateMenuIcon("Icons.Explore");
-                explore.Click += (_, e) =>
+                    var openWithMerger = new MenuItem();
+                    openWithMerger.Header = App.Text("OpenInExternalMergeTool");
+                    openWithMerger.Icon = this.CreateMenuIcon("Icons.OpenWith");
+                    openWithMerger.Tag = OperatingSystem.IsMacOS() ? "⌘+⇧+D" : "Ctrl+Shift+D";
+                    openWithMerger.Click += (_, ev) =>
+                    {
+                        vm.UseExternalDiffTool(change, false);
+                        ev.Handled = true;
+                    };
+                    menu.Items.Add(openWithMerger);
+                }
+
+                if (!selection.HasFolder || selection.IsSingleFolder)
                 {
-                    var target = hasSelectedFolder ? Native.OS.GetAbsPath(repo.FullPath, selectedSingleFolder) : path;
-                    Native.OS.OpenInFileManager(target);
-                    e.Handled = true;
-                };
+                    var absPath = selection.IsSingleFolder ? Native.OS.GetAbsPath(repo.FullPath, selection.SingleFolderPath) : path;
+                    var explore = new MenuItem();
+                    explore.IsEnabled = File.Exists(path) || Directory.Exists(path);
+                    explore.Header = App.Text("RevealFile");
+                    explore.Icon = this.CreateMenuIcon("Icons.Explore");
+                    explore.IsEnabled = Path.Exists(absPath);
+                    explore.Click += (_, e) =>
+                    {
+                        Native.OS.OpenInFileManager(absPath);
+                        e.Handled = true;
+                    };
+                    menu.Items.Add(explore);
+                }
+
+                if (menu.Items.Count > 0)
+                    menu.Items.Add(new MenuItem() { Header = "-" });
 
                 var unstage = new MenuItem();
                 unstage.Header = App.Text("FileCM.Unstage");
@@ -1095,16 +1095,12 @@ namespace SourceGit.Views
                     e.Handled = true;
                 };
 
-                TryAddOpenFileToContextMenu(menu, path);
-                menu.Items.Add(openWithMerger);
-                menu.Items.Add(explore);
-                menu.Items.Add(new MenuItem() { Header = "-" });
                 menu.Items.Add(unstage);
                 menu.Items.Add(stash);
                 menu.Items.Add(patch);
                 menu.Items.Add(new MenuItem() { Header = "-" });
 
-                if (File.Exists(path) && repo.IsLFSEnabled())
+                if (!selection.HasFolder && File.Exists(path) && repo.IsLFSEnabled())
                 {
                     var lfs = new MenuItem();
                     lfs.Header = App.Text("GitLFS");
@@ -1178,14 +1174,14 @@ namespace SourceGit.Views
                     menu.Items.Add(new MenuItem() { Header = "-" });
                 }
 
-                if (hasSelectedFolder)
+                if (selection.IsSingleFolder)
                 {
                     var history = new MenuItem();
                     history.Header = App.Text("DirHistories");
                     history.Icon = this.CreateMenuIcon("Icons.Histories");
                     history.Click += (_, e) =>
                     {
-                        this.ShowWindow(new ViewModels.DirHistories(repo, selectedSingleFolder));
+                        this.ShowWindow(new ViewModels.DirHistories(repo, selection.SingleFolderPath));
                         e.Handled = true;
                     };
 
@@ -1226,7 +1222,7 @@ namespace SourceGit.Views
                 copyPath.Tag = OperatingSystem.IsMacOS() ? "⌘+C" : "Ctrl+C";
                 copyPath.Click += async (_, e) =>
                 {
-                    await this.CopyTextAsync(hasSelectedFolder ? selectedSingleFolder : change.Path);
+                    await this.CopyTextAsync(selection.IsSingleFolder ? selection.SingleFolderPath : change.Path);
                     e.Handled = true;
                 };
 
@@ -1236,7 +1232,7 @@ namespace SourceGit.Views
                 copyFullPath.Tag = OperatingSystem.IsMacOS() ? "⌘+⇧+C" : "Ctrl+Shift+C";
                 copyFullPath.Click += async (_, e) =>
                 {
-                    var target = hasSelectedFolder ? Native.OS.GetAbsPath(repo.FullPath, selectedSingleFolder) : path;
+                    var target = selection.IsSingleFolder ? Native.OS.GetAbsPath(repo.FullPath, selection.SingleFolderPath) : path;
                     await this.CopyTextAsync(target);
                     e.Handled = true;
                 };
@@ -1246,9 +1242,9 @@ namespace SourceGit.Views
             }
             else
             {
-                if (hasSelectedFolder)
+                if (selection.IsSingleFolder)
                 {
-                    var dir = Path.Combine(repo.FullPath, selectedSingleFolder);
+                    var dir = Native.OS.GetAbsPath(repo.FullPath, selection.SingleFolderPath);
                     var explore = new MenuItem();
                     explore.IsEnabled = Directory.Exists(dir);
                     explore.Header = App.Text("RevealFile");
@@ -1317,7 +1313,7 @@ namespace SourceGit.Views
                 menu.Items.Add(stash);
                 menu.Items.Add(patch);
 
-                if (!hasSelectedFolder)
+                if (!selection.HasFolder)
                 {
                     var addToLocalIgnore = CreateLocalGitIgnoreMenu(repo, selection.Changes);
                     if (addToLocalIgnore != null)
@@ -1333,14 +1329,14 @@ namespace SourceGit.Views
                     menu.Items.Add(ai);
                 }
 
-                if (hasSelectedFolder)
+                if (selection.IsSingleFolder)
                 {
                     var history = new MenuItem();
                     history.Header = App.Text("DirHistories");
                     history.Icon = this.CreateMenuIcon("Icons.Histories");
                     history.Click += (_, e) =>
                     {
-                        this.ShowWindow(new ViewModels.DirHistories(repo, selectedSingleFolder));
+                        this.ShowWindow(new ViewModels.DirHistories(repo, selection.SingleFolderPath));
                         e.Handled = true;
                     };
 
@@ -1350,7 +1346,7 @@ namespace SourceGit.Views
                     copyPath.Tag = OperatingSystem.IsMacOS() ? "⌘+C" : "Ctrl+C";
                     copyPath.Click += async (_, e) =>
                     {
-                        await this.CopyTextAsync(selectedSingleFolder);
+                        await this.CopyTextAsync(selection.SingleFolderPath);
                         e.Handled = true;
                     };
 
@@ -1360,7 +1356,7 @@ namespace SourceGit.Views
                     copyFullPath.Tag = OperatingSystem.IsMacOS() ? "⌘+⇧+C" : "Ctrl+Shift+C";
                     copyFullPath.Click += async (_, e) =>
                     {
-                        await this.CopyTextAsync(Native.OS.GetAbsPath(repo.FullPath, selectedSingleFolder));
+                        await this.CopyTextAsync(Native.OS.GetAbsPath(repo.FullPath, selection.SingleFolderPath));
                         e.Handled = true;
                     };
 

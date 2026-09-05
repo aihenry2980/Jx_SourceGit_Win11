@@ -130,8 +130,8 @@
 
                     <!-- Terminate -->
                     <Button Classes="flat"
-                            Width="100" Height="28"
-                            Margin="0,0,0,8"
+                            Height="28"
+                            Margin="0,0,0,8" Padding="16,0"
                             HorizontalAlignment="Center"
                             Content="{DynamicResource Text.Terminate}"
                             Click="OnPopupTerminate">
@@ -178,9 +178,7 @@
                         <Path Grid.Column="0" Width="14" Height="14" Data="{StaticResource Icons.Info}" Fill="Green" IsVisible="{Binding !IsError}"/>
                         <TextBlock Grid.Column="1" Margin="8,0,0,0" FontWeight="Bold" FontSize="14" Text="{DynamicResource Text.Launcher.Error}" IsVisible="{Binding IsError}"/>
                         <TextBlock Grid.Column="1" Margin="8,0,0,0" FontWeight="Bold" FontSize="14" Text="{DynamicResource Text.Launcher.Info}" IsVisible="{Binding !IsError}"/>
-                        <Button Grid.Column="2" Classes="icon_button" Width="16" Height="16" Click="OnCopyNotification">
-                          <Path Width="12" Height="12" Data="{StaticResource Icons.Copy}"/>
-                        </Button>
+                        <v:CopyButton Grid.Column="2" Width="16" Height="16" CopyText="{Binding Message}" ToolTip.Tip="{DynamicResource Text.Copy}"/>
                         <Button Grid.Column="3" Classes="icon_button" Width="16" Height="16" Margin="8,0,0,0" Click="OnDismissNotification">
                           <Path Width="10" Height="10" Data="{StaticResource Icons.Close}"/>
                         </Button>
