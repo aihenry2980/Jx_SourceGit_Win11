@@ -1977,9 +1977,19 @@ namespace SourceGit.Views
                 ev.Handled = true;
             };
 
+            var performanceDiagnostics = new MenuItem();
+            performanceDiagnostics.Header = "Repository Performance Diagnostics";
+            performanceDiagnostics.Icon = App.CreateMenuIcon("Icons.Statistics");
+            performanceDiagnostics.Click += (_, ev) =>
+            {
+                App.ShowWindow(new ViewModels.RepositoryPerformanceDiagnostics(repo));
+                ev.Handled = true;
+            };
+
             menu.Items.Add(logs);
             menu.Items.Add(profiler);
             menu.Items.Add(cpuProfiler);
+            menu.Items.Add(performanceDiagnostics);
             menu.Open(control);
         }
 

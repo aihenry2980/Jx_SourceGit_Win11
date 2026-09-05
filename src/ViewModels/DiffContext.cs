@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -155,8 +156,15 @@ namespace SourceGit.ViewModels
             }
         }
 
+        public void CancelLoading()
+        {
+            Interlocked.Increment(ref _loadRequestVersion);
+            Interlocked.Exchange(ref _loadCancellation, null)?.Cancel();
+        }
+
         private void LoadContent()
         {
+            CancelLoading();
             if (_option.Path.EndsWith('/'))
             {
                 OldMode = 0;
@@ -168,46 +176,72 @@ namespace SourceGit.ViewModels
                 return;
             }
 
+            var requestVersion = Volatile.Read(ref _loadRequestVersion);
+            var cancellation = new CancellationTokenSource();
+            _loadCancellation = cancellation;
             Task.Run(async () =>
             {
-                var numLines = Preferences.Instance.UseFullTextDiff ? _entireFileLine : _unifiedLines;
-                var ignoreWhitespace = Preferences.Instance.IgnoreWhitespaceChangesInDiff;
-                var ignoreCRAtEOL = Preferences.Instance.IgnoreCRAtEOLInDiff;
-
-                var latest = await new Commands.Diff(_repo, _option, numLines, ignoreWhitespace, ignoreCRAtEOL)
-                    .ReadAsync()
-                    .ConfigureAwait(false);
-
-                var info = new Info(_option, numLines, ignoreWhitespace, latest);
-                if (_info != null && info.IsSame(_info))
-                    return;
-
-                _info = info;
-
-                var rs = await BuildContentAsync(latest).ConfigureAwait(false);
-                Dispatcher.UIThread.Post(() =>
+                try
                 {
-                    OldMode = latest.OldMode;
-                    NewMode = latest.NewMode;
-
-                    if (rs is Models.TextDiff cur)
+                    var numLines = Preferences.Instance.UseFullTextDiff ? _entireFileLine : _unifiedLines;
+                    var ignoreWhitespace = Preferences.Instance.IgnoreWhitespaceChangesInDiff;
+                    var ignoreCRAtEOL = Preferences.Instance.IgnoreCRAtEOLInDiff;
+                    var latest = await new Commands.Diff(_repo, _option, numLines, ignoreWhitespace, ignoreCRAtEOL)
                     {
-                        IsTextDiff = true;
-                        IsIgnoreWhitespaceVisible = true;
+                        CancellationToken = cancellation.Token,
+                    }.ReadAsync().ConfigureAwait(false);
+                    if (!IsLatestRequest(requestVersion, cancellation.Token))
+                        return;
 
-                        if (Preferences.Instance.UseSideBySideDiff)
-                            Content = new TwoSideTextDiff(_option, cur, _content as TextDiffContext);
+                    var info = new Info(_option, numLines, ignoreWhitespace, latest);
+                    if (_info != null && info.IsSame(_info))
+                        return;
+
+                    var rs = await BuildContentAsync(latest).ConfigureAwait(false);
+                    if (!IsLatestRequest(requestVersion, cancellation.Token))
+                        return;
+
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        if (!IsLatestRequest(requestVersion, cancellation.Token))
+                            return;
+
+                        _info = info;
+                        OldMode = latest.OldMode;
+                        NewMode = latest.NewMode;
+
+                        if (rs is Models.TextDiff cur)
+                        {
+                            IsTextDiff = true;
+                            IsIgnoreWhitespaceVisible = true;
+
+                            if (Preferences.Instance.UseSideBySideDiff)
+                                Content = new TwoSideTextDiff(_option, cur, _content as TextDiffContext);
+                            else
+                                Content = new CombinedTextDiff(_option, cur, _content as TextDiffContext);
+                        }
                         else
-                            Content = new CombinedTextDiff(_option, cur, _content as TextDiffContext);
-                    }
-                    else
-                    {
-                        IsTextDiff = false;
-                        IsIgnoreWhitespaceVisible = rs is Models.NoOrEOLChange;
-                        Content = rs;
-                    }
-                });
+                        {
+                            IsTextDiff = false;
+                            IsIgnoreWhitespaceVisible = rs is Models.NoOrEOLChange;
+                            Content = rs;
+                        }
+                    });
+                }
+                catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+                {
+                    // A newer selection superseded this request.
+                }
+                finally
+                {
+                    Interlocked.CompareExchange(ref _loadCancellation, null, cancellation);
+                }
             });
+        }
+
+        private bool IsLatestRequest(int requestVersion, CancellationToken cancellationToken)
+        {
+            return !cancellationToken.IsCancellationRequested && requestVersion == Volatile.Read(ref _loadRequestVersion);
         }
 
         private async Task<Models.ImageDiff> CreateImageDiffAsync(Models.ImageDecoder imgDecoder)
@@ -563,6 +597,8 @@ namespace SourceGit.ViewModels
         private readonly int _entireFileLine = 999999999;
         private readonly string _repo;
         private readonly Models.DiffOption _option = null;
+        private int _loadRequestVersion = 0;
+        private CancellationTokenSource _loadCancellation = null;
         private int _oldMode = 0;
         private int _newMode = 0;
         private int _unifiedLines = 4;

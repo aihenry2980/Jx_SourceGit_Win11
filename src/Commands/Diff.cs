@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SourceGit.Commands
@@ -59,14 +60,26 @@ namespace SourceGit.Commands
 
         public async Task<Models.DiffResult> ReadAsync()
         {
+            CancellationTokenRegistration registration = default;
             try
             {
                 using var proc = new Process();
                 proc.StartInfo = CreateGitStartInfo(true);
                 proc.Start();
 
+                if (CancellationToken.CanBeCanceled)
+                {
+                    registration = CancellationToken.Register(() =>
+                    {
+                        if (!proc.HasExited)
+                            Native.OS.TerminateProcess(proc);
+                    });
+                }
+
                 using var ms = new MemoryStream();
-                await proc.StandardOutput.BaseStream.CopyToAsync(ms, CancellationToken).ConfigureAwait(false);
+                var stderrTask = proc.StandardError.ReadToEndAsync(CancellationToken);
+                var stdoutTask = proc.StandardOutput.BaseStream.CopyToAsync(ms, CancellationToken);
+                await Task.WhenAll(stdoutTask, stderrTask).ConfigureAwait(false);
 
                 if (ms.TryGetBuffer(out var buffer))
                 {
@@ -91,10 +104,21 @@ namespace SourceGit.Commands
 
                 await proc.WaitForExitAsync(CancellationToken).ConfigureAwait(false);
             }
+            catch (OperationCanceledException) when (CancellationToken.IsCancellationRequested)
+            {
+                return _result;
+            }
             catch
             {
                 // Ignore exceptions.
             }
+            finally
+            {
+                registration.Dispose();
+            }
+
+            if (CancellationToken.IsCancellationRequested)
+                return _result;
 
             if (_isLFS || _result.IsBinary || _result.TextDiff.Lines.Count == 0)
             {

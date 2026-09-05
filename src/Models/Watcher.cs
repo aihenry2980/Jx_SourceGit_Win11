@@ -29,6 +29,7 @@ namespace SourceGit.Models
             _repo = repo;
             _root = new DirectoryInfo(fullpath).FullName;
             _watchers = new List<FileSystemWatcher>();
+            _submoduleRoots = new HashSet<string>(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
 
             var testGitDir = new DirectoryInfo(Path.Combine(fullpath, ".git")).FullName;
             var desiredDir = new DirectoryInfo(gitDir).FullName;
@@ -340,18 +341,47 @@ namespace SourceGit.Models
 
         private bool IsInSubmodule(string folder)
         {
-            if (string.IsNullOrEmpty(folder) || folder.Equals(_root, StringComparison.Ordinal))
+            if (string.IsNullOrEmpty(folder))
                 return false;
 
-            if (File.Exists($"{folder}/.git"))
-                return true;
+            var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+            var current = new DirectoryInfo(folder).FullName;
+            while (!current.Equals(_root, comparison))
+            {
+                lock (_submoduleRoots)
+                {
+                    foreach (var root in _submoduleRoots)
+                    {
+                        if (current.Equals(root, comparison) ||
+                            (current.StartsWith(root, comparison) &&
+                             current.Length > root.Length &&
+                             (current[root.Length] == Path.DirectorySeparatorChar || current[root.Length] == Path.AltDirectorySeparatorChar)))
+                            return true;
+                    }
+                }
 
-            return IsInSubmodule(Path.GetDirectoryName(folder));
+                if (File.Exists(Path.Combine(current, ".git")))
+                {
+                    lock (_submoduleRoots)
+                        _submoduleRoots.Add(current);
+
+                    return true;
+                }
+
+                var parent = Path.GetDirectoryName(current);
+                if (string.IsNullOrEmpty(parent) || parent.Equals(current, comparison))
+                    break;
+
+                current = parent;
+            }
+
+            return false;
         }
 
         private readonly IRepository _repo;
         private readonly string _root;
         private List<FileSystemWatcher> _watchers;
+        private readonly HashSet<string> _submoduleRoots;
         private Timer _timer;
 
         private long _lockCount;

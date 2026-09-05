@@ -22,6 +22,8 @@ namespace SourceGit.Commands
                 builder.Append("--prune ");
             if (recurseSubmodules)
                 builder.Append("--recurse-submodules ");
+            else
+                builder.Append("--no-recurse-submodules ");
             builder.Append(remote);
 
             Args = builder.ToString();
@@ -43,6 +45,8 @@ namespace SourceGit.Commands
                 builder.Append("--prune ");
             if (recurseSubmodules)
                 builder.Append("--recurse-submodules ");
+            else
+                builder.Append("--no-recurse-submodules ");
             builder.Append(remote);
 
             foreach (var refspec in refspecs)
@@ -68,6 +72,8 @@ namespace SourceGit.Commands
                 builder.Append("--prune ");
             if (recurseSubmodules)
                 builder.Append("--recurse-submodules ");
+            else
+                builder.Append("--no-recurse-submodules ");
             builder.Append(remote);
 
             Args = builder.ToString();

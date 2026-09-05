@@ -3601,6 +3601,11 @@ namespace SourceGit.ViewModels
                 skippedByUserTargets = Math.Max(0, available.Count - targets.Count);
             }
 
+            var requestedTargetCount = targets.Count;
+            targets = BuildRecursiveSubmoduleRoots(targets, _submodules);
+            if (targets.Count < requestedTargetCount)
+                log?.AppendLine($"Collapsed {requestedTargetCount - targets.Count} nested submodule target(s) into their recursive parent fetch.");
+
             var totalTargets = targets.Count;
 
             Models.RecursiveOperationProgress CreateProgress(
@@ -3939,7 +3944,7 @@ namespace SourceGit.ViewModels
             }
 
             var requestedTargetCount = targets.Count;
-            targets = BuildRecursiveSubmoduleUpdateRoots(targets, sourceSubmodules);
+            targets = BuildRecursiveSubmoduleRoots(targets, sourceSubmodules);
             if (targets.Count < requestedTargetCount)
                 log?.AppendLine($"Collapsed {requestedTargetCount - targets.Count} nested submodule target(s) into their recursive parent update.");
 
@@ -4184,7 +4189,7 @@ namespace SourceGit.ViewModels
             return ordered;
         }
 
-        private static List<string> BuildRecursiveSubmoduleUpdateRoots(
+        private static List<string> BuildRecursiveSubmoduleRoots(
             List<string> targets,
             List<Models.Submodule> knownSubmodules)
         {

@@ -17,31 +17,38 @@ namespace SourceGit.Commands
 
         public async Task<Models.RepositoryStatus> GetResultAsync()
         {
-            Args = "status --porcelain=v2 -b";
+            Args = "--no-optional-locks status --porcelain=v2 -z -b -uall --ignore-submodules=all";
             var rs = await ReadToEndAsync().ConfigureAwait(false);
             if (!rs.IsSuccess)
                 return null;
 
             var status = new Models.RepositoryStatus();
-            var lines = rs.StdOut.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
-            var count = lines.Length;
-            if (count < 2)
+            var sha1 = string.Empty;
+            var head = string.Empty;
+            foreach (var record in rs.StdOut.Split('\0', StringSplitOptions.RemoveEmptyEntries))
+            {
+                foreach (var line in record.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
+                {
+                    if (line.StartsWith("# branch.oid ", StringComparison.Ordinal))
+                        sha1 = line.Substring(13).Trim();
+                    else if (line.StartsWith("# branch.head ", StringComparison.Ordinal))
+                        head = line.Substring(14).Trim();
+                    else if (line.StartsWith("# branch.ab ", StringComparison.Ordinal))
+                        ParseTrackStatus(status, line.Substring(12).Trim());
+                    else if (line.StartsWith("1 ", StringComparison.Ordinal) ||
+                             line.StartsWith("2 ", StringComparison.Ordinal) ||
+                             line.StartsWith("u ", StringComparison.Ordinal) ||
+                             line.StartsWith("? ", StringComparison.Ordinal))
+                        status.LocalChanges++;
+                }
+            }
+
+            if (string.IsNullOrEmpty(head))
                 return null;
 
-            var sha1 = lines[0].Substring(13).Trim(); // Remove "# branch.oid " prefix
-            var head = lines[1].Substring(14).Trim(); // Remove "# branch.head " prefix
-
-            if (head.Equals("(detached)", StringComparison.Ordinal))
-                status.CurrentBranch = sha1.Length > 10 ? $"({sha1.Substring(0, 10)})" : "-";
-            else
-                status.CurrentBranch = head;
-
-            if (count == 4 && lines[3].StartsWith("# branch.ab ", StringComparison.Ordinal))
-                ParseTrackStatus(status, lines[3].Substring(12).Trim());
-
-            status.LocalChanges = await new CountLocalChanges(WorkingDirectory, true) { RaiseError = false }
-                .GetResultAsync()
-                .ConfigureAwait(false);
+            status.CurrentBranch = head.Equals("(detached)", StringComparison.Ordinal)
+                ? sha1.Length > 10 ? $"({sha1.Substring(0, 10)})" : "-"
+                : head;
 
             return status;
         }

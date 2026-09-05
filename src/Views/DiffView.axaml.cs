@@ -48,6 +48,15 @@ namespace SourceGit.Views
             ToggleHotkeyBindings(IsEffectivelyVisible);
         }
 
+        protected override void OnUnloaded(RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.DiffContext vm)
+                vm.CancelLoading();
+
+            ToggleHotkeyBindings(false);
+            base.OnUnloaded(e);
+        }
+
         private void OnGotoFirstChange(object _, RoutedEventArgs e)
         {
             this.FindDescendantOfType<ThemedTextDiffPresenter>()?.GotoChange(ViewModels.BlockNavigationDirection.First);

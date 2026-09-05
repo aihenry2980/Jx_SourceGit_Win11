@@ -98,7 +98,10 @@ namespace SourceGit.Commands
 
             Log?.AppendLine(string.Empty);
 
-            if (!CancellationToken.IsCancellationRequested && proc.ExitCode != 0)
+            if (CancellationToken.IsCancellationRequested)
+                return false;
+
+            if (proc.ExitCode != 0)
             {
                 if (RaiseError)
                 {
@@ -127,35 +130,22 @@ namespace SourceGit.Commands
                 return Result.Failed(e.Message);
             }
 
-            var rs = new Result() { IsSuccess = true };
-            rs.StdOut = proc.StandardOutput.ReadToEnd();
-            rs.StdErr = proc.StandardError.ReadToEnd();
+            var stdoutTask = proc.StandardOutput.ReadToEndAsync();
+            var stderrTask = proc.StandardError.ReadToEndAsync();
+            Task.WaitAll(stdoutTask, stderrTask);
             proc.WaitForExit();
 
-            rs.IsSuccess = proc.ExitCode == 0;
-            return rs;
+            return new Result()
+            {
+                IsSuccess = proc.ExitCode == 0,
+                StdOut = stdoutTask.Result,
+                StdErr = stderrTask.Result,
+            };
         }
 
         protected async Task<Result> ReadToEndAsync()
         {
-            using var proc = new Process();
-            proc.StartInfo = CreateGitStartInfo(true);
-            try
-            {
-                proc.Start();
-            }
-            catch (Exception e)
-            {
-                return Result.Failed(e.Message);
-            }
-
-            var rs = new Result() { IsSuccess = true };
-            rs.StdOut = await proc.StandardOutput.ReadToEndAsync(CancellationToken).ConfigureAwait(false);
-            rs.StdErr = await proc.StandardError.ReadToEndAsync(CancellationToken).ConfigureAwait(false);
-            await proc.WaitForExitAsync(CancellationToken).ConfigureAwait(false);
-
-            rs.IsSuccess = proc.ExitCode == 0;
-            return rs;
+            return await ReadToEndAndKillOnCancelAsync().ConfigureAwait(false);
         }
 
         protected async Task<Result> ReadToEndAndKillOnCancelAsync()
