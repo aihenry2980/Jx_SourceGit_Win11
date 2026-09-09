@@ -456,6 +456,295 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
+        protected override void OnDataContextChanged(EventArgs e)
+        {
+            base.OnDataContextChanged(e);
+
+            if (DataContext is ViewModels.Histories vm)
+                CommitListContainer.Columns[1].Width = new(vm.AuthorColumnWidth, DataGridLengthUnitType.Pixel);
+        }
+
+        private void OnCommitListHeaderPointerMoved(object sender, PointerEventArgs e)
+        {
+            if (sender is not Border border)
+                return;
+
+            if (DataContext is not ViewModels.Histories { IsAuthorColumnVisible: true } vm)
+                return;
+
+            var pos = e.GetPosition(border);
+            if (_resizingAuthorColumn)
+            {
+                var posX = CommitListContainer.Columns[0].ActualWidth;
+                var maxW = posX + CommitListContainer.Columns[1].ActualWidth - 100;
+                var delta = posX - pos.X;
+                var w = Math.Max(Math.Min(vm.AuthorColumnWidth + delta, maxW), 80);
+                CommitListContainer.Columns[1].Width = new(w, DataGridLengthUnitType.Pixel);
+                vm.AuthorColumnWidth = w;
+            }
+            else
+            {
+                var dis = CommitListContainer.Columns[0].ActualWidth - 4 - pos.X;
+                if (dis < 4 && dis > -4)
+                {
+                    if (border.Cursor != _resizingCursor)
+                        border.Cursor = _resizingCursor;
+                }
+                else if (border.Cursor != Cursor.Default)
+                {
+                    border.Cursor = Cursor.Default;
+                }
+            }
+        }
+
+        private void OnCommitListHeaderPointerPressed(object sender, PointerPressedEventArgs e)
+        {
+            if (sender is not Border border)
+                return;
+
+            var pos = e.GetPosition(border);
+            var dis = CommitListContainer.Columns[0].ActualWidth - 4 - pos.X;
+            if (dis > 4 || dis < -4)
+                return;
+
+            if (e.GetCurrentPoint(border).Properties.IsLeftButtonPressed)
+            {
+                _resizingAuthorColumn = true;
+                e.Handled = true;
+            }
+        }
+
+        private void OnCommitListHeaderPointerReleased(object sender, PointerReleasedEventArgs e)
+        {
+            _resizingAuthorColumn = false;
+        }
+
+        private void OnOpenConfiguration(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button button)
+                return;
+
+            if (DataContext is not ViewModels.Histories histories)
+                return;
+
+            var pref = ViewModels.Preferences.Instance;
+
+            var layout = new MenuItem();
+            layout.Header = App.Text("Repository.HistoriesLayout");
+            layout.IsEnabled = false;
+
+            var isHorizontal = pref.UseTwoColumnsLayoutInHistories;
+            var horizontal = new MenuItem();
+            horizontal.Header = App.Text("Repository.HistoriesLayout.Horizontal");
+            if (isHorizontal)
+                horizontal.Icon = this.CreateMenuIcon("Icons.Check");
+            horizontal.Click += (_, ev) =>
+            {
+                pref.UseTwoColumnsLayoutInHistories = true;
+                ev.Handled = true;
+            };
+
+            var vertical = new MenuItem();
+            vertical.Header = App.Text("Repository.HistoriesLayout.Vertical");
+            if (!isHorizontal)
+                vertical.Icon = this.CreateMenuIcon("Icons.Check");
+            vertical.Click += (_, ev) =>
+            {
+                pref.UseTwoColumnsLayoutInHistories = false;
+                ev.Handled = true;
+            };
+
+            var showFlags = new MenuItem();
+            showFlags.Header = App.Text("Repository.ShowFlags");
+            showFlags.IsEnabled = false;
+
+            var reflog = new MenuItem();
+            reflog.Header = App.Text("Repository.ShowLostCommits");
+            reflog.Tag = "--reflog";
+            if (histories.HasShowFlag(Models.HistoryShowFlags.Reflog))
+                reflog.Icon = this.CreateMenuIcon("Icons.Check");
+            reflog.Click += (_, ev) =>
+            {
+                histories.ToggleShowFlag(Models.HistoryShowFlags.Reflog);
+                ev.Handled = true;
+            };
+
+            var firstParentOnly = new MenuItem();
+            firstParentOnly.Header = App.Text("Repository.ShowFirstParentOnly");
+            firstParentOnly.Tag = "--first-parent";
+            if (histories.HasShowFlag(Models.HistoryShowFlags.FirstParentOnly))
+                firstParentOnly.Icon = this.CreateMenuIcon("Icons.Check");
+            firstParentOnly.Click += (_, ev) =>
+            {
+                histories.ToggleShowFlag(Models.HistoryShowFlags.FirstParentOnly);
+                ev.Handled = true;
+            };
+
+            var simplifyByDecoration = new MenuItem();
+            simplifyByDecoration.Header = App.Text("Repository.ShowDecoratedCommitsOnly");
+            simplifyByDecoration.Tag = "--simplify-by-decoration";
+            if (histories.HasShowFlag(Models.HistoryShowFlags.SimplifyByDecoration))
+                simplifyByDecoration.Icon = this.CreateMenuIcon("Icons.Check");
+            simplifyByDecoration.Click += (_, ev) =>
+            {
+                histories.ToggleShowFlag(Models.HistoryShowFlags.SimplifyByDecoration);
+                ev.Handled = true;
+            };
+
+            var order = new MenuItem();
+            order.Header = App.Text("Repository.HistoriesOrder");
+            order.IsEnabled = false;
+
+            var dateOrder = new MenuItem();
+            dateOrder.Header = App.Text("Repository.HistoriesOrder.ByDate");
+            dateOrder.Tag = "--date-order";
+            if (!histories.EnableTopoOrder)
+                dateOrder.Icon = this.CreateMenuIcon("Icons.Check");
+            dateOrder.Click += (_, ev) =>
+            {
+                histories.EnableTopoOrder = false;
+                ev.Handled = true;
+            };
+
+            var topoOrder = new MenuItem();
+            topoOrder.Header = App.Text("Repository.HistoriesOrder.Topo");
+            topoOrder.Tag = "--topo-order";
+            if (histories.EnableTopoOrder)
+                topoOrder.Icon = this.CreateMenuIcon("Icons.Check");
+            topoOrder.Click += (_, ev) =>
+            {
+                histories.EnableTopoOrder = true;
+                ev.Handled = true;
+            };
+
+            var highlights = new MenuItem();
+            highlights.Header = App.Text("Histories.HighlightsInGraph");
+            highlights.IsEnabled = false;
+
+            var all = new MenuItem();
+            all.Header = App.Text("Histories.HighlightsInGraph.All");
+            if (histories.GraphHighlighting == Models.CommitGraphHighlighting.All)
+                all.Icon = this.CreateMenuIcon("Icons.Check");
+            all.Click += (_, ev) =>
+            {
+                histories.GraphHighlighting = Models.CommitGraphHighlighting.All;
+                ev.Handled = true;
+            };
+
+            var currentBranchOnly = new MenuItem();
+            currentBranchOnly.Header = App.Text("Histories.HighlightsInGraph.CurrentBranchOnly");
+            if (histories.GraphHighlighting == Models.CommitGraphHighlighting.CurrentBranchOnly)
+                currentBranchOnly.Icon = this.CreateMenuIcon("Icons.Check");
+            currentBranchOnly.Click += (_, ev) =>
+            {
+                histories.GraphHighlighting = Models.CommitGraphHighlighting.CurrentBranchOnly;
+                ev.Handled = true;
+            };
+
+            var selectedCommitsOnly = new MenuItem();
+            selectedCommitsOnly.Header = App.Text("Histories.HighlightsInGraph.SelectedCommitsOnly");
+            if (histories.GraphHighlighting == Models.CommitGraphHighlighting.SelectedCommitsOnly)
+                selectedCommitsOnly.Icon = this.CreateMenuIcon("Icons.Check");
+            selectedCommitsOnly.Click += (_, ev) =>
+            {
+                histories.GraphHighlighting = Models.CommitGraphHighlighting.SelectedCommitsOnly;
+                ev.Handled = true;
+            };
+
+            var selectedCommitsOnlyFirstParent = new MenuItem();
+            selectedCommitsOnlyFirstParent.Header = App.Text("Histories.HighlightsInGraph.SelectedCommitsOnlyFirstParent");
+            if (histories.GraphHighlighting == Models.CommitGraphHighlighting.SelectedCommitsOnlyFirstParent)
+                selectedCommitsOnlyFirstParent.Icon = this.CreateMenuIcon("Icons.Check");
+            selectedCommitsOnlyFirstParent.Click += (_, ev) =>
+            {
+                histories.GraphHighlighting = Models.CommitGraphHighlighting.SelectedCommitsOnlyFirstParent;
+                ev.Handled = true;
+            };
+
+            var currentBranchAndSelectedCommits = new MenuItem();
+            currentBranchAndSelectedCommits.Header = App.Text("Histories.HighlightsInGraph.CurrentBranchAndSelectedCommits");
+            if (histories.GraphHighlighting == Models.CommitGraphHighlighting.CurrentBranchAndSelectedCommits)
+                currentBranchAndSelectedCommits.Icon = this.CreateMenuIcon("Icons.Check");
+            currentBranchAndSelectedCommits.Click += (_, ev) =>
+            {
+                histories.GraphHighlighting = Models.CommitGraphHighlighting.CurrentBranchAndSelectedCommits;
+                ev.Handled = true;
+            };
+
+            var columnsHeader = new MenuItem();
+            columnsHeader.Header = App.Text("Histories.ShowColumns");
+            columnsHeader.IsEnabled = false;
+
+            var authorColumn = new MenuItem();
+            authorColumn.Header = App.Text("Histories.Header.Author");
+            if (histories.IsAuthorColumnVisible)
+                authorColumn.Icon = this.CreateMenuIcon("Icons.Check");
+            authorColumn.Click += (_, ev) =>
+            {
+                histories.IsAuthorColumnVisible = !histories.IsAuthorColumnVisible;
+                ev.Handled = true;
+            };
+
+            var shaColumn = new MenuItem();
+            shaColumn.Header = App.Text("Histories.Header.SHA");
+            if (histories.IsSHAColumnVisible)
+                shaColumn.Icon = this.CreateMenuIcon("Icons.Check");
+            shaColumn.Click += (_, ev) =>
+            {
+                histories.IsSHAColumnVisible = !histories.IsSHAColumnVisible;
+                ev.Handled = true;
+            };
+
+            var authorTimeColumn = new MenuItem();
+            authorTimeColumn.Header = App.Text("Histories.Header.AuthorTime");
+            if (histories.IsAuthorTimeColumnVisible)
+                authorTimeColumn.Icon = this.CreateMenuIcon("Icons.Check");
+            authorTimeColumn.Click += (_, ev) =>
+            {
+                histories.IsAuthorTimeColumnVisible = !histories.IsAuthorTimeColumnVisible;
+                ev.Handled = true;
+            };
+
+            var commitTimeColumn = new MenuItem();
+            commitTimeColumn.Header = App.Text("Histories.Header.CommitTime");
+            if (histories.IsCommitTimeColumnVisible)
+                commitTimeColumn.Icon = this.CreateMenuIcon("Icons.Check");
+            commitTimeColumn.Click += (_, ev) =>
+            {
+                histories.IsCommitTimeColumnVisible = !histories.IsCommitTimeColumnVisible;
+                ev.Handled = true;
+            };
+
+            var menu = new ContextMenu();
+            menu.Placement = PlacementMode.BottomEdgeAlignedLeft;
+            menu.Items.Add(layout);
+            menu.Items.Add(horizontal);
+            menu.Items.Add(vertical);
+            menu.Items.Add(new MenuItem() { Header = "-" });
+            menu.Items.Add(showFlags);
+            menu.Items.Add(reflog);
+            menu.Items.Add(firstParentOnly);
+            menu.Items.Add(simplifyByDecoration);
+            menu.Items.Add(new MenuItem() { Header = "-" });
+            menu.Items.Add(order);
+            menu.Items.Add(dateOrder);
+            menu.Items.Add(topoOrder);
+            menu.Items.Add(new MenuItem() { Header = "-" });
+            menu.Items.Add(highlights);
+            menu.Items.Add(all);
+            menu.Items.Add(currentBranchOnly);
+            menu.Items.Add(selectedCommitsOnly);
+            menu.Items.Add(selectedCommitsOnlyFirstParent);
+            menu.Items.Add(currentBranchAndSelectedCommits);
+            menu.Items.Add(new MenuItem() { Header = "-" });
+            menu.Items.Add(columnsHeader);
+            menu.Items.Add(authorColumn);
+            menu.Items.Add(shaColumn);
+            menu.Items.Add(authorTimeColumn);
+            menu.Items.Add(commitTimeColumn);
+            menu.Open(button);
+        }
+
         private void OnCommitListLayoutUpdated(object _1, EventArgs _2)
         {
             if (!IsLoaded)
@@ -3201,6 +3490,8 @@ namespace SourceGit.Views
         private bool _lastHistoriesIsLoading = false;
         private bool _historyColumnWidthFreezeScheduled = false;
         private bool _historyColumnWidthsFrozen = false;
+        private bool _resizingAuthorColumn = false;
+        private readonly Cursor _resizingCursor = new(StandardCursorType.SizeWestEast);
         private bool _isCenteringHeadCommit = false;
         private bool _pressedCommitRef = false;
         private PointerPressedEventArgs _pressedCommitRefEvent = null;

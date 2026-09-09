@@ -6,10 +6,19 @@ namespace SourceGit.Commands
 {
     public class Fetch : Command
     {
+        public Task<bool> RunAsync()
+        {
+            return ExecAsync();
+        }
+
+        public Fetch(string repo, Models.Remote remote, bool noTags, bool force)
+            : this(repo, remote.Name, noTags, force)
+        {
+            SSHKey = remote.PrivateSSHKey;
+        }
+
         public Fetch(string repo, string remote, bool noTags, bool force, bool prune = false, bool recurseSubmodules = false)
         {
-            _remote = remote;
-
             WorkingDirectory = repo;
             Context = repo;
 
@@ -20,35 +29,15 @@ namespace SourceGit.Commands
                 builder.Append("--force ");
             if (prune)
                 builder.Append("--prune ");
-            if (recurseSubmodules)
-                builder.Append("--recurse-submodules ");
-            else
-                builder.Append("--no-recurse-submodules ");
+            builder.Append(recurseSubmodules ? "--recurse-submodules " : "--no-recurse-submodules ");
             builder.Append(remote);
-
             Args = builder.ToString();
         }
 
         public Fetch(string repo, string remote, bool noTags, bool force, bool prune, bool recurseSubmodules, IEnumerable<string> refspecs)
+            : this(repo, remote, noTags, force, prune, recurseSubmodules)
         {
-            _remote = remote;
-
-            WorkingDirectory = repo;
-            Context = repo;
-
-            var builder = new StringBuilder(512);
-            builder.Append("fetch --progress --verbose ");
-            builder.Append(noTags ? "--no-tags " : "--tags ");
-            if (force)
-                builder.Append("--force ");
-            if (prune)
-                builder.Append("--prune ");
-            if (recurseSubmodules)
-                builder.Append("--recurse-submodules ");
-            else
-                builder.Append("--no-recurse-submodules ");
-            builder.Append(remote);
-
+            var builder = new StringBuilder(Args);
             foreach (var refspec in refspecs)
             {
                 if (!string.IsNullOrWhiteSpace(refspec))
@@ -58,10 +47,14 @@ namespace SourceGit.Commands
             Args = builder.ToString();
         }
 
+        public Fetch(string repo, Models.Remote remote)
+            : this(repo, remote.Name)
+        {
+            SSHKey = remote.PrivateSSHKey;
+        }
+
         public Fetch(string repo, string remote, bool recurseSubmodules = false, bool prune = false)
         {
-            _remote = remote;
-
             WorkingDirectory = repo;
             Context = repo;
             RaiseError = false;
@@ -70,30 +63,17 @@ namespace SourceGit.Commands
             builder.Append("fetch --progress --verbose ");
             if (prune)
                 builder.Append("--prune ");
-            if (recurseSubmodules)
-                builder.Append("--recurse-submodules ");
-            else
-                builder.Append("--no-recurse-submodules ");
+            builder.Append(recurseSubmodules ? "--recurse-submodules " : "--no-recurse-submodules ");
             builder.Append(remote);
-
             Args = builder.ToString();
         }
 
-        public Fetch(string repo, Models.Branch local, Models.Branch remote)
+        public Fetch(string repo, Models.Remote remote, Models.Branch remoteBranch, Models.Branch local)
         {
-            _remote = remote.Remote;
-
             WorkingDirectory = repo;
             Context = repo;
-            Args = $"fetch --progress --verbose {remote.Remote} {remote.Name}:{local.Name}";
+            SSHKey = remote.PrivateSSHKey;
+            Args = $"fetch --progress --verbose {remote.Name} {remoteBranch.Name}:{local.Name}";
         }
-
-        public async Task<bool> RunAsync()
-        {
-            SSHKey = await new Config(WorkingDirectory).GetAsync($"remote.{_remote}.sshkey").ConfigureAwait(false);
-            return await ExecAsync().ConfigureAwait(false);
-        }
-
-        private readonly string _remote;
     }
 }

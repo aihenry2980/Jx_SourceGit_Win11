@@ -126,6 +126,12 @@ namespace SourceGit.ViewModels
             _repo = repo;
         }
 
+        public void ClearStashes()
+        {
+            if (_repo.CanCreatePopup())
+                _repo.ShowPopup(new ClearStashes(_repo));
+        }
+
         public void ClearSearchFilter()
         {
             SearchFilter = string.Empty;

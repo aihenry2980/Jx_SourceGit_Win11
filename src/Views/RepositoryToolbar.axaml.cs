@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
@@ -64,6 +65,19 @@ namespace SourceGit.Views
 
             if (density != _toolbarDensity)
                 ApplyToolbarDensity(density);
+        }
+
+        private void OnToggleSidebar(object sender, RoutedEventArgs e)
+        {
+            if (sender is ToggleButton { IsChecked: true } button)
+            {
+                var launcher = App.GetLauncher();
+                foreach (var page in launcher.Pages)
+                {
+                    if (page.Data is ViewModels.Repository repo)
+                        repo.IsSearchingCommits = false;
+                }
+            }
         }
 
         private void OpenWithExternalTools(object sender, RoutedEventArgs ev)

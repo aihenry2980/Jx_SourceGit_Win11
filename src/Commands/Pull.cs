@@ -1,29 +1,35 @@
 ﻿using System.Text;
+
 using System.Threading.Tasks;
 
 namespace SourceGit.Commands
 {
     public class Pull : Command
     {
-        public Pull(string repo, string remote, string branch, bool useRebase)
+        public Pull(string repo, Models.Remote remote, Models.Branch remoteBranch, bool useRebase)
+            : this(repo, remote.Name, remoteBranch?.Name, useRebase)
         {
-            _remote = remote;
+            SSHKey = remote.PrivateSSHKey;
+        }
 
+        public Pull(string repo, string remote, string remoteBranch, bool useRebase)
+        {
             WorkingDirectory = repo;
             Context = repo;
+            _remote = remote;
 
             var builder = new StringBuilder(512);
             builder
                 .Append("pull --verbose --progress --rebase=")
                 .Append(useRebase ? "true" : "false")
                 .Append(' ')
-                .Append(remote)
-                .Append(' ')
-                .Append(branch);
+                .Append(remote);
+
+            if (!string.IsNullOrEmpty(remoteBranch))
+                builder.Append(' ').Append(remoteBranch);
 
             Args = builder.ToString();
         }
-
         public async Task<bool> RunAsync()
         {
             return (await RunWithResultAsync().ConfigureAwait(false)).IsSuccess;

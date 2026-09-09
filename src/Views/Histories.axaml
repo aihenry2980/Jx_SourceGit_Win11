@@ -511,6 +511,22 @@
           </DataGridTemplateColumn>
         </DataGrid.Columns>
       </v:HistoriesCommitList>
+      <Border Background="Transparent"
+              Height="24"
+              HorizontalAlignment="Stretch" VerticalAlignment="Top"
+              PointerMoved="OnCommitListHeaderPointerMoved"
+              PointerPressed="OnCommitListHeaderPointerPressed"
+              PointerReleased="OnCommitListHeaderPointerReleased">
+        <Button Classes="icon_button"
+                Width="18" Height="18"
+                Margin="4,0,0,0"
+                HorizontalAlignment="Left" VerticalAlignment="Center"
+                Click="OnOpenConfiguration">
+          <Path Width="12" Height="12"
+                Data="{StaticResource Icons.Settings2}"/>
+        </Button>
+      </Border>
+
       <v:CommitGraph x:Name="CommitGraph"
                      Graph="{Binding Graph}"
                      DotBrush="{DynamicResource Brush.Contents}"

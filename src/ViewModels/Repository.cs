@@ -343,6 +343,11 @@ namespace SourceGit.ViewModels
             }
         }
 
+        public void ToggleHistoryShowFlag(Models.HistoryShowFlags flag)
+        {
+            HistoryShowFlags = HistoryShowFlags.HasFlag(flag) ? HistoryShowFlags & ~flag : HistoryShowFlags | flag;
+        }
+
         public bool HighlightCurrentBranchOnlyInHistory
         {
             get => _uiStates.GraphHighlighting == Models.CommitGraphHighlighting.CurrentBranchOnly;
@@ -406,7 +411,6 @@ namespace SourceGit.ViewModels
         }
 
         public GridLength SidebarSplitterWidth => IsLeftSidebarCompact ? new GridLength(0, GridUnitType.Pixel) : new GridLength(3, GridUnitType.Pixel);
-
         public string Filter
         {
             get => _filter;
@@ -3310,14 +3314,6 @@ namespace SourceGit.ViewModels
             }, token);
         }
 
-        public void ToggleHistoryShowFlag(Models.HistoryShowFlags flag)
-        {
-            if (_uiStates.HistoryShowFlags.HasFlag(flag))
-                HistoryShowFlags -= flag;
-            else
-                HistoryShowFlags |= flag;
-        }
-
         public void CreateNewBranch()
         {
             if (_currentBranch == null)
@@ -4470,18 +4466,6 @@ namespace SourceGit.ViewModels
             }
 
             return all;
-        }
-
-        public void DiscardAllChanges()
-        {
-            if (CanCreatePopup())
-                ShowPopup(new Discard(this));
-        }
-
-        public void ClearStashes()
-        {
-            if (CanCreatePopup())
-                ShowPopup(new ClearStashes(this));
         }
 
         public async Task<bool> SaveCommitAsPatchAsync(Models.Commit commit, string folder, int index = 0)
@@ -6047,11 +6031,11 @@ namespace SourceGit.ViewModels
                 if (desire > now)
                     return;
 
-                var remotes = new List<string>();
+                var remotes = new List<Models.Remote>();
                 foreach (var r in _remotes)
                 {
                     if (!r.DisableAutoFetch)
-                        remotes.Add(r.Name);
+                        remotes.Add(r);
                 }
 
                 if (remotes.Count == 0)
