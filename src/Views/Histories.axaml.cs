@@ -461,62 +461,7 @@ namespace SourceGit.Views
             base.OnDataContextChanged(e);
 
             if (DataContext is ViewModels.Histories vm)
-                CommitListContainer.Columns[1].Width = new(vm.AuthorColumnWidth, DataGridLengthUnitType.Pixel);
-        }
-
-        private void OnCommitListHeaderPointerMoved(object sender, PointerEventArgs e)
-        {
-            if (sender is not Border border)
-                return;
-
-            if (DataContext is not ViewModels.Histories { IsAuthorColumnVisible: true } vm)
-                return;
-
-            var pos = e.GetPosition(border);
-            if (_resizingAuthorColumn)
-            {
-                var posX = CommitListContainer.Columns[0].ActualWidth;
-                var maxW = posX + CommitListContainer.Columns[1].ActualWidth - 100;
-                var delta = posX - pos.X;
-                var w = Math.Max(Math.Min(vm.AuthorColumnWidth + delta, maxW), 80);
-                CommitListContainer.Columns[1].Width = new(w, DataGridLengthUnitType.Pixel);
-                vm.AuthorColumnWidth = w;
-            }
-            else
-            {
-                var dis = CommitListContainer.Columns[0].ActualWidth - 4 - pos.X;
-                if (dis < 4 && dis > -4)
-                {
-                    if (border.Cursor != _resizingCursor)
-                        border.Cursor = _resizingCursor;
-                }
-                else if (border.Cursor != Cursor.Default)
-                {
-                    border.Cursor = Cursor.Default;
-                }
-            }
-        }
-
-        private void OnCommitListHeaderPointerPressed(object sender, PointerPressedEventArgs e)
-        {
-            if (sender is not Border border)
-                return;
-
-            var pos = e.GetPosition(border);
-            var dis = CommitListContainer.Columns[0].ActualWidth - 4 - pos.X;
-            if (dis > 4 || dis < -4)
-                return;
-
-            if (e.GetCurrentPoint(border).Properties.IsLeftButtonPressed)
-            {
-                _resizingAuthorColumn = true;
-                e.Handled = true;
-            }
-        }
-
-        private void OnCommitListHeaderPointerReleased(object sender, PointerReleasedEventArgs e)
-        {
-            _resizingAuthorColumn = false;
+                CommitListContainer.Columns[AuthorColumnIndex].Width = new(vm.AuthorColumnWidth, DataGridLengthUnitType.Pixel);
         }
 
         private void OnOpenConfiguration(object sender, RoutedEventArgs e)
@@ -881,7 +826,8 @@ namespace SourceGit.Views
                 Brushes.White);
             var shaWidth = Math.Max(shaColumn.MinWidth, sample.WidthIncludingTrailingWhitespace + 20);
             shaColumn.Width = new DataGridLength(Math.Ceiling(shaWidth), DataGridLengthUnitType.Pixel);
-            CommitListContainer.Columns[AuthorColumnIndex].Width = DataGridLength.SizeToCells;
+            if (DataContext is ViewModels.Histories histories)
+                CommitListContainer.Columns[AuthorColumnIndex].Width = new(histories.AuthorColumnWidth, DataGridLengthUnitType.Pixel);
             CommitListContainer.Columns[DateTimeColumnIndex].Width = DataGridLength.SizeToCells;
         }
 
@@ -1909,8 +1855,11 @@ namespace SourceGit.Views
                     }
 
                     var cherryPick = new MenuItem();
-                    cherryPick.Header = App.Text("CommitCM.CherryPick");
-                    cherryPick.Icon = App.CreateMenuIcon("Icons.CherryPick");
+                    cherryPick.Header = $"{App.Text("CommitCM.CherryPick").TrimEnd('.', '\u2026')} {commit.SHA[..Math.Min(commit.SHA.Length, 10)]}...";
+                    var cherryPickIcon = App.CreateMenuIcon("Icons.CherryPick");
+                    if (cherryPickIcon != null)
+                        cherryPickIcon.Fill = new SolidColorBrush(Color.Parse("#FFD13438"));
+                    cherryPick.Icon = cherryPickIcon;
                     cherryPick.Click += async (_, e) =>
                     {
                         await vm.CherryPickAsync(commit);
@@ -3490,8 +3439,6 @@ namespace SourceGit.Views
         private bool _lastHistoriesIsLoading = false;
         private bool _historyColumnWidthFreezeScheduled = false;
         private bool _historyColumnWidthsFrozen = false;
-        private bool _resizingAuthorColumn = false;
-        private readonly Cursor _resizingCursor = new(StandardCursorType.SizeWestEast);
         private bool _isCenteringHeadCommit = false;
         private bool _pressedCommitRef = false;
         private PointerPressedEventArgs _pressedCommitRefEvent = null;

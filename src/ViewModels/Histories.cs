@@ -214,11 +214,11 @@ namespace SourceGit.ViewModels
 
         public double AuthorColumnWidth
         {
-            get => _repo?.UIStates?.AuthorColumnWidth ?? 240;
+            get => Math.Clamp(_repo?.UIStates?.AuthorColumnWidth ?? 180, 80, 220);
             set
             {
                 if (_repo?.UIStates is { } states)
-                    states.AuthorColumnWidth = value;
+                    states.AuthorColumnWidth = Math.Clamp(value, 80, 220);
             }
         }
 

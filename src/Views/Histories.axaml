@@ -319,20 +319,20 @@
                         <ItemsControl.ItemTemplate>
                           <DataTemplate DataType="m:SubmoduleUpdateBadge">
                             <Grid Height="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Converter={x:Static c:DoubleConverters.ToHistoryBadgeHeight}}"
-                                  MinWidth="28"
-                                  MaxWidth="216"
+                                  MinWidth="22"
+                                  MaxWidth="180"
                                   ClipToBounds="True"
                                   ContextRequested="OnSubmoduleUpdateBadgeContextRequested"
                                   ToolTip.Tip="{Binding Path}">
                               <v:SubmoduleUpdateBadgeShape AccentColor="{Binding AccentColor}"
                                                            IsHitTestVisible="False"/>
-                              <StackPanel Margin="10,0,5,0" Orientation="Horizontal" Spacing="3">
+                              <StackPanel Margin="7,0,4,0" Orientation="Horizontal" Spacing="2">
                                 <Path Width="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Converter={x:Static c:DoubleConverters.ToHistoryBadgeIconSize}}"
                                       Height="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Converter={x:Static c:DoubleConverters.ToHistoryBadgeIconSize}}"
                                       VerticalAlignment="Center"
                                       Data="{StaticResource Icons.Submodule}"
                                       Fill="{Binding AccentColor, Converter={x:Static c:CommitConverters.UInt32ToBrush}}"/>
-                                <TextBlock MaxWidth="180"
+                                <TextBlock MaxWidth="148"
                                            FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Converter={x:Static c:DoubleConverters.ToHistoryBadgeFontSize}}"
                                            FontWeight="Bold"
                                            Foreground="{Binding AccentColor, Converter={x:Static c:CommitConverters.UInt32ToBrush}}"
@@ -444,6 +444,7 @@
 
           <DataGridTemplateColumn Width="SizeToCells"
                                   MinWidth="80"
+                                  MaxWidth="220"
                                   CanUserResize="True"
                                   IsReadOnly="True"
                                   IsVisible="{Binding IsAuthorColumnVisible, Mode=OneWay}">
@@ -512,11 +513,9 @@
         </DataGrid.Columns>
       </v:HistoriesCommitList>
       <Border Background="Transparent"
+              Width="26"
               Height="24"
-              HorizontalAlignment="Stretch" VerticalAlignment="Top"
-              PointerMoved="OnCommitListHeaderPointerMoved"
-              PointerPressed="OnCommitListHeaderPointerPressed"
-              PointerReleased="OnCommitListHeaderPointerReleased">
+              HorizontalAlignment="Left" VerticalAlignment="Top">
         <Button Classes="icon_button"
                 Width="18" Height="18"
                 Margin="4,0,0,0"

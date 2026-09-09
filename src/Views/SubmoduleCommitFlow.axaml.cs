@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 
 using Avalonia;
 using Avalonia.Controls;
@@ -141,6 +142,77 @@ namespace SourceGit.Views
                 ev.Handled = true;
             };
             menu.Items.Add(revert);
+
+            if (changes.Count == 1 && vm.SelectedNode is { } node)
+            {
+                var change = changes[0];
+                var fullPath = Native.OS.GetAbsPath(node.RepoPath, change.Path);
+                var fileName = Path.GetFileName(change.Path);
+
+                var copyFileName = new MenuItem
+                {
+                    Header = "Copy file name",
+                    Icon = this.CreateMenuIcon("Icons.Copy"),
+                };
+                copyFileName.Click += async (_, ev) =>
+                {
+                    await this.CopyTextAsync(fileName);
+                    ev.Handled = true;
+                };
+
+                var copyFullPath = new MenuItem
+                {
+                    Header = "Copy file path + name",
+                    Icon = this.CreateMenuIcon("Icons.Copy"),
+                };
+                copyFullPath.Click += async (_, ev) =>
+                {
+                    await this.CopyTextAsync(fullPath);
+                    ev.Handled = true;
+                };
+
+                Models.ExternalTool vscode = null;
+                foreach (var tool in Native.OS.ExternalTools)
+                {
+                    if (tool.Name.Equals("Visual Studio Code", StringComparison.Ordinal))
+                    {
+                        vscode = tool;
+                        break;
+                    }
+                }
+
+                var openInVSCode = new MenuItem
+                {
+                    Header = "Open file in VS Code",
+                    Icon = this.CreateMenuIcon("Icons.OpenWith"),
+                    IsEnabled = File.Exists(fullPath) && vscode != null,
+                };
+                openInVSCode.Click += (_, ev) =>
+                {
+                    vscode?.Launch(fullPath.Quoted());
+                    ev.Handled = true;
+                };
+
+                var openContainingFolder = new MenuItem
+                {
+                    Header = "Open containing folder",
+                    Icon = this.CreateMenuIcon("Icons.Explore"),
+                    IsEnabled = File.Exists(fullPath),
+                };
+                openContainingFolder.Click += (_, ev) =>
+                {
+                    Native.OS.OpenInFileManager(fullPath);
+                    ev.Handled = true;
+                };
+
+                menu.Items.Add(new MenuItem { Header = "-" });
+                menu.Items.Add(copyFileName);
+                menu.Items.Add(copyFullPath);
+                menu.Items.Add(new MenuItem { Header = "-" });
+                menu.Items.Add(openInVSCode);
+                menu.Items.Add(openContainingFolder);
+            }
+
             menu.Open(view);
             e.Handled = true;
         }
