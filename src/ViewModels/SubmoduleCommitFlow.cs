@@ -80,7 +80,7 @@ namespace SourceGit.ViewModels
         public bool HasRecommendedNode => _recommendedNode != null;
         public string RecommendedNextText => _recommendedNode == null
             ? string.Empty
-            : $"Recommended next: {_recommendedNode.DisplayPath} ({_recommendedNode.StatusText})";
+            : $"Next: {_recommendedNode.DisplayPath}";
 
         public bool HasSelectedNode => _selectedNode != null;
 
@@ -353,6 +353,34 @@ namespace SourceGit.ViewModels
         }
 
         public double SavedModuleListWidth => ClampLayoutWidth(_repo.Settings.SubmoduleCommitFlowSidebarWidth, 240, 900);
+
+        public bool IsCommitPlanExpanded
+        {
+            get => _repo.Settings.IsCommitFlowPlanExpanded;
+            set
+            {
+                if (value == IsCommitPlanExpanded)
+                    return;
+
+                _repo.Settings.IsCommitFlowPlanExpanded = value;
+                OnPropertyChanged();
+                _ = _repo.Settings.SaveAsync();
+            }
+        }
+
+        public bool IsParentChainExpanded
+        {
+            get => _repo.Settings.IsCommitFlowParentChainExpanded;
+            set
+            {
+                if (value == IsParentChainExpanded)
+                    return;
+
+                _repo.Settings.IsCommitFlowParentChainExpanded = value;
+                OnPropertyChanged();
+                _ = _repo.Settings.SaveAsync();
+            }
+        }
 
         public SubmoduleCommitFlow(Repository repo)
         {
@@ -1659,8 +1687,8 @@ namespace SourceGit.ViewModels
                 return $"Scanning status {nodes.Count - scanning}/{nodes.Count}...";
 
             return dirty == 0
-                ? $"All clean. {done} node(s) committed in this flow."
-                : $"{dirty} node(s) need commits. Work deepest first, then peg upward.";
+                ? $"All clean. {done} committed."
+                : $"{dirty} repositories pending";
         }
 
         private static List<SubmoduleCommitFlowNode> BuildVisibleNodes(List<SubmoduleCommitFlowNode> nodes)

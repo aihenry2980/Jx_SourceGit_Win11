@@ -1165,6 +1165,14 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
+        private void OnToggleSubmoduleUpdateBadges(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button { DataContext: Models.Commit commit })
+                commit.IsSubmoduleBadgeListExpanded = !commit.IsSubmoduleBadgeListExpanded;
+
+            e.Handled = true;
+        }
+
         private void OnSubmoduleUpdateBadgeContextRequested(object sender, ContextRequestedEventArgs e)
         {
             if (sender is not Control { DataContext: Models.SubmoduleUpdateBadge badge } control)
