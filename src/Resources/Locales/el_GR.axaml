@@ -173,6 +173,8 @@
   <x:String x:Key="Text.CommitCM.InteractiveRebase.Manually" xml:space="preserve">Διαδραστικό rebase του ${0}$ πάνω στο ${1}$</x:String>
   <x:String x:Key="Text.CommitCM.InteractiveRebase.Reword" xml:space="preserve">Επαναδιατύπωση...</x:String>
   <x:String x:Key="Text.CommitCM.InteractiveRebase.Squash" xml:space="preserve">Squash στον γονέα...</x:String>
+  <x:String x:Key="Text.CommitCM.MergeIntoOne" xml:space="preserve">Merge into One Commit...</x:String>
+  <x:String x:Key="Text.CommitCM.MergeIntoOne.Invalid" xml:space="preserve">Select at least two contiguous non-merge commits from the current branch's first-parent chain.</x:String>
   <x:String x:Key="Text.CommitCM.MergeMultiple" xml:space="preserve">Συγχώνευση ...</x:String>
   <x:String x:Key="Text.CommitCM.PushRevision" xml:space="preserve">Push ${0}$ στο ${1}$</x:String>
   <x:String x:Key="Text.CommitCM.Rebase" xml:space="preserve">Rebase του ${0}$ πάνω στο ${1}$</x:String>

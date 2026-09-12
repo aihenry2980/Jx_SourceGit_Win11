@@ -173,6 +173,8 @@
   <x:String x:Key="Text.CommitCM.InteractiveRebase.Manually" xml:space="preserve">Rebase ${0}$ pada ${1}$ secara Interaktif</x:String>
   <x:String x:Key="Text.CommitCM.InteractiveRebase.Reword" xml:space="preserve">Reword...</x:String>
   <x:String x:Key="Text.CommitCM.InteractiveRebase.Squash" xml:space="preserve">Squash ke Parent...</x:String>
+  <x:String x:Key="Text.CommitCM.MergeIntoOne" xml:space="preserve">Gabungkan menjadi Satu Commit...</x:String>
+  <x:String x:Key="Text.CommitCM.MergeIntoOne.Invalid" xml:space="preserve">Pilih setidaknya dua commit non-merge berurutan pada rantai first-parent branch saat ini.</x:String>
   <x:String x:Key="Text.CommitCM.MergeMultiple" xml:space="preserve">Merge ...</x:String>
   <x:String x:Key="Text.CommitCM.PushRevision" xml:space="preserve">Push ${0}$ ke ${1}$</x:String>
   <x:String x:Key="Text.CommitCM.Rebase" xml:space="preserve">Rebase ${0}$ pada ${1}$</x:String>

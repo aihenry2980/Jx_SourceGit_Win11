@@ -121,6 +121,8 @@
   <x:String x:Key="Text.CommitCM.CreateBranchWithoutCommit" xml:space="preserve">Create Branch Without This Commit...</x:String>
   <x:String x:Key="Text.CommitCM.CreateBranchWithoutCommits" xml:space="preserve">Create Branch Without These Commits...</x:String>
   <x:String x:Key="Text.CommitCM.CustomAction" xml:space="preserve">Ação customizada</x:String>
+  <x:String x:Key="Text.CommitCM.MergeIntoOne" xml:space="preserve">Combinar em um único commit...</x:String>
+  <x:String x:Key="Text.CommitCM.MergeIntoOne.Invalid" xml:space="preserve">Selecione pelo menos dois commits consecutivos que não sejam merges na cadeia first-parent da branch atual.</x:String>
   <x:String x:Key="Text.CommitCM.Revert" xml:space="preserve">Reverter Commit</x:String>
   <x:String x:Key="Text.CommitCM.SaveAsPatch" xml:space="preserve">Salvar como Patch...</x:String>
   <x:String x:Key="Text.CommitDetail.Changes" xml:space="preserve">ALTERAÇÕES</x:String>

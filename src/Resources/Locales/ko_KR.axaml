@@ -135,6 +135,8 @@
   <x:String x:Key="Text.CommitCM.InteractiveRebase.Manually" xml:space="preserve">${1}$을(를) 기반으로 ${0}$ 대화형 리베이스</x:String>
   <x:String x:Key="Text.CommitCM.InteractiveRebase.Reword" xml:space="preserve">메시지 수정(Reword)...</x:String>
   <x:String x:Key="Text.CommitCM.InteractiveRebase.Squash" xml:space="preserve">부모에 합치기(Squash)...</x:String>
+  <x:String x:Key="Text.CommitCM.MergeIntoOne" xml:space="preserve">하나의 커밋으로 합치기...</x:String>
+  <x:String x:Key="Text.CommitCM.MergeIntoOne.Invalid" xml:space="preserve">현재 브랜치의 first-parent 체인에서 연속된 병합이 아닌 커밋을 두 개 이상 선택하세요.</x:String>
   <x:String x:Key="Text.CommitCM.MergeMultiple" xml:space="preserve">병합...</x:String>
   <x:String x:Key="Text.CommitCM.PushRevision" xml:space="preserve">${0}$을(를) ${1}$(으)로 푸시</x:String>
   <x:String x:Key="Text.CommitCM.Rebase" xml:space="preserve">${1}$을(를) 기반으로 ${0}$ 리베이스</x:String>

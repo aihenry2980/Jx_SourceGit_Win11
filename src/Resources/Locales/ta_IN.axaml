@@ -93,6 +93,8 @@
   <x:String x:Key="Text.CommitCM.CreateBranchWithoutCommit" xml:space="preserve">Create Branch Without This Commit...</x:String>
   <x:String x:Key="Text.CommitCM.CreateBranchWithoutCommits" xml:space="preserve">Create Branch Without These Commits...</x:String>
   <x:String x:Key="Text.CommitCM.CustomAction" xml:space="preserve">தனிப்பயன் செயல்</x:String>
+  <x:String x:Key="Text.CommitCM.MergeIntoOne" xml:space="preserve">Merge into One Commit...</x:String>
+  <x:String x:Key="Text.CommitCM.MergeIntoOne.Invalid" xml:space="preserve">Select at least two contiguous non-merge commits from the current branch's first-parent chain.</x:String>
   <x:String x:Key="Text.CommitCM.MergeMultiple" xml:space="preserve">ஒன்றிணை ...</x:String>
   <x:String x:Key="Text.CommitCM.Revert" xml:space="preserve">உறுதிமொழி திரும்பபெறு</x:String>
   <x:String x:Key="Text.CommitCM.SaveAsPatch" xml:space="preserve">ஒட்டாக சேமி...</x:String>

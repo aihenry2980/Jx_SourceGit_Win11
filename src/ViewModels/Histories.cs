@@ -623,9 +623,34 @@ namespace SourceGit.ViewModels
 
         public async Task MergeSelectedCommitsToOneAsync(IReadOnlyList<Models.Commit> selected)
         {
-            if (!TryBuildMergeSelectedCommitsToOnePlan(selected, out var on, out var prefills))
+            if (!TryBuildMergeSelectedCommitsToOnePlan(selected, out var baseSHA, out var prefills))
             {
-                App.RaiseException(_repo.FullPath, "Can not merge selected commits into one commit.");
+                _repo.SendNotification(App.Text("CommitCM.MergeIntoOne.Invalid"), true);
+                return;
+            }
+
+            var firstParentHashes = await new Commands.QueryFirstParentCommitHashes(_repo.FullPath, "HEAD")
+                .GetResultAsync();
+            var firstParentSet = new HashSet<string>(firstParentHashes, StringComparer.Ordinal);
+            foreach (var prefill in prefills)
+            {
+                if (!firstParentSet.Contains(prefill.SHA))
+                {
+                    _repo.SendNotification(App.Text("CommitCM.MergeIntoOne.Invalid"), true);
+                    return;
+                }
+            }
+
+            var on = _commits.Find(x => x.SHA.Equals(baseSHA, StringComparison.Ordinal));
+            if (on == null)
+            {
+                on = await new Commands.QuerySingleCommit(_repo.FullPath, baseSHA)
+                    .GetResultAsync();
+            }
+
+            if (on == null)
+            {
+                _repo.SendNotification(App.Text("CommitCM.MergeIntoOne.Invalid"), true);
                 return;
             }
 
@@ -660,9 +685,9 @@ namespace SourceGit.ViewModels
             DetailContext = new RevisionCompare(_repo, commit, null);
         }
 
-        private bool TryBuildMergeSelectedCommitsToOnePlan(IReadOnlyList<Models.Commit> selected, out Models.Commit on, out List<InteractiveRebasePrefill> prefills)
+        private bool TryBuildMergeSelectedCommitsToOnePlan(IReadOnlyList<Models.Commit> selected, out string baseSHA, out List<InteractiveRebasePrefill> prefills)
         {
-            on = null;
+            baseSHA = null;
             prefills = null;
 
             if (_repo?.CurrentBranch == null || selected == null || selected.Count < 2 || _commits.Count == 0)
@@ -675,7 +700,7 @@ namespace SourceGit.ViewModels
             var ordered = new List<Models.Commit>(selected.Count);
             foreach (var commit in selected)
             {
-                if (commit == null || !commit.IsMerged || commit.Parents.Count != 1 || !indexBySHA.ContainsKey(commit.SHA))
+                if (commit == null || commit.Parents.Count != 1 || !indexBySHA.ContainsKey(commit.SHA))
                     return false;
 
                 ordered.Add(commit);
@@ -690,8 +715,8 @@ namespace SourceGit.ViewModels
             }
 
             var target = ordered[^1];
-            on = _commits.Find(x => x.SHA.Equals(target.Parents[0], StringComparison.Ordinal));
-            if (on == null)
+            baseSHA = target.Parents[0];
+            if (string.IsNullOrWhiteSpace(baseSHA))
                 return false;
 
             prefills = new List<InteractiveRebasePrefill>(ordered.Count);

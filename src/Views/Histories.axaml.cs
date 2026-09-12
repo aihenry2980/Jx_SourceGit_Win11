@@ -1247,19 +1247,19 @@ namespace SourceGit.Views
                     menu.Items.Add(merge);
                 }
 
-                if (canMergeToOneCommit)
+                var mergeToOneCommit = new MenuItem();
+                mergeToOneCommit.Header = App.Text("CommitCM.MergeIntoOne");
+                mergeToOneCommit.Icon = App.CreateMenuIcon("Icons.SquashIntoParent");
+                mergeToOneCommit.IsEnabled = canMergeToOneCommit;
+                if (!canMergeToOneCommit)
+                    ToolTip.SetTip(mergeToOneCommit, App.Text("CommitCM.MergeIntoOne.Invalid"));
+                mergeToOneCommit.Click += async (_, e) =>
                 {
-                    var mergeToOneCommit = new MenuItem();
-                    mergeToOneCommit.Header = "Merge to One Commit...";
-                    mergeToOneCommit.Icon = App.CreateMenuIcon("Icons.SquashIntoParent");
-                    mergeToOneCommit.Click += async (_, e) =>
-                    {
-                        if (vm != null)
-                            await vm.MergeSelectedCommitsToOneAsync(selected);
-                        e.Handled = true;
-                    };
-                    menu.Items.Add(mergeToOneCommit);
-                }
+                    if (vm != null)
+                        await vm.MergeSelectedCommitsToOneAsync(selected);
+                    e.Handled = true;
+                };
+                menu.Items.Add(mergeToOneCommit);
 
                 var createBranchWithoutCommits = new MenuItem();
                 createBranchWithoutCommits.Header = App.Text("CommitCM.CreateBranchWithoutCommits");
