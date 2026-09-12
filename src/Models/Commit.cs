@@ -51,15 +51,15 @@ namespace SourceGit.Models
         }
 
         public IReadOnlyList<SubmoduleUpdateBadge> VisibleSubmoduleUpdateBadges =>
-            IsSubmoduleBadgeListExpanded || SubmoduleUpdateBadges.Count <= 2
+            IsSubmoduleBadgeListExpanded || SubmoduleUpdateBadges.Count <= CollapsedSubmoduleUpdateBadgeCount
                 ? SubmoduleUpdateBadges
-                : SubmoduleUpdateBadges.GetRange(0, 2);
+                : SubmoduleUpdateBadges.GetRange(0, CollapsedSubmoduleUpdateBadgeCount);
 
-        public bool HasMoreSubmoduleUpdateBadges => SubmoduleUpdateBadges.Count > 2;
+        public bool HasMoreSubmoduleUpdateBadges => SubmoduleUpdateBadges.Count > CollapsedSubmoduleUpdateBadgeCount;
 
         public string SubmoduleUpdateBadgeToggleText => IsSubmoduleBadgeListExpanded
             ? "-"
-            : $"+{SubmoduleUpdateBadges.Count - 2}";
+            : $"+{SubmoduleUpdateBadges.Count - CollapsedSubmoduleUpdateBadgeCount}";
 
         public bool IsSubmoduleBadgeListExpanded
         {
@@ -74,6 +74,7 @@ namespace SourceGit.Models
             }
         }
 
+        private const int CollapsedSubmoduleUpdateBadgeCount = 6;
         private bool _isSubmoduleBadgeListExpanded;
         public bool HasRenameOrCopyChange { get; set; } = false;
         public bool HasTypeChange { get; set; } = false;

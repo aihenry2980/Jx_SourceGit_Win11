@@ -16,7 +16,7 @@ namespace SourceGit.Converters
             new FuncValueConverter<double, double>(v => Math.Max(48.0, v - 4.0));
 
         public static readonly FuncValueConverter<double, double> ToHistoryBadgeFontSize =
-            new FuncValueConverter<double, double>(v => Math.Max(9.0, v - 3.0));
+            new FuncValueConverter<double, double>(v => Math.Max(8.0, v - 4.0));
 
         public static readonly FuncValueConverter<double, double> ToHistoryBadgeHeight =
             new FuncValueConverter<double, double>(v => Math.Max(15.0, v + 2.0));
