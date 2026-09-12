@@ -336,8 +336,11 @@ namespace SourceGit.Views
                 }
 
                 var primaryIconX = x + 2 + rebaseBaseIconOffset + (badgeSize - iconSize) * 0.5;
-                using (context.PushTransform(Matrix.CreateTranslation(primaryIconX, iconY)))
-                    context.DrawGeometry(item.IconBrush ?? fg, hasCompactTrackingBadge ? new Pen(s_compactIconOutlineBrush, 0.8) : null, item.Icon);
+                if (item.Icon != null)
+                {
+                    using (context.PushTransform(Matrix.CreateTranslation(primaryIconX, iconY)))
+                        context.DrawGeometry(item.IconBrush ?? fg, hasCompactTrackingBadge ? new Pen(s_compactIconOutlineBrush, 0.8) : null, item.Icon);
+                }
 
                 if (item.SecondaryIcon != null)
                 {
@@ -632,7 +635,7 @@ namespace SourceGit.Views
                     }
 
                     item.Icon = CreateIcon(
-                        geo,
+                        geo ?? this.FindResource("Icons.Branch") as StreamGeometry,
                         decorator.Type == Models.DecoratorType.RemoteBranchHead
                             ? 12.0
                             : secondaryDecorator != null
