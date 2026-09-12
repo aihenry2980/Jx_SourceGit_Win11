@@ -91,10 +91,10 @@ namespace SourceGit.ViewModels
             {
                 foreach (var remote in _repo.Remotes)
                 {
-                    succeeded &= await new Commands.Fetch(_repo.FullPath, remote.Name, notags, force)
+                    succeeded &= await new Commands.Fetch(_repo.FullPath, remote, notags, force)
                         .WithCancellation(token)
                         .Use(log)
-                        .RunAsync();
+                        .ExecAsync();
 
                     if (token.IsCancellationRequested || !succeeded)
                         break;
@@ -102,10 +102,10 @@ namespace SourceGit.ViewModels
             }
             else
             {
-                succeeded = await new Commands.Fetch(_repo.FullPath, SelectedRemote.Name, notags, force)
+                succeeded = await new Commands.Fetch(_repo.FullPath, SelectedRemote, notags, force)
                     .WithCancellation(token)
                     .Use(log)
-                    .RunAsync();
+                    .ExecAsync();
             }
 
             gitStopwatch.Stop();

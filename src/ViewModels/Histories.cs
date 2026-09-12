@@ -13,6 +13,14 @@ namespace SourceGit.ViewModels
 {
     public class Histories : ObservableObject
     {
+        public SearchCommitContext SearchCommitContext => _repo.SearchCommitContext;
+
+        public bool IsSearchingCommits
+        {
+            get => _repo.IsSearchingCommits;
+            set => _repo.IsSearchingCommits = value;
+        }
+
         public bool IsLoading
         {
             get => _isLoading;

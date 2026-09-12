@@ -305,6 +305,15 @@ namespace SourceGit.Views
             remove { RemoveHandler(RowsChangedEvent, value); }
         }
 
+        public static readonly RoutedEvent<RoutedEventArgs> SearchRequestedEvent =
+            RoutedEvent.Register<BranchTree, RoutedEventArgs>(nameof(SearchRequested), RoutingStrategies.Tunnel | RoutingStrategies.Bubble);
+
+        public event EventHandler<RoutedEventArgs> SearchRequested
+        {
+            add { AddHandler(SearchRequestedEvent, value); }
+            remove { RemoveHandler(SearchRequestedEvent, value); }
+        }
+
         public BranchTree()
         {
             InitializeComponent();
@@ -622,7 +631,12 @@ namespace SourceGit.Views
 
         private void OnTreeKeyDown(object _, KeyEventArgs e)
         {
-            if ((e.Key == Key.Delete || e.Key == Key.Back) && e.KeyModifiers == KeyModifiers.None)
+            if (e.Key == Key.F && e.KeyModifiers == (OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control))
+            {
+                RaiseEvent(new RoutedEventArgs(SearchRequestedEvent));
+                e.Handled = true;
+            }
+            else if ((e.Key == Key.Delete || e.Key == Key.Back) && e.KeyModifiers == KeyModifiers.None)
             {
                 var repo = DataContext as ViewModels.Repository;
                 if (repo?.Settings == null)
@@ -1229,6 +1243,16 @@ namespace SourceGit.Views
                 e.Handled = true;
             };
 
+            var setPushURL = new MenuItem();
+            setPushURL.Header = App.Text("RemoteCM.SetPushURL");
+            setPushURL.Icon = this.CreateMenuIcon("Icons.Link");
+            setPushURL.Click += (_, e) =>
+            {
+                if (repo.CanCreatePopup())
+                    repo.ShowPopup(new ViewModels.SetPushURL(repo, remote));
+                e.Handled = true;
+            };
+
             var delete = new MenuItem();
             delete.Header = App.Text("RemoteCM.Delete");
             delete.Icon = App.CreateMenuIcon("Icons.Clear");
@@ -1249,6 +1273,7 @@ namespace SourceGit.Views
             };
 
             menu.Items.Add(edit);
+            menu.Items.Add(setPushURL);
             menu.Items.Add(delete);
             menu.Items.Add(new MenuItem() { Header = "-" });
             TryToAddCustomActionsToRemoteContextMenu(repo, menu, remote);

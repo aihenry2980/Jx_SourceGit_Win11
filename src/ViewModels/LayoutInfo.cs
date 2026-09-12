@@ -101,6 +101,18 @@ namespace SourceGit.ViewModels
             set => SetProperty(ref _repositorySidebarWidth, value);
         }
 
+        public double RepositoryDashboardWidth
+        {
+            get;
+            set;
+        } = 250;
+
+        public double RepositorySearchCommitWidth
+        {
+            get;
+            set;
+        } = 250;
+
         public GridLength WorkingCopyLeftWidth
         {
             get => _workingCopyLeftWidth;

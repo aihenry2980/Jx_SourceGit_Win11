@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace SourceGit.Commands
@@ -8,20 +8,13 @@ namespace SourceGit.Commands
         public Pull(string repo, string remote, string branch, bool useRebase)
         {
             _remote = remote;
+            Configure(repo, remote, branch, useRebase);
+        }
 
-            WorkingDirectory = repo;
-            Context = repo;
-
-            var builder = new StringBuilder(512);
-            builder
-                .Append("pull --verbose --progress --rebase=")
-                .Append(useRebase ? "true" : "false")
-                .Append(' ')
-                .Append(remote)
-                .Append(' ')
-                .Append(branch);
-
-            Args = builder.ToString();
+        public Pull(string repo, Models.Remote remote, Models.Branch remoteBranch, bool useRebase)
+        {
+            SSHKey = remote.PrivateSSHKey;
+            Configure(repo, remote.Name, remoteBranch?.Name, useRebase);
         }
 
         public async Task<bool> RunAsync()
@@ -31,7 +24,8 @@ namespace SourceGit.Commands
 
         public async Task<Result> RunWithResultAsync()
         {
-            SSHKey = await new Config(WorkingDirectory).GetAsync($"remote.{_remote}.sshkey").ConfigureAwait(false);
+            if (!string.IsNullOrEmpty(_remote))
+                SSHKey = await new Config(WorkingDirectory).GetAsync($"remote.{_remote}.sshkey").ConfigureAwait(false);
 
             Log?.AppendLine($"$ git {Args}\n");
             var result = await ReadToEndAndKillOnCancelAsync().ConfigureAwait(false);
@@ -43,7 +37,23 @@ namespace SourceGit.Commands
             return result;
         }
 
-        private readonly string _remote;
+        private void Configure(string repo, string remote, string branch, bool useRebase)
+        {
+            WorkingDirectory = repo;
+            Context = repo;
+
+            var builder = new StringBuilder(512);
+            builder
+                .Append("pull --verbose --progress --rebase=")
+                .Append(useRebase ? "true" : "false")
+                .Append(' ')
+                .Append(remote);
+
+            if (!string.IsNullOrEmpty(branch))
+                builder.Append(' ').Append(branch);
+
+            Args = builder.ToString();
+        }
 
         private void AppendOutput(string content)
         {
@@ -58,5 +68,7 @@ namespace SourceGit.Commands
                     Log?.AppendLine(line);
             }
         }
+
+        private readonly string _remote;
     }
 }

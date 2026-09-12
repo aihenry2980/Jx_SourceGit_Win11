@@ -311,6 +311,18 @@ namespace SourceGit.Views
             set => SetAndRaise(IsScrollToTopVisibleProperty, ref _isScrollToTopVisible, value);
         }
 
+        public static readonly DirectProperty<Histories, bool> IsDetailsPanelExpandedProperty =
+            AvaloniaProperty.RegisterDirect<Histories, bool>(
+                nameof(IsDetailsPanelExpanded),
+                static o => o.IsDetailsPanelExpanded,
+                static (o, v) => o.IsDetailsPanelExpanded = v);
+
+        public bool IsDetailsPanelExpanded
+        {
+            get => _isDetailsPanelExpanded;
+            set => SetAndRaise(IsDetailsPanelExpandedProperty, ref _isDetailsPanelExpanded, value);
+        }
+
         public static readonly StyledProperty<long> NavigationIdProperty =
             AvaloniaProperty.Register<Histories, long>(nameof(NavigationId));
 
@@ -3191,6 +3203,7 @@ namespace SourceGit.Views
         private bool _hasSingleRemote = false;
         private AvaloniaList<Models.IssueTracker> _issueTrackers = null;
         private bool _isScrollToTopVisible = false;
+        private bool _isDetailsPanelExpanded = true;
         private double _lastGraphStartY = 0;
         private double _lastGraphClipWidth = 0;
         private double _lastGraphRowHeight = 0;

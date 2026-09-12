@@ -1,4 +1,5 @@
 ﻿using System.Text;
+
 using System.Threading.Tasks;
 
 namespace SourceGit.Commands
@@ -8,7 +9,69 @@ namespace SourceGit.Commands
         public Push(string repo, string local, string remote, string remoteBranch, bool withTags, bool checkSubmodules, bool track, bool force, bool noVerify)
         {
             _remote = remote;
+            Configure(repo, local, remote, remoteBranch, withTags, checkSubmodules, track, force, noVerify);
+        }
 
+        public Push(string repo, Models.Branch local, Models.Remote remote, Models.Branch remoteBranch, bool withTags, bool checkSubmodules, bool track, bool force, bool noVerify)
+        {
+            SSHKey = remote.PrivateSSHKey;
+            Configure(repo, local.Name, remote.Name, remoteBranch.Name, withTags, checkSubmodules, track, force, noVerify);
+        }
+
+        public Push(string repo, Models.Commit revision, Models.Remote remote, Models.Branch remoteBranch, bool force)
+        {
+            WorkingDirectory = repo;
+            Context = repo;
+            SSHKey = remote.PrivateSSHKey;
+
+            var builder = new StringBuilder(1024);
+            builder.Append("push --progress --verbose ");
+            if (force)
+                builder.Append("--force-with-lease ");
+
+            builder.Append(remote.Name).Append(' ').Append(revision.SHA).Append(':').Append(remoteBranch.Name);
+            Args = builder.ToString();
+        }
+
+        public Push(string repo, Models.Remote remote, string refname, bool isDelete)
+        {
+            WorkingDirectory = repo;
+            Context = repo;
+            SSHKey = remote.PrivateSSHKey;
+
+            var builder = new StringBuilder(512);
+            builder.Append("push ");
+            if (isDelete)
+                builder.Append("--delete ");
+            builder.Append(remote.Name).Append(' ').Append(refname);
+
+            Args = builder.ToString();
+        }
+
+        public Push(string repo, string remote, string refname, bool isDelete)
+        {
+            _remote = remote;
+            WorkingDirectory = repo;
+            Context = repo;
+
+            var builder = new StringBuilder(512);
+            builder.Append("push ");
+            if (isDelete)
+                builder.Append("--delete ");
+            builder.Append(remote).Append(' ').Append(refname);
+            Args = builder.ToString();
+        }
+
+        public async Task<bool> RunAsync()
+        {
+            if (!string.IsNullOrEmpty(_remote))
+                SSHKey = await new Config(WorkingDirectory).GetAsync($"remote.{_remote}.sshkey").ConfigureAwait(false);
+
+            return await ExecAsync().ConfigureAwait(false);
+        }
+
+        private void Configure(string repo, string local, string remote, string remoteBranch, bool withTags, bool checkSubmodules, bool track, bool force, bool noVerify)
+        {
             WorkingDirectory = repo;
             Context = repo;
 
@@ -27,28 +90,6 @@ namespace SourceGit.Commands
 
             builder.Append(remote).Append(' ').Append(local).Append(':').Append(remoteBranch);
             Args = builder.ToString();
-        }
-
-        public Push(string repo, string remote, string refname, bool isDelete)
-        {
-            _remote = remote;
-
-            WorkingDirectory = repo;
-            Context = repo;
-
-            var builder = new StringBuilder(512);
-            builder.Append("push ");
-            if (isDelete)
-                builder.Append("--delete ");
-            builder.Append(remote).Append(' ').Append(refname);
-
-            Args = builder.ToString();
-        }
-
-        public async Task<bool> RunAsync()
-        {
-            SSHKey = await new Config(WorkingDirectory).GetAsync($"remote.{_remote}.sshkey").ConfigureAwait(false);
-            return await ExecAsync().ConfigureAwait(false);
         }
 
         private readonly string _remote;

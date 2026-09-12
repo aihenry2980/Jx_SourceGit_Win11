@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
@@ -414,42 +415,19 @@ namespace SourceGit.ViewModels
             var branches = new List<Models.Branch>();
             foreach (var branch in _repo.Branches)
             {
-                if (branch.Remote == remoteName)
+                if (!branch.IsLocal && branch.Remote.Equals(remoteName, StringComparison.Ordinal))
                     branches.Add(branch);
             }
 
+            Models.Branch selected = null;
+            if (!string.IsNullOrEmpty(Current.Upstream))
+                selected = branches.Find(x => x.FullName.Equals(Current.Upstream, StringComparison.Ordinal));
+
+            if (selected == null)
+                selected = branches.Find(x => x.Name.Equals(Current.Name, StringComparison.Ordinal));
+
             RemoteBranches = branches;
-
-            var autoSelectedBranch = false;
-            if (!string.IsNullOrEmpty(Current.Upstream) &&
-                Current.Upstream.StartsWith($"refs/remotes/{remoteName}/", System.StringComparison.Ordinal))
-            {
-                foreach (var branch in branches)
-                {
-                    if (Current.Upstream.Equals(branch.FullName, System.StringComparison.Ordinal))
-                    {
-                        SelectedBranch = branch;
-                        autoSelectedBranch = true;
-                        break;
-                    }
-                }
-            }
-
-            if (!autoSelectedBranch)
-            {
-                foreach (var branch in branches)
-                {
-                    if (Current.Name == branch.Name)
-                    {
-                        SelectedBranch = branch;
-                        autoSelectedBranch = true;
-                        break;
-                    }
-                }
-            }
-
-            if (!autoSelectedBranch)
-                SelectedBranch = null;
+            SelectedBranch = selected;
         }
 
         private readonly Repository _repo = null;
