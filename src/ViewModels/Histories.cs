@@ -33,6 +33,19 @@ namespace SourceGit.ViewModels
             set => SetProperty(ref _isBackfilling, value);
         }
 
+        public bool EnableTopoOrder
+        {
+            get => _repo.UIStates.EnableTopoOrderInHistory;
+            set
+            {
+                if (value != _repo.UIStates.EnableTopoOrderInHistory)
+                {
+                    _repo.UIStates.EnableTopoOrderInHistory = value;
+                    _repo.RefreshCommits();
+                }
+            }
+        }
+
         public bool IsAuthorColumnVisible
         {
             get => _repo?.UIStates?.IsAuthorColumnVisibleInHistory ?? true;
@@ -209,11 +222,11 @@ namespace SourceGit.ViewModels
 
         public double AuthorColumnWidth
         {
-            get => _repo?.UIStates?.AuthorColumnWidth ?? 240;
+            get => Math.Clamp(_repo?.UIStates?.AuthorColumnWidth ?? 180, 80, 220);
             set
             {
                 if (_repo?.UIStates is { } states)
-                    states.AuthorColumnWidth = value;
+                    states.AuthorColumnWidth = Math.Clamp(value, 80, 220);
             }
         }
 
@@ -261,6 +274,25 @@ namespace SourceGit.ViewModels
         {
             _repo = repo;
             _commitDetailSharedData = new CommitDetailSharedData();
+        }
+
+        public bool HasShowFlag(Models.HistoryShowFlags flag)
+        {
+            return _repo.UIStates.HistoryShowFlags.HasFlag(flag);
+        }
+
+        public void ToggleShowFlag(Models.HistoryShowFlags flag)
+        {
+            if (HasShowFlag(flag))
+                _repo.UIStates.HistoryShowFlags -= flag;
+            else
+                _repo.UIStates.HistoryShowFlags |= flag;
+            _repo.RefreshCommits();
+        }
+
+        public Models.BisectState UpdateBisectInfo()
+        {
+            return Bisect == null ? Models.BisectState.None : Models.BisectState.WaitingForMark;
         }
 
         public void Dispose()

@@ -52,14 +52,13 @@ namespace SourceGit.Views
             }
 
             var color = Color.FromUInt32(AccentColor);
-            _fill = s_badgeBackgroundBrush;
-            _borderPen = new Pen(new SolidColorBrush(color));
+            _fill = Brushes.Transparent;
+            _borderPen = new Pen(new SolidColorBrush(color), 1, new DashStyle([3, 2], 0));
             _accentColor = AccentColor;
             _renderWidth = width;
             _renderHeight = height;
         }
 
-        private static readonly IBrush s_badgeBackgroundBrush = new SolidColorBrush(Color.Parse("#FFE6E8EB"));
         private StreamGeometry _geometry = null;
         private IBrush _fill = null;
         private Pen _borderPen = null;

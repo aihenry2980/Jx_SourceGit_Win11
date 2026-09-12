@@ -139,6 +139,10 @@ namespace SourceGit.Models
             set;
         } = 360;
 
+        public bool IsCommitFlowPlanExpanded { get; set; } = true;
+
+        public bool IsCommitFlowParentChainExpanded { get; set; } = false;
+
         public int PreferredGitIgnoreStorageKind
         {
             get;

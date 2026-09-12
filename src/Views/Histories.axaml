@@ -309,7 +309,7 @@
                       </Border>
 
                       <ItemsControl Margin="1,0"
-                                    ItemsSource="{Binding SubmoduleUpdateBadges}"
+                                    ItemsSource="{Binding VisibleSubmoduleUpdateBadges}"
                                     IsVisible="{Binding HasSubmodulePointerChange}">
                         <ItemsControl.ItemsPanel>
                           <ItemsPanelTemplate>
@@ -319,20 +319,20 @@
                         <ItemsControl.ItemTemplate>
                           <DataTemplate DataType="m:SubmoduleUpdateBadge">
                             <Grid Height="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Converter={x:Static c:DoubleConverters.ToHistoryBadgeHeight}}"
-                                  MinWidth="28"
-                                  MaxWidth="216"
+                                  MinWidth="22"
+                                  MaxWidth="180"
                                   ClipToBounds="True"
                                   ContextRequested="OnSubmoduleUpdateBadgeContextRequested"
                                   ToolTip.Tip="{Binding Path}">
                               <v:SubmoduleUpdateBadgeShape AccentColor="{Binding AccentColor}"
                                                            IsHitTestVisible="False"/>
-                              <StackPanel Margin="10,0,5,0" Orientation="Horizontal" Spacing="3">
+                              <StackPanel Margin="7,0,4,0" Orientation="Horizontal" Spacing="2">
                                 <Path Width="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Converter={x:Static c:DoubleConverters.ToHistoryBadgeIconSize}}"
                                       Height="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Converter={x:Static c:DoubleConverters.ToHistoryBadgeIconSize}}"
                                       VerticalAlignment="Center"
                                       Data="{StaticResource Icons.Submodule}"
                                       Fill="{Binding AccentColor, Converter={x:Static c:CommitConverters.UInt32ToBrush}}"/>
-                                <TextBlock MaxWidth="180"
+                                <TextBlock MaxWidth="148"
                                            FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Converter={x:Static c:DoubleConverters.ToHistoryBadgeFontSize}}"
                                            FontWeight="Bold"
                                            Foreground="{Binding AccentColor, Converter={x:Static c:CommitConverters.UInt32ToBrush}}"
@@ -344,6 +344,18 @@
                           </DataTemplate>
                         </ItemsControl.ItemTemplate>
                       </ItemsControl>
+
+                      <Button Classes="flat"
+                              MinWidth="26"
+                              Height="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Converter={x:Static c:DoubleConverters.ToHistoryBadgeHeight}}"
+                              Padding="4,0"
+                              Margin="2,0"
+                              FontSize="11"
+                              Content="{Binding SubmoduleUpdateBadgeToggleText}"
+                              IsVisible="{Binding HasMoreSubmoduleUpdateBadges}"
+                              ToolTip.Tip="Expand or collapse submodule tags"
+                              AutomationProperties.Name="Expand or collapse submodule tags"
+                              Click="OnToggleSubmoduleUpdateBadges"/>
 
                       <Border Width="16"
                               Height="16"
@@ -427,7 +439,6 @@
                                                 Subject="{Binding HistoryDisplaySubject}"
                                                 IssueTrackers="{Binding $parent[v:Histories].IssueTrackers}"
                                                 FontWeight="{Binding ., Converter={x:Static c:CommitConverters.SubjectFontWeight}}"
-                                                Opacity="{Binding IsMerged, Converter={x:Static c:BoolConverters.IsMergedToOpacity}}"
                                                 PointerPressed="OnCommitSubjectPointerPressed"
                                                 PointerMoved="OnCommitSubjectPointerMoved"
                                                 PointerReleased="OnCommitSubjectPointerReleased"
@@ -444,6 +455,7 @@
 
           <DataGridTemplateColumn Width="SizeToCells"
                                   MinWidth="80"
+                                  MaxWidth="220"
                                   CanUserResize="True"
                                   IsReadOnly="True"
                                   IsVisible="{Binding IsAuthorColumnVisible, Mode=OneWay}">
@@ -460,15 +472,14 @@
                             HorizontalAlignment="Left"
                             VerticalAlignment="Center"
                             User="{Binding Author}"
-                            Opacity="{Binding IsMerged, Converter={x:Static c:BoolConverters.IsMergedToOpacity}}"
                             IsHitTestVisible="False"/>
 
                   <Border Grid.Column="1" Padding="8,0" ClipToBounds="True">
                     <TextBlock Text="{Binding Author.Name}"
                                FontWeight="{Binding IsCurrentHead, Converter={x:Static c:BoolConverters.IsBoldToFontWeight}}"
                                Foreground="{Binding ., Converter={x:Static c:CommitConverters.HeadAwareForeground}}"
-                               Opacity="{Binding IsMerged, Converter={x:Static c:BoolConverters.IsMergedToOpacity}}"
-                               HorizontalAlignment="Left"/>
+                               TextTrimming="CharacterEllipsis"
+                               ToolTip.Tip="{Binding Author.Name}"/>
                   </Border>
                 </Grid>
               </DataTemplate>
@@ -477,6 +488,7 @@
 
           <DataGridTemplateColumn Width="SizeToCells"
                                   MinWidth="120"
+                                  MaxWidth="220"
                                   CanUserResize="True"
                                   IsReadOnly="True"
                                   IsVisible="{Binding IsDateTimeColumnVisible, Mode=OneWay}">
@@ -499,7 +511,6 @@
                   <v:CommitTimeTextBlock FontFeatures="+tnum"
                                          FontWeight="{Binding IsCurrentHead, Converter={x:Static c:BoolConverters.IsBoldToFontWeight}}"
                                          Foreground="{Binding ., Converter={x:Static c:CommitConverters.HeadAwareForeground}}"
-                                         Opacity="{Binding IsMerged, Converter={x:Static c:BoolConverters.IsMergedToOpacity}}"
                                          FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Mode=OneWay}"
                                          UseAuthorTime="{Binding Source={x:Static vm:Preferences.Instance}, Path=ShowAuthorTimeInGraph, Mode=OneWay}"
                                          ShowAsDateTime="{Binding Source={x:Static vm:Preferences.Instance}, Path=!DisplayTimeAsPeriodInHistories, Mode=OneWay}"
@@ -511,6 +522,19 @@
           </DataGridTemplateColumn>
         </DataGrid.Columns>
       </v:HistoriesCommitList>
+      <Border Background="Transparent"
+              Width="26"
+              Height="24"
+              HorizontalAlignment="Left" VerticalAlignment="Top">
+        <Button Classes="icon_button"
+                Width="18" Height="18"
+                Margin="4,0,0,0"
+                HorizontalAlignment="Left" VerticalAlignment="Center"
+                Click="OnOpenConfiguration">
+          <Path Width="12" Height="12"
+                Data="{StaticResource Icons.Settings2}"/>
+        </Button>
+      </Border>
       <v:CommitGraph x:Name="CommitGraph"
                      Graph="{Binding Graph}"
                      DotBrush="{DynamicResource Brush.Contents}"

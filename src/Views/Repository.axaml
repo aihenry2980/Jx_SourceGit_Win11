@@ -327,7 +327,7 @@
                     <Button Classes="icon_button"
                             Width="26"
                             Height="26"
-                            Command="{Binding DiscardAllChanges}"
+                            Click="OnDiscardAllChanges"
                             ToolTip.Tip="{DynamicResource Text.Repository.DiscardAll}">
                       <Path Width="12" Height="12" Data="{StaticResource Icons.Undo}"/>
                     </Button>
@@ -400,7 +400,7 @@
                   <Button Grid.Column="3"
                           Classes="icon_button"
                           Width="26" Height="26"
-                          Command="{Binding ClearStashes}"
+                          Click="OnClearStashes"
                           IsVisible="{Binding !IsLeftSidebarCompact}"
                           IsEnabled="{Binding StashesCount, Converter={x:Static c:IntConverters.IsGreaterThanZero}}"
                           ToolTip.Tip="{DynamicResource Text.Repository.ClearStashes}">
@@ -1377,7 +1377,8 @@
                   HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                   Background="Transparent"
                   BorderThickness="0,0,1,0"
-                  BorderBrush="{DynamicResource Brush.Border0}"/>
+                  BorderBrush="{DynamicResource Brush.Border0}"
+                  Focusable="False"/>
 
     <!-- Right -->
     <Grid Grid.Column="2" RowDefinitions="Auto,Auto,Auto,*">

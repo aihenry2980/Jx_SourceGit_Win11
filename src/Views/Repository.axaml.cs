@@ -145,6 +145,22 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
+        private void OnDiscardAllChanges(object _, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+                repo.WorkingCopy.DiscardAllChanges();
+
+            e.Handled = true;
+        }
+
+        private void OnClearStashes(object _, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+                repo.StashesPage.ClearStashes();
+
+            e.Handled = true;
+        }
+
         private async void OnRestoreCleanStateRecursively(object _, RoutedEventArgs e)
         {
             if (DataContext is not ViewModels.Repository repo || !repo.CanCreatePopup())

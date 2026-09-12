@@ -8,6 +8,11 @@
              mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="720"
              x:Class="SourceGit.Views.SubmoduleCommitFlow"
              x:DataType="vm:SubmoduleCommitFlow">
+  <UserControl.Resources>
+    <x:Double x:Key="ExpanderMinHeight">28</x:Double>
+    <x:Double x:Key="ExpanderChevronButtonSize">20</x:Double>
+    <Thickness x:Key="ExpanderHeaderPadding">8,0</Thickness>
+  </UserControl.Resources>
   <Grid>
     <Grid x:Name="LayoutRootGrid">
       <Grid.ColumnDefinitions>
@@ -45,70 +50,49 @@
       </Border>
 
       <Border Grid.Row="1"
-              Padding="12,8"
+              Grid.RowSpan="2"
+              Padding="10,5"
               BorderBrush="{DynamicResource Brush.Border0}"
               BorderThickness="0,0,1,1">
-        <Grid ColumnDefinitions="*,Auto">
-          <TextBlock Grid.Column="0"
-                     Text="{Binding Summary}"
-                     TextWrapping="Wrap"
-                     Foreground="{DynamicResource Brush.FG2}"/>
-          <v:LoadingIcon Grid.Column="1"
-                         Width="16"
-                         Height="16"
-                         Margin="8,0,0,0"
+        <Grid ColumnDefinitions="*,Auto,Auto">
+          <StackPanel VerticalAlignment="Center" Spacing="2">
+            <TextBlock Text="{Binding Summary}"
+                       FontSize="12"
+                       TextTrimming="CharacterEllipsis"
+                       ToolTip.Tip="{Binding Summary}"
+                       Foreground="{DynamicResource Brush.FG2}"/>
+            <TextBlock Text="{Binding RecommendedNextText}"
+                       FontSize="12"
+                       FontWeight="SemiBold"
+                       TextTrimming="CharacterEllipsis"
+                       ToolTip.Tip="{Binding RecommendedNextText}"
+                       IsVisible="{Binding HasRecommendedNode}"/>
+          </StackPanel>
+          <v:LoadingIcon Grid.Column="1" Width="16" Height="16"
+                         Margin="6,0"
                          IsVisible="{Binding IsLoading}"/>
-        </Grid>
-      </Border>
-
-      <Border Grid.Row="2"
-              Margin="8,6,8,0"
-              Padding="8,5"
-              CornerRadius="6"
-              BorderBrush="#FF168A63"
-              BorderThickness="1"
-              Background="#1822A06B"
-              IsVisible="{Binding HasRecommendedNode}">
-        <Grid ColumnDefinitions="*,Auto">
-          <TextBlock VerticalAlignment="Center"
-                     FontSize="12"
-                     FontWeight="SemiBold"
-                     Foreground="#FF16724E"
-                     Text="{Binding RecommendedNextText}"
-                     TextTrimming="CharacterEllipsis"/>
-          <Button Grid.Column="1"
+          <Button Grid.Column="2"
                   Classes="flat"
                   Margin="8,0,0,0"
                   Padding="8,2"
                   Content="Work next"
+                  IsVisible="{Binding HasRecommendedNode}"
                   Click="OnSelectRecommendedNodeClicked"/>
         </Grid>
       </Border>
 
-      <Border Grid.Row="3"
-              Margin="8,6"
-              Padding="8,6"
-              CornerRadius="6"
-              BorderBrush="{DynamicResource Brush.Border0}"
-              BorderThickness="1"
-              Background="{DynamicResource Brush.Contents}"
-              IsVisible="{Binding HasParentChain}">
-        <StackPanel Orientation="Vertical" Spacing="5">
-          <Grid ColumnDefinitions="Auto,*">
-            <TextBlock Grid.Column="0"
-                       FontSize="11"
-                       FontWeight="Bold"
-                       Foreground="{DynamicResource Brush.FG1}"
-                       Text="Parent chain"/>
-            <TextBlock Grid.Column="1"
-                       Margin="8,0,0,0"
-                       HorizontalAlignment="Right"
-                       FontSize="11"
-                       Foreground="{DynamicResource Brush.FG2}"
-                       Text="{Binding ParentChainSummary}"
-                       TextTrimming="CharacterEllipsis"/>
-          </Grid>
-
+      <Expander Grid.Row="3"
+                Margin="8,2"
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Stretch"
+                Header="Parent chain"
+                FontSize="12"
+                ToolTip.Tip="{Binding ParentChainSummary}"
+                IsExpanded="{Binding IsParentChainExpanded, Mode=TwoWay}"
+                IsVisible="{Binding HasParentChain}">
+        <StackPanel Spacing="4">
+          <TextBlock FontSize="11" Text="{Binding ParentChainSummary}"
+                     Foreground="{DynamicResource Brush.FG2}"/>
           <ScrollViewer HorizontalScrollBarVisibility="Auto"
                         VerticalScrollBarVisibility="Disabled">
             <ItemsControl ItemsSource="{Binding ParentChainSteps}">
@@ -152,11 +136,11 @@
             </ItemsControl>
           </ScrollViewer>
         </StackPanel>
-      </Border>
+      </Expander>
 
       <ListBox x:Name="ModuleList"
                Grid.Row="4"
-               MaxHeight="420"
+               MaxHeight="280"
                Background="{DynamicResource Brush.Contents}"
                BorderThickness="0,0,1,0"
                BorderBrush="{DynamicResource Brush.Border0}"
@@ -166,19 +150,19 @@
                KeyDown="OnModuleListKeyDown">
         <ListBox.Styles>
           <Style Selector="ListBoxItem">
-            <Setter Property="MinHeight" Value="46"/>
+            <Setter Property="MinHeight" Value="42"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Margin" Value="0"/>
           </Style>
           <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Background" Value="{DynamicResource Brush.AccentHovered}"/>
           </Style>
         </ListBox.Styles>
         <ListBox.ItemTemplate>
           <DataTemplate DataType="vm:SubmoduleCommitFlowNode">
             <Grid Margin="0"
                   ColumnDefinitions="16,Auto,*"
-                  MinHeight="46"
+                  MinHeight="42"
                   DoubleTapped="OnNodeDoubleTapped"
                   ContextRequested="OnNodeContextRequested">
               <TextBlock Grid.Column="0"
@@ -204,58 +188,56 @@
                     <Ellipse Width="7"
                              Height="7"
                              Margin="5.5,0"
-                             Fill="#E85D5B"/>
+                             Fill="{Binding $parent[ListBoxItem].((vm:SubmoduleCommitFlowNode)DataContext).StatusForeground}"/>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
 
               <Border Grid.Column="2"
-                      Margin="2,4,6,4"
-                      Padding="7,4"
-                      CornerRadius="6"
-                      BorderThickness="{Binding SelectionBorderThickness}"
-                      BorderBrush="{Binding SelectionBorderBrush}">
-                <Border Padding="8,5"
-                        CornerRadius="5"
-                        BorderThickness="2,0,0,0"
-                        BorderBrush="{Binding BorderBrush}"
-                      Background="{Binding StatusBackground}">
+                      Margin="2,1,6,1"
+                      Padding="8,3"
+                      BorderThickness="3,0,0,0"
+                      BorderBrush="{Binding BorderBrush}"
+                      ToolTip.Tip="{Binding RepoPath}">
                 <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto">
                   <TextBlock Grid.Row="0"
                              Grid.Column="0"
+                             FontSize="14"
                              FontWeight="SemiBold"
                              Text="{Binding DisplayName}"
                              TextTrimming="CharacterEllipsis"/>
                   <Border Grid.Row="0"
                           Grid.Column="1"
                           Margin="8,0,0,0"
-                          Padding="10,2"
-                          CornerRadius="10"
+                          Padding="5,1"
+                          CornerRadius="3"
                           Background="{Binding StatusBackground}"
                           BorderBrush="{Binding StatusForeground}"
                           BorderThickness="1.25">
                     <TextBlock Text="{Binding StatusText}"
-                               FontSize="12"
+                               FontSize="11"
                                FontWeight="Bold"
                                Foreground="{Binding StatusForeground}"/>
                   </Border>
 
-                  <StackPanel Grid.Row="1"
+                  <Grid Grid.Row="1"
                               Grid.Column="0"
                               Grid.ColumnSpan="2"
-                              Margin="0,4,0,0"
-                              Orientation="Horizontal"
-                              Spacing="8">
+                              Margin="0,1,0,0"
+                              ColumnDefinitions="*,Auto">
                     <TextBlock FontSize="11"
+                               MaxWidth="160"
+                               TextTrimming="CharacterEllipsis"
+                               ToolTip.Tip="{Binding Branch}"
                                Foreground="{DynamicResource Brush.FG2}"
                                Text="{Binding Branch}"/>
-                    <TextBlock FontSize="11"
+                    <TextBlock Grid.Column="1" FontSize="11"
+                               Margin="8,0,0,0"
                                Foreground="{DynamicResource Brush.FG2}"
                                FontFamily="{DynamicResource Fonts.Monospace}"
                                Text="{Binding HeadShort}"/>
-                  </StackPanel>
+                  </Grid>
                 </Grid>
-                </Border>
               </Border>
             </Grid>
           </DataTemplate>
@@ -271,7 +253,7 @@
 
       <Grid Grid.Row="6" RowDefinitions="Auto,Auto,*" Background="{DynamicResource Brush.Contents}">
         <Border Grid.Row="0"
-                Padding="10,7"
+                Padding="10,4"
                 BorderBrush="{DynamicResource Brush.Border0}"
                 BorderThickness="0,1,1,1">
           <Grid ColumnDefinitions="Auto,*,Auto">
@@ -304,52 +286,53 @@
         <Border Grid.Row="1"
                 BorderBrush="{DynamicResource Brush.Border0}"
                 BorderThickness="0,0,1,1">
-          <WrapPanel Margin="8,2,4,2"
-                     Orientation="Horizontal"
-                     HorizontalAlignment="Stretch">
+          <Grid Margin="8,2,4,2" ColumnDefinitions="*,Auto,28,28,28">
             <TextBlock VerticalAlignment="Center"
                        Margin="0,2,8,2"
                        FontWeight="Bold"
+                       FontSize="12"
+                       TextTrimming="CharacterEllipsis"
+                       ToolTip.Tip="{Binding CommitIncludeSummary}"
                        Foreground="{DynamicResource Brush.FG2}">
-              <Run Text="Changes "/>
+              <Run Text="{Binding IncludedChangeCount}"/>
+              <Run Text="/"/>
               <Run Text="{Binding Changes, Converter={x:Static c:ListConverters.ToCount}}"/>
             </TextBlock>
 
-            <TextBlock VerticalAlignment="Center"
-                       Margin="0,2,8,2"
-                       MaxWidth="128"
-                       FontSize="11"
-                       Foreground="{DynamicResource Brush.FG2}"
-                       Text="{Binding CommitIncludeSummary}"
-                       TextTrimming="CharacterEllipsis"/>
-
-            <CheckBox VerticalAlignment="Center"
-                      Margin="0,2,8,2"
+            <CheckBox Grid.Column="1" VerticalAlignment="Center"
+                      Margin="0,2,4,2"
+                      FontSize="12"
                       Content="Untracked"
                       IsChecked="{Binding IncludeUntrackedChanges, Mode=TwoWay}"
                       ToolTip.Tip="Include untracked files in Commit Flow scan"/>
 
-            <v:ChangeViewModeSwitcher Width="28"
+            <v:ChangeViewModeSwitcher Grid.Column="2" Width="28"
                                       Height="24"
-                                      Margin="0,2,4,2"
+                                      Margin="0,2"
                                       ViewMode="{Binding ChangeViewMode, Mode=TwoWay}"/>
 
-            <Button Classes="flat"
+            <Button Grid.Column="3" Classes="icon_button"
+                    Width="28"
                     Height="24"
-                    Margin="0,2,4,2"
-                    Padding="8,0"
-                    Content="Skip all"
-                    Click="OnExcludeAllChangesClicked"
-                    IsEnabled="{Binding HasChanges}"/>
-
-            <Button Classes="flat"
-                    Height="24"
-                    Margin="0,2,4,2"
-                    Padding="8,0"
-                    Content="Include all"
+                    Margin="0,2"
+                    ToolTip.Tip="Include all changes"
+                    AutomationProperties.Name="Include all changes"
                     Click="OnIncludeAllChangesClicked"
-                    IsEnabled="{Binding HasChanges}"/>
-          </WrapPanel>
+                    IsEnabled="{Binding HasChanges}">
+              <Path Width="14" Height="14" Data="{StaticResource Icons.Check}"/>
+            </Button>
+
+            <Button Grid.Column="4" Classes="icon_button"
+                    Width="28"
+                    Height="24"
+                    Margin="0,2"
+                    ToolTip.Tip="Skip all changes"
+                    AutomationProperties.Name="Skip all changes"
+                    Click="OnExcludeAllChangesClicked"
+                    IsEnabled="{Binding HasChanges}">
+              <Path Width="14" Height="14" Data="{StaticResource Icons.Minus}"/>
+            </Button>
+          </Grid>
         </Border>
 
         <v:ChangeCollectionView x:Name="ChangesList"
@@ -445,13 +428,12 @@
                               ShowAdvancedOptions="False"
                               CommitMessage="{Binding CommitMessage, Mode=TwoWay}"/>
 
-      <Border Grid.Row="3"
+      <Expander Grid.Row="3"
               Margin="0,6,0,0"
-              Padding="8,5"
-              BorderBrush="{DynamicResource Brush.Border0}"
-              BorderThickness="1"
-              CornerRadius="4"
-              Background="{DynamicResource Brush.Contents}">
+              HorizontalAlignment="Stretch"
+              HorizontalContentAlignment="Stretch"
+              Header="Commit preview"
+              IsExpanded="{Binding IsCommitPlanExpanded, Mode=TwoWay}">
         <ScrollViewer MaxHeight="108"
                       HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto">
@@ -461,7 +443,7 @@
                                Foreground="{DynamicResource Brush.FG2}"
                                TextWrapping="Wrap"/>
         </ScrollViewer>
-      </Border>
+      </Expander>
 
       <Grid Grid.Row="4" ColumnDefinitions="*,Auto,Auto,Auto,Auto" Margin="0,8,0,0">
         <TextBlock Grid.Column="0"

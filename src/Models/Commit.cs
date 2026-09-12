@@ -39,8 +39,42 @@ namespace SourceGit.Models
         public List<SubmoduleUpdateBadge> SubmoduleUpdateBadges
         {
             get => _submoduleUpdateBadges;
-            set => SetProperty(ref _submoduleUpdateBadges, value);
+            set
+            {
+                if (SetProperty(ref _submoduleUpdateBadges, value))
+                {
+                    OnPropertyChanged(nameof(VisibleSubmoduleUpdateBadges));
+                    OnPropertyChanged(nameof(HasMoreSubmoduleUpdateBadges));
+                    OnPropertyChanged(nameof(SubmoduleUpdateBadgeToggleText));
+                }
+            }
         }
+
+        public IReadOnlyList<SubmoduleUpdateBadge> VisibleSubmoduleUpdateBadges =>
+            IsSubmoduleBadgeListExpanded || SubmoduleUpdateBadges.Count <= 2
+                ? SubmoduleUpdateBadges
+                : SubmoduleUpdateBadges.GetRange(0, 2);
+
+        public bool HasMoreSubmoduleUpdateBadges => SubmoduleUpdateBadges.Count > 2;
+
+        public string SubmoduleUpdateBadgeToggleText => IsSubmoduleBadgeListExpanded
+            ? "-"
+            : $"+{SubmoduleUpdateBadges.Count - 2}";
+
+        public bool IsSubmoduleBadgeListExpanded
+        {
+            get => _isSubmoduleBadgeListExpanded;
+            set
+            {
+                if (SetProperty(ref _isSubmoduleBadgeListExpanded, value))
+                {
+                    OnPropertyChanged(nameof(VisibleSubmoduleUpdateBadges));
+                    OnPropertyChanged(nameof(SubmoduleUpdateBadgeToggleText));
+                }
+            }
+        }
+
+        private bool _isSubmoduleBadgeListExpanded;
         public bool HasRenameOrCopyChange { get; set; } = false;
         public bool HasTypeChange { get; set; } = false;
         public int Color { get; set; } = 0;

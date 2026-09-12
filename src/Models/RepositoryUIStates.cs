@@ -43,7 +43,7 @@ namespace SourceGit.Models
         {
             get;
             set;
-        } = 240;
+        } = 180;
 
         public bool EnableTopoOrderInHistory
         {
