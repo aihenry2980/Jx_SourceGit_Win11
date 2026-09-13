@@ -21,9 +21,6 @@ namespace SourceGit.Views
 {
     public partial class RepositoryToolbar : UserControl
     {
-        private const double COMPACT_WIDTH_THRESHOLD = 1260;
-        private const double NARROW_WIDTH_THRESHOLD = 1160;
-
         private enum ToolbarGitButtonKind
         {
             FetchFiltered,
@@ -41,27 +38,12 @@ namespace SourceGit.Views
         private sealed record ToolbarGitCommandSpec(string MenuLabel, string WindowTitle, string Description, string CommandText, Action<ViewModels.Repository> OnSuccess = null);
         private sealed record ExternalGitCommand(string WorkingDirectory, IReadOnlyList<string> Arguments);
 
-        private ToolbarDensity _toolbarDensity = ToolbarDensity.Default;
         private ContextMenu _activeToolbarGitCommandMenu = null;
 
         public RepositoryToolbar()
         {
             InitializeComponent();
             DataContextChanged += (_, _) => RefreshCustomActionSlots();
-        }
-
-        protected override void OnSizeChanged(SizeChangedEventArgs e)
-        {
-            base.OnSizeChanged(e);
-
-            var width = e.NewSize.Width;
-            var density =
-                width < NARROW_WIDTH_THRESHOLD ? ToolbarDensity.Narrow :
-                width < COMPACT_WIDTH_THRESHOLD ? ToolbarDensity.Compact :
-                ToolbarDensity.Default;
-
-            if (density != _toolbarDensity)
-                ApplyToolbarDensity(density);
         }
 
         private void OpenWithExternalTools(object sender, RoutedEventArgs ev)
@@ -373,6 +355,9 @@ namespace SourceGit.Views
                 {
                     new Border
                     {
+                        Width = 24,
+                        Height = 24,
+                        HorizontalAlignment = HorizontalAlignment.Center,
                         Background = new SolidColorBrush(color),
                         CornerRadius = new CornerRadius(5),
                         Padding = new Thickness(4),
@@ -1991,65 +1976,5 @@ namespace SourceGit.Views
             });
         }
 
-        private void ApplyToolbarDensity(ToolbarDensity density)
-        {
-            _toolbarDensity = density;
-
-            var buttonWidth = density switch
-            {
-                ToolbarDensity.Narrow => 56,
-                ToolbarDensity.Compact => 62,
-                _ => 68,
-            };
-            var utilityButtonWidth = density switch
-            {
-                ToolbarDensity.Narrow => 48,
-                ToolbarDensity.Compact => 54,
-                _ => 60,
-            };
-            var primaryGap = density switch
-            {
-                ToolbarDensity.Narrow => 2,
-                ToolbarDensity.Compact => 4,
-                _ => 8,
-            };
-            var secondaryGap = density switch
-            {
-                ToolbarDensity.Narrow => 1,
-                ToolbarDensity.Compact => 2,
-                _ => 4,
-            };
-            var sideMargin = density == ToolbarDensity.Default ? 4 : 2;
-
-            LeftToolbarGroup.Margin = new Thickness(sideMargin, 0, 0, 0);
-            RightToolbarGroup.Margin = new Thickness(0, 0, sideMargin, 0);
-            UpdateToolbarButtons(LeftToolbarGroup, utilityButtonWidth, 0);
-            UpdateToolbarButtons(CenterToolbarGroup, buttonWidth, primaryGap);
-            UpdateToolbarButtons(CustomActionSlots, buttonWidth, primaryGap);
-            UpdateToolbarButtons(RightToolbarGroup, buttonWidth, secondaryGap);
-            ActionSeparator.Margin = new Thickness(primaryGap, 0, 0, 0);
-        }
-
-        private static void UpdateToolbarButtons(StackPanel panel, double buttonWidth, double gap)
-        {
-            foreach (var button in panel.Children.OfType<Button>().Where(x => x.Classes.Contains("icon_button")))
-            {
-                button.Width = buttonWidth;
-
-                var margin = button.Margin;
-                button.Margin = new Thickness(
-                    margin.Left > 0 ? gap : 0,
-                    margin.Top,
-                    margin.Right,
-                    margin.Bottom);
-            }
-        }
-
-        private enum ToolbarDensity
-        {
-            Default,
-            Compact,
-            Narrow,
-        }
     }
 }

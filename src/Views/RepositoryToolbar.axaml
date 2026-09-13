@@ -8,13 +8,44 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="SourceGit.Views.RepositoryToolbar"
              x:DataType="vm:Repository">
+  <UserControl.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="Toolbar.Fetch" Color="#2563EB"/>
+          <SolidColorBrush x:Key="Toolbar.Pull" Color="#0F766E"/>
+          <SolidColorBrush x:Key="Toolbar.Undo" Color="#B45309"/>
+          <SolidColorBrush x:Key="Toolbar.Submodules" Color="#10893E"/>
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="Toolbar.Fetch" Color="#80ADFF"/>
+          <SolidColorBrush x:Key="Toolbar.Pull" Color="#62D6CA"/>
+          <SolidColorBrush x:Key="Toolbar.Undo" Color="#FBBF60"/>
+          <SolidColorBrush x:Key="Toolbar.Submodules" Color="#72D99A"/>
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+    </ResourceDictionary>
+  </UserControl.Resources>
   <UserControl.Styles>
     <Style Selector="TextBlock.toolbar_label">
-      <Setter Property="FontSize" Value="13.5"/>
+      <Setter Property="FontSize" Value="12"/>
       <Setter Property="HorizontalAlignment" Value="Center"/>
       <Setter Property="TextAlignment" Value="Center"/>
       <Setter Property="MaxWidth" Value="78"/>
       <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+    <Style Selector="Button.toolbar_button">
+      <Setter Property="Height" Value="46"/>
+      <Setter Property="Padding" Value="4,2"/>
+      <Setter Property="CornerRadius" Value="4"/>
+    </Style>
+    <Style Selector="Button.toolbar_button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Brush.AccentHovered}"/>
+    </Style>
+    <Style Selector="Border.toolbar_group">
+      <Setter Property="Margin" Value="6,2"/>
+      <Setter Property="Padding" Value="2,0"/>
+      <Setter Property="BorderThickness" Value="0,0,0,2"/>
     </Style>
     <Style Selector="TextBlock.tooltip_cmd">
       <Setter Property="Foreground" Value="#FF0F8CFF"/>
@@ -34,9 +65,9 @@
       <Setter Property="Margin" Value="6,0,0,0"/>
     </Style>
   </UserControl.Styles>
-  <Grid ColumnDefinitions="Auto,*,Auto">
-    <StackPanel x:Name="LeftToolbarGroup" Grid.Column="0" Orientation="Horizontal" Margin="4,0,0,0">
-      <Button x:Name="OpenWithExternalToolsButton" Classes="icon_button" Width="44" Click="OpenWithExternalTools">
+  <WrapPanel Orientation="Horizontal">
+    <StackPanel x:Name="LeftToolbarGroup" Orientation="Horizontal" Margin="4,2,6,2">
+      <Button x:Name="OpenWithExternalToolsButton" Classes="icon_button toolbar_button" Width="44" Click="OpenWithExternalTools">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Open this repository in external tools (Explorer, terminal, editor, browser remotes)." TextWrapping="Wrap" MaxWidth="420"/>
@@ -52,7 +83,7 @@
       </Button>
       <Button Width="0" Height="0" Click="OpenWithExternalToolsByHotKey" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+O, macOS=⌘+⌥+O}"/>
 
-      <Button x:Name="LogsButton" Classes="icon_button" Width="44" Click="OpenGitLogs" ContextRequested="OnLogsContextRequested" PointerPressed="OnLogsPointerPressed">
+      <Button x:Name="LogsButton" Classes="icon_button toolbar_button" Width="44" Click="OpenGitLogs" ContextRequested="OnLogsContextRequested" PointerPressed="OnLogsPointerPressed">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="View SourceGit command logs and operation history for this repository." TextWrapping="Wrap" MaxWidth="420"/>
@@ -70,7 +101,7 @@
 
       <Button Width="0" Height="0" Click="OpenMemoryProfilerByHotKey" IsVisible="False" HotKey="Ctrl+Alt+M"/>
       <Button Width="0" Height="0" Click="OpenCpuProfilerByHotKey" IsVisible="False" HotKey="Ctrl+Alt+Shift+M"/>
-      <Button Classes="icon_button" Width="44" Click="OpenStatistics">
+      <Button Classes="icon_button toolbar_button" Width="44" Click="OpenStatistics">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Show repository statistics such as commit activity and contributor trends." TextWrapping="Wrap" MaxWidth="420"/>
@@ -86,7 +117,7 @@
       </Button>
       <Button Width="0" Height="0" Click="OpenStatistics" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+I, macOS=⌘+⌥+I}"/>
 
-      <Button Classes="icon_button" Width="44" Click="CompareWithOtherRepo">
+      <Button Classes="icon_button toolbar_button" Width="60" Click="CompareWithOtherRepo">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Compare this repo with another open repo on the same remote URL but a different checked-out branch." TextWrapping="Wrap" MaxWidth="420"/>
@@ -100,7 +131,7 @@
         </StackPanel>
       </Button>
 
-      <Button Classes="icon_button" Width="44" Click="OpenConfigure">
+      <Button Classes="icon_button toolbar_button" Width="52" Click="OpenConfigure">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Open repository configuration (Git settings, local ignore, commit template, issue tracker, custom actions)." TextWrapping="Wrap" MaxWidth="420"/>
@@ -127,7 +158,7 @@
               ToolTip.Tip="{Binding CurrentBranchDisplayName}"
               PointerPressed="OnCurrentBranchNamePointerPressed">
         <TextBlock Text="{Binding CurrentBranchDisplayLabel}"
-                   MaxWidth="250"
+                   MaxWidth="180"
                    MaxLines="2"
                    TextWrapping="Wrap"
                    TextAlignment="Center"
@@ -149,10 +180,10 @@
       </Border>
     </StackPanel>
 
-    <StackPanel x:Name="CenterToolbarGroup" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
+    <StackPanel Orientation="Horizontal" Margin="4,2">
       <Button x:Name="SubmoduleCommitFlowButton"
-              Classes="icon_button"
-              Width="88"
+              Classes="icon_button toolbar_button"
+              Width="60"
               Click="OpenSubmoduleCommitFlow">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
@@ -162,236 +193,226 @@
         </ToolTip.Tip>
 
         <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
-          <Border Background="#FF0F766E" CornerRadius="5" Padding="4">
-            <Path Width="14" Height="14" HorizontalAlignment="Center" Fill="#FFFFE066" Data="{StaticResource Icons.Commit}"/>
+          <Border Background="#FF0F766E" CornerRadius="4" Padding="3" Width="24" Height="24" HorizontalAlignment="Center">
+            <Path Width="18" Height="18" HorizontalAlignment="Center" Fill="#FFFFE066" Data="{StaticResource Icons.Commit}"/>
           </Border>
           <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Commit"/>
         </StackPanel>
       </Button>
       <Button Width="0" Height="0" Click="OpenSubmoduleCommitFlow" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+Shift+F, macOS=âŒ˜+âŒ¥+â‡§+F}"/>
 
-      <!-- Standard SourceGit Fetch entry point -->
-      <Button x:Name="FetchButton"
-              Classes="icon_button"
-              AutomationProperties.Name="Fetch"
-              Width="56"
-              Margin="8,0,0,0"
-              Tapped="Fetch">
-        <ToolTip.Tip>
-          <StackPanel Orientation="Vertical">
-            <TextBlock Text="{DynamicResource Text.Fetch}"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="Open the standard SourceGit fetch options." Foreground="{DynamicResource Brush.FG2}"/>
-            <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Ctrl+click runs directly. Shortcut: Ctrl+Down." Foreground="{DynamicResource Brush.FG2}"/>
+    </StackPanel>
+
+    <Border Classes="toolbar_group" BorderBrush="{DynamicResource Toolbar.Fetch}" Background="#0C2563EB">
+      <StackPanel x:Name="FetchToolbarGroup" Orientation="Horizontal">
+        <!-- Standard SourceGit Fetch entry point -->
+        <Button x:Name="FetchButton"
+                Classes="icon_button toolbar_button"
+                AutomationProperties.Name="Fetch"
+                Width="56"
+                Margin="0"
+                Tapped="Fetch">
+          <ToolTip.Tip>
+            <StackPanel Orientation="Vertical">
+              <TextBlock Text="{DynamicResource Text.Fetch}"/>
+              <TextBlock Classes="small" Margin="0,4,0,0" Text="Open the standard SourceGit fetch options." Foreground="{DynamicResource Brush.FG2}"/>
+              <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Ctrl+click runs directly. Shortcut: Ctrl+Down." Foreground="{DynamicResource Brush.FG2}"/>
+            </StackPanel>
+          </ToolTip.Tip>
+
+          <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
+            <Grid Width="24" Height="24">
+              <Path Width="18" Height="18" HorizontalAlignment="Center" Fill="{DynamicResource Toolbar.Fetch}" Data="{StaticResource Icons.Fetch}"/>
+            </Grid>
+            <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Fetch"/>
           </StackPanel>
-        </ToolTip.Tip>
+        </Button>
+        <Button Width="0" Height="0" Click="FetchDirectlyByHotKey" IsVisible="False" HotKey="{OnPlatform Ctrl+Down, macOS=⌘+Down}"/>
 
-        <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
-          <Path Width="17" Height="17" HorizontalAlignment="Center" Data="{StaticResource Icons.Fetch}"/>
-          <TextBlock Classes="toolbar_label" Text="Fetch"/>
-        </StackPanel>
-      </Button>
-      <Button Width="0" Height="0" Click="FetchDirectlyByHotKey" IsVisible="False" HotKey="{OnPlatform Ctrl+Down, macOS=⌘+Down}"/>
+        <!-- Fetch scope: current graph filters -->
+        <Button x:Name="FetchFilteredButton"
+                Classes="icon_button toolbar_button"
+                AutomationProperties.Name="Fetch filtered branches"
+                Width="56"
+                Margin="0"
+                Click="FetchFiltered"
+                Tag="FetchFiltered"
+                ContextRequested="OnToolbarGitButtonContextRequested"
+                PointerPressed="OnToolbarGitButtonPointerPressed">
+          <ToolTip.Tip>
+            <StackPanel Orientation="Vertical">
+              <TextBlock Text="Fetch only the branch refs currently included by the graph filters." TextWrapping="Wrap" MaxWidth="680"/>
+              <TextBlock Classes="small" Margin="0,4,0,0" Text="Uses exact refspecs for the matching branches on the preferred remote. Tags and submodules are not fetched." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="680"/>
+              <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git fetch --no-tags &lt;remote&gt; &lt;filtered-refspecs...&gt;"/>
+              <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcut: Ctrl+Alt+F." Foreground="{DynamicResource Brush.FG2}"/>
+            </StackPanel>
+          </ToolTip.Tip>
 
-      <!-- Fetch scope: current graph filters -->
-      <Button x:Name="FetchFilteredButton"
-              Classes="icon_button"
-              AutomationProperties.Name="Fetch filtered branches"
-              Width="56"
-              Margin="12,0,0,0"
-              Click="FetchFiltered"
-              Tag="FetchFiltered"
-              ContextRequested="OnToolbarGitButtonContextRequested"
-              PointerPressed="OnToolbarGitButtonPointerPressed">
-        <ToolTip.Tip>
-          <StackPanel Orientation="Vertical">
-            <TextBlock Text="Fetch only the branch refs currently included by the graph filters." TextWrapping="Wrap" MaxWidth="680"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="Uses exact refspecs for the matching branches on the preferred remote. Tags and submodules are not fetched." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="680"/>
-            <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git fetch --no-tags &lt;remote&gt; &lt;filtered-refspecs...&gt;"/>
-            <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcut: Ctrl+Alt+F." Foreground="{DynamicResource Brush.FG2}"/>
+          <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
+            <Grid Width="24" Height="24">
+              <Path Width="18" Height="18" Fill="{DynamicResource Toolbar.Fetch}" Data="{StaticResource Icons.Filter}"/>
+            </Grid>
+            <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Filter"/>
           </StackPanel>
-        </ToolTip.Tip>
+        </Button>
+        <Button Width="0" Height="0" Click="FetchFilteredByHotKey" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+F, macOS=⌘+⌥+F}"/>
 
-        <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
-          <Grid Width="23" Height="20">
-            <Border Width="18" Height="18" HorizontalAlignment="Left" VerticalAlignment="Bottom" CornerRadius="5" Background="#FF2563EB">
-              <Path Width="11" Height="11" Fill="White" Data="{StaticResource Icons.Fetch}"/>
-            </Border>
-            <Border Width="11" Height="11" HorizontalAlignment="Right" VerticalAlignment="Top" CornerRadius="6" Background="#FFF59E0B" BorderBrush="{DynamicResource Brush.Window}" BorderThickness="1">
-              <Path Width="6" Height="6" Fill="#FF202020" Data="{StaticResource Icons.Filter}"/>
-            </Border>
-          </Grid>
-          <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Filter"/>
-        </StackPanel>
-      </Button>
-      <Button Width="0" Height="0" Click="FetchFilteredByHotKey" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+F, macOS=⌘+⌥+F}"/>
-
-      <!-- Fetch scope: all branches on the selected remote(s) -->
-      <Button x:Name="FetchAllBranchesButton"
-              Classes="icon_button"
-              AutomationProperties.Name="Fetch all branches"
-              Width="56"
-              Margin="8,0,0,0"
-              Tapped="FetchAllBranches"
-              Tag="FetchAllBranches"
-              ContextRequested="OnToolbarGitButtonContextRequested"
-              PointerPressed="OnToolbarGitButtonPointerPressed">
-        <ToolTip.Tip>
-          <StackPanel Orientation="Vertical">
-            <TextBlock Text="Fetch all branch refs from the preferred remote." TextWrapping="Wrap" MaxWidth="680"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="Runs immediately against the preferred remote without tags or submodule recursion." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="680"/>
-            <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git fetch --progress --verbose &lt;remote&gt;"/>
-            <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Alt+click: hand off to TortoiseGit Fetch." Foreground="{DynamicResource Brush.FG2}"/>
+        <!-- Fetch scope: all branches on the selected remote(s) -->
+        <Button x:Name="FetchAllBranchesButton"
+                Classes="icon_button toolbar_button"
+                AutomationProperties.Name="Fetch all branches"
+                Width="56"
+                Margin="0"
+                Tapped="FetchAllBranches"
+                Tag="FetchAllBranches"
+                ContextRequested="OnToolbarGitButtonContextRequested"
+                PointerPressed="OnToolbarGitButtonPointerPressed">
+          <ToolTip.Tip>
+            <StackPanel Orientation="Vertical">
+              <TextBlock Text="Fetch all branch refs from the preferred remote." TextWrapping="Wrap" MaxWidth="680"/>
+              <TextBlock Classes="small" Margin="0,4,0,0" Text="Runs immediately against the preferred remote without tags or submodule recursion." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="680"/>
+              <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git fetch --progress --verbose &lt;remote&gt;"/>
+              <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Alt+click: hand off to TortoiseGit Fetch." Foreground="{DynamicResource Brush.FG2}"/>
+            </StackPanel>
+          </ToolTip.Tip>
+          <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
+            <Grid Width="24" Height="24">
+              <Path Width="18" Height="18" Fill="{DynamicResource Toolbar.Fetch}" Data="{StaticResource Icons.Branch}"/>
+            </Grid>
+            <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="All"/>
           </StackPanel>
-        </ToolTip.Tip>
-        <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
-          <Grid Width="23" Height="20">
-            <Border Width="18" Height="18" HorizontalAlignment="Left" VerticalAlignment="Bottom" CornerRadius="5" Background="#FF2563EB">
-              <Path Width="11" Height="11" Fill="White" Data="{StaticResource Icons.Fetch}"/>
-            </Border>
-            <Border Width="11" Height="11" HorizontalAlignment="Right" VerticalAlignment="Top" CornerRadius="6" Background="#FF475569" BorderBrush="{DynamicResource Brush.Window}" BorderThickness="1">
-              <Path Width="6" Height="6" Fill="White" Data="{StaticResource Icons.Branch}"/>
-            </Border>
-          </Grid>
-          <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="All"/>
-        </StackPanel>
-      </Button>
-      <!-- Fetch scope: root repository and configured submodules -->
-      <Button x:Name="FetchWithSubmodulesButton"
-              Classes="icon_button"
-              AutomationProperties.Name="Fetch repository and submodules"
-              Width="56"
-              Margin="8,0,0,0"
-              Tapped="FetchRecursivelyWithOptionalPrune"
-              Tag="FetchRecursively"
-              ContextRequested="OnToolbarGitButtonContextRequested"
-              PointerPressed="OnToolbarGitButtonPointerPressed">
-        <ToolTip.Tip>
-          <StackPanel Orientation="Vertical">
-            <TextBlock Text="Fetch the root repository and configured submodules recursively." TextWrapping="Wrap" MaxWidth="680"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="Click also prunes stale remote refs. Ctrl+click fetches without pruning. The saved submodule selection is reused." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="680"/>
-            <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git fetch --prune; git -C &lt;submodule&gt; fetch --recurse-submodules --prune"/>
-            <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcuts: Ctrl+Alt+Shift+Down = prune; Ctrl+Alt+Down = no prune." Foreground="{DynamicResource Brush.FG2}"/>
+        </Button>
+        <!-- Fetch scope: root repository and configured submodules -->
+        <Button x:Name="FetchWithSubmodulesButton"
+                Classes="icon_button toolbar_button"
+                AutomationProperties.Name="Fetch repository and submodules"
+                Width="56"
+                Margin="0"
+                Tapped="FetchRecursivelyWithOptionalPrune"
+                Tag="FetchRecursively"
+                ContextRequested="OnToolbarGitButtonContextRequested"
+                PointerPressed="OnToolbarGitButtonPointerPressed">
+          <ToolTip.Tip>
+            <StackPanel Orientation="Vertical">
+              <TextBlock Text="Fetch the root repository and configured submodules recursively." TextWrapping="Wrap" MaxWidth="680"/>
+              <TextBlock Classes="small" Margin="0,4,0,0" Text="Click also prunes stale remote refs. Ctrl+click fetches without pruning. The saved submodule selection is reused." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="680"/>
+              <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git fetch --prune; git -C &lt;submodule&gt; fetch --recurse-submodules --prune"/>
+              <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcuts: Ctrl+Alt+Shift+Down = prune; Ctrl+Alt+Down = no prune." Foreground="{DynamicResource Brush.FG2}"/>
+            </StackPanel>
+          </ToolTip.Tip>
+
+          <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
+            <Grid Width="24" Height="24">
+              <Path Width="18" Height="18" Fill="{DynamicResource Toolbar.Fetch}" Data="{StaticResource Icons.Submodule}"/>
+            </Grid>
+            <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Subs"/>
           </StackPanel>
-        </ToolTip.Tip>
+        </Button>
+        <Button Width="0" Height="0" Click="FetchAndPruneRecursively" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+Shift+Down, macOS=⌘+⌥+⇧+Down}"/>
+        <Button Width="0" Height="0" Click="FetchRecursively" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+Down, macOS=⌘+⌥+Down}"/>
 
-        <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
-          <Grid Width="23" Height="20">
-            <Border Width="18" Height="18" HorizontalAlignment="Left" VerticalAlignment="Bottom" CornerRadius="5" Background="#FF2563EB">
-              <Path Width="11" Height="11" Fill="White" Data="{StaticResource Icons.Fetch}"/>
-            </Border>
-            <Border Width="11" Height="11" HorizontalAlignment="Right" VerticalAlignment="Top" CornerRadius="6" Background="#FF7C3AED" BorderBrush="{DynamicResource Brush.Window}" BorderThickness="1">
-              <Path Width="6" Height="6" Fill="White" Data="{StaticResource Icons.Submodule}"/>
-            </Border>
-          </Grid>
-          <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Subs"/>
-        </StackPanel>
-      </Button>
-      <Button Width="0" Height="0" Click="FetchAndPruneRecursively" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+Shift+Down, macOS=⌘+⌥+⇧+Down}"/>
-      <Button Width="0" Height="0" Click="FetchRecursively" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+Down, macOS=⌘+⌥+Down}"/>
+      </StackPanel>
+    </Border>
 
-      <!-- Standard SourceGit Pull entry point -->
-      <Button x:Name="PullButton"
-              Classes="icon_button"
-              AutomationProperties.Name="Pull"
-              Width="56"
-              Margin="12,0,0,0"
-              Tapped="Pull"
-              IsVisible="{Binding !IsBare}"
-              IsEnabled="{Binding !IsBare}">
-        <ToolTip.Tip>
-          <StackPanel Orientation="Vertical">
-            <TextBlock Text="{DynamicResource Text.Pull}"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="Open the standard SourceGit pull options." Foreground="{DynamicResource Brush.FG2}"/>
-            <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Ctrl+click runs directly. Shortcut: Ctrl+Shift+Down." Foreground="{DynamicResource Brush.FG2}"/>
+    <Border Classes="toolbar_group" BorderBrush="{DynamicResource Toolbar.Pull}" Background="#0C0F766E" IsVisible="{Binding !IsBare}">
+      <StackPanel x:Name="PullToolbarGroup" Orientation="Horizontal">
+        <!-- Standard SourceGit Pull entry point -->
+        <Button x:Name="PullButton"
+                Classes="icon_button toolbar_button"
+                AutomationProperties.Name="Pull"
+                Width="56"
+                Margin="0"
+                Tapped="Pull"
+                IsVisible="{Binding !IsBare}"
+                IsEnabled="{Binding !IsBare}">
+          <ToolTip.Tip>
+            <StackPanel Orientation="Vertical">
+              <TextBlock Text="{DynamicResource Text.Pull}"/>
+              <TextBlock Classes="small" Margin="0,4,0,0" Text="Open the standard SourceGit pull options." Foreground="{DynamicResource Brush.FG2}"/>
+              <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Ctrl+click runs directly. Shortcut: Ctrl+Shift+Down." Foreground="{DynamicResource Brush.FG2}"/>
+            </StackPanel>
+          </ToolTip.Tip>
+
+          <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
+            <Grid Width="24" Height="24" HorizontalAlignment="Center">
+              <Path Width="18" Height="18" Fill="{DynamicResource Toolbar.Pull}" Data="{StaticResource Icons.Pull}"/>
+              <Ellipse Width="7" Height="7"
+                       HorizontalAlignment="Right" VerticalAlignment="Top"
+                       Fill="Green"
+                       IsVisible="{Binding CurrentBranch?.Behind, Mode=OneWay, Converter={x:Static c:ListConverters.IsNotNullOrEmpty}}"/>
+            </Grid>
+            <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Pull"/>
           </StackPanel>
-        </ToolTip.Tip>
+        </Button>
 
-        <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
-          <Grid Width="20" Height="17" HorizontalAlignment="Center">
-            <Path Width="17" Height="17" Data="{StaticResource Icons.Pull}"/>
-            <Ellipse Width="7" Height="7"
-                     HorizontalAlignment="Right" VerticalAlignment="Top"
-                     Fill="Green"
-                     IsVisible="{Binding CurrentBranch?.Behind, Mode=OneWay, Converter={x:Static c:ListConverters.IsNotNullOrEmpty}}"/>
-          </Grid>
-          <TextBlock Classes="toolbar_label" Text="Pull"/>
-        </StackPanel>
-      </Button>
+        <!-- Pull scope: top repository only -->
+        <Button x:Name="PullTopRepositoryButton"
+                Classes="icon_button toolbar_button"
+                AutomationProperties.Name="Pull top repository only"
+                Width="56"
+                Margin="0"
+                Tapped="Pull"
+                Tag="Pull"
+                ContextRequested="OnToolbarGitButtonContextRequested"
+                PointerPressed="OnToolbarGitButtonPointerPressed"
+                IsVisible="{Binding !IsBare}"
+                IsEnabled="{Binding !IsBare}">
+          <ToolTip.Tip>
+            <StackPanel Orientation="Vertical">
+              <TextBlock Text="Pull remote changes into the current branch of the top repository only." TextWrapping="Wrap" MaxWidth="680"/>
+              <TextBlock Classes="small" Margin="0,4,0,0" Text="Submodule working trees are left untouched. Click opens pull options; Ctrl+click starts directly." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="680"/>
+              <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git pull --verbose --progress --no-rebase &lt;remote&gt; &lt;branch&gt;"/>
+              <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcut: Ctrl+Shift+Down (direct pull)." Foreground="{DynamicResource Brush.FG2}"/>
+              <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Alt+click: hand off to TortoiseGit Pull." Foreground="{DynamicResource Brush.FG2}"/>
+            </StackPanel>
+          </ToolTip.Tip>
 
-      <!-- Pull scope: top repository only -->
-      <Button x:Name="PullTopRepositoryButton"
-              Classes="icon_button"
-              AutomationProperties.Name="Pull top repository only"
-              Width="56"
-              Margin="8,0,0,0"
-              Tapped="Pull"
-              Tag="Pull"
-              ContextRequested="OnToolbarGitButtonContextRequested"
-              PointerPressed="OnToolbarGitButtonPointerPressed"
-              IsVisible="{Binding !IsBare}"
-              IsEnabled="{Binding !IsBare}">
-        <ToolTip.Tip>
-          <StackPanel Orientation="Vertical">
-            <TextBlock Text="Pull remote changes into the current branch of the top repository only." TextWrapping="Wrap" MaxWidth="680"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="Submodule working trees are left untouched. Click opens pull options; Ctrl+click starts directly." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="680"/>
-            <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git pull --verbose --progress --no-rebase &lt;remote&gt; &lt;branch&gt;"/>
-            <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcut: Ctrl+Shift+Down (direct pull)." Foreground="{DynamicResource Brush.FG2}"/>
-            <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Alt+click: hand off to TortoiseGit Pull." Foreground="{DynamicResource Brush.FG2}"/>
+          <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
+            <Grid Width="24" Height="24">
+              <Path Width="18" Height="18" Fill="{DynamicResource Toolbar.Pull}" Data="{StaticResource Icons.Home}"/>
+            </Grid>
+            <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Top"/>
           </StackPanel>
-        </ToolTip.Tip>
+        </Button>
+        <Button Width="0" Height="0" Click="PullDirectlyByHotKey" IsVisible="False" IsEnabled="{Binding !IsBare}" HotKey="{OnPlatform Ctrl+Shift+Down, macOS=⌘+Shift+Down}"/>
 
-        <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
-          <Grid Width="23" Height="20">
-            <Border Width="18" Height="18" HorizontalAlignment="Left" VerticalAlignment="Bottom" CornerRadius="5" Background="#FF0F766E">
-              <Path Width="11" Height="11" Fill="White" Data="{StaticResource Icons.Pull}"/>
-            </Border>
-            <Border Width="11" Height="11" HorizontalAlignment="Right" VerticalAlignment="Top" CornerRadius="6" Background="#FF475569" BorderBrush="{DynamicResource Brush.Window}" BorderThickness="1">
-              <Path Width="6" Height="6" Fill="White" Data="{StaticResource Icons.Home}"/>
-            </Border>
-          </Grid>
-          <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Top"/>
-        </StackPanel>
-      </Button>
-      <Button Width="0" Height="0" Click="PullDirectlyByHotKey" IsVisible="False" IsEnabled="{Binding !IsBare}" HotKey="{OnPlatform Ctrl+Shift+Down, macOS=⌘+Shift+Down}"/>
+        <!-- Pull scope: top repository followed by recursive submodule update -->
+        <Button x:Name="PullWithSubmodulesButton"
+                Classes="icon_button toolbar_button"
+                AutomationProperties.Name="Pull repository and update submodules"
+                Width="56"
+                Margin="0"
+                Tapped="SyncAll"
+                Tag="SyncAll"
+                ContextRequested="OnSyncAllContextRequested"
+                PointerPressed="OnSyncAllPointerPressed"
+                IsVisible="{Binding !IsBare}"
+                IsEnabled="{Binding !IsBare}">
+          <ToolTip.Tip>
+            <StackPanel Orientation="Vertical">
+              <TextBlock Text="Pull the top repository, then update configured submodules recursively." TextWrapping="Wrap" MaxWidth="680"/>
+              <TextBlock Classes="small" Margin="0,4,0,0" Text="The operation stops on the first failed stage and shows live Git output. Right-click to choose which submodules participate." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="680"/>
+              <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git pull ...; git submodule update --recursive --init"/>
+              <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Ctrl+click additionally fetches and prunes the configured submodules." Foreground="{DynamicResource Brush.FG2}"/>
+            </StackPanel>
+          </ToolTip.Tip>
 
-      <!-- Pull scope: top repository followed by recursive submodule update -->
-      <Button x:Name="PullWithSubmodulesButton"
-              Classes="icon_button"
-              AutomationProperties.Name="Pull repository and update submodules"
-              Width="56"
-              Margin="8,0,0,0"
-              Tapped="SyncAll"
-              Tag="SyncAll"
-              ContextRequested="OnSyncAllContextRequested"
-              PointerPressed="OnSyncAllPointerPressed"
-              IsVisible="{Binding !IsBare}"
-              IsEnabled="{Binding !IsBare}">
-        <ToolTip.Tip>
-          <StackPanel Orientation="Vertical">
-            <TextBlock Text="Pull the top repository, then update configured submodules recursively." TextWrapping="Wrap" MaxWidth="680"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="The operation stops on the first failed stage and shows live Git output. Right-click to choose which submodules participate." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="680"/>
-            <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git pull ...; git submodule update --recursive --init"/>
-            <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Ctrl+click additionally fetches and prunes the configured submodules." Foreground="{DynamicResource Brush.FG2}"/>
+          <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
+            <Grid Width="24" Height="24">
+              <Path Width="18" Height="18" Fill="{DynamicResource Toolbar.Pull}" Data="{StaticResource Icons.Submodule}"/>
+            </Grid>
+            <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Subs"/>
           </StackPanel>
-        </ToolTip.Tip>
+        </Button>
 
-        <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
-          <Grid Width="23" Height="20">
-            <Border Width="18" Height="18" HorizontalAlignment="Left" VerticalAlignment="Bottom" CornerRadius="5" Background="#FF0F766E">
-              <Path Width="11" Height="11" Fill="White" Data="{StaticResource Icons.Pull}"/>
-            </Border>
-            <Border Width="11" Height="11" HorizontalAlignment="Right" VerticalAlignment="Top" CornerRadius="6" Background="#FF7C3AED" BorderBrush="{DynamicResource Brush.Window}" BorderThickness="1">
-              <Path Width="6" Height="6" Fill="White" Data="{StaticResource Icons.Submodule}"/>
-            </Border>
-          </Grid>
-          <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Subs"/>
-        </StackPanel>
-      </Button>
+      </StackPanel>
+    </Border>
 
+    <StackPanel x:Name="MaintenanceToolbarGroup" Orientation="Horizontal" Margin="6,2">
       <Button x:Name="RefreshButton"
-              Classes="icon_button"
-              Width="56"
-              Margin="8,0,0,0"
+              Classes="icon_button toolbar_button"
+              Width="64"
+              Margin="0"
               Click="RefreshHistoryGraph"
               Tag="Refresh"
               ContextRequested="OnToolbarGitButtonContextRequested"
@@ -406,14 +427,14 @@
         </ToolTip.Tip>
 
         <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
-          <Border Background="#FF5C2D91" CornerRadius="5" Padding="4">
-            <Path Width="14" Height="14" Fill="White" Data="{StaticResource Icons.Refresh}"/>
-          </Border>
+          <Grid Width="24" Height="24">
+            <Path Width="18" Height="18" Fill="{DynamicResource Brush.FG1}" Data="{StaticResource Icons.Refresh}"/>
+          </Grid>
           <TextBlock Classes="toolbar_label" Text="Refresh"/>
         </StackPanel>
       </Button>
 
-      <Button x:Name="UndoRecentCommandsButton" Classes="icon_button" Width="56" Margin="8,0,0,0" Click="UndoRecentCommands" Tag="UndoRecentCommands" ContextRequested="OnToolbarGitButtonContextRequested" PointerPressed="OnToolbarGitButtonPointerPressed" IsVisible="{Binding !IsBare}" IsEnabled="{Binding !IsBare}">
+      <Button x:Name="UndoRecentCommandsButton" Classes="icon_button toolbar_button" Width="56" Margin="0" Click="UndoRecentCommands" Tag="UndoRecentCommands" ContextRequested="OnToolbarGitButtonContextRequested" PointerPressed="OnToolbarGitButtonPointerPressed" IsVisible="{Binding !IsBare}" IsEnabled="{Binding !IsBare}">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Show the latest reversible HEAD-changing git commands and choose whether to undo the recent 1, 2, or 3 commands." TextWrapping="Wrap" MaxWidth="960"/>
@@ -425,18 +446,18 @@
         </ToolTip.Tip>
 
         <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
-          <Border Background="#FFCA5010" CornerRadius="5" Padding="4">
-            <Path Width="14" Height="14" Fill="White" Data="{StaticResource Icons.Undo}"/>
-          </Border>
-          <TextBlock Classes="toolbar_label" Text="Undo R"/>
+          <Grid Width="24" Height="24">
+            <Path Width="18" Height="18" Fill="{DynamicResource Toolbar.Undo}" Data="{StaticResource Icons.Undo}"/>
+          </Grid>
+          <TextBlock Classes="toolbar_label" Text="Undo"/>
         </StackPanel>
       </Button>
       <Button Width="0" Height="0" Click="UndoLastRebase" IsVisible="False" IsEnabled="{Binding !IsBare}" HotKey="{OnPlatform Ctrl+Alt+Z, macOS=⌘+⌥+Z}"/>
 
       <Button x:Name="UpdateSubmodulesRecursivelyButton"
-              Classes="icon_button"
-              Width="56"
-              Margin="8,0,0,0"
+              Classes="icon_button toolbar_button"
+              Width="80"
+              Margin="0"
               Tapped="UpdateSubmodulesRecursively"
               Tag="UpdateSubmodulesRecursively"
               ContextRequested="OnToolbarGitButtonContextRequested"
@@ -454,16 +475,16 @@
         </ToolTip.Tip>
 
         <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
-          <Border Background="#FF10893E" CornerRadius="5" Padding="4">
-            <Path Width="14" Height="14" Fill="White" Data="{StaticResource Icons.Submodule}"/>
-          </Border>
-          <TextBlock Classes="toolbar_label" Text="Submod R"/>
+          <Grid Width="24" Height="24">
+            <Path Width="18" Height="18" Fill="{DynamicResource Toolbar.Submodules}" Data="{StaticResource Icons.Submodule}"/>
+          </Grid>
+          <TextBlock Classes="toolbar_label" Text="Submodules"/>
         </StackPanel>
       </Button>
       <Button Width="0" Height="0" Click="UpdateSubmodulesRecursively" IsVisible="False" IsEnabled="{Binding !IsBare}" HotKey="{OnPlatform Ctrl+Alt+U, macOS=⌘+⌥+U}"/>
 
       <Button x:Name="StashAllButton"
-              Classes="icon_button"
+              Classes="icon_button toolbar_button"
               Width="56"
               Margin="8,0,0,0"
               Tapped="StashAll"
@@ -488,17 +509,20 @@
       </Button>
       <Button Width="0" Height="0" Click="StashAllByHotKey" IsVisible="False" IsEnabled="{Binding !IsBare}" HotKey="{OnPlatform Ctrl+Alt+S, macOS=⌘+⌥+S}"/>
 
-      <Button Classes="icon_button" Width="32" Margin="16,0,0,0" Command="{Binding ApplyPatch}" IsVisible="False" ToolTip.Tip="{DynamicResource Text.Apply.Title}">
+      <Button Classes="icon_button toolbar_button" Width="32" Margin="16,0,0,0" Command="{Binding ApplyPatch}" IsVisible="False" ToolTip.Tip="{DynamicResource Text.Apply.Title}">
         <Path Width="14" Height="14" Data="{StaticResource Icons.ApplyPatch}"/>
       </Button>
 
+    </StackPanel>
+
+    <StackPanel x:Name="CustomToolbarGroup" Orientation="Horizontal" Margin="6,2">
       <Rectangle x:Name="ActionSeparator"
-                 Width="1" Height="16"
-                 Margin="8,0,0,0"
+                 Width="1" Height="28"
+                 Margin="0,0,4,0"
                  VerticalAlignment="Center"
                  Fill="{DynamicResource Brush.Border2}"/>
 
-      <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Command="{Binding CreateNewBranch}" IsVisible="False">
+      <Button Classes="icon_button toolbar_button" Width="56" Margin="8,0,0,0" Command="{Binding CreateNewBranch}" IsVisible="False">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Create a new local branch from the currently selected commit or current HEAD." TextWrapping="Wrap" MaxWidth="420"/>
@@ -513,7 +537,7 @@
         </StackPanel>
       </Button>
       <Button Width="0" Height="0" Click="CreateNewBranchByHotKey" IsVisible="False" HotKey="{OnPlatform Ctrl+Shift+B, macOS=⌘+⇧+B}"/>
-      <Button x:Name="OpenCustomActionMenuButton" Classes="icon_button" Width="56" Margin="8,0,0,0" Click="OpenCustomActionMenu">
+      <Button x:Name="OpenCustomActionMenuButton" Classes="icon_button toolbar_button" Width="56" Margin="8,0,0,0" Click="OpenCustomActionMenu">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Run user-defined custom actions (project scripts/commands) configured for this repository." TextWrapping="Wrap" MaxWidth="420"/>
@@ -529,12 +553,12 @@
       </Button>
 
       <StackPanel x:Name="CustomActionSlots" Orientation="Horizontal">
-        <Button x:Name="CustomActionSlot0Button" Classes="icon_button" Width="68" Margin="8,0,0,0" Click="ExecuteToolbarCustomAction" Tag="0"/>
-        <Button x:Name="CustomActionSlot1Button" Classes="icon_button" Width="68" Margin="8,0,0,0" Click="ExecuteToolbarCustomAction" Tag="1"/>
-        <Button x:Name="CustomActionSlot2Button" Classes="icon_button" Width="68" Margin="8,0,0,0" Click="ExecuteToolbarCustomAction" Tag="2"/>
+        <Button x:Name="CustomActionSlot0Button" Classes="icon_button toolbar_button" Width="68" Margin="8,0,0,0" Click="ExecuteToolbarCustomAction" Tag="0"/>
+        <Button x:Name="CustomActionSlot1Button" Classes="icon_button toolbar_button" Width="68" Margin="8,0,0,0" Click="ExecuteToolbarCustomAction" Tag="1"/>
+        <Button x:Name="CustomActionSlot2Button" Classes="icon_button toolbar_button" Width="68" Margin="8,0,0,0" Click="ExecuteToolbarCustomAction" Tag="2"/>
       </StackPanel>
 
-      <Button Classes="icon_button" Width="56" Margin="8,0,0,0" Click="Cleanup" IsVisible="False">
+      <Button Classes="icon_button toolbar_button" Width="56" Margin="8,0,0,0" Click="Cleanup" IsVisible="False">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Clean untracked files and directories from working tree (dangerous if misused)." TextWrapping="Wrap" MaxWidth="420"/>
@@ -552,8 +576,8 @@
       <Button Width="0" Height="0" Click="Cleanup" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+X, macOS=⌘+⌥+X}"/>
     </StackPanel>
 
-    <StackPanel x:Name="RightToolbarGroup" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,4,0">
-      <Button Classes="icon_button"
+    <StackPanel x:Name="RightToolbarGroup" Orientation="Horizontal" Margin="6,2,4,2">
+      <Button Classes="icon_button toolbar_button"
               Width="28"
               Height="24"
               Margin="6,0,0,0"
@@ -586,7 +610,7 @@
         <Path Width="12" Height="12" Data="{StaticResource Icons.Info}"/>
       </Button>
 
-      <Button Classes="icon_button" Width="56" Click="NavigateToHead">
+      <Button Classes="icon_button toolbar_button" Width="56" Click="NavigateToHead">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Jump graph and selection to the current HEAD commit (active branch tip or detached HEAD)." TextWrapping="Wrap" MaxWidth="420"/>
@@ -601,7 +625,7 @@
         </StackPanel>
       </Button>
       <Button Width="0" Height="0" Click="NavigateToHead" IsVisible="False" HotKey="{OnPlatform Ctrl+H, macOS=⌘+⌥+H}"/>
-      <Button Classes="icon_button"
+      <Button Classes="icon_button toolbar_button"
               Width="56"
               Margin="4,0,0,0"
               Click="NavigateToSuperProjectPointer"
@@ -620,5 +644,5 @@
         </StackPanel>
       </Button>
     </StackPanel>
-  </Grid>
+  </WrapPanel>
 </UserControl>

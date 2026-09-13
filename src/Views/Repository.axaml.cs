@@ -331,7 +331,7 @@ namespace SourceGit.Views
                 return;
 
             var rebaseBaseBranchHeight = string.IsNullOrEmpty(vm.RebaseBaseBranchDisplayName) ? 0.0 : 35.0;
-            var visibleHeaderHeight = 28.0 + 35.0 * 2 + rebaseBaseBranchHeight + (vm.IsInfrequentGroupExpanded ? 28.0 * 3 : 0);
+            var visibleHeaderHeight = 28.0 + 28.0 * 2 + rebaseBaseBranchHeight + (vm.IsInfrequentGroupExpanded ? 28.0 * 3 : 0);
             var leftHeight = LeftSidebarGroups.Bounds.Height - visibleHeaderHeight - 4;
             if (leftHeight <= 0)
                 return;

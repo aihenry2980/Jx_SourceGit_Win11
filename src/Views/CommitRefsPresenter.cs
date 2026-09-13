@@ -30,7 +30,6 @@ namespace SourceGit.Views
             public IBrush PrimaryIconBorderBrush { get; set; } = null;
             public IBrush SecondaryIconBackground { get; set; } = null;
             public IBrush TrackingRemoteBackground { get; set; } = null;
-            public IBrush TrackingLocalBackground { get; set; } = null;
             public IBrush BadgeBackground { get; set; } = null;
             public IBrush LabelBrush { get; set; } = null;
             public IBrush FoldButtonBackground { get; set; } = null;
@@ -244,7 +243,7 @@ namespace SourceGit.Views
                     {
                         context.DrawRectangle(s_headTagBackgroundBrush, null, entireRect);
                     }
-                    else if (useGraphColor)
+                    else if (useGraphColor || hasCompactTrackingBadge)
                     {
                         if (bg != null)
                             context.DrawRectangle(bg, null, entireRect);
@@ -304,8 +303,6 @@ namespace SourceGit.Views
 
                     if (item.Decorator?.Type == Models.DecoratorType.RemoteBranchHead)
                         DrawRemoteStripePattern(context, entireRect);
-                    else if (item.Decorator?.Type == Models.DecoratorType.Tag)
-                        DrawTagStripePattern(context, entireRect, fg);
 
                     var labelX = x + item.LeadingWidth + 4;
                     DrawLabelHighlights(context, item, labelX, centerY - item.Label.Height * 0.5);
@@ -624,7 +621,9 @@ namespace SourceGit.Views
                             geo = this.FindResource("Icons.Submodule") as StreamGeometry;
                             break;
                         case Models.DecoratorType.Tag:
-                            item.Brush = Brushes.Gray;
+                            item.Brush = this.FindResource("Brush.BG2") as IBrush ?? Brushes.Transparent;
+                            item.BorderBrush = this.FindResource("Brush.Border2") as IBrush ?? Brushes.Gray;
+                            item.UseSolidBackground = true;
                             geo = this.FindResource("Icons.Tag") as StreamGeometry;
                             break;
                         default:
@@ -666,6 +665,8 @@ namespace SourceGit.Views
 
                     var prefixWidth = prefixLabel?.WidthIncludingTrailingWhitespace ?? 0.0;
                     item.Width = item.LeadingWidth + (isHead ? 0 : 4) + prefixWidth + label.Width + 4;
+                    if (secondaryDecorator != null)
+                        item.Width += TRACKING_TAIL_WIDTH;
                     if (item.CanFold)
                         item.Width += 18;
                     else if (item.IsBranch)
@@ -703,24 +704,23 @@ namespace SourceGit.Views
         {
             var rect = clipRect.Rect;
             using (context.PushClip(clipRect))
-            using (context.PushOpacity(opacity))
             {
-                context.DrawRectangle(
-                    item.TrackingRemoteBackground ?? item.Brush,
-                    null,
-                    rect);
+                using (context.PushOpacity(opacity))
+                    context.DrawRectangle(item.Brush, null, rect);
 
-                var localBackground = item.TrackingLocalBackground ?? item.Brush;
-                var localArea = new StreamGeometry();
-                using (var geo = localArea.Open())
+                // Keep the remote texture outside the label and fold-button areas.
+                var tailRight = rect.Right - (item.CanFold ? 18.0 : 0.0);
+                var tail = new Rect(tailRight - TRACKING_TAIL_WIDTH, rect.Top, TRACKING_TAIL_WIDTH, rect.Height);
+                context.DrawRectangle(item.TrackingRemoteBackground ?? item.Brush, null, tail);
+                var pen = new Pen(item.BorderBrush ?? item.Brush, 1.0);
+                using (context.PushClip(tail))
+                using (context.PushOpacity(0.65))
                 {
-                    geo.BeginFigure(rect.BottomLeft, true);
-                    geo.LineTo(rect.TopRight);
-                    geo.LineTo(rect.BottomRight);
-                    geo.EndFigure(true);
+                    for (var startX = tail.Left - tail.Height; startX < tail.Right; startX += 6.0)
+                        context.DrawLine(pen, new Point(startX, tail.Bottom), new Point(startX + tail.Height, tail.Top));
                 }
 
-                context.DrawGeometry(localBackground, null, localArea);
+                context.DrawLine(pen, tail.TopLeft, tail.BottomLeft);
             }
         }
 
@@ -729,8 +729,7 @@ namespace SourceGit.Views
             if (item.Brush is not ISolidColorBrush solid)
                 return;
 
-            item.TrackingRemoteBackground = new SolidColorBrush(BlendColor(solid.Color, Colors.White, 0.58));
-            item.TrackingLocalBackground = new SolidColorBrush(BlendColor(solid.Color, Colors.Black, 0.26));
+            item.TrackingRemoteBackground = new SolidColorBrush(BlendColor(solid.Color, Colors.White, 0.78));
         }
 
         private static Color BlendColor(Color source, Color target, double amount)
@@ -748,25 +747,6 @@ namespace SourceGit.Views
                 BlendChannel(source.R, target.R, amount),
                 BlendChannel(source.G, target.G, amount),
                 BlendChannel(source.B, target.B, amount));
-        }
-
-        private static void DrawTagStripePattern(DrawingContext context, RoundedRect clipRect, IBrush brush)
-        {
-            var rect = clipRect.Rect;
-            var spacing = Math.Max(6.0, rect.Height * 0.38);
-            var pen = new Pen(brush ?? Brushes.Gray, 1.0);
-
-            using (context.PushClip(clipRect))
-            using (context.PushOpacity(0.14))
-            {
-                for (var startX = rect.Left - rect.Height; startX < rect.Right; startX += spacing)
-                {
-                    context.DrawLine(
-                        pen,
-                        new Point(startX, rect.Bottom),
-                        new Point(startX + rect.Height, rect.Top));
-                }
-            }
         }
 
         private static void DrawRemoteStripePattern(DrawingContext context, RoundedRect clipRect)
@@ -969,6 +949,8 @@ namespace SourceGit.Views
             const int tailLength = 12;
             return name.Length > tailLength + 3 ? $"...{name.Substring(name.Length - tailLength)}" : name;
         }
+
+        private const double TRACKING_TAIL_WIDTH = 18.0;
 
         private List<RenderItem> _items = new List<RenderItem>();
         private static readonly IBrush s_headTagBackgroundBrush = new SolidColorBrush(Color.Parse("#C62828"));
