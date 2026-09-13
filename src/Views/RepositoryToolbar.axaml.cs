@@ -490,6 +490,27 @@ namespace SourceGit.Views
             RefreshCustomActionSlots();
         }
 
+        private async void Fetch(object sender, TappedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+            {
+                await repo.FetchAsync(e.KeyModifiers is KeyModifiers.Control);
+                e.Handled = true;
+            }
+        }
+
+        private async void FetchDirectlyByHotKey(object sender, RoutedEventArgs e)
+        {
+            if (App.GetLauncher() is { CommandPalette: { } })
+                return;
+
+            if (DataContext is ViewModels.Repository repo)
+            {
+                await repo.FetchAsync(true);
+                e.Handled = true;
+            }
+        }
+
         private async void FetchAllBranches(object sender, TappedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo)
@@ -502,18 +523,6 @@ namespace SourceGit.Views
                     return;
                 }
 
-                await repo.FetchAllBranchesAsync();
-                e.Handled = true;
-            }
-        }
-
-        private async void FetchAllBranchesByHotKey(object sender, RoutedEventArgs e)
-        {
-            if (App.GetLauncher() is { CommandPalette: { } } launcher)
-                return;
-
-            if (DataContext is ViewModels.Repository repo)
-            {
                 await repo.FetchAllBranchesAsync();
                 e.Handled = true;
             }

@@ -170,12 +170,34 @@
       </Button>
       <Button Width="0" Height="0" Click="OpenSubmoduleCommitFlow" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+Shift+F, macOS=âŒ˜+âŒ¥+â‡§+F}"/>
 
+      <!-- Standard SourceGit Fetch entry point -->
+      <Button x:Name="FetchButton"
+              Classes="icon_button"
+              AutomationProperties.Name="Fetch"
+              Width="56"
+              Margin="8,0,0,0"
+              Tapped="Fetch">
+        <ToolTip.Tip>
+          <StackPanel Orientation="Vertical">
+            <TextBlock Text="{DynamicResource Text.Fetch}"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="Open the standard SourceGit fetch options." Foreground="{DynamicResource Brush.FG2}"/>
+            <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Ctrl+click runs directly. Shortcut: Ctrl+Down." Foreground="{DynamicResource Brush.FG2}"/>
+          </StackPanel>
+        </ToolTip.Tip>
+
+        <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
+          <Path Width="17" Height="17" HorizontalAlignment="Center" Data="{StaticResource Icons.Fetch}"/>
+          <TextBlock Classes="toolbar_label" Text="Fetch"/>
+        </StackPanel>
+      </Button>
+      <Button Width="0" Height="0" Click="FetchDirectlyByHotKey" IsVisible="False" HotKey="{OnPlatform Ctrl+Down, macOS=⌘+Down}"/>
+
       <!-- Fetch scope: current graph filters -->
       <Button x:Name="FetchFilteredButton"
               Classes="icon_button"
               AutomationProperties.Name="Fetch filtered branches"
               Width="56"
-              Margin="8,0,0,0"
+              Margin="12,0,0,0"
               Click="FetchFiltered"
               Tag="FetchFiltered"
               ContextRequested="OnToolbarGitButtonContextRequested"
@@ -218,7 +240,6 @@
             <TextBlock Text="Fetch all branch refs from the preferred remote." TextWrapping="Wrap" MaxWidth="680"/>
             <TextBlock Classes="small" Margin="0,4,0,0" Text="Runs immediately against the preferred remote without tags or submodule recursion." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="680"/>
             <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git fetch --progress --verbose &lt;remote&gt;"/>
-            <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcut: Ctrl+Down (direct fetch)." Foreground="{DynamicResource Brush.FG2}"/>
             <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Alt+click: hand off to TortoiseGit Fetch." Foreground="{DynamicResource Brush.FG2}"/>
           </StackPanel>
         </ToolTip.Tip>
@@ -234,8 +255,6 @@
           <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="All"/>
         </StackPanel>
       </Button>
-      <Button Width="0" Height="0" Click="FetchAllBranchesByHotKey" IsVisible="False" HotKey="{OnPlatform Ctrl+Down, macOS=⌘+Down}"/>
-
       <!-- Fetch scope: root repository and configured submodules -->
       <Button x:Name="FetchWithSubmodulesButton"
               Classes="icon_button"
@@ -270,12 +289,41 @@
       <Button Width="0" Height="0" Click="FetchAndPruneRecursively" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+Shift+Down, macOS=⌘+⌥+⇧+Down}"/>
       <Button Width="0" Height="0" Click="FetchRecursively" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+Down, macOS=⌘+⌥+Down}"/>
 
+      <!-- Standard SourceGit Pull entry point -->
+      <Button x:Name="PullButton"
+              Classes="icon_button"
+              AutomationProperties.Name="Pull"
+              Width="56"
+              Margin="12,0,0,0"
+              Tapped="Pull"
+              IsVisible="{Binding !IsBare}"
+              IsEnabled="{Binding !IsBare}">
+        <ToolTip.Tip>
+          <StackPanel Orientation="Vertical">
+            <TextBlock Text="{DynamicResource Text.Pull}"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="Open the standard SourceGit pull options." Foreground="{DynamicResource Brush.FG2}"/>
+            <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Ctrl+click runs directly. Shortcut: Ctrl+Shift+Down." Foreground="{DynamicResource Brush.FG2}"/>
+          </StackPanel>
+        </ToolTip.Tip>
+
+        <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
+          <Grid Width="20" Height="17" HorizontalAlignment="Center">
+            <Path Width="17" Height="17" Data="{StaticResource Icons.Pull}"/>
+            <Ellipse Width="7" Height="7"
+                     HorizontalAlignment="Right" VerticalAlignment="Top"
+                     Fill="Green"
+                     IsVisible="{Binding CurrentBranch?.Behind, Mode=OneWay, Converter={x:Static c:ListConverters.IsNotNullOrEmpty}}"/>
+          </Grid>
+          <TextBlock Classes="toolbar_label" Text="Pull"/>
+        </StackPanel>
+      </Button>
+
       <!-- Pull scope: top repository only -->
       <Button x:Name="PullTopRepositoryButton"
               Classes="icon_button"
               AutomationProperties.Name="Pull top repository only"
               Width="56"
-              Margin="12,0,0,0"
+              Margin="8,0,0,0"
               Tapped="Pull"
               Tag="Pull"
               ContextRequested="OnToolbarGitButtonContextRequested"
