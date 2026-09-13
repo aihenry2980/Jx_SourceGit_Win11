@@ -1402,7 +1402,17 @@ namespace SourceGit.ViewModels
                 ShowPopup(new Fetch(this));
         }
 
-        public async Task QuickFetchAsync(bool onlyFilteredBranches = false)
+        public Task FetchFilteredBranchesAsync()
+        {
+            return FetchBranchesByScopeAsync(true);
+        }
+
+        public Task FetchAllBranchesAsync()
+        {
+            return FetchBranchesByScopeAsync(false);
+        }
+
+        private async Task FetchBranchesByScopeAsync(bool onlyFilteredBranches)
         {
             if (!CanCreatePopup())
                 return;
@@ -1423,11 +1433,11 @@ namespace SourceGit.ViewModels
             var refspecs = onlyFilteredBranches ? await BuildQuickFetchFilteredRefSpecsAsync(remote).ConfigureAwait(false) : null;
             if (onlyFilteredBranches && (refspecs == null || refspecs.Count == 0))
             {
-                App.SendNotification(FullPath, $"Quick Fetch (Filtered) skipped because no included branch filters match remote '{remote}'.");
+                App.SendNotification(FullPath, $"Filtered Fetch skipped because no included branch filters match remote '{remote}'.");
                 return;
             }
 
-            var operationName = onlyFilteredBranches ? "Quick Fetch (Filtered)" : "Quick Fetch";
+            var operationName = onlyFilteredBranches ? "Filtered Fetch" : "Fetch All Branches";
             var log = CreateLog(operationName);
             var succ = false;
             using var cancellation = new CancellationTokenSource();
@@ -1484,91 +1494,12 @@ namespace SourceGit.ViewModels
                 App.SendNotification(FullPath, $"{operationName} failed. Review the repository log for details.");
         }
 
-        public async Task FastFetchCurrentUpstreamAsync()
-        {
-            const string originPrefix = "refs/remotes/origin/";
-            var current = CurrentBranch;
-            if (current is not { IsLocal: true } || string.IsNullOrWhiteSpace(current.Upstream))
-            {
-                App.SendNotification(FullPath, "Fast Fetch requires the current local branch to track origin/<branch>.");
-                return;
-            }
-
-            if (!current.Upstream.StartsWith(originPrefix, StringComparison.Ordinal) || current.Upstream.Length == originPrefix.Length)
-            {
-                App.SendNotification(FullPath, "Fast Fetch supports branches tracking origin/<branch> only.");
-                return;
-            }
-
-            var remoteBranch = current.Upstream[originPrefix.Length..];
-            var log = CreateLog("Fast Fetch");
-            var succeeded = false;
-            using var cancellation = new CancellationTokenSource();
-            _quickFetchCancellation = cancellation;
-            log.SetCancelAction(cancellation.Cancel);
-            var sawRefStatus = 0;
-            var refsChanged = 0;
-            var gitStopwatch = Stopwatch.StartNew();
-            AutoBackgroundOperationText = "Fast Fetch";
-            IsQuickFetching = true;
-            using var lockWatcher = LockWatcher();
-
-            try
-            {
-                var fetch = new Commands.Fetch(
-                    FullPath,
-                    "origin",
-                    true,
-                    false,
-                    false,
-                    false,
-                    [$"refs/heads/{remoteBranch}:{current.Upstream}"]);
-                fetch.OnOutputLine = line =>
-                {
-                    if (!IsFetchRefStatusLine(line, out var changed))
-                        return;
-
-                    Interlocked.Exchange(ref sawRefStatus, 1);
-                    if (changed)
-                        Interlocked.Exchange(ref refsChanged, 1);
-                };
-                succeeded = await fetch.WithCancellation(cancellation.Token).Use(log).RunAsync();
-            }
-            finally
-            {
-                gitStopwatch.Stop();
-                IsQuickFetching = false;
-                _quickFetchCancellation = null;
-                log.Complete(succeeded && !cancellation.IsCancellationRequested);
-            }
-
-            if (!succeeded)
-            {
-                App.SendNotification(FullPath, "Fast Fetch failed. Review the repository log for details.");
-                return;
-            }
-
-            TimeSpan refreshDuration;
-            if (sawRefStatus != 0 && refsChanged == 0)
-            {
-                _lastFetchTime = DateTime.Now;
-                _watcher?.MarkBranchUpdated();
-                refreshDuration = TimeSpan.Zero;
-            }
-            else
-            {
-                refreshDuration = await MarkFetchedAndMeasureRefreshAsync();
-            }
-
-            ShowFetchDurationToast(gitStopwatch.Elapsed, refreshDuration);
-        }
-
         public string GetPreferredRemoteNameForToolbarCommandEditor()
         {
             return GetPreferredRemoteName();
         }
 
-        public Task<List<string>> GetQuickFetchFilteredRefSpecsForToolbarCommandEditorAsync(string remoteName)
+        public Task<List<string>> GetFilteredFetchRefSpecsForToolbarCommandEditorAsync(string remoteName)
         {
             return BuildQuickFetchFilteredRefSpecsAsync(remoteName);
         }

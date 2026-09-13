@@ -26,10 +26,8 @@ namespace SourceGit.Views
 
         private enum ToolbarGitButtonKind
         {
-            SuperQuickFetch,
-            QuickFetch,
-            Fetch,
-            QuickPull,
+            FetchFiltered,
+            FetchAllBranches,
             Pull,
             SyncAll,
             FetchRecursively,
@@ -492,7 +490,7 @@ namespace SourceGit.Views
             RefreshCustomActionSlots();
         }
 
-        private async void Fetch(object sender, TappedEventArgs e)
+        private async void FetchAllBranches(object sender, TappedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo)
             {
@@ -504,75 +502,37 @@ namespace SourceGit.Views
                     return;
                 }
 
-                await repo.FetchAsync(e.KeyModifiers is KeyModifiers.Control);
+                await repo.FetchAllBranchesAsync();
                 e.Handled = true;
             }
         }
 
-        private async void FetchDirectlyByHotKey(object sender, RoutedEventArgs e)
+        private async void FetchAllBranchesByHotKey(object sender, RoutedEventArgs e)
         {
             if (App.GetLauncher() is { CommandPalette: { } } launcher)
                 return;
 
             if (DataContext is ViewModels.Repository repo)
             {
-                await repo.FetchAsync(true);
+                await repo.FetchAllBranchesAsync();
                 e.Handled = true;
             }
         }
 
-        private async void QuickFetch(object sender, TappedEventArgs e)
+        private async void FetchFiltered(object sender, RoutedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo)
             {
-                if (!TryLaunchQuickFetchInTerminal(repo))
-                    await repo.QuickFetchAsync();
+                await repo.FetchFilteredBranchesAsync();
                 e.Handled = true;
             }
         }
 
-        private async void SuperQuickFetch(object sender, RoutedEventArgs e)
+        private async void FetchFilteredByHotKey(object sender, RoutedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo)
             {
-                await repo.QuickFetchAsync(true);
-                e.Handled = true;
-            }
-        }
-
-        private async void SuperQuickFetchByHotKey(object sender, RoutedEventArgs e)
-        {
-            if (DataContext is ViewModels.Repository repo)
-            {
-                await repo.QuickFetchAsync(true);
-                e.Handled = true;
-            }
-        }
-
-        private async void QuickFetchByHotKey(object sender, RoutedEventArgs e)
-        {
-            if (DataContext is ViewModels.Repository repo)
-            {
-                if (!TryLaunchQuickFetchInTerminal(repo))
-                    await repo.QuickFetchAsync();
-                e.Handled = true;
-            }
-        }
-
-        private async void FastFetch(object sender, TappedEventArgs e)
-        {
-            if (DataContext is ViewModels.Repository repo)
-            {
-                await repo.FastFetchCurrentUpstreamAsync();
-                e.Handled = true;
-            }
-        }
-
-        private async void QuickPull(object sender, TappedEventArgs e)
-        {
-            if (DataContext is ViewModels.Repository repo)
-            {
-                await repo.QuickPullAsync();
+                await repo.FetchFilteredBranchesAsync();
                 e.Handled = true;
             }
         }
@@ -846,10 +806,8 @@ namespace SourceGit.Views
         {
             return kind switch
             {
-                ToolbarGitButtonKind.SuperQuickFetch => await BuildSuperQuickFetchCommandSpecAsync(repo),
-                ToolbarGitButtonKind.QuickFetch => BuildQuickFetchCommandSpec(repo),
-                ToolbarGitButtonKind.Fetch => BuildFetchCommandSpec(repo),
-                ToolbarGitButtonKind.QuickPull => BuildQuickPullCommandSpec(repo),
+                ToolbarGitButtonKind.FetchFiltered => await BuildFilteredFetchCommandSpecAsync(repo),
+                ToolbarGitButtonKind.FetchAllBranches => BuildFetchAllBranchesCommandSpec(repo),
                 ToolbarGitButtonKind.Pull => BuildPullCommandSpec(repo),
                 ToolbarGitButtonKind.SyncAll => BuildSyncAllCommandSpec(repo, alternateMode),
                 ToolbarGitButtonKind.FetchRecursively => await BuildFetchRecursivelyCommandSpecAsync(repo, alternateMode),
@@ -862,13 +820,13 @@ namespace SourceGit.Views
             };
         }
 
-        private async Task<ToolbarGitCommandSpec> BuildSuperQuickFetchCommandSpecAsync(ViewModels.Repository repo)
+        private async Task<ToolbarGitCommandSpec> BuildFilteredFetchCommandSpecAsync(ViewModels.Repository repo)
         {
             var remote = repo.GetPreferredRemoteNameForToolbarCommandEditor();
             if (string.IsNullOrWhiteSpace(remote))
                 return null;
 
-            var refspecs = await repo.GetQuickFetchFilteredRefSpecsForToolbarCommandEditorAsync(remote);
+            var refspecs = await repo.GetFilteredFetchRefSpecsForToolbarCommandEditorAsync(remote);
             var builder = new StringBuilder();
             if (refspecs.Count == 0)
                 builder.AppendLine($"# No included branch filters currently resolve to remote '{remote}'.");
@@ -879,13 +837,13 @@ namespace SourceGit.Views
 
             return new ToolbarGitCommandSpec(
                 "Edit command...",
-                "Edit SQFetch Command",
-                "Edit the Super Quick Fetch command for the preferred remote. This runs in the repository logs window.",
+                "Edit Filtered Fetch Command",
+                "Edit the fetch command generated from the current graph branch filters. This runs in the repository logs window.",
                 builder.ToString(),
                 r => r.MarkFetched());
         }
 
-        private ToolbarGitCommandSpec BuildQuickFetchCommandSpec(ViewModels.Repository repo)
+        private ToolbarGitCommandSpec BuildFetchAllBranchesCommandSpec(ViewModels.Repository repo)
         {
             var remote = repo.GetPreferredRemoteNameForToolbarCommandEditor();
             if (string.IsNullOrWhiteSpace(remote))
@@ -893,64 +851,10 @@ namespace SourceGit.Views
 
             return new ToolbarGitCommandSpec(
                 "Edit command...",
-                "Edit QFetch Command",
-                "Edit the Quick Fetch command for the preferred remote. This runs in the repository logs window.",
+                "Edit Fetch All Branches Command",
+                "Edit the command that fetches all branch refs from the preferred remote.",
                 $"git fetch --progress --verbose --no-tags {Quote(remote)}",
                 r => r.MarkFetched());
-        }
-
-        private ToolbarGitCommandSpec BuildFetchCommandSpec(ViewModels.Repository repo)
-        {
-            var noTags = repo.UIStates.FetchWithoutTags ? "--no-tags" : "--tags";
-            var force = repo.UIStates.EnableForceOnFetch ? " --force" : string.Empty;
-            var builder = new StringBuilder();
-            var remotes = repo.UIStates.FetchAllRemotes && repo.Remotes.Count > 1
-                ? repo.Remotes.Select(x => x.Name).ToList()
-                : new List<string>() { repo.GetPreferredRemoteNameForToolbarCommandEditor() ?? repo.Remotes.FirstOrDefault()?.Name };
-
-            foreach (var remote in remotes.Where(x => !string.IsNullOrWhiteSpace(x)))
-                builder.AppendLine($"git fetch --progress --verbose {noTags}{force} {Quote(remote)}");
-
-            if (builder.Length == 0)
-                return null;
-
-            return new ToolbarGitCommandSpec(
-                "Edit command...",
-                "Edit Fetch Command",
-                "Edit the current default Fetch command. If fetch-all-remotes is enabled, each remote is listed on its own line.",
-                builder.ToString().TrimEnd(),
-                r => r.MarkFetched());
-        }
-
-        private ToolbarGitCommandSpec BuildQuickPullCommandSpec(ViewModels.Repository repo)
-        {
-            var pull = new ViewModels.Pull(repo, null, false)
-            {
-                PreferQuickPath = true,
-                AllowQuickPathFallback = false,
-            };
-            if (pull.SelectedRemote == null || pull.SelectedBranch == null)
-                return null;
-
-            var remote = pull.SelectedRemote.Name;
-            var branch = pull.SelectedBranch.Name;
-            var remoteRef = $"refs/remotes/{remote}/{branch}";
-
-            var builder = new StringBuilder();
-            builder.Append("git fetch --progress --verbose ")
-                .Append(Quote(remote))
-                .Append(' ')
-                .Append(Quote($"refs/heads/{branch}:{remoteRef}"))
-                .AppendLine();
-            builder.Append("git merge --progress --no-edit --ff-only ")
-                .Append(Quote($"{remote}/{branch}"));
-
-            return new ToolbarGitCommandSpec(
-                "Edit command...",
-                "Edit Quick Pull Command",
-                "Edit the explicit fetch plus fast-forward-only merge sequence used by QPull. Commands run top to bottom in the repository logs window.",
-                builder.ToString(),
-                RefreshRepositoryAfterToolbarGitCommand);
         }
 
         private ToolbarGitCommandSpec BuildPullCommandSpec(ViewModels.Repository repo)
@@ -1006,8 +910,8 @@ namespace SourceGit.Views
 
             return new ToolbarGitCommandSpec(
                 alternateMode ? "Edit Ctrl command..." : "Edit command...",
-                alternateMode ? "Edit Sync All Ctrl Command" : "Edit Sync All Command",
-                "Edit the current Sync All command sequence. Commands run top to bottom in the repository logs window.",
+                alternateMode ? "Edit Pull + Submodules Ctrl Command" : "Edit Pull + Submodules Command",
+                "Edit the Pull + Submodules command sequence. Commands run top to bottom in the repository logs window.",
                 builder.ToString(),
                 RefreshRepositoryAfterToolbarGitCommand);
         }
@@ -1205,21 +1109,6 @@ namespace SourceGit.Views
                 normalized = normalized.Substring(0, normalized.Length - 4);
 
             return normalized.ToLowerInvariant();
-        }
-
-        private static bool TryLaunchQuickFetchInTerminal(ViewModels.Repository repo)
-        {
-            if (!OperatingSystem.IsWindows())
-                return false;
-
-            var remote = repo.GetPreferredRemoteNameForToolbarCommandEditor();
-            if (string.IsNullOrWhiteSpace(remote))
-                return false;
-
-            var command = new ExternalGitCommand(
-                repo.FullPath,
-                ["fetch", "--progress", "--verbose", "--no-tags", remote]);
-            return TryLaunchGitCommandsInTerminal(repo, "QFetch", [command], false);
         }
 
         private static async Task<bool> TryLaunchRecursiveFetchInTerminalAsync(ViewModels.Repository repo, bool prune)

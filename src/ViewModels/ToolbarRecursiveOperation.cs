@@ -442,11 +442,11 @@ namespace SourceGit.ViewModels
 
             Title = _mode switch
             {
-                ToolbarRecursiveOperationMode.ConfigureSelectionOnly => "Choose submodules for Sync All",
+                ToolbarRecursiveOperationMode.ConfigureSelectionOnly => "Choose submodules for Pull + Submodules",
                 _ => kind switch
                 {
                     ToolbarRecursiveOperationKind.PullAndUpdateSubmodulesRecursively => "Pull + Submodules",
-                    ToolbarRecursiveOperationKind.PullUpdateAndFetchPruneRecursively => "Pull + Submodules + F+Prune",
+                    ToolbarRecursiveOperationKind.PullUpdateAndFetchPruneRecursively => "Pull + Submodules + Fetch/Prune",
                     ToolbarRecursiveOperationKind.FetchAndPruneRecursively => App.Text("Repository.FetchAndPruneRecursively"),
                     ToolbarRecursiveOperationKind.FetchRecursively => App.Text("Repository.FetchRecursively"),
                     ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively => App.Text("Repository.UpdateSubmodulesRecursively"),
@@ -457,7 +457,7 @@ namespace SourceGit.ViewModels
 
             Description = _mode switch
             {
-                ToolbarRecursiveOperationMode.ConfigureSelectionOnly => "Choose which submodules Sync All should update. This selection is remembered for this repository.",
+                ToolbarRecursiveOperationMode.ConfigureSelectionOnly => "Choose which submodules Pull + Submodules should update. This selection is remembered for this repository.",
                 _ => kind switch
                 {
                     ToolbarRecursiveOperationKind.RestoreCleanStateRecursively => "Dangerous: discards tracked changes in the parent repository and initialized submodules, keeps untracked files, and restores submodules to the parent-recorded commits.",
@@ -577,7 +577,7 @@ namespace SourceGit.ViewModels
 
                 if (_mode == ToolbarRecursiveOperationMode.ConfigureSelectionOnly)
                 {
-                    App.SendNotification(_repo.FullPath, "Sync All submodule selection saved.");
+                    App.SendNotification(_repo.FullPath, "Pull + Submodules selection saved.");
                     return true;
                 }
 

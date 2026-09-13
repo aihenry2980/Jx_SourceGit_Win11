@@ -117,7 +117,7 @@
 
         <TextBlock Margin="0,7,0,0" FontWeight="Bold" Text="2026-08-08:"/>
         <TextBlock Margin="12,0,0,0" TextWrapping="Wrap" Text="1. Enhanced Commit Flow with selective file inclusion, per-file encoding detection and save conversion, custom action slots, and focused navigation."/>
-        <TextBlock Margin="12,0,0,0" TextWrapping="Wrap" Text="2. Accelerated recursive local-change workflows with lightweight submodule discovery, targeted post-revert refreshes, and Fast Fetch for the tracked origin branch."/>
+        <TextBlock Margin="12,0,0,0" TextWrapping="Wrap" Text="2. Added scope-based Fetch and Pull actions for filtered branches, all branches, and recursive submodule workflows."/>
       </StackPanel>
     </Border>
     </StackPanel>
