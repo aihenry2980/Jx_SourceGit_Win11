@@ -17,7 +17,7 @@ namespace SourceGit.Commands
 
         public async Task<Models.RepositoryStatus> GetResultAsync()
         {
-            Args = "--no-optional-locks status --porcelain=v2 -z -b -uall --ignore-submodules=all";
+            Args = "--no-optional-locks status --porcelain=v2 -z -b -uall --ignore-submodules=dirty";
             var rs = await ReadToEndAsync().ConfigureAwait(false);
             if (!rs.IsSuccess)
                 return null;

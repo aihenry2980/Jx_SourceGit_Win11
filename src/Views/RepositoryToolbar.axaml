@@ -134,6 +134,19 @@
                    TextTrimming="CharacterEllipsis"
                    Foreground="{Binding CurrentBranchDisplayForeground}"/>
       </Border>
+
+      <Border Margin="6,0,0,0"
+              Height="18"
+              Padding="6,0"
+              CornerRadius="9"
+              Background="{DynamicResource Brush.Badge}"
+              VerticalAlignment="Center"
+              IsVisible="{Binding CurrentBranch?.IsTrackStatusVisible, TargetNullValue=False, Mode=OneWay}">
+        <TextBlock Text="{Binding CurrentBranch?.TrackStatusDescription, Mode=OneWay}"
+                   FontFamily="{DynamicResource Fonts.Monospace}"
+                   FontSize="11"
+                   Foreground="{DynamicResource Brush.BadgeFG}"/>
+      </Border>
     </StackPanel>
 
     <StackPanel x:Name="CenterToolbarGroup" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
@@ -252,7 +265,6 @@
             <TextBlock Classes="small" Margin="0,4,0,0" Text="It runs directly in background, writes to repository logs, and fails instead of silently falling back if a fast-forward is not possible." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
           </StackPanel>
         </ToolTip.Tip>
-
         <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
           <Border Background="#FF0F766E" CornerRadius="5" Padding="4">
             <Path Width="14" Height="14" HorizontalAlignment="Center" Fill="#FFFFE066" Data="{StaticResource Icons.Pull}"/>
@@ -584,7 +596,8 @@
           <TextBlock Classes="toolbar_label" Text="Head"/>
         </StackPanel>
       </Button>
-      <Button Width="0" Height="0" Click="NavigateToHead" IsVisible="False" HotKey="{OnPlatform Ctrl+H, macOS=⌘+⌥+H}"/>      <Button Classes="icon_button"
+      <Button Width="0" Height="0" Click="NavigateToHead" IsVisible="False" HotKey="{OnPlatform Ctrl+H, macOS=⌘+⌥+H}"/>
+      <Button Classes="icon_button"
               Width="56"
               Margin="4,0,0,0"
               Click="NavigateToSuperProjectPointer"

@@ -99,6 +99,10 @@
                 </Border>
               </ControlTemplate>
             </Setter>
+
+            <Style Selector="^:nth-child(5)">
+              <Setter Property="AreSeparatorsVisible" Value="False"/>
+            </Style>
           </Style>
 
           <Style Selector="DataGridCell">
