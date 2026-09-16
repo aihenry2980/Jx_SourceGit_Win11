@@ -1402,17 +1402,12 @@ namespace SourceGit.ViewModels
                 ShowPopup(new Fetch(this));
         }
 
-        public Task FetchFilteredBranchesAsync()
-        {
-            return FetchBranchesByScopeAsync(true);
-        }
-
         public Task FetchAllBranchesAsync()
         {
-            return FetchBranchesByScopeAsync(false);
+            return FetchAllBranchesCoreAsync();
         }
 
-        private async Task FetchBranchesByScopeAsync(bool onlyFilteredBranches)
+        private async Task FetchAllBranchesCoreAsync()
         {
             if (!CanCreatePopup())
                 return;
@@ -1430,14 +1425,7 @@ namespace SourceGit.ViewModels
                 return;
             }
 
-            var refspecs = onlyFilteredBranches ? await BuildQuickFetchFilteredRefSpecsAsync(remote).ConfigureAwait(false) : null;
-            if (onlyFilteredBranches && (refspecs == null || refspecs.Count == 0))
-            {
-                App.SendNotification(FullPath, $"Filtered Fetch skipped because no included branch filters match remote '{remote}'.");
-                return;
-            }
-
-            var operationName = onlyFilteredBranches ? "Filtered Fetch" : "Fetch All Branches";
+            const string operationName = "Fetch All Branches";
             var log = CreateLog(operationName);
             var succ = false;
             using var cancellation = new CancellationTokenSource();
@@ -1452,9 +1440,7 @@ namespace SourceGit.ViewModels
 
             try
             {
-                var fetch = onlyFilteredBranches
-                    ? new Commands.Fetch(FullPath, remote, true, false, false, false, refspecs)
-                    : new Commands.Fetch(FullPath, remote, true, false);
+                var fetch = new Commands.Fetch(FullPath, remote, true, false);
                 fetch.OnOutputLine = line =>
                 {
                     if (!IsFetchRefStatusLine(line, out var changed))
@@ -1497,11 +1483,6 @@ namespace SourceGit.ViewModels
         public string GetPreferredRemoteNameForToolbarCommandEditor()
         {
             return GetPreferredRemoteName();
-        }
-
-        public Task<List<string>> GetFilteredFetchRefSpecsForToolbarCommandEditorAsync(string remoteName)
-        {
-            return BuildQuickFetchFilteredRefSpecsAsync(remoteName);
         }
 
         public List<string> GetFetchRemoteNamesForCurrentRepositoryForToolbarCommandEditor()
@@ -4941,128 +4922,6 @@ namespace SourceGit.ViewModels
             }
 
             return _remotes[0].Name;
-        }
-
-        private async Task<List<string>> BuildQuickFetchFilteredRefSpecsAsync(string remoteName)
-        {
-            var branchNames = new HashSet<string>(StringComparer.Ordinal);
-            if (_uiStates == null || string.IsNullOrEmpty(remoteName))
-                return [];
-
-            foreach (var filter in _uiStates.HistoryFilters)
-            {
-                if (filter.Mode != Models.FilterMode.Included)
-                    continue;
-
-                switch (filter.Type)
-                {
-                    case Models.FilterType.LocalBranch:
-                        AddQuickFetchLocalBranchTarget(filter.Pattern, remoteName, branchNames);
-                        break;
-                    case Models.FilterType.LocalBranchFolder:
-                        AddQuickFetchBranchFolderTargets(filter.Pattern, remoteName, true, branchNames);
-                        break;
-                    case Models.FilterType.RemoteBranch:
-                        AddQuickFetchRemoteBranchTarget(filter.Pattern, remoteName, branchNames);
-                        break;
-                    case Models.FilterType.RemoteBranchFolder:
-                        AddQuickFetchBranchFolderTargets(filter.Pattern, remoteName, false, branchNames);
-                        break;
-                }
-            }
-
-            var results = new List<string>();
-            if (branchNames.Count == 0)
-                return results;
-
-            var remote = new Commands.Remote(FullPath);
-            foreach (var branchName in branchNames)
-            {
-                if (await remote.HasBranchAsync(remoteName, branchName).ConfigureAwait(false))
-                    results.Add($"refs/heads/{branchName}:refs/remotes/{remoteName}/{branchName}");
-            }
-
-            return results;
-        }
-
-        private void AddQuickFetchBranchFolderTargets(string folderPattern, string remoteName, bool isLocalFolder, HashSet<string> branchNames)
-        {
-            if (string.IsNullOrEmpty(folderPattern))
-                return;
-
-            foreach (var branch in _branches)
-            {
-                if (branch == null || string.IsNullOrEmpty(branch.FullName) || branch.IsLocal != isLocalFolder)
-                    continue;
-
-                if (!IsBranchUnderFolder(branch.FullName, folderPattern))
-                    continue;
-
-                if (isLocalFolder)
-                    AddQuickFetchLocalBranchTarget(branch, remoteName, branchNames);
-                else
-                    AddQuickFetchRemoteBranchTarget(branch.FullName, remoteName, branchNames);
-            }
-        }
-
-        private void AddQuickFetchLocalBranchTarget(string fullName, string remoteName, HashSet<string> branchNames)
-        {
-            const string prefix = "refs/heads/";
-            if (string.IsNullOrEmpty(fullName) || !fullName.StartsWith(prefix, StringComparison.Ordinal))
-                return;
-
-            var branch = _branches.Find(x => x.IsLocal && x.FullName.Equals(fullName, StringComparison.Ordinal));
-            AddQuickFetchLocalBranchTarget(branch, remoteName, branchNames);
-        }
-
-        private void AddQuickFetchLocalBranchTarget(Models.Branch branch, string remoteName, HashSet<string> branchNames)
-        {
-            if (branch == null || string.IsNullOrEmpty(branch.Name))
-                return;
-
-            var remoteBranchName = string.Empty;
-            if (!string.IsNullOrEmpty(branch.Upstream) &&
-                branch.Upstream.StartsWith($"refs/remotes/{remoteName}/", StringComparison.Ordinal))
-            {
-                remoteBranchName = branch.Upstream.Substring($"refs/remotes/{remoteName}/".Length);
-            }
-            else
-            {
-                var sameNameRemote = _branches.Find(x =>
-                    !x.IsLocal &&
-                    x.Remote == remoteName &&
-                    x.Name.Equals(branch.Name, StringComparison.Ordinal));
-                if (sameNameRemote != null)
-                    remoteBranchName = sameNameRemote.Name;
-            }
-
-            if (string.IsNullOrEmpty(remoteBranchName))
-                return;
-
-            branchNames.Add(remoteBranchName);
-        }
-
-        private static void AddQuickFetchRemoteBranchTarget(string fullName, string remoteName, HashSet<string> branchNames)
-        {
-            var prefix = $"refs/remotes/{remoteName}/";
-            if (string.IsNullOrEmpty(fullName) || !fullName.StartsWith(prefix, StringComparison.Ordinal))
-                return;
-
-            var branchName = fullName.Substring(prefix.Length);
-            if (string.IsNullOrEmpty(branchName))
-                return;
-
-            branchNames.Add(branchName);
-        }
-
-        private static bool IsBranchUnderFolder(string fullName, string folderPattern)
-        {
-            if (string.IsNullOrEmpty(fullName) || string.IsNullOrEmpty(folderPattern))
-                return false;
-
-            return fullName.Length > folderPattern.Length &&
-                fullName.StartsWith(folderPattern, StringComparison.Ordinal) &&
-                fullName[folderPattern.Length] == '/';
         }
 
         public void ShowFetchDurationToast(TimeSpan gitDuration, TimeSpan guiRefreshDuration)

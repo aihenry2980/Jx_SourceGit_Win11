@@ -487,6 +487,7 @@
   <x:String x:Key="Text.GitLFS.Track" xml:space="preserve">Suivre les fichiers appelés '{0}'</x:String>
   <x:String x:Key="Text.GitLFS.TrackByExtension" xml:space="preserve">Suivre tous les fichiers *{0}</x:String>
   <x:String x:Key="Text.GotoRevisionSelector" xml:space="preserve">Sélectionner un commit</x:String>
+  <x:String x:Key="Text.Histories" xml:space="preserve">HISTORIQUE</x:String>
   <x:String x:Key="Text.Histories.Header.Author" xml:space="preserve">AUTEUR</x:String>
   <x:String x:Key="Text.Histories.Header.AuthorTime" xml:space="preserve">HEURE DE L'AUTEUR</x:String>
   <x:String x:Key="Text.Histories.Header.CommitTime" xml:space="preserve">HEURE DE COMMIT</x:String>

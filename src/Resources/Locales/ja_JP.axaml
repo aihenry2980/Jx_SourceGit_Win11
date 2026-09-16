@@ -519,6 +519,7 @@
   <x:String x:Key="Text.GitLFS.TrackByExtension" xml:space="preserve">*{0} ファイルをすべて追跡</x:String>
   <x:String x:Key="Text.GotoRevisionSelector" xml:space="preserve">コミットを選択</x:String>
   <x:String x:Key="Text.Histories.AdvancedOptions" xml:space="preserve">詳細オプション</x:String>
+  <x:String x:Key="Text.Histories" xml:space="preserve">履歴</x:String>
   <x:String x:Key="Text.Histories.Header.Author" xml:space="preserve">著者</x:String>
   <x:String x:Key="Text.Histories.Header.AuthorTime" xml:space="preserve">著者の日時</x:String>
   <x:String x:Key="Text.Histories.Header.CommitTime" xml:space="preserve">コミット日時</x:String>

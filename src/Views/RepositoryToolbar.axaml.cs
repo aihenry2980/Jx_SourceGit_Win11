@@ -23,7 +23,6 @@ namespace SourceGit.Views
     {
         private enum ToolbarGitButtonKind
         {
-            FetchFiltered,
             FetchAllBranches,
             Pull,
             SyncAll,
@@ -513,24 +512,6 @@ namespace SourceGit.Views
             }
         }
 
-        private async void FetchFiltered(object sender, RoutedEventArgs e)
-        {
-            if (DataContext is ViewModels.Repository repo)
-            {
-                await repo.FetchFilteredBranchesAsync();
-                e.Handled = true;
-            }
-        }
-
-        private async void FetchFilteredByHotKey(object sender, RoutedEventArgs e)
-        {
-            if (DataContext is ViewModels.Repository repo)
-            {
-                await repo.FetchFilteredBranchesAsync();
-                e.Handled = true;
-            }
-        }
-
         private async void FetchRecursivelyWithOptionalPrune(object sender, TappedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo)
@@ -800,7 +781,6 @@ namespace SourceGit.Views
         {
             return kind switch
             {
-                ToolbarGitButtonKind.FetchFiltered => await BuildFilteredFetchCommandSpecAsync(repo),
                 ToolbarGitButtonKind.FetchAllBranches => BuildFetchAllBranchesCommandSpec(repo),
                 ToolbarGitButtonKind.Pull => BuildPullCommandSpec(repo),
                 ToolbarGitButtonKind.SyncAll => BuildSyncAllCommandSpec(repo, alternateMode),
@@ -812,29 +792,6 @@ namespace SourceGit.Views
                 ToolbarGitButtonKind.StashAll => BuildStashAllCommandSpec(repo),
                 _ => null,
             };
-        }
-
-        private async Task<ToolbarGitCommandSpec> BuildFilteredFetchCommandSpecAsync(ViewModels.Repository repo)
-        {
-            var remote = repo.GetPreferredRemoteNameForToolbarCommandEditor();
-            if (string.IsNullOrWhiteSpace(remote))
-                return null;
-
-            var refspecs = await repo.GetFilteredFetchRefSpecsForToolbarCommandEditorAsync(remote);
-            var builder = new StringBuilder();
-            if (refspecs.Count == 0)
-                builder.AppendLine($"# No included branch filters currently resolve to remote '{remote}'.");
-
-            builder.Append("git fetch --progress --verbose --no-tags ").Append(Quote(remote));
-            foreach (var refspec in refspecs)
-                builder.Append(' ').Append(Quote(refspec));
-
-            return new ToolbarGitCommandSpec(
-                "Edit command...",
-                "Edit Filtered Fetch Command",
-                "Edit the fetch command generated from the current graph branch filters. This runs in the repository logs window.",
-                builder.ToString(),
-                r => r.MarkFetched());
         }
 
         private ToolbarGitCommandSpec BuildFetchAllBranchesCommandSpec(ViewModels.Repository repo)

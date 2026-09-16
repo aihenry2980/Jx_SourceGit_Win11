@@ -323,6 +323,7 @@
   <x:String x:Key="Text.GitLFS.Remote" xml:space="preserve">Віддалений:</x:String>
   <x:String x:Key="Text.GitLFS.Track" xml:space="preserve">Відстежувати файли, названі '{0}'</x:String>
   <x:String x:Key="Text.GitLFS.TrackByExtension" xml:space="preserve">Відстежувати всі *{0} файли</x:String>
+  <x:String x:Key="Text.Histories" xml:space="preserve">ІСТОРІЯ</x:String>
   <x:String x:Key="Text.Histories.Header.Author" xml:space="preserve">АВТОР</x:String>
   <x:String x:Key="Text.Histories.Header.AuthorTime" xml:space="preserve">ЧАС АВТОРА</x:String>
   <x:String x:Key="Text.Histories.Header.CommitTime" xml:space="preserve">ЧАС КОМІТУ</x:String>

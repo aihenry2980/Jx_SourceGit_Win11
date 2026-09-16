@@ -65,8 +65,8 @@
       <Setter Property="Margin" Value="6,0,0,0"/>
     </Style>
   </UserControl.Styles>
-  <WrapPanel Orientation="Horizontal">
-    <StackPanel x:Name="LeftToolbarGroup" Orientation="Horizontal" Margin="4,2,6,2">
+  <Grid ColumnDefinitions="Auto,*,Auto">
+    <StackPanel x:Name="LeftToolbarGroup" Grid.Column="0" Orientation="Horizontal" Margin="4,2,6,2">
       <Button x:Name="OpenWithExternalToolsButton" Classes="icon_button toolbar_button" Width="44" Click="OpenWithExternalTools">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
@@ -180,6 +180,10 @@
       </Border>
     </StackPanel>
 
+    <WrapPanel x:Name="CenterToolbarGroup"
+               Grid.Column="1"
+               Orientation="Horizontal"
+               HorizontalAlignment="Center">
     <StackPanel Orientation="Horizontal" Margin="4,2">
       <Button x:Name="SubmoduleCommitFlowButton"
               Classes="icon_button toolbar_button"
@@ -228,34 +232,6 @@
           </StackPanel>
         </Button>
         <Button Width="0" Height="0" Click="FetchDirectlyByHotKey" IsVisible="False" HotKey="{OnPlatform Ctrl+Down, macOS=⌘+Down}"/>
-
-        <!-- Fetch scope: current graph filters -->
-        <Button x:Name="FetchFilteredButton"
-                Classes="icon_button toolbar_button"
-                AutomationProperties.Name="Fetch filtered branches"
-                Width="56"
-                Margin="0"
-                Click="FetchFiltered"
-                Tag="FetchFiltered"
-                ContextRequested="OnToolbarGitButtonContextRequested"
-                PointerPressed="OnToolbarGitButtonPointerPressed">
-          <ToolTip.Tip>
-            <StackPanel Orientation="Vertical">
-              <TextBlock Text="Fetch only the branch refs currently included by the graph filters." TextWrapping="Wrap" MaxWidth="680"/>
-              <TextBlock Classes="small" Margin="0,4,0,0" Text="Uses exact refspecs for the matching branches on the preferred remote. Tags and submodules are not fetched." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="680"/>
-              <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git fetch --no-tags &lt;remote&gt; &lt;filtered-refspecs...&gt;"/>
-              <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcut: Ctrl+Alt+F." Foreground="{DynamicResource Brush.FG2}"/>
-            </StackPanel>
-          </ToolTip.Tip>
-
-          <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
-            <Grid Width="24" Height="24">
-              <Path Width="18" Height="18" Fill="{DynamicResource Toolbar.Fetch}" Data="{StaticResource Icons.Filter}"/>
-            </Grid>
-            <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Filter"/>
-          </StackPanel>
-        </Button>
-        <Button Width="0" Height="0" Click="FetchFilteredByHotKey" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+F, macOS=⌘+⌥+F}"/>
 
         <!-- Fetch scope: all branches on the selected remote(s) -->
         <Button x:Name="FetchAllBranchesButton"
@@ -576,7 +552,9 @@
       <Button Width="0" Height="0" Click="Cleanup" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+X, macOS=⌘+⌥+X}"/>
     </StackPanel>
 
-    <StackPanel x:Name="RightToolbarGroup" Orientation="Horizontal" Margin="6,2,4,2">
+    </WrapPanel>
+
+    <StackPanel x:Name="RightToolbarGroup" Grid.Column="2" Orientation="Horizontal" Margin="6,2,4,2">
       <Button Classes="icon_button toolbar_button"
               Width="28"
               Height="24"
@@ -644,5 +622,5 @@
         </StackPanel>
       </Button>
     </StackPanel>
-  </WrapPanel>
+  </Grid>
 </UserControl>

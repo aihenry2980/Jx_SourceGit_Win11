@@ -252,7 +252,10 @@
 
       <TabItem>
         <TabItem.Header>
-          <TextBlock Classes="tab_header" Text="LOCAL IGNORE"/>
+          <StackPanel Orientation="Horizontal" Classes="tab_header" Spacing="4">
+            <TextBlock FontWeight="Bold" Foreground="#FFD97706" Text="LOCAL"/>
+            <TextBlock Text="IGNORE"/>
+          </StackPanel>
         </TabItem.Header>
 
         <Grid Margin="16,8,16,12" RowDefinitions="Auto,*,Auto,Auto">

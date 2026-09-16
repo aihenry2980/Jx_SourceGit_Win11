@@ -511,6 +511,7 @@
   <x:String x:Key="Text.GitLFS.Track" xml:space="preserve">Παρακολούθηση αρχείων με όνομα '{0}'</x:String>
   <x:String x:Key="Text.GitLFS.TrackByExtension" xml:space="preserve">Παρακολούθηση όλων των αρχείων *{0}</x:String>
   <x:String x:Key="Text.GotoRevisionSelector" xml:space="preserve">Επιλογή commit</x:String>
+  <x:String x:Key="Text.Histories" xml:space="preserve">ΙΣΤΟΡΙΚΟ</x:String>
   <x:String x:Key="Text.Histories.Header.Author" xml:space="preserve">ΣΥΓΓΡΑΦΕΑΣ</x:String>
   <x:String x:Key="Text.Histories.Header.AuthorTime" xml:space="preserve">ΩΡΑ ΣΥΓΓΡΑΦΕΑ</x:String>
   <x:String x:Key="Text.Histories.Header.CommitTime" xml:space="preserve">ΩΡΑ COMMIT</x:String>

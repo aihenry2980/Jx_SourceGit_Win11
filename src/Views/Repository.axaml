@@ -55,6 +55,14 @@
     <Style Selector="Button.preset_clear:disabled">
       <Setter Property="Opacity" Value="0.3"/>
     </Style>
+    <Style Selector="Button.local_ignore_action">
+      <Setter Property="Width" Value="88"/>
+      <Setter Property="Height" Value="20"/>
+      <Setter Property="Padding" Value="5,0"/>
+      <Setter Property="BorderBrush" Value="#99D97706"/>
+      <Setter Property="Background" Value="#18D97706"/>
+      <Setter Property="FontWeight" Value="Normal"/>
+    </Style>
     <Style Selector="RadioButton.history_order_segment">
       <Setter Property="Height" Value="18"/>
       <Setter Property="MinWidth" Value="34"/>
@@ -318,8 +326,8 @@
                 </Grid>
               </ListBoxItem>
 
-              <ListBoxItem IsVisible="{Binding !IsBare}" Height="46">
-                <Grid Classes="view_mode" RowDefinitions="28,18" ColumnDefinitions="Auto,*,Auto">
+              <ListBoxItem IsVisible="{Binding !IsBare}" Height="52">
+                <Grid Classes="view_mode" RowDefinitions="28,24" ColumnDefinitions="Auto,*,Auto">
                   <Path Grid.Column="0" Classes="icon" Data="{StaticResource Icons.Changes}"/>
                   <TextBlock Grid.Column="1" Classes="header" Text="{DynamicResource Text.WorkingCopy}" IsVisible="{Binding !IsLeftSidebarCompact}"/>
                   <StackPanel Grid.Column="2"
@@ -354,20 +362,6 @@
                     <Button Classes="icon_button"
                             Width="26"
                             Height="26"
-                            Click="OnOpenLocalIgnoreConfigure"
-                            ToolTip.Tip="Local Git Ignore">
-                      <Path Width="12" Height="12" Data="{StaticResource Icons.GitIgnore}"/>
-                    </Button>
-                    <Button Classes="icon_button"
-                            Width="26"
-                            Height="26"
-                            Click="OnApplyLocalIgnoreRules"
-                            ToolTip.Tip="Refresh Local Ignore">
-                      <Path Width="12" Height="12" Data="{StaticResource Icons.Refresh}"/>
-                    </Button>
-                    <Button Classes="icon_button"
-                            Width="26"
-                            Height="26"
                             Click="OnDiscardAllChanges"
                             ToolTip.Tip="{DynamicResource Text.Repository.DiscardAll}">
                       <Path Width="12" Height="12" Data="{StaticResource Icons.Undo}"/>
@@ -384,7 +378,7 @@
                           Click="OnOpenRecursiveLocalChanges"
                           IsVisible="{Binding !IsLeftSidebarCompact}"
                           ToolTip.Tip="Show parent-repository changes and changed submodules recursively">
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
                       <Path Width="10"
                             Height="10"
                             Margin="0,0,6,0"
@@ -397,22 +391,41 @@
                     </StackPanel>
                   </Button>
 
-                  <Button Grid.Row="1"
-                          Grid.Column="2"
-                          Classes="icon_button"
-                          Width="24"
-                          Height="18"
-                          Margin="4,0,4,4"
-                          HorizontalAlignment="Right"
-                          VerticalAlignment="Center"
-                          IsVisible="{Binding !IsLeftSidebarCompact}"
-                          Click="OnRestoreCleanStateRecursively"
-                          ToolTip.Tip="Restore clean state recursively">
-                    <Path Width="11"
-                          Height="11"
-                          Fill="#FF7F1D1D"
-                          Data="{StaticResource Icons.Clean}"/>
-                  </Button>
+                  <StackPanel Grid.Row="1"
+                              Grid.Column="2"
+                              Orientation="Horizontal"
+                              HorizontalAlignment="Right"
+                              VerticalAlignment="Center"
+                              Margin="4,0,4,2"
+                              Spacing="2"
+                              IsVisible="{Binding !IsLeftSidebarCompact}">
+                    <Button Classes="flat local_ignore_action"
+                            Click="OnOpenLocalIgnoreConfigure"
+                            ToolTip.Tip="Edit repository-only ignore rules in .git/info/exclude">
+                      <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="3">
+                        <Path Width="10" Height="10" Data="{StaticResource Icons.GitIgnore}"/>
+                        <TextBlock FontSize="9" FontWeight="Bold" Foreground="#FFD97706" Text="LOCAL"/>
+                        <TextBlock FontSize="9" Foreground="{DynamicResource Brush.FG1}" Text="Ignore"/>
+                      </StackPanel>
+                    </Button>
+                    <Button Classes="icon_button"
+                            Width="22"
+                            Height="20"
+                            Click="OnApplyLocalIgnoreRules"
+                            ToolTip.Tip="Refresh LOCAL Ignore rules">
+                      <Path Width="11" Height="11" Fill="#FFD97706" Data="{StaticResource Icons.Refresh}"/>
+                    </Button>
+                    <Button Classes="icon_button"
+                            Width="22"
+                            Height="20"
+                            Click="OnRestoreCleanStateRecursively"
+                            ToolTip.Tip="Restore clean state recursively">
+                      <Path Width="11"
+                            Height="11"
+                            Fill="#FF7F1D1D"
+                            Data="{StaticResource Icons.Clean}"/>
+                    </Button>
+                  </StackPanel>
                 </Grid>
               </ListBoxItem>
 

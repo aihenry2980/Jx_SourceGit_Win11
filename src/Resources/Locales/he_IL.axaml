@@ -484,6 +484,7 @@
   <x:String x:Key="Text.GitLFS.Track" xml:space="preserve">מעקב אחר קבצים בשם '{0}'</x:String>
   <x:String x:Key="Text.GitLFS.TrackByExtension" xml:space="preserve">מעקב אחר כל הקבצים *{0}</x:String>
   <x:String x:Key="Text.GotoRevisionSelector" xml:space="preserve">בחר Commit</x:String>
+  <x:String x:Key="Text.Histories" xml:space="preserve">היסטוריה</x:String>
   <x:String x:Key="Text.Histories.Header.Author" xml:space="preserve">AUTHOR</x:String>
   <x:String x:Key="Text.Histories.Header.AuthorTime" xml:space="preserve">זמן AUTHOR</x:String>
   <x:String x:Key="Text.Histories.Header.CommitTime" xml:space="preserve">זמן COMMIT</x:String>
