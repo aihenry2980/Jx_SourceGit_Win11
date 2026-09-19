@@ -25,7 +25,6 @@ namespace SourceGit.Views
                 BtnGotoNextChange.HotKey = KeyGesture.Parse(isMacOS ? "Cmd+Alt+Down" : "Ctrl+Alt+Down");
                 BtnGotoLastChange.HotKey = KeyGesture.Parse(isMacOS ? "Cmd+Alt+End" : "Ctrl+Alt+End");
                 BtnOpenExternalMergeTool.HotKey = KeyGesture.Parse(isMacOS ? "Cmd+Shift+D" : "Ctrl+Shift+D");
-                ToggleBtnUseSideBySide.HotKey = KeyGesture.Parse("Shift+D");
             }
             else
             {
@@ -34,7 +33,6 @@ namespace SourceGit.Views
                 BtnGotoNextChange.HotKey = null;
                 BtnGotoLastChange.HotKey = null;
                 BtnOpenExternalMergeTool.HotKey = null;
-                ToggleBtnUseSideBySide.HotKey = null;
             }
         }
 
