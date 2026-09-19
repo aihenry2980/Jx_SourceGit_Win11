@@ -258,7 +258,7 @@
             <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="All"/>
           </StackPanel>
         </Button>
-        <!-- Fetch scope: root repository and configured submodules -->
+        <!-- Fetch scope: root repository and every initialized nested submodule -->
         <Button x:Name="FetchWithSubmodulesButton"
                 Classes="icon_button toolbar_button"
                 AutomationProperties.Name="Fetch repository and submodules"
@@ -270,22 +270,30 @@
                 PointerPressed="OnToolbarGitButtonPointerPressed">
           <ToolTip.Tip>
             <StackPanel Orientation="Vertical">
-              <TextBlock Text="Fetch the root repository and configured submodules recursively." TextWrapping="Wrap" MaxWidth="680"/>
-              <TextBlock Classes="small" Margin="0,4,0,0" Text="Click also prunes stale remote refs. Ctrl+click fetches without pruning. The saved submodule selection is reused." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="680"/>
-              <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git fetch --prune; git -C &lt;submodule&gt; fetch --recurse-submodules --prune"/>
-              <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcuts: Ctrl+Alt+Shift+Down = prune; Ctrl+Alt+Down = no prune." Foreground="{DynamicResource Brush.FG2}"/>
+              <TextBlock Text="Fetch and prune the top repository, then every initialized nested submodule." TextWrapping="Wrap" MaxWidth="680"/>
+              <TextBlock Classes="small" Margin="0,4,0,0" Text="Runs sequentially in the background. History refreshes once after all repositories finish." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="680"/>
+              <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git fetch --prune --no-recurse-submodules &lt;remote&gt;"/>
+              <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcut: Ctrl+Alt+Shift+Down." Foreground="{DynamicResource Brush.FG2}"/>
             </StackPanel>
           </ToolTip.Tip>
 
           <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
             <Grid Width="24" Height="24">
-              <Path Width="18" Height="18" Fill="{DynamicResource Toolbar.Fetch}" Data="{StaticResource Icons.Submodule}"/>
+              <Path Width="18"
+                    Height="18"
+                    Fill="{DynamicResource Toolbar.Fetch}"
+                    Data="{StaticResource Icons.Submodule}"
+                    IsVisible="{Binding IsBackgroundRecursiveFetchRunning, Converter={x:Static BoolConverters.Not}}"/>
+              <Path Classes="rotating"
+                    Width="18"
+                    Height="18"
+                    Fill="{DynamicResource Toolbar.Fetch}"
+                    IsVisible="{Binding IsBackgroundRecursiveFetchRunning}"/>
             </Grid>
             <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Subs"/>
           </StackPanel>
         </Button>
         <Button Width="0" Height="0" Click="FetchAndPruneRecursively" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+Shift+Down, macOS=⌘+⌥+⇧+Down}"/>
-        <Button Width="0" Height="0" Click="FetchRecursively" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+Down, macOS=⌘+⌥+Down}"/>
 
       </StackPanel>
     </Border>
@@ -305,7 +313,7 @@
             <StackPanel Orientation="Vertical">
               <TextBlock Text="{DynamicResource Text.Pull}"/>
               <TextBlock Classes="small" Margin="0,4,0,0" Text="Open the standard SourceGit pull options." Foreground="{DynamicResource Brush.FG2}"/>
-              <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Ctrl+click runs directly. Shortcut: Ctrl+Shift+Down." Foreground="{DynamicResource Brush.FG2}"/>
+              <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Ctrl+click starts immediately with the current defaults." Foreground="{DynamicResource Brush.FG2}"/>
             </StackPanel>
           </ToolTip.Tip>
 
@@ -327,7 +335,7 @@
                 AutomationProperties.Name="Pull top repository only"
                 Width="56"
                 Margin="0"
-                Tapped="Pull"
+                Tapped="PullTopRepository"
                 Tag="Pull"
                 ContextRequested="OnToolbarGitButtonContextRequested"
                 PointerPressed="OnToolbarGitButtonPointerPressed"
@@ -336,10 +344,9 @@
           <ToolTip.Tip>
             <StackPanel Orientation="Vertical">
               <TextBlock Text="Pull remote changes into the current branch of the top repository only." TextWrapping="Wrap" MaxWidth="680"/>
-              <TextBlock Classes="small" Margin="0,4,0,0" Text="Submodule working trees are left untouched. Click opens pull options; Ctrl+click starts directly." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="680"/>
-              <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git pull --verbose --progress --no-rebase &lt;remote&gt; &lt;branch&gt;"/>
-              <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcut: Ctrl+Shift+Down (direct pull)." Foreground="{DynamicResource Brush.FG2}"/>
-              <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Alt+click: hand off to TortoiseGit Pull." Foreground="{DynamicResource Brush.FG2}"/>
+              <TextBlock Classes="small" Margin="0,4,0,0" Text="Runs immediately without opening pull options. Submodule working trees are left untouched." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="680"/>
+              <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git pull --verbose --progress --no-recurse-submodules --no-rebase &lt;remote&gt; &lt;branch&gt;"/>
+              <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcut: Ctrl+Shift+Down." Foreground="{DynamicResource Brush.FG2}"/>
             </StackPanel>
           </ToolTip.Tip>
 

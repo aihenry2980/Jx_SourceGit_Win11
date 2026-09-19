@@ -1054,6 +1054,12 @@ namespace SourceGit.ViewModels
             private set => SetProperty(ref _isQuickPulling, value);
         }
 
+        public bool IsBackgroundRecursiveFetchRunning
+        {
+            get => _isBackgroundRecursiveFetchRunning;
+            private set => SetProperty(ref _isBackgroundRecursiveFetchRunning, value);
+        }
+
         public string AutoBackgroundOperationText
         {
             get => _autoBackgroundOperationText;
@@ -1173,6 +1179,10 @@ namespace SourceGit.ViewModels
                 _cancellationRefreshCommits.Cancel();
             if (_cancellationRefreshStashes is { IsCancellationRequested: false })
                 _cancellationRefreshStashes.Cancel();
+            if (_backgroundRecursiveFetchCancellation is { IsCancellationRequested: false })
+                _backgroundRecursiveFetchCancellation.Cancel();
+            if (_fetchDurationToastCancellation is { IsCancellationRequested: false })
+                _fetchDurationToastCancellation.Cancel();
 
             _autoFetchTimer?.Dispose();
             _autoFetchTimer = null;
@@ -1507,6 +1517,148 @@ namespace SourceGit.ViewModels
             log.Complete(succeeded && !cancellation.IsCancellationRequested);
         }
 
+        public async Task FetchAndPruneAllRepositoriesInBackgroundAsync()
+        {
+            if (Interlocked.CompareExchange(ref _backgroundRecursiveFetchGuard, 1, 0) != 0)
+                return;
+
+            IsBackgroundRecursiveFetchRunning = true;
+            const string operationName = "Fetch and Prune All Repositories";
+            var log = CreateLog(operationName);
+            using var cancellation = new CancellationTokenSource();
+            _backgroundRecursiveFetchCancellation = cancellation;
+            log.SetCancelAction(cancellation.Cancel);
+
+            var stopwatch = Stopwatch.StartNew();
+            var succeededRepositories = 0;
+            var skippedRepositories = 0;
+            var failedRepositories = 0;
+            var fetchAttempted = false;
+            var prunedBranches = new List<PrunedRemoteBranch>();
+            var prunedBranchKeys = new HashSet<string>(StringComparer.Ordinal);
+            var completed = false;
+
+            try
+            {
+                using var lockWatcher = LockWatcher();
+                var force = _uiStates.EnableForceOnFetch;
+
+                async Task FetchRepositoryAsync(string repositoryPath, string scope, List<string> remoteNames)
+                {
+                    if (cancellation.IsCancellationRequested)
+                        return;
+
+                    if (remoteNames.Count == 0)
+                    {
+                        log.AppendLine($"[skipped] `{FormatFetchScope(scope)}` has no remote.");
+                        skippedRepositories++;
+                        return;
+                    }
+
+                    log.AppendLine($"=== Fetch and prune `{FormatFetchScope(scope)}` ===");
+                    var succeeded = true;
+                    foreach (var remoteName in remoteNames)
+                    {
+                        if (cancellation.IsCancellationRequested)
+                            return;
+
+                        fetchAttempted = true;
+                        var one = await RunSplitFetchUnitAsync(
+                            repositoryPath,
+                            remoteName,
+                            true,
+                            force,
+                            true,
+                            false,
+                            log,
+                            scope,
+                            false,
+                            cancellation.Token,
+                            prunedBranches,
+                            prunedBranchKeys);
+                        succeeded &= one;
+                    }
+
+                    if (cancellation.IsCancellationRequested)
+                        return;
+
+                    if (succeeded)
+                        succeededRepositories++;
+                    else
+                        failedRepositories++;
+                }
+
+                await FetchRepositoryAsync(FullPath, "root", GetFetchRemoteNamesForCurrentRepository());
+
+                if (!cancellation.IsCancellationRequested)
+                {
+                    log.AppendLine("=== Discover initialized nested submodules ===");
+                    var submodules = await new Commands.QuerySubmodules(FullPath, int.MaxValue, false).GetResultAsync();
+                    var pathComparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+                    var visited = new HashSet<string>(pathComparer);
+
+                    foreach (var submodule in submodules)
+                    {
+                        if (cancellation.IsCancellationRequested)
+                            break;
+
+                        var repositoryPath = Native.OS.GetAbsPath(FullPath, submodule.Path).Replace('\\', '/');
+                        if (!visited.Add(repositoryPath))
+                            continue;
+
+                        var gitDir = Path.Combine(repositoryPath, ".git");
+                        if (!Directory.Exists(repositoryPath) || (!Directory.Exists(gitDir) && !File.Exists(gitDir)))
+                        {
+                            log.AppendLine($"[skipped] Submodule `{submodule.Path}` is not initialized.");
+                            skippedRepositories++;
+                            continue;
+                        }
+
+                        var remoteNames = await GetFetchRemoteNamesForRepositoryAsync(repositoryPath);
+                        await FetchRepositoryAsync(repositoryPath, $"submodule:{submodule.Path}", remoteNames);
+                    }
+                }
+
+                AppendPrunedRemoteBranchesSummary(log, prunedBranches);
+
+                if (fetchAttempted && !cancellation.IsCancellationRequested)
+                {
+                    log.AppendLine("=== Refresh history once ===");
+                    await MarkFetchedAndMeasureRefreshAsync(true);
+                    _watcher?.MarkSubmodulesUpdated();
+                }
+
+                completed = !cancellation.IsCancellationRequested;
+            }
+            catch (OperationCanceledException)
+            {
+                log.AppendLine("[canceled] Fetch and prune was canceled.");
+            }
+            catch (Exception ex)
+            {
+                failedRepositories++;
+                log.AppendLine($"[failed] {ex.Message}");
+            }
+            finally
+            {
+                stopwatch.Stop();
+                log.AppendLine($"Summary: {succeededRepositories} succeeded, {skippedRepositories} skipped, {failedRepositories} failed in {stopwatch.Elapsed.TotalSeconds:0.0}s.");
+                log.Complete(completed && failedRepositories == 0);
+
+                if (ReferenceEquals(_backgroundRecursiveFetchCancellation, cancellation))
+                    _backgroundRecursiveFetchCancellation = null;
+                Interlocked.Exchange(ref _backgroundRecursiveFetchGuard, 0);
+                IsBackgroundRecursiveFetchRunning = false;
+            }
+
+            if (cancellation.IsCancellationRequested)
+                ShowFetchToast("Fetch + prune canceled.");
+            else if (failedRepositories == 0)
+                ShowFetchToast($"Fetch + prune complete: {succeededRepositories} succeeded, {skippedRepositories} skipped ({stopwatch.Elapsed.TotalSeconds:0.0}s).");
+            else
+                ShowFetchToast($"Fetch + prune finished: {succeededRepositories} succeeded, {skippedRepositories} skipped, {failedRepositories} failed.");
+        }
+
         public async Task PullAsync(bool autoStart)
         {
             if (IsBare || !CanCreatePopup())
@@ -1580,6 +1732,32 @@ namespace SourceGit.ViewModels
                 App.SendNotification(FullPath, "Quick Pull completed.");
             else
                 App.SendNotification(FullPath, "Quick Pull failed. Review the repository log for details.");
+        }
+
+        public async Task PullTopRepositoryAsync()
+        {
+            if (IsQuickPulling)
+                return;
+
+            var log = CreateLog("Pull Top Repository");
+            AutoBackgroundOperationText = "Pull Top Repository";
+            IsQuickPulling = true;
+            var succ = false;
+
+            try
+            {
+                succ = await RunDefaultPullAsync(log, false);
+            }
+            finally
+            {
+                IsQuickPulling = false;
+                log.Complete(succ);
+            }
+
+            if (succ)
+                App.SendNotification(FullPath, "Top repository pull completed.");
+            else
+                App.SendNotification(FullPath, "Top repository pull failed. Review the repository log for details.");
         }
 
         public async Task<bool> RunDefaultPullAsync(Models.ICommandLog log, bool autoUpdateSubmodules, CancellationToken cancellationToken = default)
@@ -4926,13 +5104,18 @@ namespace SourceGit.ViewModels
 
         public void ShowFetchDurationToast(TimeSpan gitDuration, TimeSpan guiRefreshDuration)
         {
+            ShowFetchToast($"Fetch finished: Git {gitDuration.TotalSeconds:0.0}s, GUI refresh {guiRefreshDuration.TotalSeconds:0.0}s");
+        }
+
+        public void ShowFetchToast(string text)
+        {
             _fetchDurationToastCancellation?.Cancel();
             _fetchDurationToastCancellation?.Dispose();
 
             var cts = new CancellationTokenSource();
             _fetchDurationToastCancellation = cts;
 
-            FetchDurationToastText = $"Fetch finished: Git {gitDuration.TotalSeconds:0.0}s, GUI refresh {guiRefreshDuration.TotalSeconds:0.0}s";
+            FetchDurationToastText = text;
             FetchDurationToastOpacity = 1.0;
             IsFetchDurationToastVisible = true;
 
@@ -6034,6 +6217,7 @@ namespace SourceGit.ViewModels
         private string _autoBackgroundOperationText = "Auto-Fetch";
         private bool _isQuickFetching = false;
         private bool _isQuickPulling = false;
+        private bool _isBackgroundRecursiveFetchRunning = false;
         private bool _isFetchDurationToastVisible = false;
         private double _fetchDurationToastOpacity = 1.0;
         private string _fetchDurationToastText = string.Empty;
@@ -6083,6 +6267,8 @@ namespace SourceGit.ViewModels
         private readonly SemaphoreSlim _refreshCommitsGate = new(1, 1);
         private CancellationTokenSource _cancellationRefreshStashes = null;
         private CancellationTokenSource _quickFetchCancellation = null;
+        private CancellationTokenSource _backgroundRecursiveFetchCancellation = null;
+        private int _backgroundRecursiveFetchGuard = 0;
 
         private sealed class PresetBranchFilterMatchCache
         {

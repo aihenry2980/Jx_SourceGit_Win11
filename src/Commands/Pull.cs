@@ -5,16 +5,16 @@ namespace SourceGit.Commands
 {
     public class Pull : Command
     {
-        public Pull(string repo, string remote, string branch, bool useRebase)
+        public Pull(string repo, string remote, string branch, bool useRebase, bool allowSubmoduleRecursion = true)
         {
             _remote = remote;
-            Configure(repo, remote, branch, useRebase);
+            Configure(repo, remote, branch, useRebase, allowSubmoduleRecursion);
         }
 
-        public Pull(string repo, Models.Remote remote, Models.Branch remoteBranch, bool useRebase)
+        public Pull(string repo, Models.Remote remote, Models.Branch remoteBranch, bool useRebase, bool allowSubmoduleRecursion = true)
         {
             SSHKey = remote.PrivateSSHKey;
-            Configure(repo, remote.Name, remoteBranch?.Name, useRebase);
+            Configure(repo, remote.Name, remoteBranch?.Name, useRebase, allowSubmoduleRecursion);
         }
 
         public async Task<bool> RunAsync()
@@ -37,14 +37,18 @@ namespace SourceGit.Commands
             return result;
         }
 
-        private void Configure(string repo, string remote, string branch, bool useRebase)
+        private void Configure(string repo, string remote, string branch, bool useRebase, bool allowSubmoduleRecursion)
         {
             WorkingDirectory = repo;
             Context = repo;
 
             var builder = new StringBuilder(512);
+            builder.Append("pull --verbose --progress ");
+            if (!allowSubmoduleRecursion)
+                builder.Append("--no-recurse-submodules ");
+
             builder
-                .Append("pull --verbose --progress --rebase=")
+                .Append("--rebase=")
                 .Append(useRebase ? "true" : "false")
                 .Append(' ')
                 .Append(remote);

@@ -185,7 +185,7 @@ namespace SourceGit.ViewModels
 
             var branchName = _selectedBranch.Name;
 
-            var rs = await RunPullWithAutoRevertAsync(branchName, changes, log, cancellationToken);
+            var rs = await RunPullWithAutoRevertAsync(branchName, changes, log, cancellationToken, autoUpdateSubmodules);
             if (!rs)
                 return false;
 
@@ -220,7 +220,12 @@ namespace SourceGit.ViewModels
             var _ = _cancellation?.CancelAsync();
         }
 
-        private async Task<bool> RunPullWithAutoRevertAsync(string branchName, int localChangesCount, Models.ICommandLog log, CancellationToken cancellationToken)
+        private async Task<bool> RunPullWithAutoRevertAsync(
+            string branchName,
+            int localChangesCount,
+            Models.ICommandLog log,
+            CancellationToken cancellationToken,
+            bool allowSubmoduleRecursion)
         {
             if (PreferQuickPath)
             {
@@ -233,7 +238,8 @@ namespace SourceGit.ViewModels
                 _repo.FullPath,
                 _selectedRemote.Name,
                 branchName,
-                UseRebase)
+                UseRebase,
+                allowSubmoduleRecursion)
             {
                 CancellationToken = cancellationToken,
             }.Use(log);
@@ -241,7 +247,7 @@ namespace SourceGit.ViewModels
             if (result.IsSuccess)
                 return true;
 
-            if (await TryAutoRevertPullConflictedFilesAndRetryAsync(branchName, log, cancellationToken, result))
+            if (await TryAutoRevertPullConflictedFilesAndRetryAsync(branchName, log, cancellationToken, result, allowSubmoduleRecursion))
                 return true;
 
             RaiseCommandFailure(result);
@@ -312,7 +318,8 @@ namespace SourceGit.ViewModels
             string branchName,
             Models.ICommandLog log,
             CancellationToken cancellationToken,
-            Commands.Command.Result failed)
+            Commands.Command.Result failed,
+            bool allowSubmoduleRecursion)
         {
             var conflictedPaths = ExtractOverwrittenPaths(failed);
             if (conflictedPaths.Count == 0)
@@ -332,7 +339,8 @@ namespace SourceGit.ViewModels
                 _repo.FullPath,
                 _selectedRemote.Name,
                 branchName,
-                UseRebase)
+                UseRebase,
+                allowSubmoduleRecursion)
             {
                 CancellationToken = cancellationToken,
             }.Use(log);
