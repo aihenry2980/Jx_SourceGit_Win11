@@ -35,12 +35,100 @@ namespace SourceGit.Views
         }
 
         private sealed record ToolbarGitCommandSpec(string MenuLabel, string WindowTitle, string Description, string CommandText, Action<ViewModels.Repository> OnSuccess = null);
+        private static readonly TimeSpan TOOLBAR_FEEDBACK_MINIMUM_DURATION = TimeSpan.FromMilliseconds(450);
+
         private ContextMenu _activeToolbarGitCommandMenu = null;
+        private readonly Dictionary<Control, int> _toolbarButtonFeedbackRefCounts = [];
 
         public RepositoryToolbar()
         {
             InitializeComponent();
+            AddHandler(PointerPressedEvent, OnToolbarButtonFeedbackPointerPressed, RoutingStrategies.Tunnel);
             DataContextChanged += (_, _) => RefreshCustomActionSlots();
+        }
+
+        private async void OnToolbarButtonFeedbackPointerPressed(object sender, PointerPressedEventArgs e)
+        {
+            var source = e.Source as Visual;
+            var button = source as Button ?? source?.GetVisualAncestors().OfType<Button>().FirstOrDefault();
+            if (button == null || !button.Classes.Contains("toolbar_button"))
+                return;
+
+            var point = e.GetCurrentPoint(button);
+            if (!point.Properties.IsLeftButtonPressed)
+                return;
+
+            var icon = FindToolbarOperationIcon(button);
+            if (icon == null)
+                return;
+
+            BeginToolbarButtonFeedback(icon);
+            await Task.Delay(TOOLBAR_FEEDBACK_MINIMUM_DURATION);
+            EndToolbarButtonFeedback(icon);
+        }
+
+        private async Task RunToolbarButtonOperationAsync(object sender, Button fallback, Func<Task> operation)
+        {
+            var button = sender as Button;
+            if (button == null || !button.Classes.Contains("toolbar_button"))
+                button = fallback;
+
+            var icon = FindToolbarOperationIcon(button);
+            if (icon == null)
+            {
+                await operation();
+                return;
+            }
+
+            var startedAt = Stopwatch.GetTimestamp();
+            BeginToolbarButtonFeedback(icon);
+            try
+            {
+                await operation();
+            }
+            finally
+            {
+                var elapsed = Stopwatch.GetElapsedTime(startedAt);
+                var remaining = TOOLBAR_FEEDBACK_MINIMUM_DURATION - elapsed;
+                if (remaining > TimeSpan.Zero)
+                    await Task.Delay(remaining);
+
+                EndToolbarButtonFeedback(icon);
+            }
+        }
+
+        private static Control FindToolbarOperationIcon(Button button)
+        {
+            return button?.GetVisualDescendants()
+                .OfType<Avalonia.Controls.Shapes.Path>()
+                .FirstOrDefault(x => x.IsVisible);
+        }
+
+        private void BeginToolbarButtonFeedback(Control icon)
+        {
+            if (_toolbarButtonFeedbackRefCounts.TryGetValue(icon, out var count))
+            {
+                _toolbarButtonFeedbackRefCounts[icon] = count + 1;
+                return;
+            }
+
+            _toolbarButtonFeedbackRefCounts.Add(icon, 1);
+            icon.Classes.Add("rotating");
+        }
+
+        private void EndToolbarButtonFeedback(Control icon)
+        {
+            if (!_toolbarButtonFeedbackRefCounts.TryGetValue(icon, out var count))
+                return;
+
+            if (count > 1)
+            {
+                _toolbarButtonFeedbackRefCounts[icon] = count - 1;
+                return;
+            }
+
+            _toolbarButtonFeedbackRefCounts.Remove(icon);
+            icon.Classes.Remove("rotating");
         }
 
         private void OpenWithExternalTools(object sender, RoutedEventArgs ev)
@@ -476,8 +564,11 @@ namespace SourceGit.Views
         {
             if (DataContext is ViewModels.Repository repo)
             {
-                await repo.FetchAsync(e.KeyModifiers is KeyModifiers.Control);
                 e.Handled = true;
+                await RunToolbarButtonOperationAsync(
+                    sender,
+                    FetchButton,
+                    () => repo.FetchAsync(e.KeyModifiers is KeyModifiers.Control));
             }
         }
 
@@ -488,8 +579,8 @@ namespace SourceGit.Views
 
             if (DataContext is ViewModels.Repository repo)
             {
-                await repo.FetchAsync(true);
                 e.Handled = true;
+                await RunToolbarButtonOperationAsync(sender, FetchButton, () => repo.FetchAsync(true));
             }
         }
 
@@ -497,16 +588,16 @@ namespace SourceGit.Views
         {
             if (DataContext is ViewModels.Repository repo)
             {
-                if (OperatingSystem.IsWindows() &&
-                    e.KeyModifiers.HasFlag(KeyModifiers.Alt) &&
-                    TryLaunchTortoiseGit(repo.FullPath, "fetch"))
-                {
-                    e.Handled = true;
-                    return;
-                }
-
-                await repo.FetchAllBranchesAsync();
                 e.Handled = true;
+                await RunToolbarButtonOperationAsync(sender, FetchAllBranchesButton, async () =>
+                {
+                    if (OperatingSystem.IsWindows() &&
+                        e.KeyModifiers.HasFlag(KeyModifiers.Alt) &&
+                        TryLaunchTortoiseGit(repo.FullPath, "fetch"))
+                        return;
+
+                    await repo.FetchAllBranchesAsync();
+                });
             }
         }
 
@@ -514,8 +605,11 @@ namespace SourceGit.Views
         {
             if (DataContext is ViewModels.Repository repo)
             {
-                await repo.FetchAndPruneAllRepositoriesInBackgroundAsync();
                 e.Handled = true;
+                await RunToolbarButtonOperationAsync(
+                    sender,
+                    FetchWithSubmodulesButton,
+                    repo.FetchAndPruneAllRepositoriesInBackgroundAsync);
             }
         }
 
@@ -523,52 +617,65 @@ namespace SourceGit.Views
         {
             if (DataContext is ViewModels.Repository repo)
             {
-                await repo.FetchAndPruneAllRepositoriesInBackgroundAsync();
                 e.Handled = true;
+                await RunToolbarButtonOperationAsync(
+                    sender,
+                    FetchWithSubmodulesButton,
+                    repo.FetchAndPruneAllRepositoriesInBackgroundAsync);
             }
         }
 
-        private void RefreshHistoryGraph(object sender, RoutedEventArgs e)
+        private async void RefreshHistoryGraph(object sender, RoutedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo)
             {
-                repo.RefreshSuperProjectSubmodulePointer();
-                repo.RefreshBranches();
-                repo.RefreshCommits();
                 e.Handled = true;
+                await RunToolbarButtonOperationAsync(sender, RefreshButton, () =>
+                {
+                    repo.RefreshSuperProjectSubmodulePointer();
+                    repo.RefreshBranches();
+                    repo.RefreshCommits();
+                    return Task.CompletedTask;
+                });
             }
         }
 
         private async void UndoRecentCommands(object sender, RoutedEventArgs e)
         {
-            if (sender is Control control)
-                await OpenUndoRecentCommandsMenuAsync(control);
-
             e.Handled = true;
+            await RunToolbarButtonOperationAsync(sender, UndoRecentCommandsButton, async () =>
+            {
+                if (sender is Control control)
+                    await OpenUndoRecentCommandsMenuAsync(control);
+            });
         }
 
         private async void UndoLastRebase(object sender, RoutedEventArgs e)
         {
-            await OpenUndoRecentCommandsMenuAsync(UndoRecentCommandsButton);
             e.Handled = true;
+            await RunToolbarButtonOperationAsync(
+                sender,
+                UndoRecentCommandsButton,
+                () => OpenUndoRecentCommandsMenuAsync(UndoRecentCommandsButton));
         }
 
         private async void UpdateSubmodulesRecursively(object sender, TappedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo && repo.CanCreatePopup())
             {
-                if (OperatingSystem.IsWindows() &&
-                    e.KeyModifiers.HasFlag(KeyModifiers.Alt) &&
-                    TryLaunchTortoiseGit(repo.FullPath, "subupdate"))
-                {
-                    e.Handled = true;
-                    return;
-                }
-
-                OpenToolbarRecursiveOperationWindow(new ViewModels.ToolbarRecursiveOperation(
-                    repo,
-                    ViewModels.ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively));
                 e.Handled = true;
+                await RunToolbarButtonOperationAsync(sender, UpdateSubmodulesRecursivelyButton, () =>
+                {
+                    if (OperatingSystem.IsWindows() &&
+                        e.KeyModifiers.HasFlag(KeyModifiers.Alt) &&
+                        TryLaunchTortoiseGit(repo.FullPath, "subupdate"))
+                        return Task.CompletedTask;
+
+                    OpenToolbarRecursiveOperationWindow(new ViewModels.ToolbarRecursiveOperation(
+                        repo,
+                        ViewModels.ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively));
+                    return Task.CompletedTask;
+                });
             }
         }
 
@@ -581,10 +688,14 @@ namespace SourceGit.Views
         {
             if (DataContext is ViewModels.Repository repo && repo.CanCreatePopup())
             {
-                OpenToolbarRecursiveOperationWindow(new ViewModels.ToolbarRecursiveOperation(
-                    repo,
-                    ViewModels.ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively));
                 e.Handled = true;
+                await RunToolbarButtonOperationAsync(sender, UpdateSubmodulesRecursivelyButton, () =>
+                {
+                    OpenToolbarRecursiveOperationWindow(new ViewModels.ToolbarRecursiveOperation(
+                        repo,
+                        ViewModels.ToolbarRecursiveOperationKind.UpdateSubmodulesRecursively));
+                    return Task.CompletedTask;
+                });
             }
         }
 
@@ -612,16 +723,20 @@ namespace SourceGit.Views
         {
             if (DataContext is ViewModels.Repository repo && repo.CanCreatePopup())
             {
-                var needsSelection = repo.Submodules.Count > 0 && repo.Settings?.NeedsRecursiveSubmoduleUpdateTargetsConfiguration() == true;
-                var kind = e.KeyModifiers.HasFlag(OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control)
-                    ? ViewModels.ToolbarRecursiveOperationKind.PullUpdateAndFetchPruneRecursively
-                    : ViewModels.ToolbarRecursiveOperationKind.PullAndUpdateSubmodulesRecursively;
-                var popup = new ViewModels.ToolbarRecursiveOperation(
-                    repo,
-                    kind,
-                    needsSelection);
-                OpenToolbarRecursiveOperationWindow(popup);
                 e.Handled = true;
+                await RunToolbarButtonOperationAsync(sender, PullWithSubmodulesButton, () =>
+                {
+                    var needsSelection = repo.Submodules.Count > 0 && repo.Settings?.NeedsRecursiveSubmoduleUpdateTargetsConfiguration() == true;
+                    var kind = e.KeyModifiers.HasFlag(OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control)
+                        ? ViewModels.ToolbarRecursiveOperationKind.PullUpdateAndFetchPruneRecursively
+                        : ViewModels.ToolbarRecursiveOperationKind.PullAndUpdateSubmodulesRecursively;
+                    var popup = new ViewModels.ToolbarRecursiveOperation(
+                        repo,
+                        kind,
+                        needsSelection);
+                    OpenToolbarRecursiveOperationWindow(popup);
+                    return Task.CompletedTask;
+                });
             }
         }
 
@@ -1204,16 +1319,16 @@ namespace SourceGit.Views
         {
             if (DataContext is ViewModels.Repository repo)
             {
-                if (OperatingSystem.IsWindows() &&
-                    e.KeyModifiers.HasFlag(KeyModifiers.Alt) &&
-                    TryLaunchTortoiseGit(repo.FullPath, "pull"))
-                {
-                    e.Handled = true;
-                    return;
-                }
-
-                await repo.PullAsync(e.KeyModifiers is KeyModifiers.Control);
                 e.Handled = true;
+                await RunToolbarButtonOperationAsync(sender, PullButton, async () =>
+                {
+                    if (OperatingSystem.IsWindows() &&
+                        e.KeyModifiers.HasFlag(KeyModifiers.Alt) &&
+                        TryLaunchTortoiseGit(repo.FullPath, "pull"))
+                        return;
+
+                    await repo.PullAsync(e.KeyModifiers is KeyModifiers.Control);
+                });
             }
         }
 
@@ -1224,8 +1339,11 @@ namespace SourceGit.Views
 
             if (DataContext is ViewModels.Repository repo)
             {
-                await repo.PullTopRepositoryAsync();
                 e.Handled = true;
+                await RunToolbarButtonOperationAsync(
+                    sender,
+                    PullTopRepositoryButton,
+                    repo.PullTopRepositoryAsync);
             }
         }
 
@@ -1233,8 +1351,11 @@ namespace SourceGit.Views
         {
             if (DataContext is ViewModels.Repository repo)
             {
-                await repo.PullTopRepositoryAsync();
                 e.Handled = true;
+                await RunToolbarButtonOperationAsync(
+                    sender,
+                    PullTopRepositoryButton,
+                    repo.PullTopRepositoryAsync);
             }
         }
 
