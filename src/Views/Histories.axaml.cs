@@ -1450,9 +1450,9 @@ namespace SourceGit.Views
                 if (c.IsMerged)
                 {
                     canMerge = false;
-                    canCherryPick = false;
                 }
-                else if (c.Parents.Count > 1)
+
+                if (c.Parents.Count > 1)
                 {
                     canCherryPick = false;
                 }
@@ -1873,20 +1873,20 @@ namespace SourceGit.Views
                         };
                         menu.Items.Add(merge);
                     }
-
-                    var cherryPick = new MenuItem();
-                    cherryPick.Header = $"{App.Text("CommitCM.CherryPick").TrimEnd('.', '\u2026')} {commit.SHA[..Math.Min(commit.SHA.Length, 10)]}...";
-                    var cherryPickIcon = App.CreateMenuIcon("Icons.CherryPick");
-                    if (cherryPickIcon != null)
-                        cherryPickIcon.Fill = new SolidColorBrush(Color.Parse("#FFD13438"));
-                    cherryPick.Icon = cherryPickIcon;
-                    cherryPick.Click += async (_, e) =>
-                    {
-                        await vm.CherryPickAsync(commit);
-                        e.Handled = true;
-                    };
-                    menu.Items.Add(cherryPick);
                 }
+
+                var cherryPick = new MenuItem();
+                cherryPick.Header = $"{App.Text("CommitCM.CherryPick").TrimEnd('.', '\u2026')} {commit.SHA[..Math.Min(commit.SHA.Length, 10)]}...";
+                var cherryPickIcon = App.CreateMenuIcon("Icons.CherryPick");
+                if (cherryPickIcon != null)
+                    cherryPickIcon.Fill = new SolidColorBrush(Color.Parse("#FFD13438"));
+                cherryPick.Icon = cherryPickIcon;
+                cherryPick.Click += async (_, e) =>
+                {
+                    await vm.CherryPickAsync(commit);
+                    e.Handled = true;
+                };
+                menu.Items.Add(cherryPick);
 
                 var revert = new MenuItem();
                 revert.Header = App.Text("CommitCM.Revert");
