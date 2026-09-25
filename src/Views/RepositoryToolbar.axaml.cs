@@ -39,6 +39,7 @@ namespace SourceGit.Views
 
         private ContextMenu _activeToolbarGitCommandMenu = null;
         private readonly Dictionary<Control, int> _toolbarButtonFeedbackRefCounts = [];
+        private readonly Dictionary<Control, int> _toolbarGroupFeedbackRefCounts = [];
 
         public RepositoryToolbar()
         {
@@ -62,9 +63,10 @@ namespace SourceGit.Views
             if (icon == null)
                 return;
 
-            BeginToolbarButtonFeedback(icon);
+            var group = FindToolbarFeedbackGroup(button);
+            BeginToolbarButtonFeedback(icon, group);
             await Task.Delay(TOOLBAR_FEEDBACK_MINIMUM_DURATION);
-            EndToolbarButtonFeedback(icon);
+            EndToolbarButtonFeedback(icon, group);
         }
 
         private async Task RunToolbarButtonOperationAsync(object sender, Button fallback, Func<Task> operation)
@@ -81,7 +83,8 @@ namespace SourceGit.Views
             }
 
             var startedAt = Stopwatch.GetTimestamp();
-            BeginToolbarButtonFeedback(icon);
+            var group = FindToolbarFeedbackGroup(button);
+            BeginToolbarButtonFeedback(icon, group);
             try
             {
                 await operation();
@@ -93,7 +96,7 @@ namespace SourceGit.Views
                 if (remaining > TimeSpan.Zero)
                     await Task.Delay(remaining);
 
-                EndToolbarButtonFeedback(icon);
+                EndToolbarButtonFeedback(icon, group);
             }
         }
 
@@ -104,19 +107,29 @@ namespace SourceGit.Views
                 .FirstOrDefault(x => x.IsVisible);
         }
 
-        private void BeginToolbarButtonFeedback(Control icon)
+        private static Control FindToolbarFeedbackGroup(Button button)
+        {
+            return button?.GetVisualAncestors()
+                .OfType<Control>()
+                .FirstOrDefault(x => x.Classes.Contains("toolbar_feedback_group"));
+        }
+
+        private void BeginToolbarButtonFeedback(Control icon, Control group)
         {
             if (_toolbarButtonFeedbackRefCounts.TryGetValue(icon, out var count))
             {
                 _toolbarButtonFeedbackRefCounts[icon] = count + 1;
-                return;
+            }
+            else
+            {
+                _toolbarButtonFeedbackRefCounts.Add(icon, 1);
+                icon.Classes.Add("rotating");
             }
 
-            _toolbarButtonFeedbackRefCounts.Add(icon, 1);
-            icon.Classes.Add("rotating");
+            BeginToolbarGroupFeedback(group);
         }
 
-        private void EndToolbarButtonFeedback(Control icon)
+        private void EndToolbarButtonFeedback(Control icon, Control group)
         {
             if (!_toolbarButtonFeedbackRefCounts.TryGetValue(icon, out var count))
                 return;
@@ -124,11 +137,44 @@ namespace SourceGit.Views
             if (count > 1)
             {
                 _toolbarButtonFeedbackRefCounts[icon] = count - 1;
+            }
+            else
+            {
+                _toolbarButtonFeedbackRefCounts.Remove(icon);
+                icon.Classes.Remove("rotating");
+            }
+
+            EndToolbarGroupFeedback(group);
+        }
+
+        private void BeginToolbarGroupFeedback(Control group)
+        {
+            if (group == null)
+                return;
+
+            if (_toolbarGroupFeedbackRefCounts.TryGetValue(group, out var count))
+            {
+                _toolbarGroupFeedbackRefCounts[group] = count + 1;
                 return;
             }
 
-            _toolbarButtonFeedbackRefCounts.Remove(icon);
-            icon.Classes.Remove("rotating");
+            _toolbarGroupFeedbackRefCounts.Add(group, 1);
+            group.Classes.Add("busy");
+        }
+
+        private void EndToolbarGroupFeedback(Control group)
+        {
+            if (group == null || !_toolbarGroupFeedbackRefCounts.TryGetValue(group, out var count))
+                return;
+
+            if (count > 1)
+            {
+                _toolbarGroupFeedbackRefCounts[group] = count - 1;
+                return;
+            }
+
+            _toolbarGroupFeedbackRefCounts.Remove(group);
+            group.Classes.Remove("busy");
         }
 
         private void OpenWithExternalTools(object sender, RoutedEventArgs ev)

@@ -13,13 +13,21 @@
       <ResourceDictionary.ThemeDictionaries>
         <ResourceDictionary x:Key="Light">
           <SolidColorBrush x:Key="Toolbar.Fetch" Color="#2563EB"/>
+          <SolidColorBrush x:Key="Toolbar.Fetch.BusyLow" Color="#182563EB"/>
+          <SolidColorBrush x:Key="Toolbar.Fetch.BusyHigh" Color="#662563EB"/>
           <SolidColorBrush x:Key="Toolbar.Pull" Color="#0F766E"/>
+          <SolidColorBrush x:Key="Toolbar.Pull.BusyLow" Color="#180F766E"/>
+          <SolidColorBrush x:Key="Toolbar.Pull.BusyHigh" Color="#660F766E"/>
           <SolidColorBrush x:Key="Toolbar.Undo" Color="#B45309"/>
           <SolidColorBrush x:Key="Toolbar.Submodules" Color="#10893E"/>
         </ResourceDictionary>
         <ResourceDictionary x:Key="Dark">
           <SolidColorBrush x:Key="Toolbar.Fetch" Color="#80ADFF"/>
+          <SolidColorBrush x:Key="Toolbar.Fetch.BusyLow" Color="#2080ADFF"/>
+          <SolidColorBrush x:Key="Toolbar.Fetch.BusyHigh" Color="#6680ADFF"/>
           <SolidColorBrush x:Key="Toolbar.Pull" Color="#62D6CA"/>
+          <SolidColorBrush x:Key="Toolbar.Pull.BusyLow" Color="#2062D6CA"/>
+          <SolidColorBrush x:Key="Toolbar.Pull.BusyHigh" Color="#6662D6CA"/>
           <SolidColorBrush x:Key="Toolbar.Undo" Color="#FBBF60"/>
           <SolidColorBrush x:Key="Toolbar.Submodules" Color="#72D99A"/>
         </ResourceDictionary>
@@ -46,6 +54,36 @@
       <Setter Property="Margin" Value="6,2"/>
       <Setter Property="Padding" Value="2,0"/>
       <Setter Property="BorderThickness" Value="0,0,0,2"/>
+    </Style>
+    <Style Selector="Border.toolbar_feedback_group.fetch_group.busy">
+      <Style.Animations>
+        <Animation Duration="0:0:1.1" IterationCount="Infinite">
+          <KeyFrame Cue="0%">
+            <Setter Property="Background" Value="{DynamicResource Toolbar.Fetch.BusyLow}"/>
+          </KeyFrame>
+          <KeyFrame Cue="50%">
+            <Setter Property="Background" Value="{DynamicResource Toolbar.Fetch.BusyHigh}"/>
+          </KeyFrame>
+          <KeyFrame Cue="100%">
+            <Setter Property="Background" Value="{DynamicResource Toolbar.Fetch.BusyLow}"/>
+          </KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <Style Selector="Border.toolbar_feedback_group.pull_group.busy">
+      <Style.Animations>
+        <Animation Duration="0:0:1.1" IterationCount="Infinite">
+          <KeyFrame Cue="0%">
+            <Setter Property="Background" Value="{DynamicResource Toolbar.Pull.BusyLow}"/>
+          </KeyFrame>
+          <KeyFrame Cue="50%">
+            <Setter Property="Background" Value="{DynamicResource Toolbar.Pull.BusyHigh}"/>
+          </KeyFrame>
+          <KeyFrame Cue="100%">
+            <Setter Property="Background" Value="{DynamicResource Toolbar.Pull.BusyLow}"/>
+          </KeyFrame>
+        </Animation>
+      </Style.Animations>
     </Style>
     <Style Selector="TextBlock.tooltip_cmd">
       <Setter Property="Foreground" Value="#FF0F8CFF"/>
@@ -207,7 +245,7 @@
 
     </StackPanel>
 
-    <Border Classes="toolbar_group" BorderBrush="{DynamicResource Toolbar.Fetch}" Background="#0C2563EB">
+    <Border Classes="toolbar_group toolbar_feedback_group fetch_group" BorderBrush="{DynamicResource Toolbar.Fetch}" Background="#0C2563EB">
       <StackPanel x:Name="FetchToolbarGroup" Orientation="Horizontal">
         <!-- Standard SourceGit Fetch entry point -->
         <Button x:Name="FetchButton"
@@ -298,7 +336,7 @@
       </StackPanel>
     </Border>
 
-    <Border Classes="toolbar_group" BorderBrush="{DynamicResource Toolbar.Pull}" Background="#0C0F766E" IsVisible="{Binding !IsBare}">
+    <Border Classes="toolbar_group toolbar_feedback_group pull_group" BorderBrush="{DynamicResource Toolbar.Pull}" Background="#0C0F766E" IsVisible="{Binding !IsBare}">
       <StackPanel x:Name="PullToolbarGroup" Orientation="Horizontal">
         <!-- Standard SourceGit Pull entry point -->
         <Button x:Name="PullButton"
