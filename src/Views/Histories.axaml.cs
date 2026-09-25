@@ -2375,6 +2375,45 @@ namespace SourceGit.Views
 
             if (!repo.IsBare)
             {
+                var hasNoWorktree = string.IsNullOrEmpty(branch.WorktreePath);
+
+                if (hasNoWorktree)
+                {
+                    var checkout = new MenuItem();
+                    checkout.Header = App.Text("BranchCM.Checkout", branch.Name);
+                    checkout.Icon = this.CreateMenuIcon("Icons.Check");
+                    checkout.Click += async (_, e) =>
+                    {
+                        await repo.CheckoutBranchAsync(branch);
+                        e.Handled = true;
+                    };
+                    submenu.Items.Add(checkout);
+
+                    var checkoutAsWorktree = new MenuItem();
+                    checkoutAsWorktree.Header = App.Text("BranchCM.CheckoutAsWorktree", branch.Name);
+                    checkoutAsWorktree.Icon = this.CreateMenuIcon("Icons.Worktree.Add");
+                    checkoutAsWorktree.Click += (_, e) =>
+                    {
+                        if (repo.CanCreatePopup())
+                            repo.ShowPopup(new ViewModels.CheckoutAsWorktree(repo, branch));
+
+                        e.Handled = true;
+                    };
+                    submenu.Items.Add(checkoutAsWorktree);
+                }
+                else
+                {
+                    var checkout = new MenuItem();
+                    checkout.Header = App.Text("BranchCM.SwitchToWorktree", branch.Name);
+                    checkout.Icon = this.CreateMenuIcon("Icons.Check");
+                    checkout.Click += async (_, e) =>
+                    {
+                        await repo.CheckoutBranchAsync(branch);
+                        e.Handled = true;
+                    };
+                    submenu.Items.Add(checkout);
+                }
+
                 var merge = new MenuItem();
                 merge.Header = CreateMergeBranchHeader(repo, branch, current, color);
                 merge.Icon = App.CreateMenuIcon("Icons.Merge");
@@ -2386,6 +2425,18 @@ namespace SourceGit.Views
                     e.Handled = true;
                 };
                 submenu.Items.Add(merge);
+            }
+            else
+            {
+                var checkout = new MenuItem();
+                checkout.Header = App.Text("BranchCM.SwitchToWorktree", branch.Name);
+                checkout.Icon = this.CreateMenuIcon("Icons.Check");
+                checkout.Click += async (_, e) =>
+                {
+                    await repo.CheckoutBranchAsync(branch);
+                    e.Handled = true;
+                };
+                submenu.Items.Add(checkout);
             }
 
             var push = new MenuItem();
@@ -2504,6 +2555,28 @@ namespace SourceGit.Views
             visibility.Header = filterModeVm;
             submenu.Items.Add(visibility);
             submenu.Items.Add(new MenuItem() { Header = "-" });
+
+            var checkout = new MenuItem();
+            checkout.Header = App.Text("BranchCM.Checkout", name);
+            checkout.Icon = App.CreateMenuIcon("Icons.Check");
+            checkout.IsEnabled = !repo.IsBare;
+            checkout.Click += async (_, e) =>
+            {
+                await repo.CheckoutBranchAsync(branch);
+                e.Handled = true;
+            };
+            submenu.Items.Add(checkout);
+
+            var checkoutAsWorktree = new MenuItem();
+            checkoutAsWorktree.Header = App.Text("BranchCM.CheckoutAsWorktree", name);
+            checkoutAsWorktree.Icon = App.CreateMenuIcon("Icons.Worktree.Add");
+            checkoutAsWorktree.Click += (_, e) =>
+            {
+                if (repo.CanCreatePopup())
+                    repo.ShowPopup(new ViewModels.CheckoutRemoteBranchAsWorktree(repo, branch));
+                e.Handled = true;
+            };
+            submenu.Items.Add(checkoutAsWorktree);
 
             var merge = new MenuItem();
             merge.Header = CreateMergeBranchHeader(repo, branch, current, color);

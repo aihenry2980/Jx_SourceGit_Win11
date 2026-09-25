@@ -871,6 +871,21 @@ namespace SourceGit.Views
                     e.Handled = true;
                 };
                 menu.Items.Add(checkout);
+
+                if (hasNoWorktree)
+                {
+                    var checkoutAsWorktree = new MenuItem();
+                    checkoutAsWorktree.Header = App.Text("BranchCM.CheckoutAsWorktree", branch.Name);
+                    checkoutAsWorktree.Icon = this.CreateMenuIcon("Icons.Worktree.Add");
+                    checkoutAsWorktree.Click += (_, e) =>
+                    {
+                        if (repo.CanCreatePopup())
+                            repo.ShowPopup(new ViewModels.CheckoutAsWorktree(repo, branch));
+
+                        e.Handled = true;
+                    };
+                    menu.Items.Add(checkoutAsWorktree);
+                }
                 menu.Items.Add(new MenuItem() { Header = "-" });
 
                 if (upstream != null && hasNoWorktree)
@@ -1289,12 +1304,25 @@ namespace SourceGit.Views
             var checkout = new MenuItem();
             checkout.Header = App.Text("BranchCM.Checkout", name);
             checkout.Icon = App.CreateMenuIcon("Icons.Check");
+            checkout.IsEnabled = !repo.IsBare;
             checkout.Click += async (_, e) =>
             {
                 await repo.CheckoutBranchAsync(branch);
                 e.Handled = true;
             };
             menu.Items.Add(checkout);
+
+            var checkoutAsWorktree = new MenuItem();
+            checkoutAsWorktree.Header = App.Text("BranchCM.CheckoutAsWorktree", name);
+            checkoutAsWorktree.Icon = this.CreateMenuIcon("Icons.Worktree.Add");
+            checkoutAsWorktree.Click += (_, e) =>
+            {
+                if (repo.CanCreatePopup())
+                    repo.ShowPopup(new ViewModels.CheckoutRemoteBranchAsWorktree(repo, branch));
+
+                e.Handled = true;
+            };
+            menu.Items.Add(checkoutAsWorktree);
             menu.Items.Add(new MenuItem() { Header = "-" });
 
             if (repo.CurrentBranch is { } current)

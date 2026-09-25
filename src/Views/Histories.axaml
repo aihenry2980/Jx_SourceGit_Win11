@@ -437,6 +437,7 @@
                                                 CodeFontFamily="{DynamicResource Fonts.Monospace}"
                                                 HighlightText="{Binding $parent[v:Repository].((vm:Repository)DataContext).HistoryQuickFindAppliedText}"
                                                 InlineCodeBackground="{DynamicResource Brush.InlineCode}"
+                                                InlineCodeForeground="{DynamicResource Brush.InlineCodeFG}"
                                                 Foreground="{Binding ., Converter={x:Static c:CommitConverters.SubjectToBrush}}"
                                                 LinkForeground="{Binding ., Converter={x:Static c:CommitConverters.SubjectLinkToBrush}}"
                                                 FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Converter={x:Static c:DoubleConverters.Decrease}, Mode=OneWay}"
