@@ -73,9 +73,12 @@ namespace SourceGit.ViewModels
                 return Path.GetFileName(Backend.FullPath);
 
             if (Backend.IsDetached)
-                return $"detached HEAD at {Backend.Head.AsSpan(10)}";
+                return $"detached HEAD at {Backend.Head.AsSpan(0, Math.Min(10, Backend.Head.Length))}";
 
             var b = Backend.Branch;
+
+            if (string.IsNullOrEmpty(b))
+                return Path.GetFileName(Backend.FullPath);
 
             if (b.StartsWith("refs/heads/", StringComparison.Ordinal))
                 return b.Substring(11);

@@ -55,7 +55,7 @@ namespace SourceGit.ViewModels
         {
             Name = name;
             Color = color;
-            Brush = new SolidColorBrush(Avalonia.Media.Color.FromUInt32(color));
+            Brush = new Avalonia.Media.Immutable.ImmutableSolidColorBrush(Avalonia.Media.Color.FromUInt32(color));
         }
     }
 }

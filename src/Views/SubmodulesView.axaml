@@ -106,7 +106,8 @@
                                          VerticalAlignment="Center"
                                          IsExpanded="{Binding IsExpanded, Mode=OneWay}"/>
 
-                <TextBlock Grid.Column="2" TextTrimming="CharacterEllipsis">
+                <TextBlock Grid.Column="2" TextTrimming="CharacterEllipsis"
+                           Foreground="{Binding AccentColor, Converter={x:Static c:CommitConverters.UInt32ToBrush}}">
                   <Run Text="{Binding FullPath, Converter={x:Static c:PathConverters.PureFileName}, Mode=OneWay}"/>
                   <Run Text="{Binding ChildCounter}" Foreground="{DynamicResource Brush.FG2}"/>
                 </TextBlock>
@@ -293,7 +294,8 @@
                       HorizontalAlignment="Left"
                       Data="{StaticResource Icons.Submodule}"/>
                 <Border Grid.Column="2" ClipToBounds="True">
-                  <TextBlock Text="{Binding Path}" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Text="{Binding Path}" TextTrimming="CharacterEllipsis"
+                             Foreground="{Binding AccentColor, Converter={x:Static c:CommitConverters.UInt32ToBrush}}"/>
                 </Border>
                 <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="3" Margin="8,0,8,0">
                   <Border MinWidth="14"

@@ -1,0 +1,66 @@
+<v:ChromelessWindow xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:v="using:SourceGit.Views"
+                    x:Class="SourceGit.Views.ConfirmBranchPush"
+                    x:Name="ThisControl"
+                    Icon="/App.ico"
+                    Title="{DynamicResource Text.Push.BranchMismatch.Title}"
+                    Width="720" Height="580"
+                    MinWidth="400" MinHeight="360"
+                    ShowInTaskbar="False"
+                    WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="Auto,Auto,*,Auto">
+    <Grid Height="28" IsVisible="{Binding !#ThisControl.UseSystemWindowFrame}">
+      <Border Background="{DynamicResource Brush.TitleBar}" PointerPressed="BeginMoveWindow"/>
+      <TextBlock Margin="12,0,48,0" VerticalAlignment="Center" Text="{DynamicResource Text.Warn}"/>
+      <v:CaptionButtons HorizontalAlignment="Right" IsCloseButtonOnly="True"
+                        IsVisible="{OnPlatform True, macOS=False}"/>
+    </Grid>
+
+    <Border Grid.Row="1" Background="#B91C1C" Padding="24,20">
+      <Grid ColumnDefinitions="48,*">
+        <Path Width="40" Height="40" Fill="White" Data="{StaticResource Icons.Error}" VerticalAlignment="Center"/>
+        <TextBlock Grid.Column="1" Margin="12,0,0,0" FontSize="28" FontWeight="Bold" Foreground="White"
+                   TextWrapping="Wrap" Text="{DynamicResource Text.Push.BranchMismatch.Title}"/>
+      </Grid>
+    </Border>
+
+    <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+      <StackPanel Margin="24,18" Spacing="10">
+        <TextBlock FontSize="17" FontWeight="Bold" TextWrapping="Wrap"
+                   Text="{DynamicResource Text.Push.BranchMismatch.Description}"/>
+        <TextBlock x:Name="ForceWarning" FontSize="17" FontWeight="Bold" Foreground="#E5484D"
+                   Text="{DynamicResource Text.Push.Force}"/>
+        <TextBlock Text="{DynamicResource Text.Push.BranchMismatch.Repository}" Opacity="0.7"/>
+        <SelectableTextBlock x:Name="RepositoryPath" TextWrapping="Wrap"/>
+        <Border BorderBrush="{DynamicResource Brush.Border0}" BorderThickness="0,1,0,0" Margin="0,4"/>
+        <Grid ColumnDefinitions="*,40,*" RowDefinitions="Auto,Auto" RowSpacing="10">
+          <TextBlock Text="{DynamicResource Text.Push.Local}" Opacity="0.7" TextWrapping="Wrap"/>
+          <TextBlock Grid.Column="2" Text="{DynamicResource Text.Push.To}" Opacity="0.7" TextWrapping="Wrap"/>
+          <SelectableTextBlock x:Name="LocalBranch" Grid.Row="1" FontSize="24" FontWeight="Bold"
+                               FontFamily="{DynamicResource Fonts.Monospace}" TextWrapping="Wrap"/>
+          <Path Grid.Row="1" Grid.Column="1" Width="24" Height="24" Data="{StaticResource Icons.Down}" VerticalAlignment="Top" Margin="0,8,0,0">
+            <Path.RenderTransform><RotateTransform Angle="-90"/></Path.RenderTransform>
+          </Path>
+          <SelectableTextBlock x:Name="RemoteBranch" Grid.Row="1" Grid.Column="2" FontSize="24" FontWeight="Bold" Foreground="#E5484D"
+                               FontFamily="{DynamicResource Fonts.Monospace}" TextWrapping="Wrap"/>
+        </Grid>
+        <TextBlock Text="{DynamicResource Text.Push.Remote}" Opacity="0.7"/>
+        <SelectableTextBlock x:Name="RemoteName" TextWrapping="Wrap"/>
+      </StackPanel>
+    </ScrollViewer>
+
+    <Grid Grid.Row="3" ColumnDefinitions="*,*" Margin="24,12,24,20">
+      <Button x:Name="BtnCancel" Grid.Column="0" Margin="0,0,8,0" Classes="flat primary"
+              MinHeight="44" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+              IsDefault="True" IsCancel="True" Click="Cancel">
+        <TextBlock Text="{DynamicResource Text.Cancel}" TextWrapping="Wrap" TextAlignment="Center"/>
+      </Button>
+      <Button x:Name="BtnPush" Grid.Column="1" Margin="8,0,0,0" Classes="flat"
+              Background="#B91C1C" Foreground="White" MinHeight="44"
+              HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="Confirm">
+        <TextBlock Text="{DynamicResource Text.Push.BranchMismatch.Confirm}" TextWrapping="Wrap" TextAlignment="Center"/>
+      </Button>
+    </Grid>
+  </Grid>
+</v:ChromelessWindow>

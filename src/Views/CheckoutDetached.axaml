@@ -17,10 +17,10 @@
       <TextBlock FontSize="18"
                  Margin="8,0,0,0"
                  Classes="bold"
-                 Text="{DynamicResource Text.CheckoutDetached}"/>
+                 Text="{Binding Title}"/>
     </StackPanel>
 
-    <Grid Margin="0,16,0,0" RowDefinitions="32,Auto,Auto">
+    <Grid Margin="0,16,0,0" RowDefinitions="32,Auto,Auto,Auto">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="Auto" MinWidth="140"/>
         <ColumnDefinition Width="*"/>
@@ -68,7 +68,16 @@
                                     Method="{Binding DealWithLocalChanges, Mode=TwoWay}"
                                     IsVisible="{Binding HasLocalChanges, Mode=OneWay}"/>
 
-      <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="Auto,*" Margin="0,6,0,0">
+      <TextBlock Grid.Row="2" Grid.Column="0" Margin="0,6,8,0"
+                 HorizontalAlignment="Right" VerticalAlignment="Center"
+                 IsVisible="{Binding CreatesBranch}"
+                 Text="{DynamicResource Text.CreateBranch.Name}"/>
+      <TextBox Grid.Row="2" Grid.Column="1" Margin="0,6,0,0"
+               IsVisible="{Binding CreatesBranch}"
+               IsReadOnly="True" Text="{Binding BranchName, Mode=OneWay}"/>
+
+      <Grid Grid.Row="3" Grid.Column="1" ColumnDefinitions="Auto,*" Margin="0,6,0,0"
+            IsVisible="{Binding !CreatesBranch}">
         <Path Grid.Column="0"
               Width="14" Height="14"
               Data="{StaticResource Icons.Error}"

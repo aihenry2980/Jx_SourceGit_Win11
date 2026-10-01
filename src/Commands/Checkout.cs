@@ -18,7 +18,7 @@ namespace SourceGit.Commands
             builder.Append("checkout --progress ");
             if (force)
                 builder.Append("--force ");
-            builder.Append(branch);
+            builder.Append(branch.Quoted());
 
             Args = builder.ToString();
             return await ExecAsync().ConfigureAwait(false);
@@ -31,9 +31,9 @@ namespace SourceGit.Commands
             if (force)
                 builder.Append("--force ");
             builder.Append(allowOverwrite ? "-B " : "-b ");
-            builder.Append(branch);
+            builder.Append(branch.Quoted());
             builder.Append(" ");
-            builder.Append(basedOn);
+            builder.Append(basedOn.Quoted());
 
             Args = builder.ToString();
             return await ExecAsync().ConfigureAwait(false);

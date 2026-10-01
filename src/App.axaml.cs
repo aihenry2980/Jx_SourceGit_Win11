@@ -165,6 +165,27 @@ namespace SourceGit
             return Task.FromResult(false);
         }
 
+        public static async Task<bool> AskConfirmBranchPushAsync(string repo, string local, string remote, string destination,
+            bool force, System.Threading.CancellationToken cancellationToken)
+        {
+            if (!Dispatcher.UIThread.CheckAccess())
+                return await Dispatcher.UIThread.InvokeAsync(() => AskConfirmBranchPushAsync(repo, local, remote, destination, force, cancellationToken));
+
+            if (cancellationToken.IsCancellationRequested ||
+                Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime { MainWindow: { } owner })
+                return false;
+
+            var confirm = new Views.ConfirmBranchPush();
+            confirm.SetData(repo, local, remote, destination, force);
+            var result = confirm.ShowDialog<bool>(owner);
+            using var registration = cancellationToken.Register(() => Dispatcher.UIThread.Post(() =>
+            {
+                if (confirm.IsVisible)
+                    confirm.Close(false);
+            }));
+            return await result;
+        }
+
         public static async Task<Models.ConfirmEmptyCommitResult> AskConfirmEmptyCommitAsync(bool hasLocalChanges, bool hasSelectedUnstaged)
         {
             if (Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: { } owner })

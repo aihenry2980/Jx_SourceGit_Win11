@@ -391,17 +391,18 @@ namespace SourceGit.Views
                 else if (elem.Type == Models.InlineElementType.Link)
                 {
                     var raw = subject.Substring(elem.Start, elem.Length);
+                    var linkTypeface = new Typeface(fontFamily, FontStyle.Normal, FontWeight.Bold);
                     var link = new FormattedText(
                         raw,
                         CultureInfo.CurrentCulture,
                         FlowDirection.LeftToRight,
-                        typeface,
+                        linkTypeface,
                         fontSize,
                         linkForeground);
                     _inlines.Add(new Inline(x, link, elem)
                     {
                         RawText = raw,
-                        Typeface = typeface,
+                        Typeface = linkTypeface,
                         FontSize = fontSize,
                         Brush = linkForeground,
                     });

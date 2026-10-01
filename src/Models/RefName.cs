@@ -9,6 +9,32 @@ namespace SourceGit.Models
     /// </summary>
     public static class RefName
     {
+        public static string FromCommit(string sha, string subject)
+        {
+            var prefix = sha.Substring(0, Math.Min(10, sha.Length));
+            var text = subject ?? string.Empty;
+            var starts = System.Globalization.StringInfo.ParseCombiningCharacters(text);
+            var length = starts.Length > 10 ? starts[10] : text.Length;
+            var suffix = new System.Text.StringBuilder();
+            foreach (var ch in text.AsSpan(0, length))
+            {
+                if (char.IsWhiteSpace(ch) || char.IsControl(ch) || ch is '~' or '^' or ':' or '?' or '*' or '[' or '\\' or '/' or '@' or '{' or '"' or '\'')
+                    continue;
+
+                if (ch == '.' && (suffix.Length == 0 || suffix[^1] == '.'))
+                    continue;
+
+                suffix.Append(ch);
+            }
+
+            var tail = suffix.ToString().TrimEnd('.');
+            if (tail.EndsWith(".lock", StringComparison.Ordinal))
+                tail = tail[..^5];
+
+            var name = string.IsNullOrEmpty(tail) ? prefix : $"{prefix}-{tail}";
+            return IsValidBranchName(name) ? name : prefix;
+        }
+
         public static bool IsValidBranchName(string name)
         {
             if (string.Equals(name, "HEAD", StringComparison.Ordinal))

@@ -769,6 +769,10 @@
   <x:String x:Key="Text.Pull.Title" xml:space="preserve">拉取 (提取並合併)</x:String>
   <x:String x:Key="Text.Pull.UseRebase" xml:space="preserve">使用重定基底 (rebase) 合併分支</x:String>
   <x:String x:Key="Text.Push" xml:space="preserve">推送 (push)</x:String>
+  <x:String x:Key="Text.Push.BranchMismatch.Title" xml:space="preserve">警告：本機與遠端分支名稱不同！</x:String>
+  <x:String x:Key="Text.Push.BranchMismatch.Description" xml:space="preserve">本次推送將修改一個名稱不同的遠端分支。請仔細核對目標分支，確認無誤後再推送。</x:String>
+  <x:String x:Key="Text.Push.BranchMismatch.Confirm" xml:space="preserve">確認推送到此分支</x:String>
+  <x:String x:Key="Text.Push.BranchMismatch.Repository" xml:space="preserve">儲存庫：</x:String>
   <x:String x:Key="Text.Push.CheckSubmodules" xml:space="preserve">確保已推送子模組</x:String>
   <x:String x:Key="Text.Push.Force" xml:space="preserve">啟用強制推送</x:String>
   <x:String x:Key="Text.Push.Local" xml:space="preserve">本機分支:</x:String>

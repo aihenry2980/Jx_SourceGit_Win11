@@ -19,6 +19,8 @@ namespace SourceGit.ViewModels
             get => Module == null;
         }
 
+        public uint AccentColor => Module?.AccentColor ?? Models.SubmoduleUpdateBadge.ResolveAccentColor(FullPath);
+
         public bool HasChildren
         {
             get => Children.Count > 0;

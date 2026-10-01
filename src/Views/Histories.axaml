@@ -330,7 +330,7 @@
                                   ToolTip.Tip="{Binding Path}">
                               <v:SubmoduleUpdateBadgeShape AccentColor="{Binding AccentColor}"
                                                            IsHitTestVisible="False"/>
-                              <StackPanel Margin="7,0,4,0" Orientation="Horizontal" Spacing="2">
+                              <StackPanel Margin="7,0,12,0" Orientation="Horizontal" Spacing="2">
                                 <Path Width="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Converter={x:Static c:DoubleConverters.ToHistoryBadgeIconSize}}"
                                       Height="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Converter={x:Static c:DoubleConverters.ToHistoryBadgeIconSize}}"
                                       VerticalAlignment="Center"

@@ -9,6 +9,10 @@ namespace SourceGit.ViewModels
             get;
         }
 
+        public string BranchName { get; private set; }
+        public bool CreatesBranch => Target is Models.Commit;
+        public string Title => App.Text(CreatesBranch ? "CreateBranch.Title" : "CheckoutDetached");
+
         public bool HasLocalChanges
         {
             get => _repo.LocalChangesCount > 0;
@@ -26,6 +30,7 @@ namespace SourceGit.ViewModels
             _revision = commit.SHA;
 
             Target = commit;
+            BranchName = GetUniqueBranchName(Models.RefName.FromCommit(commit.SHA, commit.Subject), repo.Branches);
             DealWithLocalChanges = Preferences.Instance.UseStashAndReapplyByDefault ?
                 Models.DealWithLocalChanges.StashAndReapply :
                 Models.DealWithLocalChanges.DoNothing;
@@ -45,12 +50,19 @@ namespace SourceGit.ViewModels
         public override async Task<bool> Sure()
         {
             using var lockWatcher = _repo.LockWatcher();
-            ProgressDescription = $"Checkout Commit '{_revision}' ...";
+            if (CreatesBranch)
+            {
+                var branches = await new Commands.QueryBranches(_repo.FullPath).GetResultAsync();
+                BranchName = GetUniqueBranchName(BranchName, branches);
+                OnPropertyChanged(nameof(BranchName));
+            }
+            ProgressDescription = CreatesBranch ? $"Checkout New Branch '{BranchName}' ..." : $"Checkout Commit '{_revision}' ...";
 
             var log = _repo.CreateLog("Checkout Commit");
             Use(log);
 
-            if (_repo.CurrentBranch is { IsDetachedHead: true })
+            if (_repo.CurrentBranch is { IsDetachedHead: true } &&
+                !(CreatesBranch && _repo.CurrentBranch.Head.Equals(_revision, System.StringComparison.Ordinal)))
             {
                 var refs = await new Commands.QueryRefsContainsCommit(_repo.FullPath, _repo.CurrentBranch.Head).GetResultAsync();
                 if (refs.Count == 0)
@@ -67,9 +79,7 @@ namespace SourceGit.ViewModels
 
             if (DealWithLocalChanges == Models.DealWithLocalChanges.DoNothing)
             {
-                succ = await new Commands.Checkout(_repo.FullPath)
-                    .Use(log)
-                    .CommitAsync(_revision, false);
+                succ = await CheckoutTargetAsync(log, false);
             }
             else if (DealWithLocalChanges == Models.DealWithLocalChanges.StashAndReapply)
             {
@@ -89,15 +99,11 @@ namespace SourceGit.ViewModels
                     needPop = true;
                 }
 
-                succ = await new Commands.Checkout(_repo.FullPath)
-                    .Use(log)
-                    .CommitAsync(_revision, false);
+                succ = await CheckoutTargetAsync(log, false);
             }
             else
             {
-                succ = await new Commands.Checkout(_repo.FullPath)
-                    .Use(log)
-                    .CommitAsync(_revision, true);
+                succ = await CheckoutTargetAsync(log, true);
             }
 
             if (succ)
@@ -109,12 +115,46 @@ namespace SourceGit.ViewModels
                         .Use(log)
                         .PopAsync("stash@{0}");
 
-                _repo.RefreshWorkingCopyChanges();
+                if (Target is Models.Commit commit)
+                {
+                    _repo.RefreshAfterCreateBranch(new Models.Branch
+                    {
+                        Name = BranchName,
+                        FullName = $"refs/heads/{BranchName}",
+                        Head = _revision,
+                        CommitterDate = commit.CommitterTime,
+                        IsLocal = true,
+                    }, true);
+                }
+                else
+                {
+                    _repo.RefreshWorkingCopyChanges();
+                }
                 _repo.RefreshSuperProjectSubmodulePointer();
             }
 
             log.Complete();
             return succ;
+        }
+
+        private Task<bool> CheckoutTargetAsync(CommandLog log, bool force)
+        {
+            var command = new Commands.Checkout(_repo.FullPath).Use(log);
+            return CreatesBranch
+                ? command.BranchAsync(BranchName, _revision, force, false)
+                : command.CommitAsync(_revision, force);
+        }
+
+        private static string GetUniqueBranchName(string name, System.Collections.Generic.List<Models.Branch> branches)
+        {
+            var candidate = name;
+            for (var index = 2; branches.Exists(b => b.IsLocal &&
+                (b.Name.Equals(candidate, System.StringComparison.Ordinal) ||
+                 b.Name.StartsWith(candidate + "/", System.StringComparison.Ordinal) ||
+                 candidate.StartsWith(b.Name + "/", System.StringComparison.Ordinal))); index++)
+                candidate = $"{name}-{index}";
+
+            return candidate;
         }
 
         private readonly Repository _repo = null;

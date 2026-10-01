@@ -48,13 +48,7 @@ namespace SourceGit.Converters
             });
 
         public static readonly FuncValueConverter<Models.Commit, IBrush> SubjectLinkToBrush =
-            new(commit =>
-            {
-                if (commit is { IsCurrentHead: true })
-                    return s_headForegroundBrush;
-
-                return Application.Current?.FindResource("Brush.Link") as IBrush;
-            });
+            new(_ => Application.Current?.FindResource("Brush.FG1") as IBrush ?? Brushes.Black);
 
         public static readonly FuncValueConverter<Models.Commit, IBrush> HeadAwareForeground =
             new(commit => commit is { IsCurrentHead: true } ? s_headForegroundBrush : Application.Current?.FindResource("Brush.FG1") as IBrush);

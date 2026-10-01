@@ -1758,6 +1758,22 @@ namespace SourceGit.Views
             }
 
             var createBranch = new MenuItem();
+            if (isHead && current.IsDetachedHead && !repo.IsBare)
+            {
+                var attachHead = new MenuItem
+                {
+                    Header = CreateCommitActionHeader("CommitCM.Checkout", commit),
+                    Icon = App.CreateMenuIcon("Icons.Branch.Add"),
+                };
+                attachHead.Click += (_, e) =>
+                {
+                    if (repo.CanCreatePopup())
+                        repo.ShowPopup(new ViewModels.CheckoutDetached(repo, commit));
+                    e.Handled = true;
+                };
+                menu.Items.Add(attachHead);
+            }
+
             createBranch.Icon = App.CreateMenuIcon("Icons.Branch.Add");
             createBranch.Header = App.Text("CreateBranch");
             createBranch.Tag = OperatingSystem.IsMacOS() ? "⌘+⇧+B" : "Ctrl+Shift+B";
@@ -1876,7 +1892,7 @@ namespace SourceGit.Views
                 }
 
                 var cherryPick = new MenuItem();
-                cherryPick.Header = $"{App.Text("CommitCM.CherryPick").TrimEnd('.', '\u2026')} {commit.SHA[..Math.Min(commit.SHA.Length, 10)]}...";
+                cherryPick.Header = CreateCommitActionHeader("CommitCM.CherryPick", commit);
                 var cherryPickIcon = App.CreateMenuIcon("Icons.CherryPick");
                 if (cherryPickIcon != null)
                     cherryPickIcon.Fill = new SolidColorBrush(Color.Parse("#FFD13438"));
@@ -1889,7 +1905,7 @@ namespace SourceGit.Views
                 menu.Items.Add(cherryPick);
 
                 var revert = new MenuItem();
-                revert.Header = App.Text("CommitCM.Revert");
+                revert.Header = CreateCommitActionHeader("CommitCM.Revert", commit);
                 revert.Icon = App.CreateMenuIcon("Icons.Undo");
                 revert.Click += (_, e) =>
                 {
@@ -1929,7 +1945,7 @@ namespace SourceGit.Views
                 else
                 {
                     var checkoutCommit = new MenuItem();
-                    checkoutCommit.Header = App.Text("CommitCM.Checkout");
+                    checkoutCommit.Header = CreateCommitActionHeader("CommitCM.Checkout", commit);
                     checkoutCommit.Icon = App.CreateMenuIcon("Icons.Detached");
                     checkoutCommit.Click += (_, e) =>
                     {
@@ -2655,6 +2671,41 @@ namespace SourceGit.Views
                 e.Handled = true;
             };
             menu.Items.Add(merge);
+        }
+
+        private static Control CreateCommitActionHeader(string resourceKey, Models.Commit commit)
+        {
+            var header = new StackPanel
+            {
+                Orientation = Avalonia.Layout.Orientation.Horizontal,
+                Spacing = 6,
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+            };
+            header.Children.Add(new TextBlock
+            {
+                Text = App.Text(resourceKey).TrimEnd('.', '\u2026'),
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+            });
+            var chip = new Border
+            {
+                Background = new SolidColorBrush(Color.Parse("#E2E4E7")),
+                BorderBrush = new SolidColorBrush(Color.Parse("#B4B8BE")),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(3),
+                Padding = new Thickness(6, 1),
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                Child = new TextBlock
+                {
+                    Text = commit.SHA[..Math.Min(commit.SHA.Length, 10)],
+                    Foreground = new SolidColorBrush(Color.Parse("#333333")),
+                    FontFamily = App.Current?.FindResource("Fonts.Monospace") as FontFamily ?? FontFamily.Default,
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                },
+            };
+            ToolTip.SetTip(chip, commit.SHA);
+            header.Children.Add(chip);
+            header.Children.Add(new TextBlock { Text = "...", VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center });
+            return header;
         }
 
         private static Control CreateMergeBranchHeader(ViewModels.Repository repo, Models.Branch source, Models.Branch destination, uint sourceColor)

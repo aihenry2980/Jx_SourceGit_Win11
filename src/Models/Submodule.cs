@@ -17,6 +17,7 @@
         public string SHA { get; set; } = string.Empty;
         public string URL { get; set; } = string.Empty;
         public string Branch { get; set; } = string.Empty;
+        public uint AccentColor { get; set; }
         public SubmoduleStatus Status { get; set; } = SubmoduleStatus.Unknown;
         public bool HasFileChanges { get; set; } = false;
         public bool HasSubmoduleChanges { get; set; } = false;

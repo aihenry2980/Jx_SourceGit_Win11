@@ -358,7 +358,7 @@ namespace SourceGit.Models
 
         private static string GetBranchName(Context context)
         {
-            return context.branch.Name;
+            return context.branch?.Name ?? string.Empty;
         }
 
         private static string GetFilesCount(Context context)

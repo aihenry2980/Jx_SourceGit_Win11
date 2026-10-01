@@ -15,6 +15,7 @@ namespace SourceGit.Views
         {
             public Geometry Icon { get; set; } = null;
             public Geometry RebaseBaseIcon { get; set; } = null;
+            public Geometry Arrow { get; set; } = null;
             public FormattedText PrefixLabel { get; set; } = null;
             public FormattedText Label { get; set; } = null;
             public FormattedText FoldLabel { get; set; } = null;
@@ -35,6 +36,7 @@ namespace SourceGit.Views
             public bool IsBranch { get; set; } = false;
             public bool IsTrackingPair { get; set; } = false;
             public bool IsAbbreviated { get; set; } = false;
+            public bool IsMuted { get; set; } = false;
             public bool UseSolidBackground { get; set; } = false;
             public bool CanFold { get; set; } = false;
             public bool IsFolded { get; set; } = false;
@@ -42,6 +44,7 @@ namespace SourceGit.Views
             public double Height { get; set; } = 16.0;
             public double Width { get; set; } = 0.0;
             public FormattedText TrackingPairLabel { get; set; } = null;
+            public double TrackingPairBadgeWidth { get; set; } = TRACKING_PAIR_BADGE_WIDTH;
             public Models.Decorator Decorator { get; set; } = null;
         }
 
@@ -224,6 +227,8 @@ namespace SourceGit.Views
                     new Rect(x, y, item.Width, item.Height),
                     new CornerRadius(4, rightCornerRadius, rightCornerRadius, 4));
                 var centerY = y + item.Height * 0.5;
+                var isSuperProjectPointer = item.Decorator?.Type == Models.DecoratorType.SuperProjectPointer;
+                var arrow = item.Arrow;
                 var hasCompactTrackingBadge = item.IsTrackingPair;
                 var hasStandaloneRemoteBadge =
                     item.PrimaryIconBackground != null &&
@@ -269,7 +274,13 @@ namespace SourceGit.Views
                 {
                     if (item.UseSolidBackground)
                     {
-                        context.DrawRectangle(item.Brush, null, entireRect);
+                        if (arrow != null)
+                        {
+                            using (context.PushTransform(Matrix.CreateTranslation(x, y)))
+                                context.DrawGeometry(item.Brush, null, arrow);
+                        }
+                        else
+                            context.DrawRectangle(item.Brush, null, entireRect);
                     }
                     else
                     {
@@ -300,7 +311,10 @@ namespace SourceGit.Views
                     }
 
                     if (item.Decorator?.Type == Models.DecoratorType.RemoteBranchHead)
-                        DrawRemoteStripePattern(context, entireRect);
+                    {
+                        using (context.PushOpacity(item.IsMuted ? .2 : 1.0))
+                            DrawRemoteStripePattern(context, entireRect);
+                    }
 
                     var labelX = x + item.LeadingWidth + 4;
                     DrawLabelHighlights(context, item, labelX, centerY - item.Label.Height * 0.5);
@@ -314,7 +328,14 @@ namespace SourceGit.Views
                 }
 
                 var borderBrush = item.BorderBrush ?? item.Brush;
-                context.DrawRectangle(null, new Pen(borderBrush, hasCompactTrackingBadge ? 2.0 : 1.0), entireRect);
+                var borderPen = new Pen(borderBrush, hasCompactTrackingBadge ? 2.0 : 1.0);
+                if (arrow != null)
+                {
+                    using (context.PushTransform(Matrix.CreateTranslation(x, y)))
+                        context.DrawGeometry(null, borderPen, arrow);
+                }
+                else
+                    context.DrawRectangle(null, borderPen, entireRect);
 
                 if (!hasCompactTrackingBadge && item.PrimaryIconBackground != null)
                 {
@@ -327,10 +348,13 @@ namespace SourceGit.Views
                 if (item.RebaseBaseIcon != null)
                 {
                     using (context.PushTransform(Matrix.CreateTranslation(x + 2, iconY)))
-                        context.DrawGeometry(s_rebaseBaseIconBrush, new Pen(s_rebaseBaseIconBorderBrush, 0.8), item.RebaseBaseIcon);
+                        context.DrawGeometry(item.IsMuted ? s_incidentalBranchForegroundBrush : s_rebaseBaseIconBrush,
+                            new Pen(item.IsMuted ? s_incidentalBranchBorderBrush : s_rebaseBaseIconBorderBrush, 0.8), item.RebaseBaseIcon);
                 }
 
                 var primaryIconX = x + 2 + rebaseBaseIconOffset + (badgeSize - iconSize) * 0.5;
+                if (isSuperProjectPointer)
+                    primaryIconX += 5;
                 if (!hasCompactTrackingBadge && item.Icon != null)
                 {
                     using (context.PushTransform(Matrix.CreateTranslation(primaryIconX, iconY)))
@@ -505,20 +529,23 @@ namespace SourceGit.Views
                         IsCurrentCommitHead = isCurrentCommitHead,
                         IsBranch = isBranch,
                         IsAbbreviated = isMutedIncidentalBranch,
+                        IsMuted = isMutedIncidentalBranch,
                         Decorator = decorator,
                     };
 
                     if (secondaryDecorator != null)
                     {
                         item.IsTrackingPair = true;
-                        item.LeadingWidth = TRACKING_PAIR_LEADING_WIDTH;
                         item.TrackingPairLabel = new FormattedText(
                             "L+R",
                             CultureInfo.CurrentCulture,
                             FlowDirection.LeftToRight,
                             typefaceBold,
                             Math.Max(9.0, labelSizeForItem - 2.0),
-                            Brushes.White);
+                            isMutedIncidentalBranch ? s_incidentalBranchForegroundBrush : Brushes.White);
+                        item.TrackingPairBadgeWidth = Math.Max(TRACKING_PAIR_BADGE_WIDTH,
+                            Math.Ceiling(item.TrackingPairLabel.WidthIncludingTrailingWhitespace + 8.0));
+                        item.LeadingWidth = item.TrackingPairBadgeWidth + 4.0;
                     }
                     else if (decorator.Type is Models.DecoratorType.CurrentBranchHead or Models.DecoratorType.LocalBranchHead)
                     {
@@ -533,6 +560,14 @@ namespace SourceGit.Views
                         item.PrimaryIconBackground = s_remoteIconBackgroundBrush;
                         item.PrimaryIconBorderBrush = s_remoteIconBorderBrush;
                         item.LeadingWidth = 20.0;
+                    }
+
+                    if (isMutedIncidentalBranch)
+                    {
+                        item.IconBrush = s_incidentalBranchForegroundBrush;
+                        item.PrimaryIconBackground = s_mutedIconBackgroundBrush;
+                        item.PrimaryIconBorderBrush = s_incidentalBranchForegroundBrush;
+                        item.BadgeBackground = null;
                     }
 
                     if (decorator.IsRebaseBaseBranch || secondaryDecorator?.IsRebaseBaseBranch == true)
@@ -562,7 +597,7 @@ namespace SourceGit.Views
                         item.BorderBrush = s_headTagBorderBrush;
                     }
 
-                    if (!isHead && secondaryDecorator == null)
+                    if (!isMutedIncidentalBranch && !isHead && secondaryDecorator == null)
                     {
                         if (decorator.Type == Models.DecoratorType.LocalBranchHead)
                         {
@@ -598,6 +633,7 @@ namespace SourceGit.Views
                             geo = this.FindResource("Icons.Home") as StreamGeometry;
                             break;
                         case Models.DecoratorType.SuperProjectPointer:
+                            item.LeadingWidth += 5;
                             item.Brush = s_superProjectPointerBackgroundBrush;
                             item.BorderBrush = s_superProjectPointerBorderBrush;
                             geo = this.FindResource("Icons.Submodule") as StreamGeometry;
@@ -624,10 +660,12 @@ namespace SourceGit.Views
                                 : 10.0);
                     if (item.CanFold)
                     {
-                        item.FoldButtonBackground = item.IsFolded
+                        item.FoldButtonBackground = isMutedIncidentalBranch
+                            ? s_mutedIconBackgroundBrush
+                            : item.IsFolded
                             ? new SolidColorBrush(Color.Parse("#FFD54F"))
                             : new SolidColorBrush(Color.Parse("#ECEFF1"));
-                        item.FoldButtonForeground = Brushes.Black;
+                        item.FoldButtonForeground = isMutedIncidentalBranch ? s_incidentalBranchForegroundBrush : Brushes.Black;
                         item.FoldLabel = new FormattedText(
                             item.IsFolded ? "+" : "-",
                             CultureInfo.CurrentCulture,
@@ -640,7 +678,10 @@ namespace SourceGit.Views
                     var contentHeight = Math.Max(
                         item.Label.Height,
                         item.PrefixLabel?.Height ?? 0.0);
+                    contentHeight = Math.Max(contentHeight, item.TrackingPairLabel?.Height ?? 0.0);
                     item.Height = Math.Max(16.0, Math.Ceiling(contentHeight + 4.0));
+                    if (isSuperProjectPointer)
+                        item.Height += 4;
 
                     var prefixWidth = prefixLabel?.WidthIncludingTrailingWhitespace ?? 0.0;
                     item.Width = item.LeadingWidth + (isHead ? 0 : 4) + prefixWidth + label.Width + 4;
@@ -648,6 +689,11 @@ namespace SourceGit.Views
                         item.Width += 18;
                     else if (item.IsBranch)
                         item.Width += Math.Max(4.0, item.Height * 0.5 - 4.0);
+                    if (isSuperProjectPointer)
+                    {
+                        item.Width += 10;
+                        item.Arrow = SubmoduleUpdateBadgeShape.CreateArrowGeometry(new Rect(0, 0, item.Width, item.Height));
+                    }
                     _items.Add(item);
                     currentLineHeight = Math.Max(currentLineHeight, item.Height);
                     requiredHeight = Math.Max(requiredHeight, currentLineHeight);
@@ -704,18 +750,18 @@ namespace SourceGit.Views
         {
             var height = Math.Max(14.0, item.Height - 4.0);
             var top = y + (item.Height - height) * 0.5;
-            var rect = new Rect(x, top, TRACKING_PAIR_BADGE_WIDTH, height);
+            var rect = new Rect(x, top, item.TrackingPairBadgeWidth, height);
             var rounded = new RoundedRect(rect, new CornerRadius(4));
 
             using (context.PushClip(rounded))
             {
-                context.DrawRectangle(s_trackingLocalBackgroundBrush, null, new Rect(rect.Left, rect.Top, rect.Width * 0.5, rect.Height));
-                context.DrawRectangle(s_trackingRemoteBackgroundBrush, null, new Rect(rect.Center.X, rect.Top, rect.Width * 0.5, rect.Height));
+                context.DrawRectangle(item.IsMuted ? s_mutedIconBackgroundBrush : s_trackingLocalBackgroundBrush, null, new Rect(rect.Left, rect.Top, rect.Width * 0.5, rect.Height));
+                context.DrawRectangle(item.IsMuted ? s_mutedIconBackgroundBrush : s_trackingRemoteBackgroundBrush, null, new Rect(rect.Center.X, rect.Top, rect.Width * 0.5, rect.Height));
             }
 
-            context.DrawRectangle(null, new Pen(s_trackingPairBorderBrush, 1.2), rounded);
+            context.DrawRectangle(null, new Pen(item.IsMuted ? s_incidentalBranchBorderBrush : s_trackingPairBorderBrush, 1.2), rounded);
             context.DrawLine(
-                new Pen(s_trackingPairDividerBrush, 1.0),
+                new Pen(item.IsMuted ? s_incidentalBranchBorderBrush : s_trackingPairDividerBrush, 1.0),
                 new Point(rect.Center.X, rect.Top + 2),
                 new Point(rect.Center.X, rect.Bottom - 2));
 
@@ -948,7 +994,6 @@ namespace SourceGit.Views
         }
 
         private const double TRACKING_PAIR_BADGE_WIDTH = 36.0;
-        private const double TRACKING_PAIR_LEADING_WIDTH = 40.0;
 
         private List<RenderItem> _items = new List<RenderItem>();
         private static readonly IBrush s_headTagBackgroundBrush = new SolidColorBrush(Color.Parse("#C62828"));
@@ -961,7 +1006,8 @@ namespace SourceGit.Views
         private static readonly IBrush s_highlightForeground = Brushes.Black;
         private static readonly IBrush s_remotePrefixAccentBrush = new SolidColorBrush(Color.Parse("#1565C0"));
         private static readonly IBrush s_incidentalBranchForegroundBrush = new SolidColorBrush(Color.Parse("#FF9AA0A6"));
-        private static readonly IBrush s_incidentalBranchBorderBrush = new SolidColorBrush(Color.Parse("#CC202124"));
+        private static readonly IBrush s_incidentalBranchBorderBrush = new SolidColorBrush(Color.Parse("#669AA0A6"));
+        private static readonly IBrush s_mutedIconBackgroundBrush = new SolidColorBrush(Color.Parse("#189AA0A6"));
         private static readonly IBrush s_remoteIconBackgroundBrush = new SolidColorBrush(Color.Parse("#FF0B57D0"));
         private static readonly IBrush s_remoteIconBorderBrush = new SolidColorBrush(Color.Parse("#FF073B8C"));
         private static readonly IBrush s_remoteStripeBrush = new SolidColorBrush(Color.Parse("#FF3974A0"));

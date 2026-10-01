@@ -471,7 +471,7 @@ namespace SourceGit.ViewModels
 
         public void CheckoutCommitDetached(Models.Commit c)
         {
-            if (!c.IsCurrentHead && _repo.CanCreatePopup())
+            if ((!c.IsCurrentHead || _repo.CurrentBranch is { IsDetachedHead: true }) && _repo.CanCreatePopup())
                 _repo.ShowPopup(new CheckoutDetached(_repo, c));
         }
 
@@ -524,7 +524,7 @@ namespace SourceGit.ViewModels
 
         public async Task CheckoutBranchByCommitAsync(Models.Commit commit)
         {
-            if (commit.IsCurrentHead)
+            if (commit.IsCurrentHead && _repo.CurrentBranch is { IsDetachedHead: false })
                 return;
 
             Models.Branch firstRemoteBranch = null;

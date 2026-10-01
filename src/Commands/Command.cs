@@ -40,6 +40,11 @@ namespace SourceGit.Commands
 
         public async Task<bool> ExecAsync()
         {
+            if (CancellationToken.IsCancellationRequested ||
+                !await ConfirmBeforeExecutionAsync().ConfigureAwait(false) ||
+                CancellationToken.IsCancellationRequested)
+                return false;
+
             Log?.AppendLine($"$ git {Args}\n");
 
             var errs = new List<string>();
@@ -115,6 +120,8 @@ namespace SourceGit.Commands
 
             return true;
         }
+
+        protected virtual Task<bool> ConfirmBeforeExecutionAsync() => Task.FromResult(true);
 
         protected Result ReadToEnd()
         {

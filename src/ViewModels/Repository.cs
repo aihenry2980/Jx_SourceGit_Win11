@@ -580,6 +580,8 @@ namespace SourceGit.ViewModels
                     var colors = BuildSubmoduleUpdateBadgeColorMap(paths);
                     var colorsChanged = !AreSubmoduleColorMapsEqual(_submoduleUpdateBadgeColors, colors);
                     _submoduleUpdateBadgeColors = colors;
+                    foreach (var module in value)
+                        module.AccentColor = ResolveSubmoduleUpdateBadgeColor(module.Path);
                     OnPropertyChanged(nameof(SubmodulesHeaderCountText));
                     OnPropertyChanged(nameof(IsParentRepository));
 
@@ -613,6 +615,9 @@ namespace SourceGit.ViewModels
                 colors[normalized] = color.Value;
 
             _submoduleUpdateBadgeColors = colors;
+            foreach (var module in _submodules)
+                module.AccentColor = ResolveSubmoduleUpdateBadgeColor(module.Path);
+            VisibleSubmodules = BuildVisibleSubmodules();
             if (_histories != null)
             {
                 foreach (var commit in _histories.Commits)
@@ -2028,7 +2033,7 @@ namespace SourceGit.ViewModels
 
                 var color = 0u;
                 if (exactNames.Contains(branch.Name))
-                    color = exactNameColors.GetValueOrDefault(branch.Name, Models.RepositorySettings.PRESET_BRANCH_EXACT_DEFAULT_COLOR);
+                    color = exactNameColors.GetValueOrDefault(branch.Name);
 
                 if (branch.IsLocal)
                 {
@@ -2095,11 +2100,11 @@ namespace SourceGit.ViewModels
 
             if (checkout)
             {
-                if (_currentBranch.IsDetachedHead)
+                if (_currentBranch is { IsDetachedHead: true })
                 {
                     _branches.Remove(_currentBranch);
                 }
-                else
+                else if (_currentBranch != null)
                 {
                     _currentBranch.IsCurrent = false;
                     _currentBranch.WorktreePath = null;
@@ -2144,11 +2149,11 @@ namespace SourceGit.ViewModels
         {
             _watcher?.MarkBranchUpdated();
 
-            if (_currentBranch.IsDetachedHead)
+            if (_currentBranch is { IsDetachedHead: true })
             {
                 _branches.Remove(_currentBranch);
             }
-            else
+            else if (_currentBranch != null)
             {
                 _currentBranch.IsCurrent = false;
                 _currentBranch.WorktreePath = null;
@@ -5421,18 +5426,18 @@ namespace SourceGit.ViewModels
                         case Models.DecoratorType.LocalBranchHead:
                             var localRefName = $"refs/heads/{decorator.Name}";
                             decorator.IsRebaseBaseBranch = localRefName.Equals(rebaseBaseBranchFullName, StringComparison.Ordinal);
-                            if (TryResolveBranchDisplayColor(localRefName, true, branchColors, branchesByFullName, localBranchesByUpstream, out var localColor))
-                                decorator.Color = localColor;
-                            else if (hasIncludedBranches && !ShouldKeepBranchVisibleColor(localRefName, true, includedBranches, branchesByFullName, localBranchesByUpstream))
+                            if (hasIncludedBranches && !ShouldKeepBranchVisibleColor(localRefName, true, includedBranches, branchesByFullName, localBranchesByUpstream))
                                 decorator.Color = incidentalBranchColor;
+                            else if (TryResolveBranchDisplayColor(localRefName, true, branchColors, branchesByFullName, localBranchesByUpstream, out var localColor))
+                                decorator.Color = localColor;
                             break;
                         case Models.DecoratorType.RemoteBranchHead:
                             var remoteRefName = $"refs/remotes/{decorator.Name}";
                             decorator.IsRebaseBaseBranch = remoteRefName.Equals(rebaseBaseBranchFullName, StringComparison.Ordinal);
-                            if (TryResolveBranchDisplayColor(remoteRefName, false, branchColors, branchesByFullName, localBranchesByUpstream, out var remoteColor))
-                                decorator.Color = remoteColor;
-                            else if (hasIncludedBranches && !ShouldKeepBranchVisibleColor(remoteRefName, false, includedBranches, branchesByFullName, localBranchesByUpstream))
+                            if (hasIncludedBranches && !ShouldKeepBranchVisibleColor(remoteRefName, false, includedBranches, branchesByFullName, localBranchesByUpstream))
                                 decorator.Color = incidentalBranchColor;
+                            else if (TryResolveBranchDisplayColor(remoteRefName, false, branchColors, branchesByFullName, localBranchesByUpstream, out var remoteColor))
+                                decorator.Color = remoteColor;
                             break;
                     }
                 }

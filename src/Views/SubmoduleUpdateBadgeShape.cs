@@ -39,17 +39,7 @@ namespace SourceGit.Views
                 System.Math.Abs(_renderHeight - height) < 0.01)
                 return;
 
-            var notch = System.Math.Min(8.0, height * 0.42);
-            _geometry = new StreamGeometry();
-            using (var shape = _geometry.Open())
-            {
-                shape.BeginFigure(new Point(notch, 0.5), true);
-                shape.LineTo(new Point(width - 0.5, 0.5));
-                shape.LineTo(new Point(width - 0.5, height - 0.5));
-                shape.LineTo(new Point(notch, height - 0.5));
-                shape.LineTo(new Point(0.5, height * 0.5));
-                shape.EndFigure(true);
-            }
+            _geometry = CreateArrowGeometry(new Rect(0.5, 0.5, width - 1, height - 1));
 
             var color = Color.FromUInt32(AccentColor);
             _fill = Brushes.Transparent;
@@ -57,6 +47,24 @@ namespace SourceGit.Views
             _accentColor = AccentColor;
             _renderWidth = width;
             _renderHeight = height;
+        }
+
+        public static StreamGeometry CreateArrowGeometry(Rect bounds)
+        {
+            var head = System.Math.Min(10.0, bounds.Width * 0.25);
+            var notch = System.Math.Min(4.0, bounds.Width * 0.1);
+            var geometry = new StreamGeometry();
+            using (var shape = geometry.Open())
+            {
+                shape.BeginFigure(bounds.TopLeft, true);
+                shape.LineTo(new Point(bounds.Right - head, bounds.Top));
+                shape.LineTo(new Point(bounds.Right, bounds.Center.Y));
+                shape.LineTo(new Point(bounds.Right - head, bounds.Bottom));
+                shape.LineTo(bounds.BottomLeft);
+                shape.LineTo(new Point(bounds.Left + notch, bounds.Center.Y));
+                shape.EndFigure(true);
+            }
+            return geometry;
         }
 
         private StreamGeometry _geometry = null;
