@@ -598,16 +598,24 @@ namespace SourceGit.Views
                 {
                     var folder = selected[0];
                     var folderPath = folder is { Path: { IsAbsoluteUri: true } path } ? path.LocalPath : folder?.Path.ToString();
-                    var repoPath = await ViewModels.Welcome.Instance.GetRepositoryRootAsync(folderPath);
-                    if (!string.IsNullOrEmpty(repoPath))
+                    var rs = await ViewModels.Welcome.Instance.GetRepositoryRootAsync(folderPath);
+                    if (rs.IsSuccess && !string.IsNullOrWhiteSpace(rs.StdOut))
                     {
-                        await ViewModels.Welcome.Instance.AddRepositoryAsync(repoPath, null, false, true);
+                        await ViewModels.Welcome.Instance.AddRepositoryAsync(rs.StdOut.Trim(), null, false, true);
                         ViewModels.Welcome.Instance.Refresh();
                     }
                     else if (global::System.IO.Directory.Exists(folderPath))
                     {
-                        var test = await new Commands.QueryRepositoryRootPath(folderPath).GetResultAsync();
-                        activePage.Popup = new ViewModels.Init(activePage.Node.Id, folderPath, null, 0, test.StdErr);
+                        if (Models.SafeDirectories.IsUntrustedRepository(rs.StdErr) &&
+                            Models.SafeDirectories.TryGetSafeDirectoryValue(folderPath, rs.StdErr, out var safeDirectory))
+                        {
+                            activePage.Popup = new ViewModels.TrustRepository(
+                                activePage.Node.Id, folderPath, rs.StdErr, safeDirectory, null, false, true, 0);
+                        }
+                        else
+                        {
+                            activePage.Popup = new ViewModels.Init(activePage.Node.Id, folderPath, null, 0, rs.StdErr);
+                        }
                     }
                 }
             }

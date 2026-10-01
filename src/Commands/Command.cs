@@ -259,8 +259,8 @@ namespace SourceGit.Commands
             if (!start.Environment.ContainsKey("GIT_SSH_COMMAND") && !string.IsNullOrEmpty(SSHKey))
                 start.Environment.Add("GIT_SSH_COMMAND", $"ssh -i '{SSHKey}' -o AddKeysToAgent=yes");
 
-            // Keep Git output deterministic without losing UTF-8 filenames on Linux.
-            if (OperatingSystem.IsLinux())
+            // Keep Git output deterministic and parseable without losing UTF-8 filenames on Unix.
+            if (!OperatingSystem.IsWindows())
             {
                 start.Environment["LANG"] = "C.UTF-8";
                 start.Environment["LC_ALL"] = "C.UTF-8";
