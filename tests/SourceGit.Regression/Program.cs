@@ -3,9 +3,13 @@ using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Input;
+using Avalonia.Input.Raw;
+using Avalonia.Input.Platform;
 using Avalonia.Media;
 using Avalonia.Media.Fonts;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using SourceGit.Models;
 using Repo = SourceGit.ViewModels.Repository;
 using Decorator = SourceGit.Models.Decorator;
@@ -45,7 +49,218 @@ internal static class Program
         TestTrackingPairZoom();
         TestCommitMenuChips();
         TestPushConfirmation();
+        TestCompactSubmodules();
+        TestTabReordering();
+        TestCrashReports();
         Console.WriteLine($"PASS: {_checks} checks. Isolated data and preview: {_root}");
+    }
+
+    private static void TestCompactSubmodules()
+    {
+        Submodule Module(string path, uint color) => new() { Path = path, AccentColor = color,
+            Status = SubmoduleStatus.Normal };
+        var only = Module("depends/vendor/AvaloniaEdit", 0xFFF7630C);
+        var tree = SourceGit.ViewModels.SubmoduleCollectionAsTree.Build([only], null);
+        var row = tree.Rows.Single();
+        Check(row.DisplayName == only.Path && row.FullPath == only.Path && row.Depth == 0,
+            "Single-directory chain compacts to one full-path row");
+        Check(row.Module == only && row.AccentColor == only.AccentColor && row.CanShowStatusBadge,
+            "Compacted submodule retains its model, graph color and status");
+        Check(row.DisplayPrefix == "depends/vendor/" && row.DisplayLeafName == "AvaloniaEdit",
+            "Compacted ordinary-directory prefix stays separate from the colored module name");
+
+        var child = Module("core/utilities/crypto", 0xFF0EA5A4);
+        var parent = Module("core", 0xFF6478FF);
+        var first = Module("packages/vendor/auth", 0xFFF7630C);
+        var second = Module("packages/vendor/network", 0xFF0EA5A4);
+        var modules = new List<Submodule> { child, parent, first, second };
+        tree = SourceGit.ViewModels.SubmoduleCollectionAsTree.Build(modules, null);
+        var folder = tree.Tree.Single(n => n.IsFolder);
+        var actualParent = tree.Tree.Single(n => n.Module == parent);
+        Check(folder.DisplayName == "packages/vendor" && folder.AccentColor == 0xFF9AA0A6 &&
+            !folder.CanShowStatusBadge, "Ordinary directories are gray and have no repository status");
+        Check(actualParent.DisplayName == "core" && actualParent.Children.Single().DisplayName == "utilities/crypto" &&
+            actualParent.Children[0].Depth == 1, "Compaction never crosses an actual parent submodule");
+        Check(tree.Rows.Count == 5 && folder.ChildCounter == "(2)", "Branching paths keep their hierarchy and counters");
+        tree.ToggleExpand(folder);
+        Check(tree.Rows.Count == 3, "Collapsed compact directory hides just its descendants");
+        tree = SourceGit.ViewModels.SubmoduleCollectionAsTree.Build(modules, tree);
+        Check(!tree.Tree.Single(n => n.IsFolder).IsExpanded && tree.Rows.Count == 3,
+            "Refresh preserves compact-directory collapse state");
+        modules.Add(Module("packages/new-module", 0xFFDA5A9B));
+        tree = SourceGit.ViewModels.SubmoduleCollectionAsTree.Build(modules, tree);
+        Check(!tree.Tree.Single(n => n.FullPath == "packages").IsExpanded,
+            "Directory aliases preserve collapse when a compact path splits");
+        tree.ToggleExpand(tree.Tree.Single(n => n.FullPath == "packages"));
+
+        var view = new SourceGit.Views.SubmodulesView { Content = tree };
+        var window = new Window { Width = 380, Height = 260, Content = view };
+        window.Show();
+        PumpFor(100);
+        var icons = view.GetVisualDescendants().OfType<SourceGit.Views.SubmoduleTreeNodeIcon>().ToArray();
+        Check(icons.Any(icon => icon.DataContext is SourceGit.ViewModels.SubmoduleTreeNode { IsFolder: true } &&
+            icon.GetVisualDescendants().OfType<Avalonia.Controls.Shapes.Path>().Any(p =>
+                p.Fill is ISolidColorBrush brush && brush.Color == Color.FromUInt32(0xFF9AA0A6))),
+            "Directory icons render in gray too");
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        using var frame = window.CaptureRenderedFrame();
+        Check(frame != null, "Compact submodule tree renders");
+        frame.Save(Path.Combine(_root, "compact-submodules.png"));
+        window.Close();
+    }
+
+    private static void TestTabReordering()
+    {
+        var pref = SourceGit.ViewModels.Preferences.Instance;
+        pref.GetActiveWorkspace().Repositories.Clear();
+        var launcher = new SourceGit.ViewModels.Launcher(null);
+        PumpFor(100);
+        launcher.Pages.Clear();
+        var pages = Enumerable.Range(0, 3).Select(i =>
+        {
+            var path = NewRepository("tab-" + i);
+            var repo = Open(path);
+            return new SourceGit.ViewModels.LauncherPage(new SourceGit.ViewModels.RepositoryNode
+            { Id = path, Name = "Repository " + i, IsRepository = true }, repo);
+        }).ToArray();
+        launcher.Pages.AddRange(pages);
+        launcher.ActivePage = pages[0];
+        pref.SetCanModify();
+        launcher.MoveTab(pages[0], 3);
+        Check(launcher.Pages.SequenceEqual(new[] { pages[1], pages[2], pages[0] }) &&
+            launcher.ActivePage == pages[0], "Move active tab to the end without changing selection");
+        Check(launcher.ActiveWorkspace.Repositories.SequenceEqual(new[] { pages[1], pages[2], pages[0] }
+            .Select(p => ((Repo)p.Data).FullPath)) && launcher.ActiveWorkspace.ActiveIdx == 2,
+            "Reordering persists repository order and active index");
+        launcher.MoveTab(pages[0], 0);
+        Check(launcher.Pages.SequenceEqual(pages), "Tab moves backward to the first slot");
+        launcher.MoveTab(pages[0], 1);
+        launcher.MoveTab(new SourceGit.ViewModels.LauncherPage(), 0);
+        Check(launcher.Pages.SequenceEqual(pages), "Adjacent no-op and foreign tab leave order intact");
+
+        var bar = new SourceGit.Views.LauncherTabBar { DataContext = launcher, Height = 30 };
+        var window = new Window { Width = 760, Height = 160, Content = bar };
+        window.Show();
+        PumpFor(100);
+        var list = bar.FindControl<ListBox>("LauncherTabsList");
+        Point TabPoint(int index, double fraction) => list.ContainerFromIndex(index)
+            .TranslatePoint(new Point(list.ContainerFromIndex(index).Bounds.Width * fraction, 15), window).Value;
+        object PressedPage() => typeof(SourceGit.Views.LauncherTabBar)
+            .GetField("_pressedTabPage", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(bar);
+        window.MouseDown(TabPoint(0, 0.4), MouseButton.Left);
+        Check(PressedPage() == pages[0], "Active tab arms drag through the tunnel handler");
+        window.MouseUp(TabPoint(0, 0.4), MouseButton.Left);
+        Check(PressedPage() == null, "Normal click clears drag state");
+        window.MouseDown(TabPoint(1, 0.4), MouseButton.Left);
+        Check(PressedPage() == pages[1] && launcher.ActivePage == pages[1],
+            "Inactive tab activates and arms drag");
+        window.MouseUp(TabPoint(1, 0.4), MouseButton.Left);
+        var data = new DataTransfer();
+        data.Add(DataTransferItem.Create(DataFormat.CreateStringApplicationFormat("sourcegit-dnd-main-tab"), pages[1].Node.Id));
+        var dropPoint = TabPoint(2, 0.8);
+        window.DragDrop(dropPoint, RawDragEventType.DragEnter, data, DragDropEffects.Move);
+        window.DragDrop(dropPoint, RawDragEventType.DragOver, data, DragDropEffects.Move);
+        PumpFor(50);
+        Check(bar.FindControl<Border>("TabInsertionIndicator").IsVisible, "Dragging shows an insertion marker above the tabs");
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        using var frame = window.CaptureRenderedFrame();
+        Check(frame != null, "Tab insertion preview renders");
+        frame.Save(Path.Combine(_root, "tab-reorder.png"));
+        window.DragDrop(dropPoint, RawDragEventType.Drop, data, DragDropEffects.Move);
+        PumpFor(50);
+        Check(launcher.Pages.SequenceEqual(new[] { pages[0], pages[2], pages[1] }) &&
+            launcher.ActivePage == pages[1], "UI drop inserts after the target tab and preserves active selection");
+        Check(!bar.FindControl<Border>("TabInsertionIndicator").IsVisible, "Drop hides the insertion marker");
+        window.MouseDown(TabPoint(2, 0.4), MouseButton.Right);
+        window.MouseUp(TabPoint(2, 0.4), MouseButton.Right);
+        PumpFor(50);
+        var menu = (ContextMenu)typeof(SourceGit.Views.LauncherTabBar)
+            .GetField("_tabContextMenu", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(bar);
+        Check(menu?.IsOpen == true, "Active tab context menu still opens after drag reorder");
+        window.MouseDown(new Point(20, 130), MouseButton.Left);
+        window.MouseUp(new Point(20, 130), MouseButton.Left);
+        Check(!menu.IsOpen, "Clicking empty window space dismisses the tab menu");
+        var closeButton = list.ContainerFromIndex(0).GetVisualDescendants().OfType<Button>().Single();
+        var closePoint = closeButton.TranslatePoint(new Point(7, 6), window).Value;
+        window.MouseDown(closePoint, MouseButton.Left);
+        Check(PressedPage() == null, "Tab close button does not arm a drag");
+        window.MouseUp(closePoint, MouseButton.Left);
+        PumpFor(50);
+        Check(launcher.Pages.Count == 2 && !launcher.Pages.Contains(pages[0]), "Tab close button still closes its tab");
+        window.MouseDown(TabPoint(0, 0.4), MouseButton.Middle);
+        window.MouseUp(TabPoint(0, 0.4), MouseButton.Middle);
+        Check(launcher.Pages.Count == 1 && launcher.Pages[0] == pages[1], "Middle click still closes a tab after reorder");
+        window.Close();
+        launcher.CloseAll();
+        launcher.ActiveWorkspace.Repositories.Clear();
+    }
+
+    private static void TestCrashReports()
+    {
+        Exception error;
+        try { throw new InvalidOperationException("Simulated failure\nwith a second line"); }
+        catch (Exception inner) { error = new Exception("outer exception", inner); }
+        var cache = Path.Combine(_root, "crash-reports");
+        var report = CrashReport.Save(error, cache, true);
+        var lines = report.Summary.Split(Environment.NewLine);
+        Check(lines.Length == 3 && lines[0].Contains("JxSourceGit") && lines[0].Contains("UTC"),
+            "Crash hint has exactly three logical lines with version and environment");
+        Check(lines[1].Contains("InvalidOperationException") && lines[1].Contains(nameof(TestCrashReports)),
+            "Crash hint identifies the root exception and failing method");
+        Check(File.ReadAllText(report.LogPath).Contains("outer exception") &&
+            File.ReadAllText(report.LogPath).Contains("with a second line"), "Full log preserves the complete exception chain");
+        Check(CrashReport.ReadPending(cache) == report.Summary, "Fatal report is available on the next launch");
+        var handled = CrashReport.Save(error, cache, false);
+        Check(handled.LogPath != report.LogPath && CrashReport.ReadPending(cache) == report.Summary,
+            "Handled exceptions get unique logs without overwriting a pending crash");
+        var newer = CrashReport.Save(error, cache, true);
+        CrashReport.Acknowledge(cache, report.Summary);
+        Check(CrashReport.ReadPending(cache) == newer.Summary, "Acknowledgement cannot remove a newer crash");
+
+        var owner = new Window { Width = 960, Height = 500 };
+        _lifetime.MainWindow = owner;
+        owner.Show();
+        try
+        {
+            foreach (var width in new[] { 860, 480 })
+            {
+                var dialog = new SourceGit.Views.CrashReportWindow { Width = width };
+                dialog.SetSummary(newer.Summary);
+                var shown = dialog.ShowDialog(owner);
+                PumpFor(100);
+                var box = dialog.FindControl<TextBox>("ReportText");
+                Check(box.IsReadOnly && box.Text == newer.Summary && box.Bounds.Width < width,
+                    "Crash summary is selectable and constrained at width " + width);
+                dialog.FindControl<Button>("CopyReportButton").RaiseEvent(
+                    new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+                PumpFor(50);
+                Check(Wait(owner.Clipboard.TryGetTextAsync()) == newer.Summary, "Copy button copies all three crash hint lines");
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                using var frame = dialog.CaptureRenderedFrame();
+                Check(frame != null, "Crash report dialog renders at width " + width);
+                frame.Save(Path.Combine(_root, "crash-report-" + width + ".png"));
+                dialog.Close();
+                Wait(shown);
+            }
+        }
+        finally { _lifetime.MainWindow = null; owner.Close(); }
+        CrashReport.Acknowledge(cache, newer.Summary);
+        Check(!File.Exists(Path.Combine(CrashReport.GetDirectory(cache), "pending-crash-summary.txt")) &&
+            File.Exists(Path.Combine(CrashReport.GetDirectory(cache), "last-crash-summary.txt")) && File.Exists(newer.LogPath),
+            "Dismissed report stops prompting but keeps the summary and full log");
+        var blockedCache = Path.Combine(_root, "not-a-directory");
+        File.WriteAllText(blockedCache, "file blocks cache directory creation");
+        var originalCache = SourceGit.Native.OS.BasicDirectories.CacheDir;
+        try
+        {
+            SourceGit.Native.OS.BasicDirectories.CacheDir = blockedCache;
+            var fallbackDir = CrashReport.GetDirectory(null);
+            var before = Directory.Exists(fallbackDir) ? Directory.GetFiles(fallbackDir, "*.log").Length : 0;
+            SourceGit.Native.OS.LogException(error);
+            Check(Directory.GetFiles(fallbackDir, "*.log").Length > before,
+                "Blocked cache falls back to a temporary log without throwing");
+        }
+        finally { SourceGit.Native.OS.BasicDirectories.CacheDir = originalCache; }
     }
 
     private static void TestNames()

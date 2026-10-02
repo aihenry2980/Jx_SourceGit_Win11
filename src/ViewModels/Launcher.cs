@@ -252,23 +252,36 @@ namespace SourceGit.ViewModels
             CommandPalette = null;
         }
 
-        public void MoveTab(LauncherPage from, LauncherPage to)
+        public void MoveTab(LauncherPage from, int insertionIndex)
         {
-            _ignoreIndexChange = true;
-
             var fromIdx = Pages.IndexOf(from);
-            var toIdx = Pages.IndexOf(to);
-            Pages.Move(fromIdx, toIdx);
+            if (fromIdx < 0 || insertionIndex < 0 || insertionIndex > Pages.Count)
+                return;
 
-            _activeWorkspace.Repositories.Clear();
-            foreach (var p in Pages)
+            var toIdx = insertionIndex - (fromIdx < insertionIndex ? 1 : 0);
+            if (fromIdx == toIdx)
+                return;
+
+            var active = ActivePage;
+            var ignoreIndexChange = _ignoreIndexChange;
+            _ignoreIndexChange = true;
+            try
             {
-                if (p.Data is Repository r)
-                    _activeWorkspace.Repositories.Add(r.FullPath);
+                Pages.Move(fromIdx, toIdx);
+                _activeWorkspace.Repositories.Clear();
+                foreach (var p in Pages)
+                {
+                    if (p.Data is Repository r)
+                        _activeWorkspace.Repositories.Add(r.FullPath);
+                }
+                ActivePage = active;
             }
-
-            _ignoreIndexChange = false;
-            ActivePage = from;
+            finally
+            {
+                _ignoreIndexChange = ignoreIndexChange;
+            }
+            PostActivePageChanged();
+            Preferences.Instance.Save();
         }
 
         public void GotoNextTab()

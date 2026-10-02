@@ -1,11 +1,12 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
+if /I "%~1"=="--non-interactive" set "NON_INTERACTIVE=1"
 
 set "SCRIPT_DIR=%~dp0"
 pushd "%SCRIPT_DIR%\..\.." >nul 2>&1
 if errorlevel 1 (
   echo [ERROR] Failed to switch to repository root.
-  pause
+  if not defined NON_INTERACTIVE pause
   exit /b 1
 )
 
@@ -13,11 +14,11 @@ set "RUNTIME=win-x64"
 set "CONFIGURATION=Release"
 set "OUTPUT_DIR=build\SourceGit"
 
-for /f %%D in ('powershell -NoProfile -Command "(Get-Date).ToString('yyyyMMdd')"') do set "DATE_TAG=%%D"
+if not defined DATE_TAG for /f %%D in ('powershell -NoProfile -Command "(Get-Date).ToString('yyyyMMdd')"') do set "DATE_TAG=%%D"
 if not defined DATE_TAG (
   echo [ERROR] Failed to generate date-based version tag.
   popd
-  pause
+  if not defined NON_INTERACTIVE pause
   exit /b 1
 )
 
@@ -31,7 +32,12 @@ if !RELEASE_INDEX! EQU 1 (
 )
 
 set "ZIP_FILE=build\sourcegit_!VERSION!.%RUNTIME%.zip"
+set "SOURCE_ZIP_FILE=build\sourcegit_!VERSION!.source-with-submodules.zip"
 if exist "!ZIP_FILE!" (
+  set /a RELEASE_INDEX+=1
+  goto :resolve_version
+)
+if exist "!SOURCE_ZIP_FILE!" (
   set /a RELEASE_INDEX+=1
   goto :resolve_version
 )
@@ -47,7 +53,12 @@ echo.
 
 if exist "%OUTPUT_DIR%" (
   echo [INFO] Cleaning old publish output...
-  rmdir /s /q "%OUTPUT_DIR%"
+  powershell -NoProfile -ExecutionPolicy Bypass -Command "$expected = Join-Path (Resolve-Path -LiteralPath 'build').ProviderPath 'SourceGit'; $item = Get-Item -LiteralPath 'build\SourceGit' -Force; if ($item.FullName -ne $expected -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'Unsafe publish output directory.' }; Remove-Item -LiteralPath $item.FullName -Recurse -Force"
+  if errorlevel 1 (
+    popd
+    if not defined NON_INTERACTIVE pause
+    exit /b 1
+  )
 )
 
 echo [INFO] Publishing...
@@ -55,7 +66,7 @@ dotnet publish src\SourceGit.csproj -c %CONFIGURATION% -r %RUNTIME% -o %OUTPUT_D
 if errorlevel 1 (
   echo [ERROR] dotnet publish failed.
   popd
-  pause
+  if not defined NON_INTERACTIVE pause
   exit /b 1
 )
 
@@ -64,7 +75,7 @@ copy /y build\scripts\update-sourcegit.win.ps1 "%OUTPUT_DIR%\update-sourcegit.wi
 if errorlevel 1 (
   echo [ERROR] Failed to copy updater PowerShell script.
   popd
-  pause
+  if not defined NON_INTERACTIVE pause
   exit /b 1
 )
 
@@ -72,7 +83,7 @@ copy /y build\scripts\update-sourcegit.win.cmd "%OUTPUT_DIR%\update-sourcegit.wi
 if errorlevel 1 (
   echo [ERROR] Failed to copy updater command script.
   popd
-  pause
+  if not defined NON_INTERACTIVE pause
   exit /b 1
 )
 
@@ -80,7 +91,7 @@ copy /y build\scripts\install-sourcegit.win.cmd "%OUTPUT_DIR%\install-sourcegit.
 if errorlevel 1 (
   echo [ERROR] Failed to copy installer command script.
   popd
-  pause
+  if not defined NON_INTERACTIVE pause
   exit /b 1
 )
 
@@ -89,7 +100,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "$marker = [ordered]@{ Pa
 if errorlevel 1 (
   echo [ERROR] Failed to write release marker.
   popd
-  pause
+  if not defined NON_INTERACTIVE pause
   exit /b 1
 )
 
@@ -98,21 +109,33 @@ powershell -NoProfile -ExecutionPolicy Bypass -File build\scripts\package.win.ps
 if errorlevel 1 (
   echo [ERROR] Zip packaging failed.
   popd
-  pause
+  if not defined NON_INTERACTIVE pause
+  exit /b 1
+)
+
+echo [INFO] Packaging source with submodules...
+powershell -NoProfile -ExecutionPolicy Bypass -File build\scripts\package.source.ps1
+if errorlevel 1 (
+  echo [ERROR] Source packaging failed.
+  popd
+  if not defined NON_INTERACTIVE pause
   exit /b 1
 )
 
 if exist "!ZIP_FILE!" (
   echo [OK] Release zip generated:
   echo      %CD%\!ZIP_FILE!
-  explorer /select,"%CD%\!ZIP_FILE!" >nul 2>&1
+  if not defined NON_INTERACTIVE explorer /select,"%CD%\!ZIP_FILE!" >nul 2>&1
 ) else (
-  echo [WARN] Packaging command finished but zip file was not found.
+  echo [ERROR] Packaging command finished but zip file was not found.
+  popd
+  if not defined NON_INTERACTIVE pause
+  exit /b 1
 )
 
 popd
 echo.
-pause
+if not defined NON_INTERACTIVE pause
 exit /b 0
 
 :ordinal

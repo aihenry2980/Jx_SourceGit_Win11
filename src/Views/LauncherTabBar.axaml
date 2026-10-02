@@ -77,12 +77,8 @@
               <v:LauncherTabSizeBox Classes="launcher_tab"
                                     UseFixedWidth="False" Height="30"
                                     Padding="0,2,0,0"
-                                    PointerPressed="OnPointerPressedTab"
-                                    PointerMoved="OnPointerMovedOverTab"
-                                    PointerReleased="OnPointerReleasedTab"
                                     ContextRequested="OnTabContextRequested"
-                                    DragDrop.AllowDrop="True"
-                                    DragDrop.Drop="DropTab">
+                                    DragDrop.AllowDrop="True">
                 <ToolTip.Tip>
                   <Grid>
                     <TextBlock Text="{DynamicResource Text.Welcome}" IsVisible="{Binding !Node.IsRepository}"/>
@@ -227,5 +223,8 @@
         </ToolTip.Tip>
       </Button>
     </StackPanel>
+    <Border x:Name="TabInsertionIndicator" Grid.ColumnSpan="3" Width="3"
+            Background="{DynamicResource Brush.Accent}" HorizontalAlignment="Left"
+            Margin="0,3" IsVisible="False" IsHitTestVisible="False"/>
   </Grid>
 </UserControl>

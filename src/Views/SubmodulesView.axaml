@@ -108,7 +108,7 @@
 
                 <TextBlock Grid.Column="2" TextTrimming="CharacterEllipsis"
                            Foreground="{Binding AccentColor, Converter={x:Static c:CommitConverters.UInt32ToBrush}}">
-                  <Run Text="{Binding FullPath, Converter={x:Static c:PathConverters.PureFileName}, Mode=OneWay}"/>
+                  <Run Text="{Binding DisplayPrefix, Mode=OneWay}" Foreground="#FF9AA0A6"/><Run Text="{Binding DisplayLeafName, Mode=OneWay}"/>
                   <Run Text="{Binding ChildCounter}" Foreground="{DynamicResource Brush.FG2}"/>
                 </TextBlock>
 

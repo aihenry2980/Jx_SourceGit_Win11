@@ -85,6 +85,9 @@ namespace SourceGit.Views
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = margin,
                 Data = geo,
+                Fill = DataContext is ViewModels.SubmoduleTreeNode { IsFolder: true }
+                    ? new SolidColorBrush(Color.FromUInt32(0xFF9AA0A6))
+                    : this.FindResource("Brush.FG1") as IBrush,
             };
         }
 

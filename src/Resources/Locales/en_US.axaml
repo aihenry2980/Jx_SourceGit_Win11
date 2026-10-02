@@ -1,5 +1,8 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <x:String x:Key="Text.About" xml:space="preserve">About</x:String>
+  <x:String x:Key="Text.CrashReport.Title" xml:space="preserve">The previous session crashed</x:String>
+  <x:String x:Key="Text.CrashReport.Copy" xml:space="preserve">Copy three-line report</x:String>
+  <x:String x:Key="Text.CrashReport.OpenLogs" xml:space="preserve">Open logs folder</x:String>
   <x:String x:Key="Text.About.Menu" xml:space="preserve">About SourceGit</x:String>
   <x:String x:Key="Text.About.ReleaseDate" xml:space="preserve">Release Date: {0}</x:String>
   <x:String x:Key="Text.About.ReleaseNotes" xml:space="preserve">Release Notes</x:String>

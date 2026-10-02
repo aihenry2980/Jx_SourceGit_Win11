@@ -1,4 +1,7 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <x:String x:Key="Text.CrashReport.Title" xml:space="preserve">上次运行异常退出</x:String>
+  <x:String x:Key="Text.CrashReport.Copy" xml:space="preserve">复制三行摘要</x:String>
+  <x:String x:Key="Text.CrashReport.OpenLogs" xml:space="preserve">打开日志目录</x:String>
   <ResourceDictionary.MergedDictionaries>
     <ResourceInclude Source="avares://SourceGit/Resources/Locales/en_US.axaml"/>
   </ResourceDictionary.MergedDictionaries>

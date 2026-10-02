@@ -2,10 +2,8 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -163,33 +161,27 @@ namespace SourceGit.Native
             _backend.SetupWindow(window);
         }
 
-        public static void LogException(Exception ex)
+        public static void LogException(Exception ex, bool fatal = false)
         {
             if (ex == null)
                 return;
 
-            var crashDir = Path.Combine(BasicDirectories.CacheDir, "crashes");
-            if (!Directory.Exists(crashDir))
-                Directory.CreateDirectory(crashDir);
-
-            var time = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
-            var file = Path.Combine(crashDir, $"{time}.log");
-            using var writer = new StreamWriter(file);
-            writer.WriteLine($"Crash::: {ex.GetType().FullName}: {ex.Message}");
-            writer.WriteLine();
-            writer.WriteLine("----------------------------");
-            writer.WriteLine($"Version: {Assembly.GetExecutingAssembly().GetName().Version}");
-            writer.WriteLine($"OS: {Environment.OSVersion}");
-            writer.WriteLine($"Framework: {AppDomain.CurrentDomain.SetupInformation.TargetFrameworkName}");
-            writer.WriteLine($"Source: {ex.Source}");
-            writer.WriteLine($"Thread Name: {Thread.CurrentThread.Name ?? "Unnamed"}");
-            writer.WriteLine($"App Start Time: {Process.GetCurrentProcess().StartTime}");
-            writer.WriteLine($"Exception Time: {DateTime.Now}");
-            writer.WriteLine($"Memory Usage: {Process.GetCurrentProcess().PrivateMemorySize64 / 1024 / 1024} MB");
-            writer.WriteLine("----------------------------");
-            writer.WriteLine();
-            writer.WriteLine(ex);
-            writer.Flush();
+            try
+            {
+                Models.CrashReport.Save(ex, BasicDirectories?.CacheDir, fatal);
+            }
+            catch (Exception loggingError)
+            {
+                Debug.WriteLine($"Unable to save exception: {loggingError}\nOriginal exception: {ex}");
+                try
+                {
+                    Models.CrashReport.Save(ex, null, fatal);
+                }
+                catch (Exception fallbackError)
+                {
+                    Debug.WriteLine($"Unable to save fallback exception report: {fallbackError}");
+                }
+            }
         }
 
         public static string FindGitExecutable()

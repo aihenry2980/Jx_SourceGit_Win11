@@ -9,6 +9,9 @@ namespace SourceGit.ViewModels
     public class SubmoduleTreeNode : ObservableObject
     {
         public string FullPath { get; private set; } = string.Empty;
+        public string DisplayName { get; private set; } = string.Empty;
+        public string DisplayPrefix => IsFolder ? string.Empty : DisplayName[..(DisplayName.LastIndexOf('/') + 1)];
+        public string DisplayLeafName => IsFolder ? DisplayName : DisplayName[(DisplayName.LastIndexOf('/') + 1)..];
         public int Depth { get; private set; } = 0;
         public Models.Submodule Module { get; private set; } = null;
         public List<SubmoduleTreeNode> Children { get; private set; } = [];
@@ -19,7 +22,7 @@ namespace SourceGit.ViewModels
             get => Module == null;
         }
 
-        public uint AccentColor => Module?.AccentColor ?? Models.SubmoduleUpdateBadge.ResolveAccentColor(FullPath);
+        public uint AccentColor => Module?.AccentColor ?? 0xFF9AA0A6;
 
         public bool HasChildren
         {
@@ -120,6 +123,7 @@ namespace SourceGit.ViewModels
         public SubmoduleTreeNode(Models.Submodule module, int depth)
         {
             FullPath = module.Path;
+            DisplayName = module.Path[(module.Path.LastIndexOf('/') + 1)..];
             Depth = depth;
             Module = module;
             IsExpanded = false;
@@ -128,6 +132,7 @@ namespace SourceGit.ViewModels
         public SubmoduleTreeNode(string path, int depth)
         {
             FullPath = path;
+            DisplayName = path[(path.LastIndexOf('/') + 1)..];
             Depth = depth;
             IsExpanded = false;
             Counter = 0;
@@ -179,8 +184,29 @@ namespace SourceGit.ViewModels
                 }
             }
 
+            CompactPaths(nodes, 0);
             ApplyExpansionDefaults(nodes, oldExpanded, oldExpandable);
             return nodes;
+        }
+
+        private static void CompactPaths(List<SubmoduleTreeNode> nodes, int depth)
+        {
+            for (var i = 0; i < nodes.Count; i++)
+            {
+                var node = nodes[i];
+                while (node.IsFolder && node.Children.Count == 1)
+                {
+                    var child = node.Children[0];
+                    child.DisplayName = $"{node.DisplayName}/{child.DisplayName}";
+                    child._compactedPaths.Add(node.FullPath);
+                    child._compactedPaths.AddRange(node._compactedPaths);
+                    node = child;
+                }
+
+                node.Depth = depth;
+                nodes[i] = node;
+                CompactPaths(node.Children, depth + 1);
+            }
         }
 
         public static void CollectExpandableState(
@@ -195,6 +221,12 @@ namespace SourceGit.ViewModels
                     expandable.Add(node.FullPath);
                     if (node.IsExpanded)
                         expanded.Add(node.FullPath);
+                    foreach (var path in node._compactedPaths)
+                    {
+                        expandable.Add(path);
+                        if (node.IsExpanded)
+                            expanded.Add(path);
+                    }
                 }
 
                 CollectExpandableState(node.Children, expanded, expandable);
@@ -213,6 +245,11 @@ namespace SourceGit.ViewModels
                     node.IsExpanded = oldExpandable.Contains(node.FullPath) ?
                         oldExpanded.Contains(node.FullPath) :
                         true;
+                    foreach (var path in node._compactedPaths)
+                    {
+                        if (oldExpandable.Contains(path) && !oldExpanded.Contains(path))
+                            node.IsExpanded = false;
+                    }
                 }
 
                 ApplyExpansionDefaults(node.Children, oldExpanded, oldExpandable);
@@ -240,6 +277,7 @@ namespace SourceGit.ViewModels
         }
 
         private bool _isExpanded = false;
+        private readonly List<string> _compactedPaths = [];
     }
 
     public class SubmoduleCollectionAsTree

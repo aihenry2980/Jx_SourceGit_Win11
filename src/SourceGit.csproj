@@ -79,9 +79,16 @@
   </ItemGroup>
 
   <Target BeforeTargets="GetAssemblyAttributes" Name="GenVersionInfo">
-    <Exec Command="git describe --abbrev=8 --dirty" ConsoleToMsBuild="True" IgnoreExitCode="true">
+    <PropertyGroup Condition="Exists('$(MSBuildProjectDirectory)/../SOURCE_VERSION')">
+      <FriendlyVersion>$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/../SOURCE_VERSION').Trim())</FriendlyVersion>
+    </PropertyGroup>
+    <Exec Condition="'$(FriendlyVersion)' == ''" Command="git describe --abbrev=8 --dirty" ConsoleToMsBuild="True" IgnoreExitCode="true">
       <Output PropertyName="FriendlyVersion" TaskParameter="ConsoleOutput" />
     </Exec>
+
+    <PropertyGroup>
+      <FriendlyVersion Condition="'$(FriendlyVersion)' == ''">v$(Version)</FriendlyVersion>
+    </PropertyGroup>
 
     <ItemGroup>
       <AssemblyMetadata Include="FriendlyVersion" Value="$([System.String]::Copy('$(FriendlyVersion)').Replace('g', '').Trim())" />

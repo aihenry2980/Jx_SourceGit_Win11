@@ -23,20 +23,20 @@ namespace SourceGit
         [STAThread]
         public static void Main(string[] args)
         {
-            Native.OS.SetupBasicDirectories();
-
             AppDomain.CurrentDomain.UnhandledException += (_, e) =>
             {
-                Native.OS.LogException(e.ExceptionObject as Exception);
+                Native.OS.LogException(e.ExceptionObject as Exception, e.IsTerminating);
             };
 
             TaskScheduler.UnobservedTaskException += (_, e) =>
             {
+                Native.OS.LogException(e.Exception);
                 e.SetObserved();
             };
 
             try
             {
+                Native.OS.SetupBasicDirectories();
                 if (TryLaunchAsRebaseTodoEditor(args, out int exitTodo))
                     Environment.Exit(exitTodo);
                 else if (TryLaunchAsRebaseMessageEditor(args, out int exitMessage))
@@ -46,7 +46,7 @@ namespace SourceGit
             }
             catch (Exception ex)
             {
-                Native.OS.LogException(ex);
+                Native.OS.LogException(ex, true);
             }
         }
 
@@ -613,6 +613,23 @@ namespace SourceGit
 
             _launcher = new ViewModels.Launcher(startupRepo);
             desktop.MainWindow = new Views.Launcher() { DataContext = _launcher };
+            desktop.MainWindow.Opened += async (sender, _) =>
+            {
+                var summary = Models.CrashReport.ReadPending(Native.OS.BasicDirectories.CacheDir);
+                if (string.IsNullOrEmpty(summary))
+                    return;
+                try
+                {
+                    var report = new Views.CrashReportWindow();
+                    report.SetSummary(summary);
+                    await report.ShowDialog((Window)sender);
+                    Models.CrashReport.Acknowledge(Native.OS.BasicDirectories.CacheDir, summary);
+                }
+                catch (Exception ex)
+                {
+                    Native.OS.LogException(ex);
+                }
+            };
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
             // Fix macOS crash when quiting from Dock

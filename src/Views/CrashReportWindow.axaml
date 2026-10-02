@@ -1,0 +1,38 @@
+<v:ChromelessWindow xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:v="using:SourceGit.Views"
+                    x:Class="SourceGit.Views.CrashReportWindow"
+                    x:Name="ThisControl"
+                    Icon="/App.ico" Title="{DynamicResource Text.CrashReport.Title}"
+                    Width="860" Height="360" MinWidth="480" MinHeight="260"
+                    ShowInTaskbar="False" WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="Auto,Auto,*,Auto">
+    <Grid Height="28" IsVisible="{Binding !#ThisControl.UseSystemWindowFrame}">
+      <Border Background="{DynamicResource Brush.TitleBar}" PointerPressed="BeginMoveWindow"/>
+      <v:CaptionButtons HorizontalAlignment="Right" IsCloseButtonOnly="True"/>
+    </Grid>
+    <Grid Grid.Row="1" Margin="20,16,20,12" ColumnDefinitions="24,*">
+      <Path Width="24" Height="24" Fill="#E5484D" Data="{StaticResource Icons.Error}"/>
+      <TextBlock Grid.Column="1" Margin="10,0,0,0" TextWrapping="Wrap" FontSize="20"
+                 FontWeight="Bold" Text="{DynamicResource Text.CrashReport.Title}"/>
+    </Grid>
+    <TextBox x:Name="ReportText" Grid.Row="2" Margin="20,0" IsReadOnly="True" AcceptsReturn="True"
+             TextWrapping="Wrap" VerticalContentAlignment="Top" FontSize="16" FontFamily="{DynamicResource Fonts.Monospace}"/>
+    <WrapPanel Grid.Row="3" Margin="20,16" Orientation="Horizontal" HorizontalAlignment="Right">
+      <Button x:Name="CopyReportButton" Classes="flat primary" Margin="4,0" Padding="12,6" Click="CopyReport">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <Path Width="14" Height="14" Data="{StaticResource Icons.Copy}"/>
+          <TextBlock Text="{DynamicResource Text.CrashReport.Copy}"/>
+        </StackPanel>
+      </Button>
+      <Button Classes="flat" Margin="4,0" Padding="12,6" Click="OpenLogs">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <Path Width="14" Height="14" Data="{StaticResource Icons.Folder}"/>
+          <TextBlock Text="{DynamicResource Text.CrashReport.OpenLogs}"/>
+        </StackPanel>
+      </Button>
+      <Button Classes="flat" Margin="4,0" Padding="12,6" Content="{DynamicResource Text.Close}"
+              IsCancel="True" Click="CloseReport"/>
+    </WrapPanel>
+  </Grid>
+</v:ChromelessWindow>

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 
 using Avalonia;
 using Avalonia.Controls;
@@ -66,7 +67,13 @@ namespace SourceGit.Views
         {
             InitializeComponent();
             LauncherTabsList.AddHandler(InputElement.PointerPressedEvent, OnTabsPointerPressed, RoutingStrategies.Tunnel, true);
+            LauncherTabsList.AddHandler(InputElement.PointerMovedEvent, OnPointerMovedOverTab, RoutingStrategies.Tunnel, true);
+            LauncherTabsList.AddHandler(InputElement.PointerReleasedEvent, OnPointerReleasedTab, RoutingStrategies.Tunnel, true);
             LauncherTabsList.AddHandler(ContextRequestedEvent, OnTabsContextRequested, RoutingStrategies.Tunnel, true);
+            DragDrop.SetAllowDrop(LauncherTabsList, true);
+            LauncherTabsList.AddHandler(DragDrop.DragOverEvent, OnTabDragOver, RoutingStrategies.Bubble, true);
+            LauncherTabsList.AddHandler(DragDrop.DropEvent, DropTab, RoutingStrategies.Bubble, true);
+            LauncherTabsList.AddHandler(DragDrop.DragLeaveEvent, OnTabDragLeave, RoutingStrategies.Bubble, true);
             AddHandler(InputElement.PointerPressedEvent, OnTabBarPointerPressed, RoutingStrategies.Tunnel, true);
         }
 
@@ -82,6 +89,7 @@ namespace SourceGit.Views
         {
             _topLevel?.RemoveHandler(InputElement.PointerPressedEvent, OnTopLevelPointerPressed);
             _topLevel = null;
+            ResetTabDrag();
             base.OnDetachedFromVisualTree(e);
         }
 
@@ -261,6 +269,19 @@ namespace SourceGit.Views
         private void OnTabsPointerPressed(object sender, PointerPressedEventArgs e)
         {
             var point = e.GetCurrentPoint(LauncherTabsList);
+            if (point.Properties.PointerUpdateKind == PointerUpdateKind.LeftButtonPressed)
+            {
+                var source = e.Source as Visual;
+                var isCloseButton = source is Button || source?.FindAncestorOfType<Button>() != null;
+                var pressedTab = FindTabAt(e.GetPosition(LauncherTabsList));
+                _pressedTabPage = isCloseButton ? null : pressedTab?.DataContext as ViewModels.LauncherPage;
+                _pressedTabEvent = _pressedTabPage != null ? e : null;
+                _pressedTabPosition = e.GetPosition(LauncherTabsList);
+                _startDragTab = false;
+                return;
+            }
+            _pressedTabPage = null;
+            _pressedTabEvent = null;
             if (point.Properties.IsMiddleButtonPressed)
             {
                 var middleClickedTab = FindTabAt(e.GetPosition(LauncherTabsList));
@@ -324,46 +345,18 @@ namespace SourceGit.Views
             return null;
         }
 
-        private void OnPointerPressedTab(object sender, PointerPressedEventArgs e)
-        {
-            if (sender is Border border)
-            {
-                var point = e.GetCurrentPoint(border);
-                if (point.Properties.IsMiddleButtonPressed && border.DataContext is ViewModels.LauncherPage page)
-                {
-                    (DataContext as ViewModels.Launcher)?.CloseTab(page);
-                    e.Handled = true;
-                }
-                else if (point.Properties.IsLeftButtonPressed)
-                {
-                    _pressedTabEvent = e;
-                    _startDragTab = false;
-                    _pressedTabPosition = e.GetPosition(border);
-                }
-                else if (point.Properties.IsRightButtonPressed)
-                {
-                    OpenTabContextMenu(border);
-                    e.Handled = true;
-                }
-                else
-                {
-                    _pressedTabEvent = null;
-                    _startDragTab = false;
-                }
-            }
-        }
-
         private void OnPointerReleasedTab(object _1, PointerReleasedEventArgs _2)
         {
-            _pressedTabEvent = null;
-            _startDragTab = false;
+            if (!_startDragTab)
+                ResetTabDrag();
         }
 
         private async void OnPointerMovedOverTab(object sender, PointerEventArgs e)
         {
-            if (_pressedTabEvent != null && !_startDragTab && sender is Border { DataContext: ViewModels.LauncherPage page } border)
+            if (_pressedTabEvent != null && _pressedTabPage is { } page && !_startDragTab &&
+                e.GetCurrentPoint(LauncherTabsList).Properties.IsLeftButtonPressed)
             {
-                var delta = e.GetPosition(border) - _pressedTabPosition;
+                var delta = e.GetPosition(LauncherTabsList) - _pressedTabPosition;
                 var sizeSquired = delta.X * delta.X + delta.Y * delta.Y;
                 if (sizeSquired < 64)
                     return;
@@ -372,9 +365,75 @@ namespace SourceGit.Views
 
                 var data = new DataTransfer();
                 data.Add(DataTransferItem.Create(_dndMainTabFormat, page.Node.Id));
-                await DragDrop.DoDragDropAsync(_pressedTabEvent, data, DragDropEffects.Move);
+                try
+                {
+                    await DragDrop.DoDragDropAsync(_pressedTabEvent, data, DragDropEffects.Move);
+                }
+                catch (Exception ex)
+                {
+                    App.LogException(ex);
+                }
+                finally
+                {
+                    ResetTabDrag();
+                }
+                e.Handled = true;
             }
+        }
+
+        private void ResetTabDrag()
+        {
+            _pressedTabEvent = null;
+            _pressedTabPage = null;
+            _startDragTab = false;
+            TabInsertionIndicator.IsVisible = false;
+            InvalidateVisual();
+        }
+
+        private int GetTabInsertionIndex(Point point)
+        {
+            for (var i = 0; i < LauncherTabsList.ItemCount; i++)
+            {
+                var container = LauncherTabsList.ContainerFromIndex(i);
+                var origin = container?.TranslatePoint(default, LauncherTabsList);
+                if (origin.HasValue && point.X < origin.Value.X + container.Bounds.Width * 0.5)
+                    return i;
+            }
+            return LauncherTabsList.ItemCount;
+        }
+
+        private void OnTabDragOver(object sender, DragEventArgs e)
+        {
+            var id = e.DataTransfer.TryGetValue(_dndMainTabFormat);
+            if (DataContext is not ViewModels.Launcher launcher ||
+                string.IsNullOrEmpty(id) || !launcher.Pages.Any(p => p.Node.Id == id))
+                return;
+
+            e.DragEffects = DragDropEffects.Move;
             e.Handled = true;
+            var position = e.GetPosition(LauncherTabsList);
+            var index = GetTabInsertionIndex(position);
+            var container = LauncherTabsList.ContainerFromIndex(Math.Min(index, LauncherTabsList.ItemCount - 1));
+            if (container?.TranslatePoint(default, this) is { } origin)
+            {
+                var dropX = Math.Clamp(origin.X + (index == LauncherTabsList.ItemCount ? container.Bounds.Width : 0),
+                    LauncherTabsScroller.Bounds.Left + 2, LauncherTabsScroller.Bounds.Right - 2);
+                TabInsertionIndicator.Margin = new Thickness(dropX - 1.5, 3, 0, 3);
+                TabInsertionIndicator.IsVisible = true;
+            }
+
+            var viewportPosition = e.GetPosition(LauncherTabsScroller);
+            if (viewportPosition.X < 24)
+                LauncherTabsScroller.Offset -= new Vector(16, 0);
+            else if (viewportPosition.X > LauncherTabsScroller.Viewport.Width - 24)
+                LauncherTabsScroller.Offset += new Vector(16, 0);
+            InvalidateVisual();
+        }
+
+        private void OnTabDragLeave(object sender, DragEventArgs e)
+        {
+            TabInsertionIndicator.IsVisible = false;
+            InvalidateVisual();
         }
 
         private void DropTab(object sender, DragEventArgs e)
@@ -398,16 +457,9 @@ namespace SourceGit.Views
             if (target == null)
                 return;
 
-            if (sender is not Border { DataContext: ViewModels.LauncherPage to })
-                return;
-
-            if (target == to)
-                return;
-
-            launcher.MoveTab(target, to);
-
-            _pressedTabEvent = null;
-            _startDragTab = false;
+            launcher.MoveTab(target, GetTabInsertionIndex(e.GetPosition(LauncherTabsList)));
+            ResetTabDrag();
+            e.DragEffects = DragDropEffects.Move;
             e.Handled = true;
         }
 
@@ -630,6 +682,7 @@ namespace SourceGit.Views
         private bool _isScrollButtonVisible = false;
         private readonly Vector _scrollStep = new(64, 0);
         private PointerPressedEventArgs _pressedTabEvent = null;
+        private ViewModels.LauncherPage _pressedTabPage = null;
         private Point _pressedTabPosition = new();
         private bool _startDragTab = false;
         private ContextMenu _tabContextMenu = null;
