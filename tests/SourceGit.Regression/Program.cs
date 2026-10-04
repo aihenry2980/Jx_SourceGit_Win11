@@ -14,7 +14,7 @@ using SourceGit.Models;
 using Repo = SourceGit.ViewModels.Repository;
 using Decorator = SourceGit.Models.Decorator;
 
-internal static class Program
+internal static partial class Program
 {
     private static string _root;
     private static int _checks;
@@ -24,8 +24,14 @@ internal static class Program
     };
 
     [STAThread]
-    private static void Main()
+    private static void Main(string[] args)
     {
+        if (args is ["--custom-action-child"])
+        {
+            RunCustomActionChild();
+            return;
+        }
+
         _root = Path.Combine(Path.GetTempPath(), "SourceGit-regression-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_root);
         SourceGit.Native.OS.SetupBasicDirectories();
@@ -41,6 +47,13 @@ internal static class Program
         SourceGit.Native.OS.GitExecutable = SourceGit.Native.OS.FindGitExecutable();
         Application.Current.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Light;
         CommitGraph.SetDefaultPens();
+
+        TestCustomActions();
+        if (args is ["--custom-actions"])
+        {
+            Console.WriteLine($"PASS: {_checks} custom action checks. Isolated data: {_root}");
+            return;
+        }
 
         TestNames();
         TestMissingBranches();

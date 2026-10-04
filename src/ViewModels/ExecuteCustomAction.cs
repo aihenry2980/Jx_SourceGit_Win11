@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Avalonia.Controls;
@@ -214,7 +215,6 @@ namespace SourceGit.ViewModels
 
         public override Task<bool> Sure()
         {
-            using var lockWatcher = _repo.LockWatcher();
             ProgressDescription = "Run custom action ...";
 
             var cmdline = PrepareStringByTarget(CustomAction.Arguments);
@@ -230,7 +230,18 @@ namespace SourceGit.ViewModels
 
             log.AppendLine($"$ {CustomAction.Executable} {cmdline}\n");
             ShowOrFocusLogs(log);
-            _ = Task.Run(() => RunAsync(cmdline, log));
+
+            var cancellation = new CancellationTokenSource();
+            log.SetCancelAction(cancellation.Cancel);
+            // The action window closes immediately. Transfer ownership to the background
+            // operation so ref updates cannot trigger refreshes halfway through a fetch.
+            var lockWatcher = _repo.LockWatcher();
+            _ = Task.Run(async () =>
+            {
+                using (cancellation)
+                using (lockWatcher)
+                    await RunAsync(cmdline, log, cancellation.Token).ConfigureAwait(false);
+            });
             return Task.FromResult(true);
         }
 
@@ -276,44 +287,50 @@ namespace SourceGit.ViewModels
             }
         }
 
-        private async Task RunAsync(string args, CommandLog log)
+        private async Task RunAsync(string args, CommandLog log, CancellationToken cancellationToken)
         {
-            var start = new ProcessStartInfo();
-            start.FileName = CustomAction.Executable;
-            start.Arguments = args;
-            start.UseShellExecute = false;
-            start.CreateNoWindow = true;
-            start.RedirectStandardOutput = true;
-            start.RedirectStandardError = true;
-            start.StandardOutputEncoding = Encoding.UTF8;
-            start.StandardErrorEncoding = Encoding.UTF8;
-            start.WorkingDirectory = _repo.FullPath;
-
             using var proc = new Process();
-            proc.StartInfo = start;
-
-            proc.OutputDataReceived += (_, e) =>
-            {
-                if (e.Data != null)
-                    log?.AppendLine(e.Data);
-            };
-
-            var builder = new StringBuilder();
-            proc.ErrorDataReceived += (_, e) =>
-            {
-                if (e.Data != null)
-                {
-                    log?.AppendLine(e.Data);
-                    builder.AppendLine(e.Data);
-                }
-            };
-
+            var started = false;
+            var succeeded = false;
             try
             {
+                var start = new ProcessStartInfo();
+                start.FileName = CustomAction.Executable;
+                start.Arguments = args;
+                start.UseShellExecute = false;
+                start.CreateNoWindow = true;
+                start.RedirectStandardOutput = true;
+                start.RedirectStandardError = true;
+                start.StandardOutputEncoding = Encoding.UTF8;
+                start.StandardErrorEncoding = Encoding.UTF8;
+                start.WorkingDirectory = _repo.FullPath;
+
+                proc.StartInfo = start;
+
+                proc.OutputDataReceived += (_, e) =>
+                {
+                    if (e.Data != null)
+                        log.AppendLine(e.Data);
+                };
+
+                var builder = new StringBuilder();
+                proc.ErrorDataReceived += (_, e) =>
+                {
+                    if (e.Data != null)
+                    {
+                        log.AppendLine(e.Data);
+                        builder.AppendLine(e.Data);
+                    }
+                };
+
+                cancellationToken.ThrowIfCancellationRequested();
                 proc.Start();
+                started = true;
+                log.AppendLine($"[Process started: PID {proc.Id}; working directory: {_repo.FullPath}]");
                 proc.BeginOutputReadLine();
                 proc.BeginErrorReadLine();
-                await proc.WaitForExitAsync().ConfigureAwait(false);
+                await proc.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+                cancellationToken.ThrowIfCancellationRequested();
 
                 var exitCode = proc.ExitCode;
                 log?.AppendLine($"[Process exited with code {exitCode}]");
@@ -326,18 +343,40 @@ namespace SourceGit.ViewModels
                         App.RaiseException(_repo.FullPath, $"Custom action exited with code {exitCode}.");
                 }
 
-                log?.Complete(exitCode == 0);
+                succeeded = exitCode == 0;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // WaitForExitAsync cancels the wait, not the BAT or its children. Do
+                // process-tree termination here on the worker, never in the UI callback.
+                if (started)
+                {
+                    try
+                    {
+                        if (!proc.HasExited)
+                            proc.Kill(entireProcessTree: true);
+                        await proc.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+                    }
+                    catch (Exception e)
+                    {
+                        log.AppendLine($"[Could not finish stopping the custom action: {e.Message}]");
+                    }
+                }
+
+                log.AppendLine("[Custom action canceled]");
             }
             catch (Exception e)
             {
                 log?.AppendLine(e.Message);
                 App.RaiseException(_repo.FullPath, e.Message);
-                log?.Complete();
             }
             finally
             {
-                if (!log.IsComplete)
-                    log?.Complete();
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    log.Complete(succeeded);
+                    Cleanup();
+                });
             }
         }
 
