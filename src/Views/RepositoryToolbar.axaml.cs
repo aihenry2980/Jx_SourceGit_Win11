@@ -442,6 +442,24 @@ namespace SourceGit.Views
                 DataContext = vm,
             };
             dialog.OpenCustomActionTab();
+            if (addNewAction)
+            {
+                var action = vm.SelectedCustomAction;
+                dialog.Closing += (_, e) =>
+                {
+                    if (!e.Cancel && string.IsNullOrWhiteSpace(action.Executable))
+                    {
+                        repo.Settings.RemoveCustomAction(action);
+                        if (vm.SelectedCustomAction == action)
+                            vm.SelectedCustomAction = null;
+                    }
+                };
+                dialog.Opened += (_, _) => Dispatcher.UIThread.Post(async () =>
+                {
+                    if (dialog.IsVisible)
+                        await dialog.SelectExecutableForCustomActionAsync(action);
+                }, DispatcherPriority.Loaded);
+            }
             await App.ShowDialog(dialog);
             RefreshCustomActionSlots();
         }

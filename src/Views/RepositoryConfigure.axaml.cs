@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -130,26 +131,40 @@ namespace SourceGit.Views
 
         private async void SelectExecutableForCustomAction(object sender, RoutedEventArgs e)
         {
-            var suggestedStartLocation = DataContext is ViewModels.RepositoryConfigure vm ?
-                await StorageProvider.TryGetFolderFromPathAsync(vm.RepoPath) :
-                null;
-
-            var options = new FilePickerOpenOptions()
-            {
-                AllowMultiple = false,
-                FileTypeFilter = [new("Executable file(script)") { Patterns = ["*"] }],
-                SuggestedStartLocation = suggestedStartLocation,
-            };
-
-            var selected = await StorageProvider.OpenFilePickerAsync(options);
-            if (selected.Count == 1 && sender is Button { DataContext: Models.CustomAction action })
-            {
-                var executable = selected[0].Path.LocalPath;
-                action.Executable = executable;
-                RenameDefaultCustomAction(action, executable);
-            }
-
             e.Handled = true;
+            if (sender is Button { DataContext: Models.CustomAction action })
+                await SelectExecutableForCustomActionAsync(action);
+        }
+
+        public async Task SelectExecutableForCustomActionAsync(Models.CustomAction action)
+        {
+            try
+            {
+                var suggestedStartLocation = DataContext is ViewModels.RepositoryConfigure vm ?
+                    await StorageProvider.TryGetFolderFromPathAsync(vm.RepoPath) :
+                    null;
+
+                var options = new FilePickerOpenOptions()
+                {
+                    AllowMultiple = false,
+                    FileTypeFilter = [new("Executable file(script)") { Patterns = ["*"] }],
+                    SuggestedStartLocation = suggestedStartLocation,
+                };
+
+                var selected = await StorageProvider.OpenFilePickerAsync(options);
+                if (IsVisible && selected is { Count: 1 })
+                {
+                    var executable = selected[0].Path.LocalPath;
+                    action.Executable = executable;
+                    RenameDefaultCustomAction(action, executable);
+                }
+            }
+            catch (Exception ex)
+            {
+                App.LogException(ex);
+                if (IsVisible)
+                    await new Alert().ShowAsync(this, $"Failed to select executable for custom action: {ex.Message}", true);
+            }
         }
 
         private static void RenameDefaultCustomAction(Models.CustomAction action, string executable)

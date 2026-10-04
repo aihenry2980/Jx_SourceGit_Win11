@@ -48,6 +48,12 @@ internal static partial class Program
         Application.Current.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Light;
         CommitGraph.SetDefaultPens();
 
+        TestAddActionPicker();
+        if (args is ["--add-action"])
+        {
+            Console.WriteLine($"PASS: {_checks} Add action checks. Isolated data: {_root}");
+            return;
+        }
         TestCustomActions();
         if (args is ["--custom-actions"])
         {
