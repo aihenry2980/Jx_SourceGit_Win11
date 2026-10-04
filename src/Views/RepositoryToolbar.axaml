@@ -300,7 +300,7 @@
         <Button x:Name="FetchWithSubmodulesButton"
                 Classes="icon_button toolbar_button"
                 AutomationProperties.Name="Fetch repository and submodules"
-                Width="56"
+                Width="82"
                 Margin="0"
                 Tapped="FetchRecursivelyWithOptionalPrune"
                 Tag="FetchRecursively"
@@ -308,8 +308,8 @@
                 PointerPressed="OnToolbarGitButtonPointerPressed">
           <ToolTip.Tip>
             <StackPanel Orientation="Vertical">
-              <TextBlock Text="Fetch and prune the top repository, then every initialized nested submodule." TextWrapping="Wrap" MaxWidth="680"/>
-              <TextBlock Classes="small" Margin="0,4,0,0" Text="Runs sequentially in the background. History refreshes once after all repositories finish." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="680"/>
+              <TextBlock Text="Fetch + prune: top repository and all initialized nested submodules." TextWrapping="Wrap" MaxWidth="680"/>
+              <TextBlock Classes="small" Margin="0,4,0,0" Text="Updates remote refs only; working files and local branches stay unchanged." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="680"/>
               <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git fetch --prune --no-recurse-submodules &lt;remote&gt;"/>
               <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcut: Ctrl+Alt+Shift+Down." Foreground="{DynamicResource Brush.FG2}"/>
             </StackPanel>
@@ -328,7 +328,7 @@
                     Fill="{DynamicResource Toolbar.Fetch}"
                     IsVisible="{Binding IsBackgroundRecursiveFetchRunning}"/>
             </Grid>
-            <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Subs"/>
+            <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Fetch Subs"/>
           </StackPanel>
         </Button>
         <Button Width="0" Height="0" Click="FetchAndPruneRecursively" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+Shift+Down, macOS=⌘+⌥+⇧+Down}"/>
@@ -401,7 +401,7 @@
         <Button x:Name="PullWithSubmodulesButton"
                 Classes="icon_button toolbar_button"
                 AutomationProperties.Name="Pull repository and update submodules"
-                Width="56"
+                Width="82"
                 Margin="0"
                 Tapped="SyncAll"
                 Tag="SyncAll"
@@ -411,8 +411,8 @@
                 IsEnabled="{Binding !IsBare}">
           <ToolTip.Tip>
             <StackPanel Orientation="Vertical">
-              <TextBlock Text="Pull the top repository, then update configured submodules recursively." TextWrapping="Wrap" MaxWidth="680"/>
-              <TextBlock Classes="small" Margin="0,4,0,0" Text="The operation stops on the first failed stage and shows live Git output. Right-click to choose which submodules participate." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="680"/>
+              <TextBlock Text="Pull the top repository, then update selected submodules to the recorded commits." TextWrapping="Wrap" MaxWidth="680"/>
+              <TextBlock Classes="small" Margin="0,4,0,0" Text="Changes working files. Stops on failure; right-click to choose submodules." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="680"/>
               <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git pull ...; git submodule update --recursive --init"/>
               <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Ctrl+click additionally fetches and prunes the configured submodules." Foreground="{DynamicResource Brush.FG2}"/>
             </StackPanel>
@@ -422,7 +422,7 @@
             <Grid Width="24" Height="24">
               <Path Width="18" Height="18" Fill="{DynamicResource Toolbar.Pull}" Data="{StaticResource Icons.Submodule}"/>
             </Grid>
-            <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Subs"/>
+            <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Pull + Subs"/>
           </StackPanel>
         </Button>
 
@@ -477,7 +477,8 @@
 
       <Button x:Name="UpdateSubmodulesRecursivelyButton"
               Classes="icon_button toolbar_button"
-              Width="80"
+              AutomationProperties.Name="Update submodules to recorded commits"
+              Width="88"
               Margin="0"
               Tapped="UpdateSubmodulesRecursively"
               Tag="UpdateSubmodulesRecursively"
@@ -487,8 +488,8 @@
               IsEnabled="{Binding !IsBare}">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
-            <TextBlock Text="Update submodules recursively to the revisions recorded by the parent repository." TextWrapping="Wrap" MaxWidth="960"/>
-            <TextBlock Classes="small" Margin="0,4,0,0" Text="Example: After pulling parent changes, run this to sync all submodules to expected commits." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="960"/>
+            <TextBlock Text="Update selected submodules recursively to the commits recorded by their parents." TextWrapping="Wrap" MaxWidth="680"/>
+            <TextBlock Classes="small" Margin="0,4,0,0" Text="Changes submodule working files; does not pull the top repository or follow the latest remote branch." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="680"/>
             <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git submodule update --recursive --init -- &lt;selected-submodules...&gt;"/>
             <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Shortcut: Ctrl+Alt+U." Foreground="{DynamicResource Brush.FG2}"/>
             <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Alt+click: hand off to TortoiseGit Submodule Update." Foreground="{DynamicResource Brush.FG2}"/>
@@ -499,7 +500,7 @@
           <Grid Width="24" Height="24">
             <Path Width="18" Height="18" Fill="{DynamicResource Toolbar.Submodules}" Data="{StaticResource Icons.Submodule}"/>
           </Grid>
-          <TextBlock Classes="toolbar_label" Text="Submodules"/>
+          <TextBlock Classes="toolbar_label" Text="Update Subs"/>
         </StackPanel>
       </Button>
       <Button Width="0" Height="0" Click="UpdateSubmodulesRecursively" IsVisible="False" IsEnabled="{Binding !IsBare}" HotKey="{OnPlatform Ctrl+Alt+U, macOS=⌘+⌥+U}"/>

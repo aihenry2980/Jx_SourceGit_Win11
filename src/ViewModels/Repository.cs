@@ -1169,6 +1169,9 @@ namespace SourceGit.ViewModels
 
         public void Close()
         {
+            foreach (var task in BackgroundTasks)
+                task.Log.Cancel();
+            BackgroundTasks.Clear();
             _historyQuickFindDebounce?.Cancel();
             _historyQuickFindDebounce?.Dispose();
             _historyQuickFindDebounce = null;
@@ -1459,6 +1462,8 @@ namespace SourceGit.ViewModels
 
             const string operationName = "Fetch All Branches";
             var log = CreateLog(operationName);
+            var task = TrackBackgroundTask(log);
+            task.Update($"{FullPath} | {remote}");
             var succ = false;
             using var cancellation = new CancellationTokenSource();
             _quickFetchCancellation = cancellation;
@@ -1489,7 +1494,14 @@ namespace SourceGit.ViewModels
                 gitStopwatch.Stop();
                 IsQuickFetching = false;
                 _quickFetchCancellation = null;
+                task.Update(cancellation.IsCancellationRequested ? "Fetch canceled." : succ ? "All branch refs fetched." : "Fetch failed. Open the task log for details.", 1, 1);
                 log.Complete(succ && !cancellation.IsCancellationRequested);
+            }
+
+            if (cancellation.IsCancellationRequested)
+            {
+                ShowFetchToast("Fetch canceled.");
+                return;
             }
 
             if (succ)
@@ -1539,14 +1551,18 @@ namespace SourceGit.ViewModels
             log.Complete(succeeded && !cancellation.IsCancellationRequested);
         }
 
-        public async Task FetchAndPruneAllRepositoriesInBackgroundAsync()
+        public Task FetchAndPruneAllRepositoriesInBackgroundAsync() => FetchAndPruneInBackgroundAsync(null);
+
+        private async Task FetchAndPruneInBackgroundAsync(List<BackgroundFetchTarget> retryTargets)
         {
             if (Interlocked.CompareExchange(ref _backgroundRecursiveFetchGuard, 1, 0) != 0)
                 return;
 
             IsBackgroundRecursiveFetchRunning = true;
             const string operationName = "Fetch and Prune All Repositories";
-            var log = CreateLog(operationName);
+            var log = CreateLog(retryTargets == null ? operationName : "Retry Failed Fetches");
+            var task = TrackBackgroundTask(log);
+            task.Update("Starting fetch and prune...");
             using var cancellation = new CancellationTokenSource();
             _backgroundRecursiveFetchCancellation = cancellation;
             log.SetCancelAction(cancellation.Cancel);
@@ -1559,6 +1575,11 @@ namespace SourceGit.ViewModels
             var prunedBranches = new List<PrunedRemoteBranch>();
             var prunedBranchKeys = new HashSet<string>(StringComparer.Ordinal);
             var completed = false;
+            var totalRepositories = retryTargets?.Count ?? 0;
+            var failedTargets = new List<BackgroundFetchTarget>();
+
+            void ReportProgress(string detail) => task.Update(detail,
+                succeededRepositories + skippedRepositories + failedRepositories, totalRepositories);
 
             try
             {
@@ -1574,17 +1595,20 @@ namespace SourceGit.ViewModels
                     {
                         log.AppendLine($"[skipped] `{FormatFetchScope(scope)}` has no remote.");
                         skippedRepositories++;
+                        ReportProgress($"Skipped {FormatFetchScope(scope)}: no remote");
                         return;
                     }
 
                     log.AppendLine($"=== Fetch and prune `{FormatFetchScope(scope)}` ===");
                     var succeeded = true;
+                    var failedRemotes = new List<string>();
                     foreach (var remoteName in remoteNames)
                     {
                         if (cancellation.IsCancellationRequested)
                             return;
 
                         fetchAttempted = true;
+                        ReportProgress($"{FormatFetchScope(scope)} | {remoteName}");
                         var one = await RunSplitFetchUnitAsync(
                             repositoryPath,
                             remoteName,
@@ -1599,6 +1623,8 @@ namespace SourceGit.ViewModels
                             prunedBranches,
                             prunedBranchKeys);
                         succeeded &= one;
+                        if (!one)
+                            failedRemotes.Add(remoteName);
                     }
 
                     if (cancellation.IsCancellationRequested)
@@ -1607,37 +1633,60 @@ namespace SourceGit.ViewModels
                     if (succeeded)
                         succeededRepositories++;
                     else
+                    {
                         failedRepositories++;
+                        failedTargets.Add(new BackgroundFetchTarget(repositoryPath, scope, failedRemotes));
+                    }
+                    ReportProgress($"{FormatFetchScope(scope)}: {(succeeded ? "completed" : "failed")}");
                 }
 
-                await FetchRepositoryAsync(FullPath, "root", GetFetchRemoteNamesForCurrentRepository());
-
-                if (!cancellation.IsCancellationRequested)
+                if (retryTargets != null)
                 {
-                    log.AppendLine("=== Discover initialized nested submodules ===");
-                    var submodules = await new Commands.QuerySubmodules(FullPath, int.MaxValue, false).GetResultAsync();
-                    var pathComparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
-                    var visited = new HashSet<string>(pathComparer);
-
-                    foreach (var submodule in submodules)
+                    // Retrying uses only the failed repository/remote pairs, never the full tree.
+                    foreach (var target in retryTargets)
                     {
                         if (cancellation.IsCancellationRequested)
                             break;
+                        await FetchRepositoryAsync(target.Path, target.Scope, target.Remotes);
+                    }
+                }
+                else
+                {
+                    await FetchRepositoryAsync(FullPath, "root", GetFetchRemoteNamesForCurrentRepository());
 
-                        var repositoryPath = Native.OS.GetAbsPath(FullPath, submodule.Path).Replace('\\', '/');
-                        if (!visited.Add(repositoryPath))
-                            continue;
+                    if (!cancellation.IsCancellationRequested)
+                    {
+                        ReportProgress("Discovering initialized nested submodules...");
+                        log.AppendLine("=== Discover initialized nested submodules ===");
+                        var submodules = await new Commands.QuerySubmodules(FullPath, int.MaxValue, false).GetResultAsync();
+                        totalRepositories = submodules.Count + 1;
+                        var pathComparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+                        var visited = new HashSet<string>(pathComparer);
 
-                        var gitDir = Path.Combine(repositoryPath, ".git");
-                        if (!Directory.Exists(repositoryPath) || (!Directory.Exists(gitDir) && !File.Exists(gitDir)))
+                        foreach (var submodule in submodules)
                         {
-                            log.AppendLine($"[skipped] Submodule `{submodule.Path}` is not initialized.");
-                            skippedRepositories++;
-                            continue;
-                        }
+                            if (cancellation.IsCancellationRequested)
+                                break;
 
-                        var remoteNames = await GetFetchRemoteNamesForRepositoryAsync(repositoryPath);
-                        await FetchRepositoryAsync(repositoryPath, $"submodule:{submodule.Path}", remoteNames);
+                            var repositoryPath = Native.OS.GetAbsPath(FullPath, submodule.Path).Replace('\\', '/');
+                            if (!visited.Add(repositoryPath))
+                            {
+                                totalRepositories--;
+                                continue;
+                            }
+
+                            var gitDir = Path.Combine(repositoryPath, ".git");
+                            if (!Directory.Exists(repositoryPath) || (!Directory.Exists(gitDir) && !File.Exists(gitDir)))
+                            {
+                                log.AppendLine($"[skipped] Submodule `{submodule.Path}` is not initialized.");
+                                skippedRepositories++;
+                                ReportProgress($"Skipped {submodule.Path}: not initialized");
+                                continue;
+                            }
+
+                            var remoteNames = await GetFetchRemoteNamesForRepositoryAsync(repositoryPath);
+                            await FetchRepositoryAsync(repositoryPath, $"submodule:{submodule.Path}", remoteNames);
+                        }
                     }
                 }
 
@@ -1646,6 +1695,7 @@ namespace SourceGit.ViewModels
                 if (fetchAttempted && !cancellation.IsCancellationRequested)
                 {
                     log.AppendLine("=== Refresh history once ===");
+                    ReportProgress("Refreshing history...");
                     await MarkFetchedAndMeasureRefreshAsync(true);
                     _watcher?.MarkSubmodulesUpdated();
                 }
@@ -1664,7 +1714,12 @@ namespace SourceGit.ViewModels
             finally
             {
                 stopwatch.Stop();
+                ReportProgress($"{succeededRepositories} succeeded, {skippedRepositories} skipped, {failedRepositories} failed.");
                 log.AppendLine($"Summary: {succeededRepositories} succeeded, {skippedRepositories} skipped, {failedRepositories} failed in {stopwatch.Elapsed.TotalSeconds:0.0}s.");
+                if (failedTargets.Count > 0 && !cancellation.IsCancellationRequested)
+                    task.SetRetryAction(() => FetchAndPruneInBackgroundAsync(failedTargets));
+                if (cancellation.IsCancellationRequested)
+                    log.Cancel();
                 log.Complete(completed && failedRepositories == 0);
 
                 if (ReferenceEquals(_backgroundRecursiveFetchCancellation, cancellation))
@@ -1735,6 +1790,10 @@ namespace SourceGit.ViewModels
             }
 
             var log = CreateLog("Quick Pull");
+            var task = TrackBackgroundTask(log);
+            task.Update($"{FullPath} | {pull.SelectedRemote.Name}/{pull.SelectedBranch.Name}");
+            using var cancellation = new CancellationTokenSource();
+            log.SetCancelAction(cancellation.Cancel);
             AutoBackgroundOperationText = "Quick Pull";
             IsQuickPulling = true;
             var succ = false;
@@ -1742,15 +1801,18 @@ namespace SourceGit.ViewModels
             try
             {
                 using var lockWatcher = LockWatcher();
-                succ = await pull.ExecuteAsync(log, false);
+                succ = await pull.ExecuteAsync(log, false, cancellation.Token);
             }
             finally
             {
                 IsQuickPulling = false;
-                log.Complete();
+                task.Update(cancellation.IsCancellationRequested ? "Pull canceled." : succ ? "Pull completed." : "Pull failed. Open the task log for details.", 1, 1);
+                log.Complete(succ && !cancellation.IsCancellationRequested);
             }
 
-            if (succ)
+            if (cancellation.IsCancellationRequested)
+                ShowFetchToast("Pull canceled.");
+            else if (succ)
                 App.SendNotification(FullPath, "Quick Pull completed.");
             else
                 App.SendNotification(FullPath, "Quick Pull failed. Review the repository log for details.");
@@ -1762,21 +1824,28 @@ namespace SourceGit.ViewModels
                 return;
 
             var log = CreateLog("Pull Top Repository");
+            var task = TrackBackgroundTask(log);
+            task.Update($"{FullPath} | {_currentBranch?.Name}");
+            using var cancellation = new CancellationTokenSource();
+            log.SetCancelAction(cancellation.Cancel);
             AutoBackgroundOperationText = "Pull Top Repository";
             IsQuickPulling = true;
             var succ = false;
 
             try
             {
-                succ = await RunDefaultPullAsync(log, false);
+                succ = await RunDefaultPullAsync(log, false, cancellation.Token);
             }
             finally
             {
                 IsQuickPulling = false;
-                log.Complete(succ);
+                task.Update(cancellation.IsCancellationRequested ? "Pull canceled." : succ ? "Top repository updated; submodules unchanged." : "Pull failed. Open the task log for details.", 1, 1);
+                log.Complete(succ && !cancellation.IsCancellationRequested);
             }
 
-            if (succ)
+            if (cancellation.IsCancellationRequested)
+                ShowFetchToast("Top repository pull canceled.");
+            else if (succ)
                 App.SendNotification(FullPath, "Top repository pull completed.");
             else
                 App.SendNotification(FullPath, "Top repository pull failed. Review the repository log for details.");

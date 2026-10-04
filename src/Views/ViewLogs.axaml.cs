@@ -24,7 +24,7 @@ namespace SourceGit.Views
 
             if (DataContext is ViewModels.ViewLogs vm && vm.Logs.Count > 0)
             {
-                vm.SelectedLog = vm.Logs[0];
+                vm.SelectedLog ??= vm.Logs[0];
                 WatchSelectedLog(vm.SelectedLog);
             }
         }

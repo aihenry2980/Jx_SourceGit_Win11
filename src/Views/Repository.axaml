@@ -1440,7 +1440,7 @@
                   Focusable="False"/>
 
     <!-- Right -->
-    <Grid Grid.Column="2" RowDefinitions="Auto,Auto,Auto,*">
+    <Grid Grid.Column="2" RowDefinitions="Auto,Auto,Auto,*,Auto">
       <Grid Grid.Row="0" Height="28" ColumnDefinitions="*,Auto,Auto,Auto" Background="{DynamicResource Brush.Conflict}" IsVisible="{Binding InProgressContext, Converter={x:Static ObjectConverters.IsNotNull}}">
         <ContentControl Grid.Column="0" Margin="8,0" Content="{Binding InProgressContext}">
           <ContentControl.DataTemplates>
@@ -1933,6 +1933,17 @@
           </ContentControl.DataTemplates>
         </ContentControl>
       </Grid>
+      <ScrollViewer Grid.Row="4" MaxHeight="144" HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto"
+                    IsVisible="{Binding BackgroundTasks.Count, Converter={x:Static c:IntConverters.IsGreaterThanZero}}">
+        <ItemsControl ItemsSource="{Binding BackgroundTasks}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="vm:RepositoryBackgroundTask">
+              <v:RepositoryBackgroundTask/>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
     </Grid>
 
     <!-- Right (Background Operation) -->
@@ -1940,8 +1951,6 @@
       <Border.IsVisible>
         <MultiBinding Converter="{x:Static BoolConverters.Or}">
           <Binding Path="IsAutoFetching"/>
-          <Binding Path="IsQuickFetching"/>
-          <Binding Path="IsQuickPulling"/>
         </MultiBinding>
       </Border.IsVisible>
       <Border Background="{DynamicResource Brush.Popup}" CornerRadius="6" BorderThickness="1" BorderBrush="{DynamicResource Brush.PopupBorder}">

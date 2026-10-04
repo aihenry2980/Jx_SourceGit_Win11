@@ -1,0 +1,50 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SourceGit.ViewModels"
+             x:Class="SourceGit.Views.RepositoryBackgroundTask"
+             x:DataType="vm:RepositoryBackgroundTask">
+  <UserControl.Styles>
+    <Style Selector="Button.task_action">
+      <Setter Property="Width" Value="28"/>
+      <Setter Property="Height" Value="28"/>
+      <Setter Property="Padding" Value="6"/>
+      <Setter Property="Margin" Value="2,0,0,0"/>
+    </Style>
+    <Style Selector="TextBlock.failed">
+      <Setter Property="Foreground" Value="{DynamicResource SystemControlErrorTextForegroundBrush}"/>
+    </Style>
+  </UserControl.Styles>
+  <Border BorderThickness="0,1,0,0" BorderBrush="{DynamicResource Brush.Border1}"
+          Background="{DynamicResource Brush.Contents}">
+    <Grid Margin="8,4" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
+      <TextBlock Grid.Column="0" Text="{Binding Summary}" FontWeight="SemiBold"
+                 FontSize="12" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Summary}"
+                 Classes.failed="{Binding IsFailed}"/>
+      <TextBlock Grid.Row="1" Text="{Binding Detail}" FontSize="12"
+                 TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Detail}"
+                 Foreground="{DynamicResource Brush.FG2}"/>
+      <StackPanel Grid.Column="1" Grid.RowSpan="2" Orientation="Horizontal" VerticalAlignment="Center">
+        <TextBlock x:Name="ElapsedText" Margin="8,0" MinWidth="48" FontSize="12"/>
+        <Button Classes="icon_button task_action" Click="OnOpenLog" ToolTip.Tip="Open task log" AutomationProperties.Name="Open task log">
+          <Path Data="{StaticResource Icons.Logs}"/>
+        </Button>
+        <Button Classes="icon_button task_action" Click="OnCancel" IsVisible="{Binding IsRunning}" IsEnabled="{Binding CanCancel}"
+                ToolTip.Tip="Cancel task" AutomationProperties.Name="Cancel task">
+          <Path Data="{StaticResource Icons.Clear}"/>
+        </Button>
+        <Button Classes="icon_button task_action" Click="OnRetry" IsVisible="{Binding CanRetry}"
+                ToolTip.Tip="Retry failed repositories only" AutomationProperties.Name="Retry failed repositories only">
+          <Path Data="{StaticResource Icons.Refresh}"/>
+        </Button>
+        <Button Classes="icon_button task_action" Click="OnDismiss" IsVisible="{Binding !IsRunning}"
+                ToolTip.Tip="Dismiss result" AutomationProperties.Name="Dismiss result">
+          <Path Data="{StaticResource Icons.Close}"/>
+        </Button>
+      </StackPanel>
+      <ProgressBar Grid.Row="2" Grid.ColumnSpan="2" Height="3" Margin="0,3,0,0"
+                   IsVisible="{Binding IsRunning}" IsIndeterminate="{Binding IsIndeterminate}"
+                   Minimum="0" Maximum="{Binding TotalCount}" Value="{Binding CompletedCount}"
+                   Foreground="{DynamicResource Brush.Accent}"/>
+    </Grid>
+  </Border>
+</UserControl>

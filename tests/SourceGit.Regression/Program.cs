@@ -48,6 +48,13 @@ internal static partial class Program
         Application.Current.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Light;
         CommitGraph.SetDefaultPens();
 
+        if (args is ["--workflow-ux"])
+        {
+            TestWorkflowUx();
+            Console.WriteLine($"PASS: {_checks} workflow UX checks. Isolated data and previews: {_root}");
+            return;
+        }
+
         TestAddActionPicker();
         if (args is ["--add-action"])
         {
@@ -71,6 +78,7 @@ internal static partial class Program
         TestCompactSubmodules();
         TestTabReordering();
         TestCrashReports();
+        TestWorkflowUx();
         Console.WriteLine($"PASS: {_checks} checks. Isolated data and preview: {_root}");
     }
 

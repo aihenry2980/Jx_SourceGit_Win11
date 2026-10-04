@@ -239,8 +239,15 @@ namespace SourceGit.ViewModels
         public bool CanCommitAndPushSelectedNode => CanCommitSelectedNode && _selectedNode.HasPushRemote;
         public IBrush CommitAndPushButtonBackground => CanCommitAndPushSelectedNode ? _commitAndPushEnabledBackground : _commitAndPushDisabledBackground;
         public IBrush CommitAndPushButtonForeground => CanCommitAndPushSelectedNode ? Brushes.White : _commitAndPushDisabledForeground;
-        public string CommitAndPushButtonText => GetNextActionNodeAfterSelected() != null ? "Commit & Push -> Next" : "Commit & Push";
-        public string CommitButtonText => GetNextActionNodeAfterSelected() != null ? "Stage All & Commit -> Next" : "Stage All & Commit";
+        public string CommitAndPushButtonText => $"Commit & Push ({IncludedChangeCount})" + (GetNextActionNodeAfterSelected() != null ? " -> Next" : string.Empty);
+        public string CommitButtonText => $"Commit Selected ({IncludedChangeCount})" + (GetNextActionNodeAfterSelected() != null ? " -> Next" : string.Empty);
+        public string CommitTargetSummary => _selectedNode == null
+            ? "No repository selected"
+            : $"Repository: {SelectedNodeTitle}  |  Branch: {_selectedNode.Branch}  |  Push: " +
+                (_selectedNode.HasPushRemote ? $"{_selectedNode.PushRemote}/{_selectedNode.PushRemoteBranch}" : "No upstream target");
+        public string CommitAvailabilityText => !CanCommitSelectedNode
+            ? GetCommitDisabledReason(false)
+            : !CanCommitAndPushSelectedNode ? GetCommitDisabledReason(true) : string.Empty;
         public string CommitButtonToolTip => CanCommitSelectedNode
             ? "Stage the included changes and commit the selected repository."
             : GetCommitDisabledReason(false);
@@ -2006,6 +2013,7 @@ namespace SourceGit.ViewModels
 
         private void NotifyCommitAndPushStateChanged()
         {
+            OnPropertyChanged(nameof(CommitAvailabilityText));
             OnPropertyChanged(nameof(CanCommitAndPushSelectedNode));
             OnPropertyChanged(nameof(CommitAndPushButtonBackground));
             OnPropertyChanged(nameof(CommitAndPushButtonForeground));
@@ -2015,6 +2023,8 @@ namespace SourceGit.ViewModels
 
         private void NotifyCommitPlanChanged()
         {
+            OnPropertyChanged(nameof(CommitTargetSummary));
+            OnPropertyChanged(nameof(CommitAvailabilityText));
             OnPropertyChanged(nameof(CommitPlanPreview));
             OnPropertyChanged(nameof(CommitButtonText));
             OnPropertyChanged(nameof(CommitAndPushButtonText));
