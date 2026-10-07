@@ -23,7 +23,6 @@ namespace SourceGit.Views
     {
         private enum ToolbarGitButtonKind
         {
-            FetchAllBranches,
             Pull,
             SyncAll,
             FetchRecursively,
@@ -648,23 +647,6 @@ namespace SourceGit.Views
             }
         }
 
-        private async void FetchAllBranches(object sender, TappedEventArgs e)
-        {
-            if (DataContext is ViewModels.Repository repo)
-            {
-                e.Handled = true;
-                await RunToolbarButtonOperationAsync(sender, FetchAllBranchesButton, async () =>
-                {
-                    if (OperatingSystem.IsWindows() &&
-                        e.KeyModifiers.HasFlag(KeyModifiers.Alt) &&
-                        TryLaunchTortoiseGit(repo.FullPath, "fetch"))
-                        return;
-
-                    await repo.FetchAllBranchesAsync();
-                });
-            }
-        }
-
         private async void FetchRecursivelyWithOptionalPrune(object sender, TappedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo)
@@ -932,7 +914,6 @@ namespace SourceGit.Views
         {
             return kind switch
             {
-                ToolbarGitButtonKind.FetchAllBranches => BuildFetchAllBranchesCommandSpec(repo),
                 ToolbarGitButtonKind.Pull => BuildPullCommandSpec(repo),
                 ToolbarGitButtonKind.SyncAll => BuildSyncAllCommandSpec(repo, alternateMode),
                 ToolbarGitButtonKind.FetchRecursively => await BuildFetchRecursivelyCommandSpecAsync(repo, alternateMode),
@@ -943,20 +924,6 @@ namespace SourceGit.Views
                 ToolbarGitButtonKind.StashAll => BuildStashAllCommandSpec(repo),
                 _ => null,
             };
-        }
-
-        private ToolbarGitCommandSpec BuildFetchAllBranchesCommandSpec(ViewModels.Repository repo)
-        {
-            var remote = repo.GetPreferredRemoteNameForToolbarCommandEditor();
-            if (string.IsNullOrWhiteSpace(remote))
-                return null;
-
-            return new ToolbarGitCommandSpec(
-                "Edit command...",
-                "Edit Fetch All Branches Command",
-                "Edit the command that fetches all branch refs from the preferred remote.",
-                $"git fetch --progress --verbose --no-tags {Quote(remote)}",
-                r => r.MarkFetched());
         }
 
         private ToolbarGitCommandSpec BuildPullCommandSpec(ViewModels.Repository repo)

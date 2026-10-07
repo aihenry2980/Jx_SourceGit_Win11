@@ -48,6 +48,22 @@ internal static partial class Program
         Application.Current.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Light;
         CommitGraph.SetDefaultPens();
 
+        if (args is ["--runtime-crashes"])
+        {
+            TestRuntimeCrashes();
+            TestCustomActions();
+            Console.WriteLine($"PASS: {_checks} runtime crash checks. Isolated data and previews: {_root}");
+            return;
+        }
+
+        if (args is ["--branch-visibility"])
+        {
+            TestBranchVisibility();
+            TestTrackingPairZoom();
+            Console.WriteLine($"PASS: {_checks} branch visibility checks. Isolated data and previews: {_root}");
+            return;
+        }
+
         if (args is ["--workflow-ux"])
         {
             TestWorkflowUx();
@@ -69,9 +85,11 @@ internal static partial class Program
         }
 
         TestNames();
+        TestRuntimeCrashes();
         TestMissingBranches();
         TestFilterColorsAndCheckout();
         TestRendering();
+        TestBranchVisibility();
         TestTrackingPairZoom();
         TestCommitMenuChips();
         TestPushConfirmation();

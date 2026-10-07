@@ -1024,6 +1024,52 @@
     <Setter Property="Foreground" Value="#FFF7FAFC"/>
   </Style>
 
+  <Style Selector="MenuItem.delete_branch">
+    <Setter Property="Background" Value="#C62828"/>
+    <Setter Property="Foreground" Value="White"/>
+    <Setter Property="FontWeight" Value="Bold"/>
+  </Style>
+
+  <Style Selector="MenuItem.delete_branch TextBlock">
+    <Setter Property="Foreground" Value="White"/>
+  </Style>
+
+  <Style Selector="MenuItem.delete_branch /template/ TextBlock">
+    <Setter Property="Foreground" Value="White"/>
+  </Style>
+
+  <Style Selector="MenuItem.delete_branch Path">
+    <Setter Property="Fill" Value="White"/>
+  </Style>
+
+  <Style Selector="MenuItem.delete_branch:selected /template/ Border#PART_LayoutRoot">
+    <Setter Property="Background" Value="#991B1B"/>
+  </Style>
+
+  <Style Selector="MenuItem.delete_branch:selected /template/ ContentPresenter#PART_HeaderPresenter">
+    <Setter Property="Foreground" Value="White"/>
+  </Style>
+
+  <Style Selector="MenuItem.delete_branch:disabled /template/ Border#PART_LayoutRoot">
+    <Setter Property="Background" Value="Transparent"/>
+  </Style>
+
+  <Style Selector="MenuItem.delete_branch:disabled">
+    <Setter Property="Foreground" Value="{DynamicResource Brush.FG2}"/>
+  </Style>
+
+  <Style Selector="MenuItem.delete_branch:disabled TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource Brush.FG2}"/>
+  </Style>
+
+  <Style Selector="MenuItem.delete_branch:disabled /template/ TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource Brush.FG2}"/>
+  </Style>
+
+  <Style Selector="MenuItem.delete_branch:disabled Path">
+    <Setter Property="Fill" Value="{DynamicResource Brush.FG2}"/>
+  </Style>
+
   <Style Selector="MenuItem.filter_mode_switcher">
     <Setter Property="Height" Value="48"/>
     <Setter Property="StaysOpenOnClick" Value="True"/>

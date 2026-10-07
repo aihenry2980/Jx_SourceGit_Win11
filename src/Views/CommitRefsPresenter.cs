@@ -19,6 +19,8 @@ namespace SourceGit.Views
             public FormattedText PrefixLabel { get; set; } = null;
             public FormattedText Label { get; set; } = null;
             public FormattedText FoldLabel { get; set; } = null;
+            public FormattedText HeadLabel { get; set; } = null;
+            public double HeadBadgeWidth { get; set; } = 0;
             public string RawLabel { get; set; } = string.Empty;
             public Typeface LabelTypeface { get; set; } = new Typeface(FontFamily.Default);
             public double LabelFontSize { get; set; } = 0;
@@ -187,7 +189,7 @@ namespace SourceGit.Views
                 item.IsBranch &&
                 !string.IsNullOrWhiteSpace(item.RawLabel))
             {
-                ToolTip.SetTip(this, item.RawLabel);
+                ToolTip.SetTip(this, item.HeadLabel != null ? "HEAD: " + item.RawLabel : item.RawLabel);
             }
             else
             {
@@ -206,7 +208,6 @@ namespace SourceGit.Views
             if (_items.Count == 0)
                 return;
 
-            var useGraphColor = UseGraphColor;
             var fg = Foreground;
             var bg = Background;
             var allowWrap = AllowWrap;
@@ -246,7 +247,7 @@ namespace SourceGit.Views
                     {
                         context.DrawRectangle(s_headTagBackgroundBrush, null, entireRect);
                     }
-                    else if (useGraphColor || hasCompactTrackingBadge)
+                    else
                     {
                         if (bg != null)
                             context.DrawRectangle(bg, null, entireRect);
@@ -269,6 +270,16 @@ namespace SourceGit.Views
                     }
 
                     context.DrawText(item.Label, new Point(labelX, centerY - item.Label.Height * 0.5));
+                    if (item.HeadLabel != null)
+                    {
+                        var badgeX = labelX + item.Label.Width + 4;
+                        var badgeHeight = item.Height - 4;
+                        context.DrawRectangle(s_currentBranchBadgeBrush, null,
+                            new RoundedRect(new Rect(badgeX, y + 2, item.HeadBadgeWidth, badgeHeight), new CornerRadius(3)));
+                        context.DrawText(item.HeadLabel,
+                            new Point(badgeX + (item.HeadBadgeWidth - item.HeadLabel.WidthIncludingTrailingWhitespace) * .5,
+                                centerY - item.HeadLabel.Height * .5));
+                    }
                 }
                 else
                 {
@@ -327,15 +338,18 @@ namespace SourceGit.Views
                     context.DrawText(item.Label, new Point(labelX, centerY - item.Label.Height * 0.5));
                 }
 
-                var borderBrush = item.BorderBrush ?? item.Brush;
-                var borderPen = new Pen(borderBrush, hasCompactTrackingBadge ? 2.0 : 1.0);
+                var borderBrush = item.HeadLabel != null ? fg : item.BorderBrush ?? item.Brush;
+                var borderPen = new Pen(borderBrush, item.HeadLabel != null ? 2.5 : hasCompactTrackingBadge ? 2.0 : 1.0);
                 if (arrow != null)
                 {
                     using (context.PushTransform(Matrix.CreateTranslation(x, y)))
                         context.DrawGeometry(null, borderPen, arrow);
                 }
                 else
-                    context.DrawRectangle(null, borderPen, entireRect);
+                    context.DrawRectangle(null, borderPen, item.HeadLabel != null
+                        ? new RoundedRect(entireRect.Rect.Deflate(.75), entireRect.RadiiTopLeft,
+                            entireRect.RadiiTopRight, entireRect.RadiiBottomRight, entireRect.RadiiBottomLeft)
+                        : entireRect);
 
                 if (!hasCompactTrackingBadge && item.PrimaryIconBackground != null)
                 {
@@ -562,6 +576,13 @@ namespace SourceGit.Views
                         item.LeadingWidth = 20.0;
                     }
 
+                    if (decorator.Type == Models.DecoratorType.CurrentBranchHead)
+                    {
+                        item.HeadLabel = new FormattedText("HEAD", CultureInfo.CurrentCulture,
+                            FlowDirection.LeftToRight, typefaceBold, Math.Max(9.0, labelSizeForItem - 2.0), Brushes.White);
+                        item.HeadBadgeWidth = Math.Ceiling(item.HeadLabel.WidthIncludingTrailingWhitespace + 8);
+                    }
+
                     if (isMutedIncidentalBranch)
                     {
                         item.IconBrush = s_incidentalBranchForegroundBrush;
@@ -679,12 +700,15 @@ namespace SourceGit.Views
                         item.Label.Height,
                         item.PrefixLabel?.Height ?? 0.0);
                     contentHeight = Math.Max(contentHeight, item.TrackingPairLabel?.Height ?? 0.0);
+                    contentHeight = Math.Max(contentHeight, item.HeadLabel?.Height ?? 0.0);
                     item.Height = Math.Max(16.0, Math.Ceiling(contentHeight + 4.0));
                     if (isSuperProjectPointer)
                         item.Height += 4;
 
                     var prefixWidth = prefixLabel?.WidthIncludingTrailingWhitespace ?? 0.0;
                     item.Width = item.LeadingWidth + (isHead ? 0 : 4) + prefixWidth + label.Width + 4;
+                    if (item.HeadLabel != null)
+                        item.Width += item.HeadBadgeWidth + 6;
                     if (item.CanFold)
                         item.Width += 18;
                     else if (item.IsBranch)
@@ -996,6 +1020,7 @@ namespace SourceGit.Views
         private const double TRACKING_PAIR_BADGE_WIDTH = 36.0;
 
         private List<RenderItem> _items = new List<RenderItem>();
+        private static readonly IBrush s_currentBranchBadgeBrush = new SolidColorBrush(Color.Parse("#263238"));
         private static readonly IBrush s_headTagBackgroundBrush = new SolidColorBrush(Color.Parse("#C62828"));
         private static readonly IBrush s_headTagBorderBrush = new SolidColorBrush(Color.Parse("#7F0000"));
         private static readonly IBrush s_headTagForegroundBrush = new SolidColorBrush(Color.Parse("#FFEB3B"));

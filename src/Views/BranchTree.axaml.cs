@@ -610,6 +610,7 @@ namespace SourceGit.Views
                     };
 
                     var deleteMulti = new MenuItem();
+                    deleteMulti.Classes.Add("delete_branch");
                     deleteMulti.Header = App.Text("BranchCM.DeleteMultiBranches", branches.Count);
                     deleteMulti.Icon = this.CreateMenuIcon("Icons.Clear");
                     deleteMulti.Tag = "Delete/Back";
@@ -1078,6 +1079,7 @@ namespace SourceGit.Views
             };
 
             var delete = new MenuItem();
+            delete.Classes.Add("delete_branch");
             delete.Header = App.Text("BranchCM.Delete", branch.Name);
             delete.Icon = this.CreateMenuIcon("Icons.Clear");
             delete.Tag = "Delete/Back";
@@ -1412,6 +1414,7 @@ namespace SourceGit.Views
             };
 
             var delete = new MenuItem();
+            delete.Classes.Add("delete_branch");
             delete.Header = App.Text("BranchCM.Delete", name);
             delete.Icon = this.CreateMenuIcon("Icons.Clear");
             delete.Tag = "Delete/Back";

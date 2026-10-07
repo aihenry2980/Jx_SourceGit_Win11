@@ -71,6 +71,10 @@ internal static partial class Program
             window = new Window { Content = toolbar, Width = 1700, Height = 100 };
             window.Show();
             PumpFor(100);
+            var fetchButtons = toolbar.FindControl<StackPanel>("FetchToolbarGroup").Children
+                .OfType<Button>().Where(b => b.IsVisible).Select(b => b.Name).ToArray();
+            Check(fetchButtons.SequenceEqual(new[] { "FetchButton", "FetchWithSubmodulesButton" }),
+                "Fetch group contains only standard Fetch and Fetch Subs, without a redundant All button");
             foreach (var (name, label) in new[] { ("FetchWithSubmodulesButton", "Fetch Subs"),
                 ("PullWithSubmodulesButton", "Pull + Subs"), ("UpdateSubmodulesRecursivelyButton", "Update Subs") })
             {

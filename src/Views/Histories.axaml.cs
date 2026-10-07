@@ -2479,6 +2479,7 @@ namespace SourceGit.Views
             submenu.Items.Add(rename);
 
             var delete = new MenuItem();
+            delete.Classes.Add("delete_branch");
             delete.Header = CreateLocalizedBranchActionHeader(repo, "BranchCM.Delete", branch, branch.Name);
             delete.Icon = App.CreateMenuIcon("Icons.Clear");
             delete.Click += (_, e) =>
@@ -2608,6 +2609,7 @@ namespace SourceGit.Views
             submenu.Items.Add(merge);
 
             var delete = new MenuItem();
+            delete.Classes.Add("delete_branch");
             delete.Header = CreateLocalizedBranchActionHeader(repo, "BranchCM.Delete", branch, name);
             delete.Icon = App.CreateMenuIcon("Icons.Clear");
             delete.Click += (_, e) =>
