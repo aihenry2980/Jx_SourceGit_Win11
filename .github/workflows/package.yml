@@ -66,6 +66,7 @@ jobs:
           name: package.linux-x64
           path: |
             build/sourcegit-*.AppImage
+            build/sourcegit-*.AppImage.zsync
             build/sourcegit_*.deb
             build/sourcegit-*.rpm
       - name: Delete temp artifacts
