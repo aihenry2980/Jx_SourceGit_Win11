@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -290,8 +291,13 @@ namespace SourceGit.ViewModels
         private async Task RunAsync(string args, CommandLog log, CancellationToken cancellationToken)
         {
             using var proc = new Process();
+            using var reading = new CancellationTokenSource();
             var started = false;
             var succeeded = false;
+            Task output = Task.CompletedTask;
+            Task errors = Task.CompletedTask;
+            var lastOutput = Environment.TickCount64;
+            var errorTail = new StringBuilder();
             try
             {
                 var start = new ProcessStartInfo();
@@ -307,36 +313,50 @@ namespace SourceGit.ViewModels
 
                 proc.StartInfo = start;
 
-                proc.OutputDataReceived += (_, e) =>
-                {
-                    if (e.Data != null)
-                        log.AppendLine(e.Data);
-                };
-
-                var builder = new StringBuilder();
-                proc.ErrorDataReceived += (_, e) =>
-                {
-                    if (e.Data != null)
-                    {
-                        log.AppendLine(e.Data);
-                        builder.AppendLine(e.Data);
-                    }
-                };
-
                 cancellationToken.ThrowIfCancellationRequested();
                 proc.Start();
                 started = true;
                 log.AppendLine($"[Process started: PID {proc.Id}; working directory: {_repo.FullPath}]");
-                proc.BeginOutputReadLine();
-                proc.BeginErrorReadLine();
-                await proc.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+                output = ReadOutputAsync(proc.StandardOutput, false);
+                errors = ReadOutputAsync(proc.StandardError, true);
+
+                // Do not use BeginOutputReadLine: an inherited pipe can outlive the BAT,
+                // and an unterminated progress line can grow without bound in its reader.
+                var exit = proc.WaitForExitAsync(cancellationToken);
+                while (!exit.IsCompleted)
+                {
+                    var interval = Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
+                    if (await Task.WhenAny(exit, interval).ConfigureAwait(false) == exit)
+                        break;
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (output.IsFaulted)
+                        await output.ConfigureAwait(false);
+                    if (errors.IsFaulted)
+                        await errors.ConfigureAwait(false);
+                    var quietSeconds = (Environment.TickCount64 - Interlocked.Read(ref lastOutput)) / 1000;
+                    if (quietSeconds >= 30)
+                        log.AppendLine($"[No output for {quietSeconds}s. The script may be waiting for network access or input. Use Cancel task to stop it.]");
+                }
+                await exit.ConfigureAwait(false);
                 cancellationToken.ThrowIfCancellationRequested();
+
+                try
+                {
+                    await Task.WhenAll(output, errors).WaitAsync(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false);
+                }
+                catch (TimeoutException)
+                {
+                    log.AppendLine("[The script exited, but a child process kept its output pipe open. Stopped waiting for output.]");
+                    await reading.CancelAsync().ConfigureAwait(false);
+                }
 
                 var exitCode = proc.ExitCode;
                 log?.AppendLine($"[Process exited with code {exitCode}]");
                 if (exitCode != 0)
                 {
-                    var errMsg = builder.ToString().Trim();
+                    string errMsg;
+                    lock (errorTail)
+                        errMsg = errorTail.ToString().Trim();
                     if (!string.IsNullOrEmpty(errMsg))
                         App.RaiseException(_repo.FullPath, errMsg);
                     else
@@ -350,33 +370,116 @@ namespace SourceGit.ViewModels
                 // WaitForExitAsync cancels the wait, not the BAT or its children. Do
                 // process-tree termination here on the worker, never in the UI callback.
                 if (started)
-                {
-                    try
-                    {
-                        if (!proc.HasExited)
-                            proc.Kill(entireProcessTree: true);
-                        await proc.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
-                    }
-                    catch (Exception e)
-                    {
-                        log.AppendLine($"[Could not finish stopping the custom action: {e.Message}]");
-                    }
-                }
+                    await StopProcessAsync().ConfigureAwait(false);
 
                 log.AppendLine("[Custom action canceled]");
             }
             catch (Exception e)
             {
+                if (started)
+                    await StopProcessAsync().ConfigureAwait(false);
                 log?.AppendLine(e.Message);
                 App.RaiseException(_repo.FullPath, e.Message);
             }
             finally
             {
+                await reading.CancelAsync().ConfigureAwait(false);
+                try
+                {
+                    await Task.WhenAll(output, errors).WaitAsync(TimeSpan.FromSeconds(2)).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (reading.IsCancellationRequested)
+                {
+                    // Cancellation also releases reads held open by child processes.
+                }
+                catch (Exception e)
+                {
+                    log.AppendLine($"[Stopped reading custom action output: {e.Message}]");
+                }
+
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     log.Complete(succeeded);
                     Cleanup();
                 });
+            }
+
+            async Task StopProcessAsync()
+            {
+                try
+                {
+                    if (!proc.HasExited)
+                        proc.Kill(entireProcessTree: true);
+                    await proc.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+                }
+                catch (Exception e)
+                {
+                    log.AppendLine($"[Could not finish stopping the custom action: {e.Message}]");
+                }
+            }
+
+            async Task ReadOutputAsync(StreamReader reader, bool isError)
+            {
+                // A continuously readable stdout must not delay starting stderr or the exit monitor.
+                await Task.Yield();
+                var buffer = new char[4096];
+                var line = new StringBuilder();
+                var skipLineFeed = false;
+                try
+                {
+                    int count;
+                    while ((count = await reader.ReadAsync(buffer.AsMemory(), reading.Token).ConfigureAwait(false)) > 0)
+                    {
+                        reading.Token.ThrowIfCancellationRequested();
+                        Interlocked.Exchange(ref lastOutput, Environment.TickCount64);
+                        for (var i = 0; i < count; i++)
+                        {
+                            var ch = buffer[i];
+                            if (ch == '\n' && skipLineFeed)
+                            {
+                                skipLineFeed = false;
+                                continue;
+                            }
+                            skipLineFeed = ch == '\r';
+                            if (ch == '\r' || ch == '\n')
+                            {
+                                PublishLine();
+                            }
+                            else
+                            {
+                                line.Append(ch);
+                                if (line.Length >= buffer.Length)
+                                    PublishLine();
+                            }
+                        }
+                    }
+                }
+                catch (OperationCanceledException) when (reading.IsCancellationRequested)
+                {
+                    // Keep the final partial progress line when stopping a script.
+                }
+                finally
+                {
+                    if (line.Length > 0)
+                        PublishLine();
+                }
+
+                void PublishLine()
+                {
+                    var text = line.ToString();
+                    line.Clear();
+                    log.AppendLine(text);
+                    if (isError)
+                    {
+                        // Only the tail is needed for the failure notification.
+                        lock (errorTail)
+                        {
+                            errorTail.AppendLine(text);
+                            if (errorTail.Length > 16 * 1024)
+                                errorTail.Remove(0, errorTail.Length - 16 * 1024);
+                        }
+                    }
+                }
             }
         }
 

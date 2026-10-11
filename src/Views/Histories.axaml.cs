@@ -1721,6 +1721,19 @@ namespace SourceGit.Views
                 menu.Items.Add(new MenuItem() { Header = "-" });
             }
 
+            var findContainingBranches = new MenuItem
+            {
+                Header = App.Text("FindContainingBranches.Title"),
+                Icon = App.CreateMenuIcon("Icons.Search"),
+            };
+            findContainingBranches.Click += (_, e) =>
+            {
+                this.ShowWindow(new ViewModels.FindContainingBranches(repo, commit));
+                e.Handled = true;
+            };
+            menu.Items.Add(findContainingBranches);
+            menu.Items.Add(new MenuItem() { Header = "-" });
+
             if (commit.HasDecorators)
             {
                 foreach (var d in OrderDecoratorsForContextMenu(commit.Decorators, preferredDecorator))

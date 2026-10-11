@@ -1,5 +1,20 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <x:String x:Key="Text.About" xml:space="preserve">About</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Title" xml:space="preserve">Find containing branches</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Search" xml:space="preserve">Filter results...</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Searching" xml:space="preserve">Searching local and remote-tracking branches...</x:String>
+  <x:String x:Key="Text.FindContainingBranches.None" xml:space="preserve">No known branch contains this commit.</x:String>
+  <x:String x:Key="Text.FindContainingBranches.NoMatches" xml:space="preserve">No matching branches</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Found" xml:space="preserve">{0} branch(es) contain this commit.</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Local" xml:space="preserve">Local</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Remote" xml:space="preserve">Remote</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Canceled" xml:space="preserve">Search canceled.</x:String>
+  <x:String x:Key="Text.FindContainingBranches.TimedOut" xml:space="preserve">Search timed out. You can search again.</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Failed" xml:space="preserve">Search failed: {0}</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Unavailable" xml:space="preserve">The repository was closed or the branch is no longer available. Search again.</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Added" xml:space="preserve">Added to filter: {0}</x:String>
+  <x:String x:Key="Text.FindContainingBranches.AddToFilter" xml:space="preserve">Add to filter</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Retry" xml:space="preserve">Search again</x:String>
   <x:String x:Key="Text.CrashReport.Title" xml:space="preserve">The previous session crashed</x:String>
   <x:String x:Key="Text.CrashReport.Copy" xml:space="preserve">Copy three-line report</x:String>
   <x:String x:Key="Text.CrashReport.OpenLogs" xml:space="preserve">Open logs folder</x:String>
@@ -1063,6 +1078,17 @@
   <x:String x:Key="Text.UpdateSubmodules.UpdateToRemoteTrackingBranch" xml:space="preserve">Update to submodule's remote tracking branch</x:String>
   <x:String x:Key="Text.URL" xml:space="preserve">URL:</x:String>
   <x:String x:Key="Text.ViewLogs" xml:space="preserve">Logs</x:String>
+  <x:String x:Key="Text.ViewLogs.AutoClose" xml:space="preserve">Custom action completed. Closing in {0}s</x:String>
+  <x:String x:Key="Text.ViewLogs.CancelTask" xml:space="preserve">Cancel task</x:String>
+  <x:String x:Key="Text.ViewLogs.ClearCompleted" xml:space="preserve">Clear completed</x:String>
+  <x:String x:Key="Text.ViewLogs.CopyCommand" xml:space="preserve">Copy current command</x:String>
+  <x:String x:Key="Text.ViewLogs.FollowOutput" xml:space="preserve">Back to bottom</x:String>
+  <x:String x:Key="Text.ViewLogs.Status.Running" xml:space="preserve">Running</x:String>
+  <x:String x:Key="Text.ViewLogs.Status.Canceling" xml:space="preserve">Canceling...</x:String>
+  <x:String x:Key="Text.ViewLogs.Status.Succeeded" xml:space="preserve">Succeeded</x:String>
+  <x:String x:Key="Text.ViewLogs.Status.Failed" xml:space="preserve">Failed</x:String>
+  <x:String x:Key="Text.ViewLogs.Status.Canceled" xml:space="preserve">Canceled</x:String>
+  <x:String x:Key="Text.ViewLogs.Status.Unknown" xml:space="preserve">Result unknown</x:String>
   <x:String x:Key="Text.ViewLogs.Clear" xml:space="preserve">CLEAR ALL</x:String>
   <x:String x:Key="Text.ViewLogs.CopyLog" xml:space="preserve">Copy</x:String>
   <x:String x:Key="Text.ViewLogs.Delete" xml:space="preserve">Delete</x:String>

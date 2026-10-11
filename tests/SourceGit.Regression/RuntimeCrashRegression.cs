@@ -109,6 +109,20 @@ internal static partial class Program
             using var frame = window.CaptureRenderedFrame();
             Check(frame != null, "Log window renders after repeated action state transitions");
             frame.Save(Path.Combine(_root, "custom-action-layout.png"));
+
+            var running = repo.CreateLog("Still fetching submodules");
+            vm.SelectedLog = running;
+            PumpFor(100);
+            Check(!window.FindControl<TextBlock>("AutoCloseCountdown").IsVisible,
+                "Selecting a new running action cancels the previous action's auto-close countdown");
+            var other = repo.CreateLog("Another completed action");
+            other.AutoCloseOnSuccess = true;
+            vm.SelectedLog = other;
+            other.Complete(true);
+            PumpFor(100);
+            Check(!window.FindControl<TextBlock>("AutoCloseCountdown").IsVisible,
+                "Success never auto-closes the logs while another action is still running");
+            running.Complete(false);
         }
         finally
         {

@@ -13,12 +13,19 @@ namespace SourceGit.Commands
             Args = $"for-each-ref --format=\"%(refname)\" --contains {commit}";
         }
 
-        public async Task<List<Models.Decorator>> GetResultAsync()
+        public async Task<List<Models.Decorator>> GetResultAsync(bool throwOnError = false)
         {
             var outs = new List<Models.Decorator>();
             var rs = await ReadToEndAsync().ConfigureAwait(false);
             if (!rs.IsSuccess)
+            {
+                if (throwOnError)
+                {
+                    CancellationToken.ThrowIfCancellationRequested();
+                    throw new InvalidOperationException(rs.StdErr);
+                }
                 return outs;
+            }
 
             var lines = rs.StdOut.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
             foreach (var line in lines)

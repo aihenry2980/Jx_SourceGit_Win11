@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -31,6 +32,8 @@ namespace SourceGit.Views
 
         protected override void OnClosed(EventArgs e)
         {
+            _logContextMenu?.Close();
+            _logContextMenu = null;
             if (DataContext is ViewModels.ViewLogs vm)
                 vm.PropertyChanged -= OnViewModelPropertyChanged;
 
@@ -66,6 +69,10 @@ namespace SourceGit.Views
             if (_watchedLog != null)
                 _watchedLog.PropertyChanged -= OnSelectedLogPropertyChanged;
 
+            _autoCloseCancellation?.Cancel();
+            Root.Background = Brushes.Transparent;
+            AutoCloseCountdown.IsVisible = false;
+
             _watchedLog = log;
             if (_watchedLog != null)
             {
@@ -87,6 +94,9 @@ namespace SourceGit.Views
             if (!ReferenceEquals(log, _watchedLog) || !log.IsComplete || !log.IsSuccessful || !log.AutoCloseOnSuccess)
                 return;
 
+            if (DataContext is ViewModels.ViewLogs vm && vm.Logs.Any(task => !task.IsComplete))
+                return;
+
             log.AutoCloseOnSuccess = false;
             _ = FlashSuccessAndCloseAsync();
         }
@@ -105,11 +115,18 @@ namespace SourceGit.Views
 
                 while (true)
                 {
+                    if (DataContext is ViewModels.ViewLogs vm && vm.Logs.Any(task => !task.IsComplete))
+                    {
+                        Root.Background = Brushes.Transparent;
+                        AutoCloseCountdown.IsVisible = false;
+                        return;
+                    }
+
                     var remaining = closeAt - DateTime.UtcNow;
                     if (remaining <= TimeSpan.Zero)
                         break;
 
-                    AutoCloseCountdown.Text = $"Custom action completed. Closing in {Math.Max(1, (int)Math.Ceiling(remaining.TotalSeconds))}s";
+                    AutoCloseCountdown.Text = App.Text("ViewLogs.AutoClose", Math.Max(1, (int)Math.Ceiling(remaining.TotalSeconds)));
                     Root.Background = new SolidColorBrush(Color.Parse("#664CAF50"));
                     await Task.Delay(280, cancellation);
                     Root.Background = Brushes.Transparent;
@@ -132,7 +149,7 @@ namespace SourceGit.Views
                 return;
 
             var copyCommand = new MenuItem();
-            copyCommand.Header = "Copy current command";
+            copyCommand.Header = App.Text("ViewLogs.CopyCommand");
             copyCommand.Icon = App.CreateMenuIcon("Icons.Copy");
             copyCommand.IsEnabled = !string.IsNullOrWhiteSpace(log.LatestCommand);
             copyCommand.Click += async (_, ev) =>
@@ -153,16 +170,31 @@ namespace SourceGit.Views
             var rm = new MenuItem();
             rm.Header = App.Text("ViewLogs.Delete");
             rm.Icon = this.CreateMenuIcon("Icons.Clear");
+            rm.IsEnabled = log.IsComplete;
             rm.Click += (_, ev) =>
             {
-                vm.Logs.Remove(log);
+                vm.RemoveLog(log);
                 ev.Handled = true;
             };
 
             var menu = new ContextMenu();
             menu.Items.Add(copyCommand);
             menu.Items.Add(copy);
+            var cancel = new MenuItem
+            {
+                Header = App.Text("ViewLogs.CancelTask"),
+                Icon = this.CreateMenuIcon("Icons.Clear"),
+                IsEnabled = log.CanCancel,
+            };
+            cancel.Click += (_, ev) =>
+            {
+                log.Cancel();
+                ev.Handled = true;
+            };
+            menu.Items.Add(cancel);
             menu.Items.Add(rm);
+            _logContextMenu?.Close();
+            _logContextMenu = menu;
             menu.Open(grid);
 
             e.Handled = true;
@@ -191,18 +223,25 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
+        private void OnFollowOutput(object _, Avalonia.Interactivity.RoutedEventArgs e)
+        {
+            LogContent.FollowOutput();
+            e.Handled = true;
+        }
+
         private void OnLogKeyDown(object _, KeyEventArgs e)
         {
             if (e.Key is not (Key.Delete or Key.Back))
                 return;
 
             if (DataContext is ViewModels.ViewLogs { SelectedLog: { } log } vm)
-                vm.Logs.Remove(log);
+                vm.RemoveLog(log);
 
             e.Handled = true;
         }
 
         private ViewModels.CommandLog _watchedLog;
+        private ContextMenu _logContextMenu;
         private CancellationTokenSource _autoCloseCancellation;
     }
 }

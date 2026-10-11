@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 using Avalonia.Media;
@@ -48,7 +49,7 @@ namespace SourceGit.Views
                         var idx = content.IndexOf(err, StringComparison.Ordinal);
                         if (idx >= 0)
                         {
-                            ChangeLinePart(line.Offset + idx, line.Offset + err.Length + 1, v =>
+                            ChangeLinePart(line.Offset + idx, line.Offset + idx + err.Length, v =>
                             {
                                 var old = v.TextRunProperties.Typeface;
                                 v.TextRunProperties.SetForegroundBrush(Brushes.Red);
@@ -74,6 +75,16 @@ namespace SourceGit.Views
             set => SetAndRaise(LogProperty, ref _log, value);
         }
 
+        public static readonly DirectProperty<CommandLogContentPresenter, bool> IsFollowingOutputProperty =
+            AvaloniaProperty.RegisterDirect<CommandLogContentPresenter, bool>(
+                nameof(IsFollowingOutput), static o => o.IsFollowingOutput);
+
+        public bool IsFollowingOutput
+        {
+            get => _isFollowingOutput;
+            private set => SetAndRaise(IsFollowingOutputProperty, ref _isFollowingOutput, value);
+        }
+
         protected override Type StyleKeyOverride => typeof(TextEditor);
 
         public CommandLogContentPresenter() : base(new TextArea(), new TextDocument())
@@ -93,30 +104,99 @@ namespace SourceGit.Views
             TextArea.TextView.Options.EnableHyperlinks = false;
             TextArea.TextView.Options.EnableEmailHyperlinks = false;
             TextArea.TextView.Options.AllowScrollBelowDocument = false;
+            TextArea.TextView.LineTransformers.Add(new LineStyleTransformer());
         }
 
         public void OnReceiveCommandLog(string line)
         {
-            AppendText("\n");
-            AppendText(line);
-            ScrollToEnd();
+            _updatingContent = true;
+            try { AppendText(line + Environment.NewLine); }
+            finally { _updatingContent = false; }
+            if (IsFollowingOutput)
+                FollowOutput();
         }
 
         public void OnResetCommandLog(string content)
         {
-            Text = content ?? string.Empty;
-            ScrollToEnd();
+            content ??= string.Empty;
+            var offset = VerticalOffset;
+            _updatingContent = true;
+            try
+            {
+                // Keep document anchors and the reading position when bounded logs discard their prefix.
+                var prefixLength = content.IndexOf('\n') + 1;
+                var retained = content.AsSpan(prefixLength);
+                var oldText = Text;
+                var oldIndex = retained.Length >= 256 ? oldText.IndexOf(retained[..256].ToString(), StringComparison.Ordinal) : -1;
+                if (!IsFollowingOutput && oldIndex > 0 && retained.StartsWith(oldText.AsSpan(oldIndex), StringComparison.Ordinal))
+                {
+                    var removedLines = Document.GetLineByOffset(oldIndex).LineNumber - 1;
+                    var oldLength = oldText.Length;
+                    Document.Replace(0, oldIndex, content[..prefixLength]);
+                    AppendText(content[(prefixLength + oldLength - oldIndex)..]);
+                    offset = Math.Max(0, offset - (removedLines - 1) * TextArea.TextView.DefaultLineHeight);
+                }
+                else
+                {
+                    Text = content;
+                }
+
+                if (!IsFollowingOutput && _scrollViewer != null)
+                    _scrollViewer.Offset = new Vector(_scrollViewer.Offset.X, offset);
+            }
+            finally { _updatingContent = false; }
+            if (IsFollowingOutput)
+                FollowOutput();
+        }
+
+        public void FollowOutput()
+        {
+            IsFollowingOutput = true;
+            if (_scrollViewer != null)
+                _scrollViewer.Offset = new Vector(_scrollViewer.Offset.X, Math.Max(0, ExtentHeight - ViewportHeight));
+        }
+
+        protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
+        {
+            if (_scrollViewer != null)
+                _scrollViewer.ScrollChanged -= OnScrollChanged;
+            base.OnApplyTemplate(e);
+            _scrollViewer = e.NameScope.Find<ScrollViewer>("PART_ScrollViewer");
+            if (_scrollViewer != null)
+                _scrollViewer.ScrollChanged += OnScrollChanged;
+        }
+
+        private void OnScrollChanged(object sender, ScrollChangedEventArgs e)
+        {
+            if (_updatingContent)
+                return;
+
+            if (e.ExtentDelta.Y != 0 || e.ViewportDelta.Y != 0)
+            {
+                if (IsFollowingOutput)
+                    FollowOutput();
+            }
+            else if (e.OffsetDelta.Y != 0)
+            {
+                IsFollowingOutput = VerticalOffset >= Math.Max(0, ExtentHeight - ViewportHeight) - 2;
+            }
         }
 
         protected override void OnLoaded(RoutedEventArgs e)
         {
             base.OnLoaded(e);
 
+            if (_log is ViewModels.CommandLog log)
+            {
+                Text = log.Content;
+                log.Unsubscribe(this);
+                log.Subscribe(this);
+            }
+
             if (_textMate == null)
             {
                 _textMate = Models.TextMateHelper.CreateForEditor(this);
                 Models.TextMateHelper.SetGrammarByFileName(_textMate, "Log.log");
-                TextArea.TextView.LineTransformers.Add(new LineStyleTransformer());
             }
         }
 
@@ -124,13 +204,15 @@ namespace SourceGit.Views
         {
             base.OnUnloaded(e);
 
+            if (_log is ViewModels.CommandLog log)
+                log.Unsubscribe(this);
+
             if (_textMate != null)
             {
                 _textMate.Dispose();
                 _textMate = null;
             }
 
-            GC.Collect();
         }
 
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -139,6 +221,7 @@ namespace SourceGit.Views
 
             if (change.Property == LogProperty)
             {
+                IsFollowingOutput = change.NewValue == null || change.NewValue is ViewModels.CommandLog;
                 if (change.OldValue is ViewModels.CommandLog oldLog)
                     oldLog.Unsubscribe(this);
 
@@ -155,6 +238,8 @@ namespace SourceGit.Views
                 {
                     Text = string.Empty;
                 }
+                if (IsFollowingOutput)
+                    FollowOutput();
             }
             else if (change.Property.Name == nameof(ActualThemeVariant) && change.NewValue != null)
             {
@@ -163,6 +248,9 @@ namespace SourceGit.Views
         }
 
         private object _log = null;
+        private bool _isFollowingOutput = true;
+        private bool _updatingContent = false;
+        private ScrollViewer _scrollViewer;
         private TextMate.Installation _textMate = null;
     }
 }

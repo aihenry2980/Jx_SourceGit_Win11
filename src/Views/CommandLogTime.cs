@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Threading;
 
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -10,6 +9,14 @@ namespace SourceGit.Views
     public class CommandLogTime : TextBlock
     {
         protected override Type StyleKeyOverride => typeof(TextBlock);
+
+        protected override void OnLoaded(RoutedEventArgs e)
+        {
+            base.OnLoaded(e);
+            StopTimer();
+            if (DataContext is ViewModels.CommandLog log)
+                SetupCommandLog(log);
+        }
 
         protected override void OnUnloaded(RoutedEventArgs e)
         {
@@ -35,22 +42,20 @@ namespace SourceGit.Views
             if (log.IsComplete)
                 return;
 
-            _refreshTimer = new Timer(_ =>
+            _refreshTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(500), DispatcherPriority.Background, (_, _) =>
             {
-                Dispatcher.UIThread.Invoke(() =>
-                {
-                    Text = GetDisplayText(log);
-                    if (log.IsComplete)
-                        StopTimer();
-                });
-            }, null, 0, 100);
+                Text = GetDisplayText(log);
+                if (log.IsComplete)
+                    StopTimer();
+            });
+            _refreshTimer.Start();
         }
 
         private void StopTimer()
         {
             if (_refreshTimer is not null)
             {
-                _refreshTimer.Dispose();
+                _refreshTimer.Stop();
                 _refreshTimer = null;
             }
         }
@@ -69,6 +74,6 @@ namespace SourceGit.Views
             return $"{duration.TotalMilliseconds:G3} ms";
         }
 
-        private Timer _refreshTimer = null;
+        private DispatcherTimer _refreshTimer = null;
     }
 }

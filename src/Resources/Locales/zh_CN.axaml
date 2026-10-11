@@ -7,6 +7,21 @@
   </ResourceDictionary.MergedDictionaries>
 
   <x:String x:Key="Text.About" xml:space="preserve">关于软件</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Title" xml:space="preserve">查找包含分支</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Search" xml:space="preserve">筛选查询结果...</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Searching" xml:space="preserve">正在查询本地及远程跟踪分支...</x:String>
+  <x:String x:Key="Text.FindContainingBranches.None" xml:space="preserve">已知分支中没有包含此提交的分支。</x:String>
+  <x:String x:Key="Text.FindContainingBranches.NoMatches" xml:space="preserve">没有匹配的分支</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Found" xml:space="preserve">找到 {0} 个包含此提交的分支。</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Local" xml:space="preserve">本地</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Remote" xml:space="preserve">远程</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Canceled" xml:space="preserve">查询已取消。</x:String>
+  <x:String x:Key="Text.FindContainingBranches.TimedOut" xml:space="preserve">查询超时，可以重新查询。</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Failed" xml:space="preserve">查询失败：{0}</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Unavailable" xml:space="preserve">仓库已关闭或分支已不存在，请重新查询。</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Added" xml:space="preserve">已加入 filter：{0}</x:String>
+  <x:String x:Key="Text.FindContainingBranches.AddToFilter" xml:space="preserve">加入 filter</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Retry" xml:space="preserve">重新查询</x:String>
   <x:String x:Key="Text.About.Menu" xml:space="preserve">关于本软件</x:String>
   <x:String x:Key="Text.About.ReleaseDate" xml:space="preserve">发布日期：{0}</x:String>
   <x:String x:Key="Text.About.ReleaseNotes" xml:space="preserve">浏览版本更新说明</x:String>
@@ -1047,6 +1062,17 @@
   <x:String x:Key="Text.UpdateSubmodules.UpdateToRemoteTrackingBranch" xml:space="preserve">更新到子模块自己的远程踪分支</x:String>
   <x:String x:Key="Text.URL" xml:space="preserve">仓库地址 ：</x:String>
   <x:String x:Key="Text.ViewLogs" xml:space="preserve">日志列表</x:String>
+  <x:String x:Key="Text.ViewLogs.AutoClose" xml:space="preserve">自定义操作已完成，{0} 秒后关闭</x:String>
+  <x:String x:Key="Text.ViewLogs.CancelTask" xml:space="preserve">取消任务</x:String>
+  <x:String x:Key="Text.ViewLogs.ClearCompleted" xml:space="preserve">清理已完成</x:String>
+  <x:String x:Key="Text.ViewLogs.CopyCommand" xml:space="preserve">复制当前命令</x:String>
+  <x:String x:Key="Text.ViewLogs.FollowOutput" xml:space="preserve">回到底部</x:String>
+  <x:String x:Key="Text.ViewLogs.Status.Running" xml:space="preserve">运行中</x:String>
+  <x:String x:Key="Text.ViewLogs.Status.Canceling" xml:space="preserve">正在取消...</x:String>
+  <x:String x:Key="Text.ViewLogs.Status.Succeeded" xml:space="preserve">成功</x:String>
+  <x:String x:Key="Text.ViewLogs.Status.Failed" xml:space="preserve">失败</x:String>
+  <x:String x:Key="Text.ViewLogs.Status.Canceled" xml:space="preserve">已取消</x:String>
+  <x:String x:Key="Text.ViewLogs.Status.Unknown" xml:space="preserve">结果未知</x:String>
   <x:String x:Key="Text.ViewLogs.Clear" xml:space="preserve">清空日志</x:String>
   <x:String x:Key="Text.ViewLogs.CopyLog" xml:space="preserve">复制</x:String>
   <x:String x:Key="Text.ViewLogs.Delete" xml:space="preserve">删除</x:String>

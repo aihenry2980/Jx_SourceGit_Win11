@@ -26,9 +26,24 @@ internal static partial class Program
     [STAThread]
     private static void Main(string[] args)
     {
+        if (Environment.GetEnvironmentVariable("SOURCEGIT_TEST_CONTAINS_GATE") is { } gate)
+        {
+            if (args is ["--version"])
+                Console.WriteLine("git version 2.50.0");
+            else if (args.Contains("for-each-ref"))
+                RunContainingBranchesChild(gate);
+            else
+                Environment.ExitCode = 1;
+            return;
+        }
         if (args is ["--custom-action-child"])
         {
             RunCustomActionChild();
+            return;
+        }
+        if (args is ["--custom-action-child", var scenario])
+        {
+            RunCustomActionChild(scenario);
             return;
         }
 
@@ -47,6 +62,20 @@ internal static partial class Program
         SourceGit.Native.OS.GitExecutable = SourceGit.Native.OS.FindGitExecutable();
         Application.Current.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Light;
         CommitGraph.SetDefaultPens();
+
+        if (args is ["--logs-ux"])
+        {
+            TestLogUx();
+            Console.WriteLine($"PASS: {_checks} log UX checks. Isolated data and previews: {_root}");
+            return;
+        }
+
+        if (args is ["--containing-branches"])
+        {
+            TestContainingBranches();
+            Console.WriteLine($"PASS: {_checks} containing branch checks. Isolated data and previews: {_root}");
+            return;
+        }
 
         if (args is ["--runtime-crashes"])
         {
@@ -78,6 +107,7 @@ internal static partial class Program
             return;
         }
         TestCustomActions();
+        TestLogUx();
         if (args is ["--custom-actions"])
         {
             Console.WriteLine($"PASS: {_checks} custom action checks. Isolated data: {_root}");
@@ -87,6 +117,7 @@ internal static partial class Program
         TestNames();
         TestRuntimeCrashes();
         TestMissingBranches();
+        TestContainingBranches();
         TestFilterColorsAndCheckout();
         TestRendering();
         TestBranchVisibility();

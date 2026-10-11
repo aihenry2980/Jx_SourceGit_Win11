@@ -1,5 +1,6 @@
 ﻿using Avalonia.Collections;
 using CommunityToolkit.Mvvm.ComponentModel;
+using System.Linq;
 
 namespace SourceGit.ViewModels
 {
@@ -23,8 +24,19 @@ namespace SourceGit.ViewModels
 
         public void ClearAll()
         {
-            SelectedLog = null;
-            Logs.Clear();
+            foreach (var log in Logs.Where(log => log.IsComplete).ToArray())
+                RemoveLog(log);
+        }
+
+        public void RemoveLog(CommandLog log)
+        {
+            if (log == null || !log.IsComplete || !Logs.Contains(log))
+                return;
+
+            var wasSelected = SelectedLog == log;
+            Logs.Remove(log);
+            if (wasSelected)
+                SelectedLog = Logs.FirstOrDefault(item => !item.IsComplete) ?? Logs.FirstOrDefault();
         }
 
         private Repository _repo = null;

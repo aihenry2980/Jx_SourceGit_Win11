@@ -1375,8 +1375,11 @@ namespace SourceGit.ViewModels
         {
             var log = new CommandLog(name) { RepositoryPath = FullPath };
             Logs.Insert(0, log);
-            while (Logs.Count > MAX_LOGS)
-                Logs.RemoveAt(Logs.Count - 1);
+            for (var i = Logs.Count - 1; i >= 0 && Logs.Count > MAX_LOGS; i--)
+            {
+                if (Logs[i].IsComplete)
+                    Logs.RemoveAt(i);
+            }
             return log;
         }
 
@@ -2032,6 +2035,25 @@ namespace SourceGit.ViewModels
                 ShowAllBranchesForSession();
                 ClearHistoryFilters();
             }
+        }
+
+        public bool AddBranchToPresetFilter(Models.Branch branch)
+        {
+            if (_settings == null || _uiStates == null || branch == null || branch.IsDetachedHead || string.IsNullOrEmpty(branch.FullName) ||
+                !_branches.Exists(b => string.Equals(b.FullName, branch.FullName, StringComparison.Ordinal)))
+                return false;
+
+            var names = _settings.GetPresetBranchExactNameList();
+            if (!names.Contains(branch.Name))
+                names.Add(branch.Name);
+
+            var exclusions = _settings.GetPresetBranchExcludeNameList();
+            exclusions.RemoveAll(name => name.Equals(branch.Name, StringComparison.Ordinal));
+            PresetBranchExactNames = string.Join('\n', names);
+            PresetBranchExcludeNames = string.Join('\n', exclusions);
+            IsPresetBranchFilterEditorExpanded = true;
+            ApplyPresetBranchFilter();
+            return true;
         }
 
         public void ApplyPresetBranchFilter()

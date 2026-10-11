@@ -1,24 +1,47 @@
 using System.Diagnostics;
 using System.Reflection;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Threading;
 using SourceGit.Models;
 using SourceGit.ViewModels;
 
 internal static partial class Program
 {
-    private static void RunCustomActionChild()
+    private static void RunCustomActionChild(string scenario = "normal")
     {
         File.WriteAllText("child.pid", Environment.ProcessId.ToString());
         Directory.CreateDirectory(".git/refs/remotes/origin");
         File.WriteAllText(".git/refs/remotes/origin/action-test", new string('a', 40));
-        for (var i = 0; i < 4000; i++)
+        if (scenario == "continuous")
+        {
+            File.WriteAllText("ready", string.Empty);
+            var duration = Stopwatch.StartNew();
+            var progress = new string('p', 4096);
+            while (!File.Exists("release") && duration.Elapsed < TimeSpan.FromSeconds(15))
+            {
+                Console.Out.Write(progress);
+                Console.Error.Write(progress);
+            }
+            return;
+        }
+        if (scenario == "flood")
+        {
+            Console.Out.Write(new string('x', 4 * 1024 * 1024));
+            Console.Error.Write(new string('e', 4 * 1024 * 1024));
+            Console.Out.WriteLine();
+            Console.Error.WriteLine();
+        }
+        var lines = scenario == "flood" ? 100000 : scenario is "inherited-pipe" or "quiet" ? 0 : 4000;
+        for (var i = 0; i < lines; i++)
         {
             Console.Out.WriteLine("stdout " + i);
             Console.Error.WriteLine("stderr " + i);
         }
         File.WriteAllText("ready", string.Empty);
         var timeout = Stopwatch.StartNew();
-        while (!File.Exists("release") && timeout.Elapsed < TimeSpan.FromSeconds(15))
+        while (!File.Exists("release") && timeout.Elapsed < TimeSpan.FromSeconds(scenario == "quiet" ? 60 : 15))
             Thread.Sleep(20);
     }
 
@@ -48,11 +71,11 @@ internal static partial class Program
                 log = repo.Logs[0];
                 WaitUntil(() => File.Exists(Path.Combine(path, "ready")), "Custom action child did not start.");
                 var heartbeat = 0;
-                var timer = new DispatcherTimer(TimeSpan.FromMilliseconds(20), DispatcherPriority.Normal, (_, _) => heartbeat++);
-                timer.Start();
+                // These tests pump jobs without running a native dispatcher timer loop.
+                var timer = new System.Threading.Timer(_ => Dispatcher.UIThread.Post(() => heartbeat++), null, 0, 20);
                 try { PumpFor(1500); }
-                finally { timer.Stop(); }
-                Check(!log.IsComplete && heartbeat > 5, "UI dispatcher stays responsive while BAT waits");
+                finally { timer.Dispose(); }
+                Check(!log.IsComplete && heartbeat > 5, $"UI dispatcher stays responsive while BAT waits (ticks={heartbeat}, completed={log.IsComplete})");
                 Check(refreshes.Count == 0, "BAT reference changes do not refresh the repository before the action finishes");
                 Check(log.Content.Contains("stdout 3999") && log.Content.Contains("stderr 3999"),
                     "Custom action drains stdout and stderr concurrently under load");
@@ -94,6 +117,140 @@ internal static partial class Program
         }
 
         TestCustomActionStartupFailure();
+        TestBoundedCommandLog();
+        TestCustomActionStress("flood");
+        TestCustomActionStress("continuous");
+        TestCustomActionStress("inherited-pipe");
+        TestCustomActionStress("quiet");
+    }
+
+    private static void TestBoundedCommandLog()
+    {
+        var log = new CommandLog("Flooded log");
+        var receiver = new LogBatchProbe();
+        log.Subscribe(receiver);
+        log.AppendLine("$ git fetch --prune --recurse-submodules");
+        var longLine = new string('x', 1024 * 1024);
+        for (var i = 0; i < 100; i++)
+            log.AppendLine(longLine);
+        Check((int)typeof(CommandLog).GetField("_pendingLength", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(log) <= 64 * 1024,
+            "Unrendered log output is bounded even while the UI cannot pump");
+        log.AppendLine("final output");
+        log.Complete(true);
+        log.Complete();
+        PumpFor(150);
+        Check(log.IsSuccessful && log.Content.Contains("final output") && log.Content.Contains("truncated"),
+            "Completing twice is harmless and preserves the tail and truncation notice");
+        Check(receiver.Batches == 1 && receiver.LargestBatch < 66 * 1024,
+            "A flooded log never sends an unbounded batch to the editor");
+        Check(log.LatestCommand == "git fetch --prune --recurse-submodules",
+            "Copy current command survives truncation of pending log output");
+
+        var editor = new SourceGit.Views.CommandLogContentPresenter { Width = 700, Height = 200 };
+        var window = new Window { Width = 720, Height = 240, Content = editor };
+        try
+        {
+            window.Show();
+            editor.Text = "prefix with indentation    ! [rejected] branch\n! [remote rejected]";
+            PumpFor(100);
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            using var frame = window.CaptureRenderedFrame();
+            Check(frame != null, "Indented and exact-length rejected messages render without invalid highlight ranges");
+        }
+        finally { window.Close(); }
+    }
+
+    private static void TestCustomActionStress(string scenario)
+    {
+        var path = Path.Combine(_root, "custom action " + scenario);
+        Directory.CreateDirectory(Path.Combine(path, ".git"));
+        var childCommand = $"\"{Environment.ProcessPath}\"";
+        if (Path.GetFileNameWithoutExtension(Environment.ProcessPath).Equals("dotnet", StringComparison.OrdinalIgnoreCase))
+            childCommand += $" \"{typeof(Program).Assembly.Location}\"";
+        var bat = Path.Combine(path, "stress.bat");
+        var launch = scenario == "inherited-pipe" ? "start \"\" /b " : string.Empty;
+        File.WriteAllText(bat, $"@echo off\r\n{launch}{childCommand} --custom-action-child {scenario}\r\nexit /b 0\r\n");
+        var refreshes = new CustomActionRefreshProbe();
+        using var watcher = new Watcher(refreshes, path, Path.Combine(path, ".git"));
+        var repo = new Repository(false, path, Path.Combine(path, ".git"));
+        typeof(Repository).GetField("_watcher", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(repo, watcher);
+        var action = new CustomAction { Name = scenario, Executable = "cmd.exe", Arguments = $"/d /s /c \"\"{bat}\"\"" };
+        CommandLog log = null;
+        Process child = null;
+        try
+        {
+            PumpFor(100);
+            Wait(new ExecuteCustomAction(repo, action, null).Sure());
+            log = repo.Logs[0];
+            var heartbeat = 0;
+            var timer = new System.Threading.Timer(_ => Dispatcher.UIThread.Post(() => heartbeat++), null, 0, 20);
+            var elapsed = Stopwatch.StartNew();
+            try
+            {
+                WaitUntil(() => File.Exists(Path.Combine(path, "ready")), "Stress child did not become ready.");
+                if (scenario == "continuous")
+                    PumpFor(600);
+            }
+            finally { timer.Dispose(); }
+            child = Process.GetProcessById(int.Parse(File.ReadAllText(Path.Combine(path, "child.pid"))));
+
+            if (scenario is "flood" or "continuous")
+            {
+                PumpFor(200);
+                Check(heartbeat > 5 && elapsed.Elapsed < TimeSpan.FromSeconds(10),
+                    "UI keeps ticking while stdout and stderr emit millions of characters without newlines");
+                Check(log.Content.Length < 300 * 1024 && log.Content.Contains("truncated"),
+                    "Flooded action log stays bounded and reports discarded output");
+                foreach (var window in _lifetime.Windows.OfType<SourceGit.Views.ViewLogs>().ToArray())
+                    window.Close();
+                log.Cancel();
+                WaitUntil(() => log.IsComplete, "Flooded action did not cancel after closing its log window.");
+                Check(!log.IsSuccessful && log.StatusText == "Canceled", "Flooded action can be canceled with its log window closed");
+            }
+            else if (scenario == "quiet")
+            {
+                WaitUntil(() => log.Content.Contains("No output for"), "Silent action did not report its wait.", 35);
+                Check(!log.IsComplete && log.CanCancel && !child.HasExited,
+                    "Silence reports a possible network or input wait without killing legitimate long fetches");
+                var canceledAt = Stopwatch.StartNew();
+                log.Cancel();
+                Check(canceledAt.Elapsed < TimeSpan.FromMilliseconds(500), "Cancel remains responsive after a prolonged silent wait");
+                WaitUntil(() => log.IsComplete && child.HasExited, "Silent action did not cancel.");
+            }
+            else
+            {
+                WaitUntil(() => log.IsComplete, "Inherited child pipe kept the action running.");
+                Check(log.IsSuccessful && !child.HasExited && elapsed.Elapsed < TimeSpan.FromSeconds(8),
+                    "Parent exit is detected without waiting for an inherited child pipe to close");
+                Check(log.Content.Contains("kept its output pipe open"), "Inherited pipe timeout is explained in the log");
+            }
+            WaitUntil(() => refreshes.Count > 0, "Stress action left the watcher locked.");
+            Check(refreshes.Count > 0, "Watcher resumes after flood cancellation or inherited pipe timeout");
+        }
+        finally
+        {
+            File.WriteAllText(Path.Combine(path, "release"), string.Empty);
+            if (log is { IsComplete: false })
+            {
+                log.Cancel();
+                WaitUntil(() => log.IsComplete, "Stress action cleanup did not finish.");
+            }
+            if (child != null)
+            {
+                WaitUntil(() => child.HasExited, "Stress child did not exit.");
+                child.Dispose();
+            }
+            foreach (var window in _lifetime.Windows.OfType<SourceGit.Views.ViewLogs>().ToArray())
+                window.Close();
+        }
+    }
+
+    private sealed class LogBatchProbe : ICommandLogReceiver
+    {
+        public int Batches;
+        public int LargestBatch;
+        public void OnReceiveCommandLog(string content) { Batches++; LargestBatch = Math.Max(LargestBatch, content.Length); }
+        public void OnResetCommandLog(string content) => OnReceiveCommandLog(content);
     }
 
     private static void TestCustomActionStartupFailure()
@@ -128,12 +285,12 @@ internal static partial class Program
         }
     }
 
-    private static void WaitUntil(Func<bool> ready, string message)
+    private static void WaitUntil(Func<bool> ready, string message, int timeoutSeconds = 10)
     {
         var elapsed = Stopwatch.StartNew();
         while (!ready())
         {
-            if (elapsed.Elapsed > TimeSpan.FromSeconds(10))
+            if (elapsed.Elapsed > TimeSpan.FromSeconds(timeoutSeconds))
                 throw new TimeoutException(message);
             Dispatcher.UIThread.RunJobs();
             Thread.Sleep(5);
