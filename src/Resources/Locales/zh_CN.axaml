@@ -1162,6 +1162,16 @@
   <x:String x:Key="Text.Repository.BranchesVisibility.ExcludeThisBranch" xml:space="preserve">Exclude this branch</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.EditorHint" xml:space="preserve">Case-sensitive matching: exact OR contains.</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ApplyFilter" xml:space="preserve">Apply filter</x:String>
+  <x:String x:Key="Text.CommitFlow.Encoding.ConvertAndSave" xml:space="preserve">转换并保存</x:String>
+  <x:String x:Key="Text.CommitFlow.Encoding.HighlightedFiles" xml:space="preserve">高亮选中文件：{0}</x:String>
+  <x:String x:Key="Text.CommitFlow.Encoding.Detected" xml:space="preserve">当前编码：{0}</x:String>
+  <x:String x:Key="Text.CommitFlow.Encoding.MultipleFiles" xml:space="preserve">各文件编码</x:String>
+  <x:String x:Key="Text.CommitFlow.Encoding.Target" xml:space="preserve">目标编码</x:String>
+  <x:String x:Key="Text.CommitFlow.Encoding.SaveTip" xml:space="preserve">将 {0} 个高亮选中的文本文件转换为 {1} 并写入磁盘。提交复选框不决定转换范围。</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.Pending" xml:space="preserve">有未应用修改</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.DiscardDraft" xml:space="preserve">撤销未应用修改</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.ModeAll" xml:space="preserve">全部</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.ModeRules" xml:space="preserve">按规则</x:String>
 </ResourceDictionary>
 
 

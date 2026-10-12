@@ -122,6 +122,9 @@ namespace SourceGit.ViewModels
                 if (SetProperty(ref _selectedChanges, value))
                 {
                     UpdateDetailContext();
+                    OnPropertyChanged(nameof(EncodingSelectionSummary));
+                    OnPropertyChanged(nameof(EncodingSelectionToolTip));
+                    OnPropertyChanged(nameof(DetectedEncodingSummary));
                     OnPropertyChanged(nameof(CanSaveSelectedChangesWithEncoding));
                     OnPropertyChanged(nameof(SaveSelectedChangesEncodingToolTip));
                 }
@@ -132,8 +135,8 @@ namespace SourceGit.ViewModels
         public int IncludedChangeCount => _changes.Count(x => x.IsCommitFlowIncluded);
         public int ExcludedChangeCount => _changes.Count - IncludedChangeCount;
         public string CommitIncludeSummary => ExcludedChangeCount > 0
-            ? $"{IncludedChangeCount}/{_changes.Count} selected, {ExcludedChangeCount} skipped"
-            : $"{IncludedChangeCount}/{_changes.Count} selected";
+            ? $"{IncludedChangeCount}/{_changes.Count} checked, {ExcludedChangeCount} skipped"
+            : $"{IncludedChangeCount}/{_changes.Count} checked";
 
         public Models.ChangeViewMode ChangeViewMode
         {
@@ -170,12 +173,24 @@ namespace SourceGit.ViewModels
             }
         }
 
-        public string SaveEncodingButtonText => $"Save {SelectedSaveEncoding}";
+        public string SaveEncodingButtonText => App.Text("CommitFlow.Encoding.ConvertAndSave");
+
+        public string EncodingSelectionSummary => App.Text("CommitFlow.Encoding.HighlightedFiles", _selectedChanges.Count);
+
+        public string EncodingSelectionToolTip => string.Join('\n', _selectedChanges.Select(x => x.Path));
+
+        public string DetectedEncodingSummary => _selectedChanges.Count == 1
+            ? App.Text("CommitFlow.Encoding.Detected", SelectedChangeEncoding)
+            : App.Text("CommitFlow.Encoding.MultipleFiles");
 
         public string SelectedChangeEncoding
         {
             get => _selectedChangeEncoding;
-            private set => SetProperty(ref _selectedChangeEncoding, value);
+            private set
+            {
+                if (SetProperty(ref _selectedChangeEncoding, value))
+                    OnPropertyChanged(nameof(DetectedEncodingSummary));
+            }
         }
 
         public bool CanSaveSelectedChangesWithEncoding =>
@@ -185,7 +200,7 @@ namespace SourceGit.ViewModels
             !_isCommitting;
 
         public string SaveSelectedChangesEncodingToolTip => CanSaveSelectedChangesWithEncoding
-            ? $"Save selected text file changes as {SelectedSaveEncoding}."
+            ? App.Text("CommitFlow.Encoding.SaveTip", _selectedChanges.Count, SelectedSaveEncoding)
             : GetSaveEncodingDisabledReason();
 
         public List<SubmoduleCommitFlowChainStep> ParentChainSteps

@@ -712,6 +712,8 @@ namespace SourceGit.ViewModels
             }
         }
 
+        public PresetBranchFilterDraft PresetBranchFilterDraft => _presetBranchFilterDraft ??= new PresetBranchFilterDraft(this);
+
         public string PresetBranchExactNames
         {
             get => _settings?.PresetBranchExactNames ?? string.Empty;
@@ -725,6 +727,7 @@ namespace SourceGit.ViewModels
                     return;
 
                 _settings.PresetBranchExactNames = value;
+                _presetBranchFilterDraft?.SynchronizeAppliedRules();
                 InvalidatePresetBranchFilterMatchCache();
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(PresetBranchFilterSummary));
@@ -746,6 +749,7 @@ namespace SourceGit.ViewModels
                     return;
 
                 _settings.PresetBranchContainsPatterns = value;
+                _presetBranchFilterDraft?.SynchronizeAppliedRules();
                 InvalidatePresetBranchFilterMatchCache();
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(PresetBranchFilterSummary));
@@ -766,6 +770,7 @@ namespace SourceGit.ViewModels
                     return;
 
                 _settings.PresetBranchExcludeNames = value;
+                _presetBranchFilterDraft?.SynchronizeAppliedRules();
                 InvalidatePresetBranchFilterMatchCache();
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(PresetBranchFilterSummary));
@@ -1146,6 +1151,7 @@ namespace SourceGit.ViewModels
             Preferences.Instance.PropertyChanged -= OnPreferencesPropertyChanged;
             Preferences.Instance.PropertyChanged += OnPreferencesPropertyChanged;
             MigrateLegacyPresetBranchFiltersIfNeeded();
+            _presetBranchFilterDraft?.Reset();
             IsShowingAllBranches = false;
             ShouldShowBranchPresetEmptyState = false;
             IsPresetBranchFilterEditorExpanded = true;
@@ -2026,14 +2032,22 @@ namespace SourceGit.ViewModels
 
         public void ToggleShowAllBranchesAndApplyGraphFilter()
         {
-            if (IsShowingAllBranches)
-            {
-                ApplyPresetBranchFilter();
-            }
-            else
+            SetPresetBranchFilterMode(!IsShowingAllBranches);
+        }
+
+        public void SetPresetBranchFilterMode(bool showAll)
+        {
+            if (showAll == IsShowingAllBranches)
+                return;
+
+            if (showAll)
             {
                 ShowAllBranchesForSession();
                 ClearHistoryFilters();
+            }
+            else
+            {
+                ApplyPresetBranchFilter();
             }
         }
 
@@ -6373,6 +6387,7 @@ namespace SourceGit.ViewModels
         private Timer _autoFetchTimer = null;
         private DateTime _lastFetchTime = DateTime.MinValue;
         private bool _shouldApplyPresetBranchFilterOnInitialBranchLoad = false;
+        private PresetBranchFilterDraft _presetBranchFilterDraft;
         private readonly HashSet<string> _foldedBranchFullNames = new(StringComparer.Ordinal);
         private int _visibleFoldableBranchesCount = 0;
         private int _visibleFoldedBranchesCount = 0;

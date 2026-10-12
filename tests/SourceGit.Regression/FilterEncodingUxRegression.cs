@@ -1,0 +1,137 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Headless;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.VisualTree;
+
+internal static partial class Program
+{
+    private static void TestFilterEncodingUx()
+    {
+        var path = NewRepository("filter encoding ux");
+        foreach (var name in new[] { "one.txt", "two.txt" })
+            File.WriteAllText(Path.Combine(path, name), "before");
+        Git(path, "add", ".");
+        Git(path, "commit", "-m", "initial");
+        Git(path, "branch", "feature/test");
+        Git(path, "branch", "external");
+        var repo = Open(path);
+        Window window = null;
+        try
+        {
+            repo.PresetBranchExactNames = "main";
+            repo.ApplyPresetBranchFilter();
+            var draft = repo.PresetBranchFilterDraft;
+            Check(!draft.HasChanges, "Filter draft starts from applied rules");
+            var view = new SourceGit.Views.Repository { DataContext = repo };
+            window = new Window { Content = view, Width = 1100, Height = 850 };
+            window.Show();
+            PumpFor(200);
+            var exact = view.FindControl<TextBox>("PresetBranchExactNameInputBox");
+            var contains = view.FindControl<TextBox>("PresetBranchContainsPatternInputBox");
+            var exclude = view.FindControl<TextBox>("PresetBranchExcludeNameInputBox");
+            var apply = view.FindControl<Button>("ApplyPresetBranchFilterButton");
+            exact.Text = "feature/test";
+            PumpFor(50);
+            Check(draft.HasChanges && apply.IsEnabled && repo.PresetBranchExactNames == "main",
+                "Typing marks draft pending without applying it");
+            Invoke(view, "OnPresetBranchExactNameInputKeyDown", exact, new KeyEventArgs { Key = Key.Enter });
+            Check(draft.ExactNames.Contains("feature/test") && string.IsNullOrEmpty(draft.ExactInput) &&
+                repo.PresetBranchExactNames == "main", "Enter tokenizes without applying");
+            contains.Text = "feature/";
+            Invoke(view, "OnPresetBranchContainsPatternInputKeyDown", contains, new KeyEventArgs { Key = Key.Space });
+            exclude.Text = "external";
+            Invoke(view, "CommitPresetBranchSuggestion", repo, exclude, "external");
+            Check(string.IsNullOrEmpty(repo.PresetBranchContainsPatterns) && string.IsNullOrEmpty(repo.PresetBranchExcludeNames),
+                "Space and suggestion selection only update drafts");
+            Invoke(view, "OnClearPresetBranchExactNames", exact, new RoutedEventArgs());
+            Check(string.IsNullOrEmpty(draft.ExactNames) && repo.PresetBranchExactNames == "main", "Clear does not apply");
+            draft.ExactNames = "main";
+            exact.Text = "feature/test";
+            Invoke(view, "OnApplyPresetBranchFilter", apply, new RoutedEventArgs());
+            Check(!draft.HasChanges && repo.PresetBranchExactNames == "main\nfeature/test" &&
+                repo.PresetBranchContainsPatterns == "feature/" && repo.PresetBranchExcludeNames == "external",
+                "Apply consumes unfinished input and commits all three rule types together");
+            Check(repo.IsPresetBranchFilterEditorExpanded, "Applying leaves the filter editor expanded");
+            Invoke(view, "OnRemovePresetBranchExactName", new Button { Tag = "main" }, new RoutedEventArgs());
+            Check(draft.HasChanges && repo.PresetBranchExactNames.Contains("main"), "Removing a chip only edits the draft");
+            repo.SetPresetBranchFilterMode(true);
+            Check(repo.IsShowingAllBranches && draft.HasChanges, "All mode preserves pending edits");
+            repo.SetPresetBranchFilterMode(false);
+            Check(!repo.IsShowingAllBranches && draft.ExactNames == "feature/test" && repo.PresetBranchExactNames.Contains("main"),
+                "By-rules mode uses applied settings without consuming draft edits");
+            draft.ContainsInput = "pending";
+            repo.AddBranchToPresetFilter(repo.Branches.Single(b => b.Name == "external"));
+            Check(draft.ExactNames.Contains("external") && !draft.ExactNames.Contains("main") &&
+                draft.ContainsInput == "pending" && string.IsNullOrEmpty(draft.ExcludeNames),
+                "Graph add-to-filter synchronizes draft while retaining unrelated pending edits");
+            foreach (var locale in new[] { "en_US", "zh_CN" })
+            {
+                SourceGit.App.SetLocale(locale);
+                PumpFor(120);
+                Check(apply.Bounds.Width > 0 && apply.IsEffectivelyVisible, "Apply remains visible in " + locale);
+                CaptureUxFrame(window, "filter-draft-" + locale);
+            }
+            Invoke(view, "OnResetPresetBranchFilterDraft", apply, new RoutedEventArgs());
+            Check(!draft.HasChanges && draft.ExactNames == repo.PresetBranchExactNames && string.IsNullOrEmpty(draft.ContainsInput),
+                "Discard restores applied rules and clears unfinished input");
+            window.Close();
+            SourceGit.App.SetLocale("en_US");
+
+            foreach (var name in new[] { "one.txt", "two.txt" })
+                File.WriteAllText(Path.Combine(path, name), "after");
+            var flow = repo.SubmoduleCommitFlow;
+            Wait(flow.RefreshAsync());
+            for (var i = 0; i < 100 && flow.Changes.Count != 2; i++)
+                PumpFor(50);
+            var one = flow.Changes.Single(c => c.Path == "one.txt");
+            one.IsCommitFlowIncluded = false;
+            flow.NotifyCommitIncludeChanged();
+            flow.SelectedChanges = [one];
+            Check(flow.EncodingSelectionSummary == "Highlighted files: 1" && flow.EncodingSelectionToolTip == "one.txt" &&
+                flow.CommitIncludeSummary.Contains("1/2 checked"), "Highlighted encoding scope is separate from checked commit scope");
+            var flowView = new SourceGit.Views.SubmoduleCommitFlow { DataContext = flow };
+            window = new Window { Content = flowView, Width = 1280, Height = 800 };
+            window.Show();
+            foreach (var width in new[] { 1280, 920 })
+            {
+                window.Width = width;
+                PumpFor(150);
+                var toolbar = flowView.FindControl<Border>("EncodingToolbar");
+                var diff = flowView.FindControl<ContentControl>("EncodingDiffHost");
+                var button = flowView.FindControl<Button>("ConvertEncodingButton");
+                Check(toolbar.Bounds.Bottom <= diff.Bounds.Top && diff.Bounds.Height > 100,
+                    "Encoding toolbar has a separate row and cannot overlap diff at " + width);
+                var position = button.TranslatePoint(default, flowView).Value;
+                Check(position.X >= 0 && position.X + button.Bounds.Width <= flowView.Bounds.Width + 1,
+                    "Encoding action stays inside the panel at " + width);
+                CaptureUxFrame(window, "encoding-toolbar-" + width);
+            }
+            flow.SelectedChanges = flow.Changes.ToList();
+            Check(flow.EncodingSelectionSummary == "Highlighted files: 2" && flow.DetectedEncodingSummary == "Per-file encoding",
+                "Multi-selection does not misrepresent the first file encoding as all files");
+            flow.SelectedChanges = [one];
+            flow.SelectedSaveEncoding = "UTF-8 BOM";
+            var otherBytes = File.ReadAllBytes(Path.Combine(path, "two.txt"));
+            Wait(flow.SaveSelectedChangesWithEncodingAsync());
+            Check(File.ReadAllBytes(Path.Combine(path, "one.txt")).Take(3).SequenceEqual(new byte[] { 239, 187, 191 }) &&
+                File.ReadAllBytes(Path.Combine(path, "two.txt")).SequenceEqual(otherBytes),
+                "Encoding conversion rewrites only the highlighted file, not the checked file");
+            window.Close();
+        }
+        finally
+        {
+            window?.Close();
+            SourceGit.App.SetLocale("en_US");
+            repo.Close();
+        }
+    }
+
+    private static void CaptureUxFrame(Window window, string name)
+    {
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        using var frame = window.CaptureRenderedFrame();
+        frame.Save(Path.Combine(_root, name + ".png"));
+    }
+}

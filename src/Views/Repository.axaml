@@ -97,6 +97,12 @@
         <Setter Property="Foreground" Value="White"/>
       </Style>
     </Style>
+    <Style Selector="RadioButton.preset_mode">
+      <Setter Property="Height" Value="26"/>
+    </Style>
+    <Style Selector="RadioButton.preset_mode TextBlock">
+      <Setter Property="FontSize" Value="12"/>
+    </Style>
     <Style Selector="ToggleButton.history_inline_toggle">
       <Setter Property="Height" Value="20"/>
       <Setter Property="MinWidth" Value="52"/>
@@ -566,8 +572,8 @@
                     DragDrop.DragOver="OnPresetBranchFilterTextBoxDragOver"
                     DragDrop.Drop="OnDropToPresetBranchExactNames">
               <StackPanel Orientation="Vertical" Spacing="2">
-                <ItemsControl IsVisible="{Binding PresetBranchExactNames, Converter={x:Static c:StringConverters.IsNotNullOrWhitespace}}"
-                              ItemsSource="{Binding PresetBranchExactNames, Converter={x:Static c:StringConverters.ToPresetBranchRuleTokens}}">
+                <ItemsControl IsVisible="{Binding PresetBranchFilterDraft.ExactNames, Converter={x:Static c:StringConverters.IsNotNullOrWhitespace}}"
+                              ItemsSource="{Binding PresetBranchFilterDraft.ExactNames, Converter={x:Static c:StringConverters.ToPresetBranchRuleTokens}}">
                   <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                       <WrapPanel/>
@@ -613,6 +619,7 @@
                 </ItemsControl>
 
                 <TextBox x:Name="PresetBranchExactNameInputBox"
+                         Text="{Binding PresetBranchFilterDraft.ExactInput, Mode=TwoWay}"
                          MinHeight="22"
                          Padding="0"
                          BorderThickness="0"
@@ -629,7 +636,7 @@
                             Click="OnClearPresetBranchExactNames">
                       <Button.IsEnabled>
                         <MultiBinding Converter="{x:Static BoolConverters.Or}">
-                          <Binding Path="PresetBranchExactNames" Converter="{x:Static c:StringConverters.IsNotNullOrWhitespace}"/>
+                          <Binding Path="PresetBranchFilterDraft.ExactNames" Converter="{x:Static c:StringConverters.IsNotNullOrWhitespace}"/>
                           <Binding ElementName="PresetBranchExactNameInputBox" Path="Text" Converter="{x:Static StringConverters.IsNotNullOrEmpty}"/>
                         </MultiBinding>
                       </Button.IsEnabled>
@@ -649,8 +656,8 @@
                     DragDrop.DragOver="OnPresetBranchFilterTextBoxDragOver"
                     DragDrop.Drop="OnDropToPresetBranchContainsPatterns">
               <StackPanel Orientation="Vertical" Spacing="2">
-                <ItemsControl IsVisible="{Binding PresetBranchContainsPatterns, Converter={x:Static c:StringConverters.IsNotNullOrWhitespace}}"
-                              ItemsSource="{Binding PresetBranchContainsPatterns, Converter={x:Static c:StringConverters.ToPresetBranchRuleTokens}}">
+                <ItemsControl IsVisible="{Binding PresetBranchFilterDraft.ContainsPatterns, Converter={x:Static c:StringConverters.IsNotNullOrWhitespace}}"
+                              ItemsSource="{Binding PresetBranchFilterDraft.ContainsPatterns, Converter={x:Static c:StringConverters.ToPresetBranchRuleTokens}}">
                   <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                       <WrapPanel/>
@@ -696,6 +703,7 @@
                 </ItemsControl>
 
                 <TextBox x:Name="PresetBranchContainsPatternInputBox"
+                         Text="{Binding PresetBranchFilterDraft.ContainsInput, Mode=TwoWay}"
                          MinHeight="22"
                          Padding="0"
                          BorderThickness="0"
@@ -712,7 +720,7 @@
                             Click="OnClearPresetBranchContainsPatterns">
                       <Button.IsEnabled>
                         <MultiBinding Converter="{x:Static BoolConverters.Or}">
-                          <Binding Path="PresetBranchContainsPatterns" Converter="{x:Static c:StringConverters.IsNotNullOrWhitespace}"/>
+                          <Binding Path="PresetBranchFilterDraft.ContainsPatterns" Converter="{x:Static c:StringConverters.IsNotNullOrWhitespace}"/>
                           <Binding ElementName="PresetBranchContainsPatternInputBox" Path="Text" Converter="{x:Static StringConverters.IsNotNullOrEmpty}"/>
                         </MultiBinding>
                       </Button.IsEnabled>
@@ -732,8 +740,8 @@
                     DragDrop.DragOver="OnPresetBranchFilterTextBoxDragOver"
                     DragDrop.Drop="OnDropToPresetBranchExcludeNames">
               <StackPanel Orientation="Vertical" Spacing="2">
-                <ItemsControl IsVisible="{Binding PresetBranchExcludeNames, Converter={x:Static c:StringConverters.IsNotNullOrWhitespace}}"
-                              ItemsSource="{Binding PresetBranchExcludeNames, Converter={x:Static c:StringConverters.ToPresetBranchRuleTokens}}">
+                <ItemsControl IsVisible="{Binding PresetBranchFilterDraft.ExcludeNames, Converter={x:Static c:StringConverters.IsNotNullOrWhitespace}}"
+                              ItemsSource="{Binding PresetBranchFilterDraft.ExcludeNames, Converter={x:Static c:StringConverters.ToPresetBranchRuleTokens}}">
                   <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                       <WrapPanel/>
@@ -779,6 +787,7 @@
                 </ItemsControl>
 
                 <TextBox x:Name="PresetBranchExcludeNameInputBox"
+                         Text="{Binding PresetBranchFilterDraft.ExcludeInput, Mode=TwoWay}"
                          MinHeight="22"
                          Padding="0"
                          BorderThickness="0"
@@ -795,7 +804,7 @@
                             Click="OnClearPresetBranchExcludeNames">
                       <Button.IsEnabled>
                         <MultiBinding Converter="{x:Static BoolConverters.Or}">
-                          <Binding Path="PresetBranchExcludeNames" Converter="{x:Static c:StringConverters.IsNotNullOrWhitespace}"/>
+                          <Binding Path="PresetBranchFilterDraft.ExcludeNames" Converter="{x:Static c:StringConverters.IsNotNullOrWhitespace}"/>
                           <Binding ElementName="PresetBranchExcludeNameInputBox" Path="Text" Converter="{x:Static StringConverters.IsNotNullOrEmpty}"/>
                         </MultiBinding>
                       </Button.IsEnabled>
@@ -806,25 +815,39 @@
               </StackPanel>
             </Border>
 
+            <TextBlock Margin="0,4,0,0"
+                       IsVisible="{Binding PresetBranchFilterDraft.HasChanges}"
+                       Foreground="{DynamicResource Brush.FG2}"
+                       Text="{DynamicResource Text.Repository.BranchesVisibility.Pending}"/>
             <WrapPanel Orientation="Horizontal" Margin="0,5,0,0">
-              <Button Classes="flat primary"
+              <Button x:Name="ApplyPresetBranchFilterButton"
+                      Classes="flat primary"
+                      IsEnabled="{Binding PresetBranchFilterDraft.HasChanges}"
                       Padding="8,2"
                       Click="OnApplyPresetBranchFilter">
                 <TextBlock Text="{DynamicResource Text.Repository.BranchesVisibility.ApplyFilter}"/>
               </Button>
 
-              <Button Classes="flat"
-                      Margin="8,0,0,0"
-                      Padding="8,2"
-                      FontWeight="Normal"
-                      Click="OnToggleShowAllBranches">
-                <Grid>
-                  <TextBlock Text="{DynamicResource Text.Repository.BranchesVisibility.UsePresetFilter}"
-                             IsVisible="{Binding IsShowingAllBranches}"/>
-                  <TextBlock Text="{DynamicResource Text.Repository.BranchesVisibility.ShowAll}"
-                             IsVisible="{Binding !IsShowingAllBranches}"/>
-                </Grid>
+              <Button Classes="icon_button" Width="28" Height="28" Margin="4,0"
+                      IsEnabled="{Binding PresetBranchFilterDraft.HasChanges}"
+                      ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.DiscardDraft}"
+                      Click="OnResetPresetBranchFilterDraft">
+                <Path Width="12" Height="12" Data="{StaticResource Icons.Undo}"/>
               </Button>
+              <Border BorderThickness="1" BorderBrush="{DynamicResource Brush.Border1}" CornerRadius="6">
+                <StackPanel Orientation="Horizontal">
+                  <RadioButton Classes="history_order_segment preset_mode" GroupName="PresetBranchFilterMode"
+                               IsChecked="{Binding IsShowingAllBranches, Mode=OneWay}"
+                               Content="{DynamicResource Text.Repository.BranchesVisibility.ModeAll}"
+                               ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.ShowAll}"
+                               Click="OnShowAllBranches"/>
+                  <RadioButton Classes="history_order_segment preset_mode" GroupName="PresetBranchFilterMode"
+                               IsChecked="{Binding !IsShowingAllBranches, Mode=OneWay}"
+                               Content="{DynamicResource Text.Repository.BranchesVisibility.ModeRules}"
+                               ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.UsePresetFilter}"
+                               Click="OnUsePresetBranchFilter"/>
+                </StackPanel>
+              </Border>
             </WrapPanel>
           </StackPanel>
         </Border>

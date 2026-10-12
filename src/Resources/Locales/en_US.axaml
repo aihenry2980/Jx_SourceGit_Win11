@@ -1161,6 +1161,16 @@
   <x:String x:Key="Text.Worktree.Remove" xml:space="preserve">Remove</x:String>
   <x:String x:Key="Text.Worktree.Unlock" xml:space="preserve">Unlock</x:String>
   <x:String x:Key="Text.Yes" xml:space="preserve">YES</x:String>
+  <x:String x:Key="Text.CommitFlow.Encoding.ConvertAndSave" xml:space="preserve">Convert &amp; save</x:String>
+  <x:String x:Key="Text.CommitFlow.Encoding.HighlightedFiles" xml:space="preserve">Highlighted files: {0}</x:String>
+  <x:String x:Key="Text.CommitFlow.Encoding.Detected" xml:space="preserve">Detected: {0}</x:String>
+  <x:String x:Key="Text.CommitFlow.Encoding.MultipleFiles" xml:space="preserve">Per-file encoding</x:String>
+  <x:String x:Key="Text.CommitFlow.Encoding.Target" xml:space="preserve">Target encoding</x:String>
+  <x:String x:Key="Text.CommitFlow.Encoding.SaveTip" xml:space="preserve">Rewrite {0} highlighted text file(s) as {1}. Commit checkboxes do not select files for conversion.</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.Pending" xml:space="preserve">Unapplied changes</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.DiscardDraft" xml:space="preserve">Discard unapplied changes</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.ModeAll" xml:space="preserve">All</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.ModeRules" xml:space="preserve">By rules</x:String>
 </ResourceDictionary>
 
 

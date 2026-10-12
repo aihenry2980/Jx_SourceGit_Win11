@@ -357,8 +357,8 @@
                     Focusable="False"/>
 
       <Grid Grid.Column="2" RowDefinitions="*,4,136,Auto,Auto" Margin="8,6,8,8">
-        <Grid Grid.Row="0">
-          <Border BorderBrush="{DynamicResource Brush.Border2}"
+        <Grid Grid.Row="0" RowDefinitions="Auto,*">
+          <Border Grid.Row="1" BorderBrush="{DynamicResource Brush.Border2}"
                   BorderThickness="1">
             <StackPanel Orientation="Vertical" VerticalAlignment="Center">
               <Path Width="56"
@@ -373,7 +373,7 @@
                          Text="Select a change to preview"/>
             </StackPanel>
           </Border>
-          <ContentControl Content="{Binding DetailContext}">
+          <ContentControl x:Name="EncodingDiffHost" Grid.Row="1" Content="{Binding DetailContext}">
             <ContentControl.DataTemplates>
               <DataTemplate DataType="vm:DiffContext">
                 <v:DiffView/>
@@ -381,37 +381,44 @@
             </ContentControl.DataTemplates>
           </ContentControl>
 
-          <Border HorizontalAlignment="Center"
-                  VerticalAlignment="Top"
-                  Margin="0,2,0,0"
-                  Padding="5,4"
-                  CornerRadius="4"
-                  BorderThickness="1"
-                  BorderBrush="{DynamicResource Brush.Border1}"
+          <Border x:Name="EncodingToolbar" Grid.Row="0"
+                  Padding="6,4"
+                  BorderThickness="0,0,0,1"
+                  BorderBrush="{DynamicResource Brush.Border2}"
                   Background="{DynamicResource Brush.Contents}">
-            <StackPanel Orientation="Horizontal" Spacing="4">
-              <TextBlock Width="112"
-                         VerticalAlignment="Center"
-                         TextTrimming="CharacterEllipsis"
-                         Foreground="{DynamicResource Brush.FG2}"
-                         Text="{Binding SelectedChangeEncoding}"
-                         ToolTip.Tip="Detected encoding of the selected file"/>
+            <StackPanel Spacing="4">
+              <TextBlock Text="{Binding EncodingSelectionSummary}"
+                         ToolTip.Tip="{Binding EncodingSelectionToolTip}"/>
+              <WrapPanel Orientation="Horizontal">
+                <TextBlock MaxWidth="160" Margin="0,0,8,0"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           Foreground="{DynamicResource Brush.FG2}"
+                           Text="{Binding DetectedEncodingSummary}"
+                           ToolTip.Tip="{Binding DetectedEncodingSummary}"/>
 
-              <ComboBox Width="104"
+                <ComboBox Width="104"
+                          Height="30"
+                          VerticalContentAlignment="Center"
+                          ItemsSource="{Binding SaveEncodingOptions}"
+                          SelectedItem="{Binding SelectedSaveEncoding, Mode=TwoWay}"
+                          ToolTip.Tip="{DynamicResource Text.CommitFlow.Encoding.Target}"/>
+
+                <Button Classes="flat"
+                        x:Name="ConvertEncodingButton"
                         Height="30"
+                        Margin="4,0,0,0"
+                        Padding="8,0"
                         VerticalContentAlignment="Center"
-                        ItemsSource="{Binding SaveEncodingOptions}"
-                        SelectedItem="{Binding SelectedSaveEncoding, Mode=TwoWay}"
-                        ToolTip.Tip="Encoding used when saving the selected file(s)"/>
-
-              <Button Classes="flat"
-                      Height="30"
-                      Padding="8,0"
-                      VerticalContentAlignment="Center"
-                      Content="Save"
-                      Click="OnSaveSelectedChangesEncodingClicked"
-                      IsEnabled="{Binding CanSaveSelectedChangesWithEncoding}"
-                      ToolTip.Tip="{Binding SaveSelectedChangesEncodingToolTip}"/>
+                        Click="OnSaveSelectedChangesEncodingClicked"
+                        IsEnabled="{Binding CanSaveSelectedChangesWithEncoding}"
+                        ToolTip.Tip="{Binding SaveSelectedChangesEncodingToolTip}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Path Width="12" Height="12" Data="{StaticResource Icons.Save}"/>
+                    <TextBlock Text="{Binding SaveEncodingButtonText}" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Button>
+              </WrapPanel>
             </StackPanel>
           </Border>
         </Grid>

@@ -93,6 +93,13 @@ internal static partial class Program
             return;
         }
 
+        if (args is ["--filter-encoding-ux"])
+        {
+            TestFilterEncodingUx();
+            Console.WriteLine($"PASS: {_checks} filter/encoding UX checks. Isolated data and previews: {_root}");
+            return;
+        }
+
         if (args is ["--workflow-ux"])
         {
             TestWorkflowUx();
@@ -127,6 +134,7 @@ internal static partial class Program
         TestCompactSubmodules();
         TestTabReordering();
         TestCrashReports();
+        TestFilterEncodingUx();
         TestWorkflowUx();
         Console.WriteLine($"PASS: {_checks} checks. Isolated data and preview: {_root}");
     }

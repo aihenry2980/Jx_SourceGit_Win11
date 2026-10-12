@@ -1014,15 +1014,15 @@ namespace SourceGit.Views
         private void OnShowAllBranches(object sender, RoutedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo)
-                repo.ShowAllBranchesForSession();
+                repo.SetPresetBranchFilterMode(true);
 
             e.Handled = true;
         }
 
-        private void OnToggleShowAllBranches(object sender, RoutedEventArgs e)
+        private void OnResetPresetBranchFilterDraft(object sender, RoutedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo)
-                repo.ToggleShowAllBranchesAndApplyGraphFilter();
+                repo.PresetBranchFilterDraft.Reset();
 
             e.Handled = true;
         }
@@ -1030,7 +1030,7 @@ namespace SourceGit.Views
         private void OnUsePresetBranchFilter(object sender, RoutedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo)
-                repo.UsePresetBranchFilterForSession();
+                repo.SetPresetBranchFilterMode(false);
 
             e.Handled = true;
         }
@@ -1039,10 +1039,7 @@ namespace SourceGit.Views
         {
             if (DataContext is ViewModels.Repository repo)
             {
-                TryCommitPresetBranchExactNameInput(repo);
-                TryCommitPresetBranchContainsPatternInput(repo);
-                TryCommitPresetBranchExcludeNameInput(repo);
-                repo.ApplyPresetBranchFilter();
+                repo.PresetBranchFilterDraft.Apply();
             }
 
             e.Handled = true;
@@ -1052,8 +1049,7 @@ namespace SourceGit.Views
         {
             if (DataContext is ViewModels.Repository repo)
             {
-                repo.PresetBranchExactNames = string.Empty;
-                repo.ApplyPresetBranchFilter();
+                repo.PresetBranchFilterDraft.ExactNames = string.Empty;
             }
 
             PresetBranchExactNameInputBox.Text = string.Empty;
@@ -1083,9 +1079,7 @@ namespace SourceGit.Views
             if (e.Key != Key.Tab)
                 TryAutocompletePresetBranchInput(textBox);
 
-            var changed = TryCommitPresetBranchExactNameInput(repo, textBox.Text);
-            if (changed)
-                repo.ApplyPresetBranchFilter();
+            TryCommitPresetBranchExactNameInput(repo, textBox.Text);
 
             textBox.Text = string.Empty;
             e.Handled = true;
@@ -1096,11 +1090,10 @@ namespace SourceGit.Views
             if (sender is not Button { Tag: string name } || DataContext is not ViewModels.Repository repo)
                 return;
 
-            var next = RemovePresetBranchRule(repo.PresetBranchExactNames, name);
-            if (!next.Equals(repo.PresetBranchExactNames, StringComparison.Ordinal))
+            var next = RemovePresetBranchRule(repo.PresetBranchFilterDraft.ExactNames, name);
+            if (!next.Equals(repo.PresetBranchFilterDraft.ExactNames, StringComparison.Ordinal))
             {
-                repo.PresetBranchExactNames = next;
-                repo.ApplyPresetBranchFilter();
+                repo.PresetBranchFilterDraft.ExactNames = next;
             }
 
             e.Handled = true;
@@ -1110,8 +1103,7 @@ namespace SourceGit.Views
         {
             if (DataContext is ViewModels.Repository repo)
             {
-                repo.PresetBranchContainsPatterns = string.Empty;
-                repo.ApplyPresetBranchFilter();
+                repo.PresetBranchFilterDraft.ContainsPatterns = string.Empty;
             }
 
             PresetBranchContainsPatternInputBox.Text = string.Empty;
@@ -1122,8 +1114,7 @@ namespace SourceGit.Views
         {
             if (DataContext is ViewModels.Repository repo)
             {
-                repo.PresetBranchExcludeNames = string.Empty;
-                repo.ApplyPresetBranchFilter();
+                repo.PresetBranchFilterDraft.ExcludeNames = string.Empty;
             }
 
             PresetBranchExcludeNameInputBox.Text = string.Empty;
@@ -1152,9 +1143,7 @@ namespace SourceGit.Views
             if (e.Key != Key.Enter && e.Key != Key.Tab && e.Key != Key.Space)
                 return;
 
-            var changed = TryCommitPresetBranchContainsPatternInput(repo, textBox.Text);
-            if (changed)
-                repo.ApplyPresetBranchFilter();
+            TryCommitPresetBranchContainsPatternInput(repo, textBox.Text);
 
             textBox.Text = string.Empty;
             e.Handled = true;
@@ -1183,9 +1172,7 @@ namespace SourceGit.Views
             if (e.Key != Key.Tab)
                 TryAutocompletePresetBranchInput(textBox);
 
-            var changed = TryCommitPresetBranchExcludeNameInput(repo, textBox.Text);
-            if (changed)
-                repo.ApplyPresetBranchFilter();
+            TryCommitPresetBranchExcludeNameInput(repo, textBox.Text);
 
             textBox.Text = string.Empty;
             e.Handled = true;
@@ -1208,8 +1195,7 @@ namespace SourceGit.Views
 
             if (TryGetDroppedPresetBranchName(e, out var name))
             {
-                repo.PresetBranchExactNames = AppendPresetBranchRule(repo.PresetBranchExactNames, name);
-                repo.ApplyPresetBranchFilter();
+                repo.PresetBranchFilterDraft.ExactNames = AppendPresetBranchRule(repo.PresetBranchFilterDraft.ExactNames, name);
             }
 
             e.Handled = true;
@@ -1222,8 +1208,7 @@ namespace SourceGit.Views
 
             if (TryGetDroppedPresetBranchName(e, out var name))
             {
-                repo.PresetBranchExcludeNames = AppendPresetBranchRule(repo.PresetBranchExcludeNames, name);
-                repo.ApplyPresetBranchFilter();
+                repo.PresetBranchFilterDraft.ExcludeNames = AppendPresetBranchRule(repo.PresetBranchFilterDraft.ExcludeNames, name);
             }
 
             e.Handled = true;
@@ -1236,8 +1221,7 @@ namespace SourceGit.Views
 
             if (TryGetDroppedPresetBranchName(e, out var name))
             {
-                repo.PresetBranchContainsPatterns = AppendPresetBranchRule(repo.PresetBranchContainsPatterns, name);
-                repo.ApplyPresetBranchFilter();
+                repo.PresetBranchFilterDraft.ContainsPatterns = AppendPresetBranchRule(repo.PresetBranchFilterDraft.ContainsPatterns, name);
             }
 
             e.Handled = true;
@@ -1248,11 +1232,10 @@ namespace SourceGit.Views
             if (sender is not Button { Tag: string pattern } || DataContext is not ViewModels.Repository repo)
                 return;
 
-            var next = RemovePresetBranchRule(repo.PresetBranchContainsPatterns, pattern);
-            if (!next.Equals(repo.PresetBranchContainsPatterns, StringComparison.Ordinal))
+            var next = RemovePresetBranchRule(repo.PresetBranchFilterDraft.ContainsPatterns, pattern);
+            if (!next.Equals(repo.PresetBranchFilterDraft.ContainsPatterns, StringComparison.Ordinal))
             {
-                repo.PresetBranchContainsPatterns = next;
-                repo.ApplyPresetBranchFilter();
+                repo.PresetBranchFilterDraft.ContainsPatterns = next;
             }
 
             e.Handled = true;
@@ -1314,11 +1297,10 @@ namespace SourceGit.Views
             if (sender is not Button { Tag: string name } || DataContext is not ViewModels.Repository repo)
                 return;
 
-            var next = RemovePresetBranchRule(repo.PresetBranchExcludeNames, name);
-            if (!next.Equals(repo.PresetBranchExcludeNames, StringComparison.Ordinal))
+            var next = RemovePresetBranchRule(repo.PresetBranchFilterDraft.ExcludeNames, name);
+            if (!next.Equals(repo.PresetBranchFilterDraft.ExcludeNames, StringComparison.Ordinal))
             {
-                repo.PresetBranchExcludeNames = next;
-                repo.ApplyPresetBranchFilter();
+                repo.PresetBranchFilterDraft.ExcludeNames = next;
             }
 
             e.Handled = true;
@@ -1374,7 +1356,7 @@ namespace SourceGit.Views
                 usePreset.Icon = App.CreateMenuIcon("Icons.Check");
             usePreset.Click += (_, ev) =>
             {
-                repo.UsePresetBranchFilterForSession();
+                repo.SetPresetBranchFilterMode(false);
                 ev.Handled = true;
             };
 
@@ -1384,7 +1366,7 @@ namespace SourceGit.Views
                 showAll.Icon = App.CreateMenuIcon("Icons.Check");
             showAll.Click += (_, ev) =>
             {
-                repo.ShowAllBranchesForSession();
+                repo.SetPresetBranchFilterMode(true);
                 ev.Handled = true;
             };
 
@@ -1393,7 +1375,7 @@ namespace SourceGit.Views
             applyFilter.Icon = App.CreateMenuIcon("Icons.Filter");
             applyFilter.Click += (_, ev) =>
             {
-                repo.ApplyPresetBranchFilter();
+                repo.PresetBranchFilterDraft.Apply();
                 ev.Handled = true;
             };
 
@@ -1550,48 +1532,45 @@ namespace SourceGit.Views
         private bool TryCommitPresetBranchExactNameInput(ViewModels.Repository repo, string rawInput = null)
         {
             rawInput ??= PresetBranchExactNameInputBox.Text;
-            var next = AppendPresetBranchRules(repo.PresetBranchExactNames, rawInput);
-            if (next.Equals(repo.PresetBranchExactNames, StringComparison.Ordinal))
+            var next = AppendPresetBranchRules(repo.PresetBranchFilterDraft.ExactNames, rawInput);
+            if (next.Equals(repo.PresetBranchFilterDraft.ExactNames, StringComparison.Ordinal))
                 return false;
 
-            repo.PresetBranchExactNames = next;
+            repo.PresetBranchFilterDraft.ExactNames = next;
             return true;
         }
 
         private bool TryCommitPresetBranchContainsPatternInput(ViewModels.Repository repo, string rawInput = null)
         {
             rawInput ??= PresetBranchContainsPatternInputBox.Text;
-            var next = AppendPresetBranchRules(repo.PresetBranchContainsPatterns, rawInput);
-            if (next.Equals(repo.PresetBranchContainsPatterns, StringComparison.Ordinal))
+            var next = AppendPresetBranchRules(repo.PresetBranchFilterDraft.ContainsPatterns, rawInput);
+            if (next.Equals(repo.PresetBranchFilterDraft.ContainsPatterns, StringComparison.Ordinal))
                 return false;
 
-            repo.PresetBranchContainsPatterns = next;
+            repo.PresetBranchFilterDraft.ContainsPatterns = next;
             return true;
         }
 
         private bool TryCommitPresetBranchExcludeNameInput(ViewModels.Repository repo, string rawInput = null)
         {
             rawInput ??= PresetBranchExcludeNameInputBox.Text;
-            var next = AppendPresetBranchRules(repo.PresetBranchExcludeNames, rawInput);
-            if (next.Equals(repo.PresetBranchExcludeNames, StringComparison.Ordinal))
+            var next = AppendPresetBranchRules(repo.PresetBranchFilterDraft.ExcludeNames, rawInput);
+            if (next.Equals(repo.PresetBranchFilterDraft.ExcludeNames, StringComparison.Ordinal))
                 return false;
 
-            repo.PresetBranchExcludeNames = next;
+            repo.PresetBranchFilterDraft.ExcludeNames = next;
             return true;
         }
 
         private void CommitPresetBranchSuggestion(ViewModels.Repository repo, TextBox textBox, string suggestion)
         {
-            var changed = textBox.Name switch
+            _ = textBox.Name switch
             {
                 nameof(PresetBranchExactNameInputBox) => TryCommitPresetBranchExactNameInput(repo, suggestion),
                 nameof(PresetBranchContainsPatternInputBox) => TryCommitPresetBranchContainsPatternInput(repo, suggestion),
                 nameof(PresetBranchExcludeNameInputBox) => TryCommitPresetBranchExcludeNameInput(repo, suggestion),
                 _ => false,
             };
-
-            if (changed)
-                repo.ApplyPresetBranchFilter();
 
             textBox.Text = string.Empty;
             _presetBranchInputSuggestions[textBox] = [];
@@ -1719,9 +1698,9 @@ namespace SourceGit.Views
         {
             var rules = textBox.Name switch
             {
-                nameof(PresetBranchExactNameInputBox) => repo.PresetBranchExactNames,
-                nameof(PresetBranchContainsPatternInputBox) => repo.PresetBranchContainsPatterns,
-                nameof(PresetBranchExcludeNameInputBox) => repo.PresetBranchExcludeNames,
+                nameof(PresetBranchExactNameInputBox) => repo.PresetBranchFilterDraft.ExactNames,
+                nameof(PresetBranchContainsPatternInputBox) => repo.PresetBranchFilterDraft.ContainsPatterns,
+                nameof(PresetBranchExcludeNameInputBox) => repo.PresetBranchFilterDraft.ExcludeNames,
                 _ => string.Empty,
             };
             return new HashSet<string>(ParsePresetBranchRules(rules), StringComparer.Ordinal);
