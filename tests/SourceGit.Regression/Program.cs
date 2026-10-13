@@ -93,6 +93,13 @@ internal static partial class Program
             return;
         }
 
+        if (args is ["--folder-filter"])
+        {
+            TestFolderFilterAfterBranchChanges();
+            Console.WriteLine($"PASS: {_checks} folder filter checks. Isolated data: {_root}");
+            return;
+        }
+
         if (args is ["--filter-encoding-ux"])
         {
             TestFilterEncodingUx();
@@ -126,6 +133,7 @@ internal static partial class Program
         TestMissingBranches();
         TestContainingBranches();
         TestFilterColorsAndCheckout();
+        TestFolderFilterAfterBranchChanges();
         TestRendering();
         TestBranchVisibility();
         TestTrackingPairZoom();

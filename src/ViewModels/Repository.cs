@@ -2241,7 +2241,8 @@ namespace SourceGit.ViewModels
             LocalBranchTrees = builder.Locals;
             LocalBranchesCount = count;
 
-            if (_historyFilterMode == Models.FilterMode.Included)
+            if (_historyFilterMode == Models.FilterMode.Included &&
+                !_uiStates.IsCoveredByFolderFilter(created.FullName, Models.FilterType.LocalBranchFolder))
                 IncludeBranchInHistoryFilter(created, true);
             else
                 RefreshCommits();
@@ -2279,7 +2280,8 @@ namespace SourceGit.ViewModels
             CurrentBranch = checkouted;
             GetOwnerPage()?.ChangeDirtyState(Models.DirtyState.HasPendingPullOrPush, !checkouted.IsTrackStatusVisible);
 
-            if (_historyFilterMode == Models.FilterMode.Included)
+            if (_historyFilterMode == Models.FilterMode.Included &&
+                !_uiStates.IsCoveredByFolderFilter(checkouted.FullName, Models.FilterType.LocalBranchFolder))
                 IncludeBranchInHistoryFilter(checkouted, true);
             else
                 RefreshCommits();
