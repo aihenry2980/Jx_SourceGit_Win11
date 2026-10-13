@@ -75,16 +75,57 @@ internal static partial class Program
                 .OfType<Button>().Where(b => b.IsVisible).Select(b => b.Name).ToArray();
             Check(fetchButtons.SequenceEqual(new[] { "FetchButton", "FetchWithSubmodulesButton" }),
                 "Fetch group contains only standard Fetch and Fetch Subs, without a redundant All button");
-            foreach (var (name, label) in new[] { ("FetchWithSubmodulesButton", "Fetch Subs"),
+            foreach (var (name, label) in new[] { ("FetchWithSubmodulesButton", "Fetch + Subs"),
+                ("FetchButton", "Fetch…"), ("PullButton", "Pull…"), ("PullTopRepositoryButton", "Pull Top"),
                 ("PullWithSubmodulesButton", "Pull + Subs"), ("UpdateSubmodulesRecursivelyButton", "Update Subs") })
             {
                 var button = toolbar.FindControl<Button>(name);
                 var text = button.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Text == label);
                 Check(text.Bounds.Width + 8 <= button.Bounds.Width + 1, label + " has room for its complete label");
             }
+            var options = toolbar.FindControl<Button>("PullSubmoduleOptionsButton");
+            var launcherField = typeof(SourceGit.App).GetField("_launcher", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var previousLauncher = launcherField.GetValue(Application.Current);
+            var workspace = SourceGit.ViewModels.Preferences.Instance.GetActiveWorkspace();
+            var previousRepositories = workspace.Repositories.ToArray();
+            var previousIndex = workspace.ActiveIdx;
+            workspace.Repositories.Clear();
+            var launcher = new SourceGit.ViewModels.Launcher(null);
+            launcher.Pages.Add(new SourceGit.ViewModels.LauncherPage(new SourceGit.ViewModels.RepositoryNode { Id = path }, repo));
+            launcherField.SetValue(Application.Current, launcher);
+            try
+            {
+                options.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+                var menu = (ContextMenu)typeof(SourceGit.Views.RepositoryToolbar)
+                    .GetField("_activeToolbarGitCommandMenu", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(toolbar);
+                Check(menu != null && menu.IsOpen && menu.Items.OfType<MenuItem>().Any(item => Equals(item.Header, SourceGit.App.Text("Toolbar.ChooseSubmodules"))),
+                    "Visible dropdown exposes submodule selection without right-clicking");
+                menu.Close();
+            }
+            finally
+            {
+                launcherField.SetValue(Application.Current, previousLauncher);
+                workspace.Repositories.Clear();
+                workspace.Repositories.AddRange(previousRepositories);
+                workspace.ActiveIdx = previousIndex;
+            }
             AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             using (var frame = window.CaptureRenderedFrame())
                 frame.Save(Path.Combine(_root, "toolbar-scopes.png"));
+            window.Width = 920;
+            window.Height = 160;
+            PumpFor(150);
+            foreach (var name in new[] { "FetchButton", "FetchWithSubmodulesButton", "PullButton", "PullTopRepositoryButton",
+                "PullWithSubmodulesButton", "PullSubmoduleOptionsButton", "UpdateSubmodulesRecursivelyButton" })
+            {
+                var button = toolbar.FindControl<Button>(name);
+                var position = button.TranslatePoint(default, toolbar).Value;
+                Check(position.X >= 0 && position.X + button.Bounds.Width <= toolbar.Bounds.Width + 1 &&
+                    position.Y + button.Bounds.Height <= window.ClientSize.Height + 1, name + " stays visible when the toolbar wraps at 920");
+            }
+            CaptureUxFrame(window, "toolbar-scopes-920");
+            Check(toolbar.FindControl<StackPanel>("LeftToolbarGroup").Bounds.Height < 60,
+                "Wrapped toolbar keeps the current branch chip and outer controls aligned to the first row");
             window.Close();
 
             flow.ExcludeAllSelectedNodeChanges();

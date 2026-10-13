@@ -5,6 +5,8 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Interactivity;
+using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
@@ -28,6 +30,7 @@ internal static partial class Program
         Git(path, "update-ref", "refs/remotes/origin/feature", sha);
         Git(path, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/feature");
         Git(path, "tag", "release-tag", sha);
+        Git(path, "tag", "-a", "release-annotated", "-m", "annotated release", sha);
         Git(path, "commit", "--allow-empty", "-m", "later commit on main");
         Git(path, "checkout", "--detach", sha);
 
@@ -54,6 +57,8 @@ internal static partial class Program
                 "Search includes tip branches and descendant branches, excluding tags, symbolic HEAD and unrelated histories");
             Check(vm.VisibleResults.Count(result => result.IsLocal) == 3 && vm.VisibleResults.Count(result => !result.IsLocal) == 1,
                 "Result rows distinguish local and remote-tracking branches");
+            Check(vm.VisibleTags.Select(tag => tag.Name).SequenceEqual(new[] { "release-annotated", "release-tag" }),
+                "Unified search includes lightweight and annotated tags in a separate tab");
             Check(repo.PresetBranchExactNames == "older" && repo.PresetBranchExcludeNames == "feature\nblocked",
                 "Searching alone never changes existing filters");
             Check(vm.VisibleResults.All(result => ((ISolidColorBrush)result.Color).Color.ToUInt32() == repo.GetEffectiveBranchDisplayColor(result.Branch)),
@@ -63,13 +68,41 @@ internal static partial class Program
             Check(vm.VisibleResults is [{ Name: "origin/feature" }], "Result search is case-insensitive and preserves remote identity");
             vm.SearchText = "no-match";
             Check(vm.IsEmpty, "Filtering result rows exposes a no-match state");
+            vm.SelectedTab = 1;
+            Check(vm.IsEmpty, "Tag tab reports no matches for the shared search query");
+            vm.SearchText = "ANNOTATED";
+            Check(vm.VisibleTags is [{ Name: "release-annotated" }] && vm.VisibleResults.Count == 0 && !vm.IsEmpty,
+                "Shared search filters tags case-insensitively and empty state follows the active tab");
             vm.SearchText = string.Empty;
+            PumpFor(100);
+            var tagRow = window.GetVisualDescendants().OfType<Grid>().First(control =>
+                control.DataContext is SourceGit.ViewModels.ContainingTag { Name: "release-tag" } && control.MinHeight == 32);
+            Invoke(window, "OnTagContextRequested", tagRow, new ContextRequestedEventArgs());
+            var tagMenu = (ContextMenu)typeof(SourceGit.Views.FindContainingBranches).GetField("_branchContextMenu", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(window);
+            Check(tagMenu.Items.Count == 1 && Equals(((MenuItem)tagMenu.Items[0]).Header, SourceGit.App.Text("FindContainingBranches.CopyName")),
+                "Tags offer Copy name without a branch-only filter action");
+            ((MenuItem)tagMenu.Items[0]).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            PumpFor(30);
+            Check(Wait(window.Clipboard.TryGetTextAsync()) == "release-tag", "Tag context menu copies the exact tag name");
+            tagMenu.Close();
+            window.Width = 420;
+            PumpFor(100);
+            CaptureUxFrame(window, "containing-tags-420");
+            PumpFor(100);
+            var tagCopy = tagRow.GetVisualDescendants().OfType<SourceGit.Views.CopyButton>().Single();
+            Check(tagCopy.Bounds.Width > 0 && tagCopy.GetVisualDescendants().OfType<Avalonia.Controls.Shapes.Path>().Any(icon => icon.Data != null),
+                "Tag rows render the same inline copy affordance as branch rows");
+            CaptureUxFrame(window, "containing-tags-420");
+            vm.SelectedTab = 0;
             PumpFor(100);
             var row = window.GetVisualDescendants().OfType<Grid>().First(control => control.DataContext is SourceGit.ViewModels.ContainingBranch { Name: "origin/feature" } && control.MinHeight == 32);
             Invoke(window, "OnBranchContextRequested", row, new ContextRequestedEventArgs());
             var addMenu = (ContextMenu)typeof(SourceGit.Views.FindContainingBranches).GetField("_branchContextMenu", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(window);
             Check(addMenu.IsOpen && Equals(((MenuItem)addMenu.Items[0]).Header, SourceGit.App.Text("FindContainingBranches.AddToFilter")),
                 "Right-clicking a result opens Add to filter for that branch");
+            ((MenuItem)addMenu.Items[1]).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            PumpFor(30);
+            Check(Wait(window.Clipboard.TryGetTextAsync()) == "origin/feature", "Branch context menu copies the full remote branch name");
             ((MenuItem)addMenu.Items[0]).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
             addMenu.Close();
             Check(repo.PresetBranchExactNames.Split('\n').SequenceEqual(new[] { "older", "feature" }) &&
@@ -123,6 +156,29 @@ internal static partial class Program
             repo.Branches.Add(stale.Branch);
             window.Close();
             Check(!vm.AddToFilter(stale), "Closed search windows cannot mutate repository filters");
+            var detail = new SourceGit.ViewModels.CommitDetail(repo, new SourceGit.ViewModels.CommitDetailSharedData()) { Commit = commit };
+            try
+            {
+                var info = new SourceGit.Views.CommitBaseInfo { DataContext = detail };
+                Invoke(info, "OnOpenContainsIn", new Button(), new RoutedEventArgs());
+                window = _lifetime.Windows.OfType<SourceGit.Views.FindContainingBranches>().Single();
+                var infoVm = (Finder)window.DataContext;
+                WaitUntil(() => !infoVm.IsSearching && infoVm.VisibleResults.Count > 0, "Information relation search did not finish.");
+                Check(infoVm.SHA == sha && infoVm.VisibleTags.Count == 2 && infoVm.VisibleResults.Count == 4,
+                    "Information entry opens the same searchable branch/tag window as the graph context menu");
+                var list = window.FindControl<ListBox>("ResultsList");
+                list.SelectedItem = infoVm.VisibleResults.Single(result => result.Name == "origin/feature");
+                Invoke(window, "OnResultsKeyDown", list, new KeyEventArgs { Key = Key.C, KeyModifiers = KeyModifiers.Control });
+                PumpFor(30);
+                Check(Wait(window.Clipboard.TryGetTextAsync()) == "origin/feature", "Result selection supports keyboard copy");
+                Check(infoVm.AddToFilter(infoVm.VisibleResults.Single(result => result.Name == "feature")),
+                    "Information entry provides the same branch add-to-filter operation");
+                window.Close();
+            }
+            finally
+            {
+                detail.Dispose();
+            }
         }
         finally
         {

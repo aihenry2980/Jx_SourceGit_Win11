@@ -1,11 +1,11 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <x:String x:Key="Text.About" xml:space="preserve">About</x:String>
-  <x:String x:Key="Text.FindContainingBranches.Title" xml:space="preserve">Find containing branches</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Title" xml:space="preserve">Find containing branches and tags</x:String>
   <x:String x:Key="Text.FindContainingBranches.Search" xml:space="preserve">Filter results...</x:String>
-  <x:String x:Key="Text.FindContainingBranches.Searching" xml:space="preserve">Searching local and remote-tracking branches...</x:String>
-  <x:String x:Key="Text.FindContainingBranches.None" xml:space="preserve">No known branch contains this commit.</x:String>
-  <x:String x:Key="Text.FindContainingBranches.NoMatches" xml:space="preserve">No matching branches</x:String>
-  <x:String x:Key="Text.FindContainingBranches.Found" xml:space="preserve">{0} branch(es) contain this commit.</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Searching" xml:space="preserve">Searching branches and tags...</x:String>
+  <x:String x:Key="Text.FindContainingBranches.None" xml:space="preserve">No known branch or tag contains this commit.</x:String>
+  <x:String x:Key="Text.FindContainingBranches.NoMatches" xml:space="preserve">No matching results</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Found" xml:space="preserve">Found {0} branch(es) and {1} tag(s).</x:String>
   <x:String x:Key="Text.FindContainingBranches.Local" xml:space="preserve">Local</x:String>
   <x:String x:Key="Text.FindContainingBranches.Remote" xml:space="preserve">Remote</x:String>
   <x:String x:Key="Text.FindContainingBranches.Canceled" xml:space="preserve">Search canceled.</x:String>
@@ -1171,6 +1171,11 @@
   <x:String x:Key="Text.Repository.BranchesVisibility.DiscardDraft" xml:space="preserve">Discard unapplied changes</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ModeAll" xml:space="preserve">All</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ModeRules" xml:space="preserve">By rules</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Branches" xml:space="preserve">Branches ({0})</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Tags" xml:space="preserve">Tags ({0})</x:String>
+  <x:String x:Key="Text.FindContainingBranches.CopyName" xml:space="preserve">Copy name</x:String>
+  <x:String x:Key="Text.Toolbar.SubmoduleOptions" xml:space="preserve">Pull + Subs options</x:String>
+  <x:String x:Key="Text.Toolbar.ChooseSubmodules" xml:space="preserve">Choose submodules...</x:String>
 </ResourceDictionary>
 
 

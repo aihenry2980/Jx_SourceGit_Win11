@@ -24,6 +24,11 @@ namespace SourceGit.ViewModels
         private IBrush _color;
     }
 
+    public class ContainingTag
+    {
+        public string Name { get; init; }
+    }
+
     public class FindContainingBranches : ObservableObject, IDisposable
     {
         public string SHA { get; }
@@ -37,8 +42,33 @@ namespace SourceGit.ViewModels
             {
                 SetProperty(ref _visibleResults, value);
                 OnPropertyChanged(nameof(IsEmpty));
+                OnPropertyChanged(nameof(BranchTabTitle));
             }
         }
+
+        public IReadOnlyList<ContainingTag> VisibleTags
+        {
+            get => _visibleTags;
+            private set
+            {
+                SetProperty(ref _visibleTags, value);
+                OnPropertyChanged(nameof(IsEmpty));
+                OnPropertyChanged(nameof(TagTabTitle));
+            }
+        }
+
+        public int SelectedTab
+        {
+            get => _selectedTab;
+            set
+            {
+                if (SetProperty(ref _selectedTab, value))
+                    OnPropertyChanged(nameof(IsEmpty));
+            }
+        }
+
+        public string BranchTabTitle => App.Text("FindContainingBranches.Branches", VisibleResults.Count);
+        public string TagTabTitle => App.Text("FindContainingBranches.Tags", VisibleTags.Count);
 
         public string SearchText
         {
@@ -66,7 +96,7 @@ namespace SourceGit.ViewModels
             }
         }
 
-        public bool IsEmpty => !IsSearching && VisibleResults.Count == 0;
+        public bool IsEmpty => !IsSearching && (SelectedTab == 0 ? VisibleResults.Count == 0 : VisibleTags.Count == 0);
 
         public FindContainingBranches(Repository repo, Models.Commit commit)
         {
@@ -83,6 +113,7 @@ namespace SourceGit.ViewModels
             IsSearching = true;
             Status = App.Text("FindContainingBranches.Searching");
             _results.Clear();
+            _tags.Clear();
             FilterResults();
             using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             _cancellation = cancellation;
@@ -115,7 +146,12 @@ namespace SourceGit.ViewModels
                         return;
                     }
                     if (reference.IsTag)
+                    {
+                        _tags.Add(new ContainingTag { Name = reference.Name });
+                        if (++processed % 8 == 0)
+                            await Task.Delay(1, token);
                         continue;
+                    }
 
                     var isLocal = reference.Type == Models.DecoratorType.LocalBranchHead;
                     var fullName = (isLocal ? "refs/heads/" : "refs/remotes/") + reference.Name;
@@ -144,14 +180,16 @@ namespace SourceGit.ViewModels
                         await Task.Delay(1, token);
                 }
                 _results = _results.OrderByDescending(branch => branch.IsLocal).ThenBy(branch => branch.Name, StringComparer.Ordinal).ToList();
+                _tags = _tags.OrderBy(tag => tag.Name, StringComparer.Ordinal).ToList();
                 FilterResults();
-                Status = App.Text(_results.Count == 0 ? "FindContainingBranches.None" : "FindContainingBranches.Found", _results.Count);
+                Status = App.Text(_results.Count + _tags.Count == 0 ? "FindContainingBranches.None" : "FindContainingBranches.Found", _results.Count, _tags.Count);
             }
             catch (OperationCanceledException)
             {
                 if (!_disposed)
                 {
                     _results.Clear();
+                    _tags.Clear();
                     FilterResults();
                     Status = App.Text(_cancelRequested ? "FindContainingBranches.Canceled" : "FindContainingBranches.TimedOut");
                 }
@@ -200,10 +238,14 @@ namespace SourceGit.ViewModels
         {
             var query = SearchText.Trim();
             VisibleResults = _results.Where(result => result.Name.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
+            VisibleTags = _tags.Where(result => result.Name.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
         }
 
         private readonly Repository _repo;
         private List<ContainingBranch> _results = [];
+        private List<ContainingTag> _tags = [];
+        private IReadOnlyList<ContainingTag> _visibleTags = Array.Empty<ContainingTag>();
+        private int _selectedTab;
         private IReadOnlyList<ContainingBranch> _visibleResults = Array.Empty<ContainingBranch>();
         private string _searchText = string.Empty;
         private string _status = string.Empty;

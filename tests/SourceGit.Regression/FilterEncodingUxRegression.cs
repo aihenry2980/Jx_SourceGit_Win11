@@ -16,6 +16,7 @@ internal static partial class Program
         Git(path, "commit", "-m", "initial");
         Git(path, "branch", "feature/test");
         Git(path, "branch", "external");
+        Git(path, "remote", "add", "origin", path);
         var repo = Open(path);
         Window window = null;
         try
@@ -54,6 +55,15 @@ internal static partial class Program
                 repo.PresetBranchContainsPatterns == "feature/" && repo.PresetBranchExcludeNames == "external",
                 "Apply consumes unfinished input and commits all three rule types together");
             Check(repo.IsPresetBranchFilterEditorExpanded, "Applying leaves the filter editor expanded");
+            Check(!draft.HasChanges && apply.IsEffectivelyEnabled, "Apply remains enabled with unchanged rules");
+            Git(path, "update-ref", "refs/remotes/origin/feature/new", "HEAD");
+            Wait(InvokeTask(repo, "RefreshBranchesAsync"));
+            Check(repo.Branches.Any(b => b.FullName == "refs/remotes/origin/feature/new") && !draft.HasChanges,
+                "A newly discovered remote branch does not require editing the filter draft");
+            apply.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Check(repo.UIStates.HistoryFilters.Any(f => f.Pattern == "refs/remotes/origin/feature/new" &&
+                f.Mode == SourceGit.Models.FilterMode.Included) && !draft.HasChanges && apply.IsEffectivelyEnabled,
+                "Reapplying unchanged rules adopts the new matching remote branch and stays enabled");
             Invoke(view, "OnRemovePresetBranchExactName", new Button { Tag = "main" }, new RoutedEventArgs());
             Check(draft.HasChanges && repo.PresetBranchExactNames.Contains("main"), "Removing a chip only edits the draft");
             repo.SetPresetBranchFilterMode(true);
@@ -66,6 +76,7 @@ internal static partial class Program
             Check(draft.ExactNames.Contains("external") && !draft.ExactNames.Contains("main") &&
                 draft.ContainsInput == "pending" && string.IsNullOrEmpty(draft.ExcludeNames),
                 "Graph add-to-filter synchronizes draft while retaining unrelated pending edits");
+            draft.ExcludeNames = "blocked";
             foreach (var locale in new[] { "en_US", "zh_CN" })
             {
                 SourceGit.App.SetLocale(locale);
@@ -73,9 +84,20 @@ internal static partial class Program
                 Check(apply.Bounds.Width > 0 && apply.IsEffectivelyVisible, "Apply remains visible in " + locale);
                 CaptureUxFrame(window, "filter-draft-" + locale);
             }
+            var chips = view.GetVisualDescendants().OfType<Border>().Where(border => border.Classes.Contains("preset_rule_chip")).ToList();
+            Check(chips.Count >= 3 && chips.All(chip => Equals(chip.Background, chips[0].Background) && Equals(chip.BorderBrush, chips[0].BorderBrush)),
+                "Exact, contains and exclusion rule chips share a neutral background and border");
+            var markers = chips.SelectMany(chip => chip.GetVisualDescendants().OfType<TextBlock>())
+                .Where(text => text.Classes.Contains("rule_kind")).Select(text => text.Text).Distinct().ToArray();
+            Check(markers.Contains("=") && markers.Contains("*") && markers.Contains("-"),
+                "Rule markers distinguish exact, contains and exclusion matching without branch colors");
             Invoke(view, "OnResetPresetBranchFilterDraft", apply, new RoutedEventArgs());
             Check(!draft.HasChanges && draft.ExactNames == repo.PresetBranchExactNames && string.IsNullOrEmpty(draft.ContainsInput),
                 "Discard restores applied rules and clears unfinished input");
+            repo.SetPresetBranchFilterMode(true);
+            apply.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Check(!repo.IsShowingAllBranches && !draft.HasChanges && apply.IsEffectivelyEnabled,
+                "Apply also reactivates unchanged rules from All mode");
             window.Close();
             SourceGit.App.SetLocale("en_US");
 

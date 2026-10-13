@@ -786,6 +786,13 @@ namespace SourceGit.Views
             }
         }
 
+        private void OnPullSubmoduleOptionsClicked(object sender, RoutedEventArgs e)
+        {
+            if (sender is Control control)
+                OpenSyncAllContextMenu(control);
+            e.Handled = true;
+        }
+
         private void OnSyncAllContextRequested(object sender, ContextRequestedEventArgs e)
         {
             if (sender is Control control)
@@ -812,10 +819,17 @@ namespace SourceGit.Views
             if (DataContext is not ViewModels.Repository repo || !repo.CanCreatePopup())
                 return;
 
-            var menu = new ContextMenu();
+            _activeToolbarGitCommandMenu?.Close();
+            var menu = new ContextMenu { Placement = PlacementMode.BottomEdgeAlignedLeft };
+            _activeToolbarGitCommandMenu = menu;
+            menu.Closed += (_, _) =>
+            {
+                if (ReferenceEquals(_activeToolbarGitCommandMenu, menu))
+                    _activeToolbarGitCommandMenu = null;
+            };
 
             var choose = new MenuItem();
-            choose.Header = "Choose submodules...";
+            choose.Header = App.Text("Toolbar.ChooseSubmodules");
             choose.Icon = App.CreateMenuIcon("Icons.Submodule");
             choose.IsEnabled = repo.Submodules.Count > 0;
             choose.Click += (_, ev) =>

@@ -7,12 +7,12 @@
   </ResourceDictionary.MergedDictionaries>
 
   <x:String x:Key="Text.About" xml:space="preserve">关于软件</x:String>
-  <x:String x:Key="Text.FindContainingBranches.Title" xml:space="preserve">查找包含分支</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Title" xml:space="preserve">查找包含分支和标签</x:String>
   <x:String x:Key="Text.FindContainingBranches.Search" xml:space="preserve">筛选查询结果...</x:String>
-  <x:String x:Key="Text.FindContainingBranches.Searching" xml:space="preserve">正在查询本地及远程跟踪分支...</x:String>
-  <x:String x:Key="Text.FindContainingBranches.None" xml:space="preserve">已知分支中没有包含此提交的分支。</x:String>
-  <x:String x:Key="Text.FindContainingBranches.NoMatches" xml:space="preserve">没有匹配的分支</x:String>
-  <x:String x:Key="Text.FindContainingBranches.Found" xml:space="preserve">找到 {0} 个包含此提交的分支。</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Searching" xml:space="preserve">正在查询分支和标签...</x:String>
+  <x:String x:Key="Text.FindContainingBranches.None" xml:space="preserve">已知分支和标签中没有包含此提交的引用。</x:String>
+  <x:String x:Key="Text.FindContainingBranches.NoMatches" xml:space="preserve">没有匹配的结果</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Found" xml:space="preserve">找到 {0} 个分支和 {1} 个标签。</x:String>
   <x:String x:Key="Text.FindContainingBranches.Local" xml:space="preserve">本地</x:String>
   <x:String x:Key="Text.FindContainingBranches.Remote" xml:space="preserve">远程</x:String>
   <x:String x:Key="Text.FindContainingBranches.Canceled" xml:space="preserve">查询已取消。</x:String>
@@ -1172,6 +1172,11 @@
   <x:String x:Key="Text.Repository.BranchesVisibility.DiscardDraft" xml:space="preserve">撤销未应用修改</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ModeAll" xml:space="preserve">全部</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ModeRules" xml:space="preserve">按规则</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Branches" xml:space="preserve">分支（{0}）</x:String>
+  <x:String x:Key="Text.FindContainingBranches.Tags" xml:space="preserve">标签（{0}）</x:String>
+  <x:String x:Key="Text.FindContainingBranches.CopyName" xml:space="preserve">复制名称</x:String>
+  <x:String x:Key="Text.Toolbar.SubmoduleOptions" xml:space="preserve">拉取及子模块选项</x:String>
+  <x:String x:Key="Text.Toolbar.ChooseSubmodules" xml:space="preserve">选择子模块...</x:String>
 </ResourceDictionary>
 
 

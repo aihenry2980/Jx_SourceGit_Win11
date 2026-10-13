@@ -122,17 +122,10 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
-        private async void OnOpenContainsIn(object sender, RoutedEventArgs e)
+        private void OnOpenContainsIn(object sender, RoutedEventArgs e)
         {
-            if (DataContext is ViewModels.CommitDetail detail && sender is Button button)
-            {
-                var tracking = new CommitRelationTracking();
-                var flyout = new Flyout();
-                flyout.Content = tracking;
-                flyout.ShowAt(button);
-
-                await tracking.SetDataAsync(detail);
-            }
+            if (DataContext is ViewModels.CommitDetail detail)
+                this.ShowWindow(new ViewModels.FindContainingBranches(detail.Repository, detail.Commit));
 
             e.Handled = true;
         }

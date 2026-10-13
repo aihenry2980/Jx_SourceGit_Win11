@@ -104,7 +104,7 @@
     </Style>
   </UserControl.Styles>
   <Grid ColumnDefinitions="Auto,*,Auto">
-    <StackPanel x:Name="LeftToolbarGroup" Grid.Column="0" Orientation="Horizontal" Margin="4,2,6,2">
+    <StackPanel x:Name="LeftToolbarGroup" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Top" Margin="4,2,6,2">
       <Button x:Name="OpenWithExternalToolsButton" Classes="icon_button toolbar_button" Width="44" Click="OpenWithExternalTools">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
@@ -250,7 +250,7 @@
         <!-- Standard SourceGit Fetch entry point -->
         <Button x:Name="FetchButton"
                 Classes="icon_button toolbar_button"
-                AutomationProperties.Name="Fetch"
+                AutomationProperties.Name="Fetch options"
                 Width="56"
                 Margin="0"
                 Tapped="Fetch">
@@ -266,7 +266,10 @@
             <Grid Width="24" Height="24">
               <Path Width="18" Height="18" HorizontalAlignment="Center" Fill="{DynamicResource Toolbar.Fetch}" Data="{StaticResource Icons.Fetch}"/>
             </Grid>
-            <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Fetch"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="3">
+              <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Fetch…"/>
+              <Path Width="7" Height="4" Data="{StaticResource Icons.Down}"/>
+            </StackPanel>
           </StackPanel>
         </Button>
         <Button Width="0" Height="0" Click="FetchDirectlyByHotKey" IsVisible="False" HotKey="{OnPlatform Ctrl+Down, macOS=⌘+Down}"/>
@@ -275,7 +278,7 @@
         <Button x:Name="FetchWithSubmodulesButton"
                 Classes="icon_button toolbar_button"
                 AutomationProperties.Name="Fetch repository and submodules"
-                Width="82"
+                Width="94"
                 Margin="0"
                 Tapped="FetchRecursivelyWithOptionalPrune"
                 Tag="FetchRecursively"
@@ -303,7 +306,7 @@
                     Fill="{DynamicResource Toolbar.Fetch}"
                     IsVisible="{Binding IsBackgroundRecursiveFetchRunning}"/>
             </Grid>
-            <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Fetch Subs"/>
+            <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Fetch + Subs" MaxWidth="90"/>
           </StackPanel>
         </Button>
         <Button Width="0" Height="0" Click="FetchAndPruneRecursively" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+Shift+Down, macOS=⌘+⌥+⇧+Down}"/>
@@ -316,7 +319,7 @@
         <!-- Standard SourceGit Pull entry point -->
         <Button x:Name="PullButton"
                 Classes="icon_button toolbar_button"
-                AutomationProperties.Name="Pull"
+                AutomationProperties.Name="Pull options"
                 Width="56"
                 Margin="0"
                 Tapped="Pull"
@@ -338,7 +341,10 @@
                        Fill="Green"
                        IsVisible="{Binding CurrentBranch?.Behind, Mode=OneWay, Converter={x:Static c:ListConverters.IsNotNullOrEmpty}}"/>
             </Grid>
-            <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Pull"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="3">
+              <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Pull…"/>
+              <Path Width="7" Height="4" Data="{StaticResource Icons.Down}"/>
+            </StackPanel>
           </StackPanel>
         </Button>
 
@@ -346,7 +352,7 @@
         <Button x:Name="PullTopRepositoryButton"
                 Classes="icon_button toolbar_button"
                 AutomationProperties.Name="Pull top repository only"
-                Width="56"
+                Width="76"
                 Margin="0"
                 Tapped="PullTopRepository"
                 Tag="Pull"
@@ -367,7 +373,7 @@
             <Grid Width="24" Height="24">
               <Path Width="18" Height="18" Fill="{DynamicResource Toolbar.Pull}" Data="{StaticResource Icons.Home}"/>
             </Grid>
-            <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Top"/>
+            <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Pull Top"/>
           </StackPanel>
         </Button>
         <Button Width="0" Height="0" Click="PullDirectlyByHotKey" IsVisible="False" IsEnabled="{Binding !IsBare}" HotKey="{OnPlatform Ctrl+Shift+Down, macOS=⌘+Shift+Down}"/>
@@ -387,7 +393,7 @@
           <ToolTip.Tip>
             <StackPanel Orientation="Vertical">
               <TextBlock Text="Pull the top repository, then update selected submodules to the recorded commits." TextWrapping="Wrap" MaxWidth="680"/>
-              <TextBlock Classes="small" Margin="0,4,0,0" Text="Changes working files. Stops on failure; right-click to choose submodules." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="680"/>
+              <TextBlock Classes="small" Margin="0,4,0,0" Text="Changes working files. Stops on failure. Use the adjacent options menu to choose submodules." Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxWidth="680"/>
               <TextBlock Classes="tooltip_cmd" Margin="0,4,0,0" Text="git pull ...; git submodule update --recursive --init"/>
               <TextBlock Classes="small italic" Margin="0,2,0,0" Text="Ctrl+click additionally fetches and prunes the configured submodules." Foreground="{DynamicResource Brush.FG2}"/>
             </StackPanel>
@@ -399,6 +405,13 @@
             </Grid>
             <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Pull + Subs"/>
           </StackPanel>
+        </Button>
+        <Button x:Name="PullSubmoduleOptionsButton" Classes="icon_button"
+                Width="18" Height="46" Padding="0" Click="OnPullSubmoduleOptionsClicked"
+                IsEnabled="{Binding !IsBare}"
+                AutomationProperties.Name="{DynamicResource Text.Toolbar.SubmoduleOptions}"
+                ToolTip.Tip="{DynamicResource Text.Toolbar.SubmoduleOptions}">
+          <Path Width="8" Height="5" Data="{StaticResource Icons.Down}" Fill="{DynamicResource Toolbar.Pull}"/>
         </Button>
 
       </StackPanel>
@@ -453,7 +466,7 @@
       <Button x:Name="UpdateSubmodulesRecursivelyButton"
               Classes="icon_button toolbar_button"
               AutomationProperties.Name="Update submodules to recorded commits"
-              Width="88"
+              Width="100"
               Margin="0"
               Tapped="UpdateSubmodulesRecursively"
               Tag="UpdateSubmodulesRecursively"
@@ -475,7 +488,10 @@
           <Grid Width="24" Height="24">
             <Path Width="18" Height="18" Fill="{DynamicResource Toolbar.Submodules}" Data="{StaticResource Icons.Submodule}"/>
           </Grid>
-          <TextBlock Classes="toolbar_label" Text="Update Subs"/>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="3">
+            <TextBlock Classes="toolbar_label" Text="Update Subs"/>
+            <Path Width="7" Height="4" Data="{StaticResource Icons.Down}"/>
+          </StackPanel>
         </StackPanel>
       </Button>
       <Button Width="0" Height="0" Click="UpdateSubmodulesRecursively" IsVisible="False" IsEnabled="{Binding !IsBare}" HotKey="{OnPlatform Ctrl+Alt+U, macOS=⌘+⌥+U}"/>
@@ -575,7 +591,7 @@
 
     </WrapPanel>
 
-    <StackPanel x:Name="RightToolbarGroup" Grid.Column="2" Orientation="Horizontal" Margin="6,2,4,2">
+    <StackPanel x:Name="RightToolbarGroup" Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top" Margin="6,2,4,2">
       <Button Classes="icon_button toolbar_button"
               Width="28"
               Height="24"

@@ -32,22 +32,41 @@
         <v:LoadingIcon Width="16" Height="16" Margin="0,0,8,0" IsVisible="{Binding IsSearching}"/>
         <TextBlock Grid.Column="1" Text="{Binding Status}" TextWrapping="Wrap" MaxHeight="72" ToolTip.Tip="{Binding Status}"/>
       </Grid>
-      <ListBox x:Name="ResultsList" Grid.Row="1" ItemsSource="{Binding VisibleResults}" SelectionMode="Single">
-        <ListBox.ItemsPanel>
-          <ItemsPanelTemplate><VirtualizingStackPanel/></ItemsPanelTemplate>
-        </ListBox.ItemsPanel>
-        <ListBox.ItemTemplate>
-          <DataTemplate DataType="vm:ContainingBranch">
-            <Grid ColumnDefinitions="4,24,*,Auto" MinHeight="32" Background="Transparent" ContextRequested="OnBranchContextRequested" ToolTip.Tip="{Binding Name}">
-              <Border Background="{Binding Color}" Margin="0,5"/>
-              <Path Grid.Column="1" Width="14" Height="14" Fill="{Binding Color}" Data="{StaticResource Icons.Branch}" IsVisible="{Binding IsLocal}"/>
-              <Path Grid.Column="1" Width="14" Height="14" Fill="{Binding Color}" Data="{StaticResource Icons.Remote}" IsVisible="{Binding !IsLocal}"/>
-              <TextBlock Grid.Column="2" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-              <TextBlock Grid.Column="3" Text="{Binding Kind}" Foreground="{DynamicResource Brush.FG2}" Margin="12,0,4,0" VerticalAlignment="Center"/>
-            </Grid>
-          </DataTemplate>
-        </ListBox.ItemTemplate>
-      </ListBox>
+      <TabControl Grid.Row="1" SelectedIndex="{Binding SelectedTab, Mode=TwoWay}">
+        <TabItem Header="{Binding BranchTabTitle}">
+          <ListBox x:Name="ResultsList" ItemsSource="{Binding VisibleResults}" SelectionMode="Single" KeyDown="OnResultsKeyDown">
+            <ListBox.ItemsPanel>
+              <ItemsPanelTemplate><VirtualizingStackPanel/></ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <ListBox.ItemTemplate>
+              <DataTemplate DataType="vm:ContainingBranch">
+                <Grid ColumnDefinitions="4,24,*,Auto,28" MinHeight="32" Background="Transparent" ContextRequested="OnBranchContextRequested" ToolTip.Tip="{Binding Name}">
+                  <Border Background="{Binding Color}" Margin="0,5"/>
+                  <Path Grid.Column="1" Width="14" Height="14" Fill="{Binding Color}" Data="{StaticResource Icons.Branch}" IsVisible="{Binding IsLocal}"/>
+                  <Path Grid.Column="1" Width="14" Height="14" Fill="{Binding Color}" Data="{StaticResource Icons.Remote}" IsVisible="{Binding !IsLocal}"/>
+                  <TextBlock Grid.Column="2" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Grid.Column="3" Text="{Binding Kind}" Foreground="{DynamicResource Brush.FG2}" Margin="12,0,4,0" VerticalAlignment="Center"/>
+                  <v:CopyButton Grid.Column="4" Width="24" CopyText="{Binding Name}" ToolTip.Tip="{DynamicResource Text.FindContainingBranches.CopyName}"/>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </TabItem>
+        <TabItem Header="{Binding TagTabTitle}">
+          <ListBox x:Name="TagsList" ItemsSource="{Binding VisibleTags}" SelectionMode="Single" KeyDown="OnResultsKeyDown">
+            <ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
+            <ListBox.ItemTemplate>
+              <DataTemplate DataType="vm:ContainingTag">
+                <Grid ColumnDefinitions="28,*,28" MinHeight="32" Background="Transparent" ContextRequested="OnTagContextRequested" ToolTip.Tip="{Binding Name}">
+                  <Path Width="14" Height="14" Data="{StaticResource Icons.Tag}" Fill="{DynamicResource Brush.FG2}"/>
+                  <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                  <v:CopyButton Grid.Column="2" Width="24" CopyText="{Binding Name}" ToolTip.Tip="{DynamicResource Text.FindContainingBranches.CopyName}"/>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </TabItem>
+      </TabControl>
       <TextBlock Grid.Row="1" Text="{DynamicResource Text.FindContainingBranches.NoMatches}"
                  IsVisible="{Binding IsEmpty}" Foreground="{DynamicResource Brush.FG2}"
                  HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>

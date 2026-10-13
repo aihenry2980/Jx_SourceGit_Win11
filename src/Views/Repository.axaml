@@ -97,6 +97,10 @@
         <Setter Property="Foreground" Value="White"/>
       </Style>
     </Style>
+    <Style Selector="Border.preset_rule_chip">
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border1}"/>
+      <Setter Property="Background" Value="{DynamicResource Brush.BG1}"/>
+    </Style>
     <Style Selector="RadioButton.preset_mode">
       <Setter Property="Height" Value="26"/>
     </Style>
@@ -581,23 +585,24 @@
                   </ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                      <Border Margin="0,0,4,4"
+                      <Border Classes="preset_rule_chip" Margin="0,0,4,4"
                               MaxWidth="{Binding $parent[ItemsControl].Bounds.Width, Converter={x:Static c:DoubleConverters.ToRuleChipMaxWidth}}"
-                              Padding="8,2,4,2"
-                              CornerRadius="10"
+                              Padding="4,2,4,2"
+                              CornerRadius="4"
                               BorderThickness="1"
-                              BorderBrush="#FF10893E"
-                              Background="#1A10893E"
                               DoubleTapped="OnPresetBranchRuleDoubleTapped"
                               ContextRequested="OnPresetBranchRuleContextRequested">
-                        <Grid ColumnDefinitions="*,18">
-                          <TextBlock Grid.Column="0"
+                        <Grid ColumnDefinitions="16,*,18">
+                          <TextBlock Classes="rule_kind" Text="=" FontWeight="Bold"
+                                     Foreground="{DynamicResource Brush.FG2}" VerticalAlignment="Center"
+                                     ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.ExactNames}"/>
+                          <TextBlock Grid.Column="1"
                                      VerticalAlignment="Center"
                                      Text="{Binding .}"
                                      TextWrapping="NoWrap"
                                      TextTrimming="CharacterEllipsis"
                                      ToolTip.Tip="{Binding .}"/>
-                          <Button Grid.Column="1"
+                          <Button Grid.Column="2"
                                   Classes="flat"
                                   Width="12"
                                   Height="12"
@@ -665,23 +670,24 @@
                   </ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                      <Border Margin="0,0,4,4"
+                      <Border Classes="preset_rule_chip" Margin="0,0,4,4"
                               MaxWidth="{Binding $parent[ItemsControl].Bounds.Width, Converter={x:Static c:DoubleConverters.ToRuleChipMaxWidth}}"
-                              Padding="8,2,4,2"
-                              CornerRadius="10"
+                              Padding="4,2,4,2"
+                              CornerRadius="4"
                               BorderThickness="1"
-                              BorderBrush="#FF0078D7"
-                              Background="#1A0078D7"
                               DoubleTapped="OnPresetBranchRuleDoubleTapped"
                               ContextRequested="OnPresetBranchRuleContextRequested">
-                        <Grid ColumnDefinitions="*,18">
-                          <TextBlock Grid.Column="0"
+                        <Grid ColumnDefinitions="16,*,18">
+                          <TextBlock Classes="rule_kind" Text="*" FontWeight="Bold"
+                                     Foreground="{DynamicResource Brush.FG2}" VerticalAlignment="Center"
+                                     ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.ContainsPatterns}"/>
+                          <TextBlock Grid.Column="1"
                                      VerticalAlignment="Center"
                                      Text="{Binding .}"
                                      TextWrapping="NoWrap"
                                      TextTrimming="CharacterEllipsis"
                                      ToolTip.Tip="{Binding .}"/>
-                          <Button Grid.Column="1"
+                          <Button Grid.Column="2"
                                   Classes="flat"
                                   Width="12"
                                   Height="12"
@@ -749,23 +755,24 @@
                   </ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                      <Border Margin="0,0,4,4"
+                      <Border Classes="preset_rule_chip" Margin="0,0,4,4"
                               MaxWidth="{Binding $parent[ItemsControl].Bounds.Width, Converter={x:Static c:DoubleConverters.ToRuleChipMaxWidth}}"
-                              Padding="8,2,4,2"
-                              CornerRadius="10"
+                              Padding="4,2,4,2"
+                              CornerRadius="4"
                               BorderThickness="1"
-                              BorderBrush="#FFD13438"
-                              Background="#1AD13438"
                               DoubleTapped="OnPresetBranchRuleDoubleTapped"
                               ContextRequested="OnPresetBranchRuleContextRequested">
-                        <Grid ColumnDefinitions="*,18">
-                          <TextBlock Grid.Column="0"
+                        <Grid ColumnDefinitions="16,*,18">
+                          <TextBlock Classes="rule_kind" Text="-" FontWeight="Bold"
+                                     Foreground="{DynamicResource Brush.FG2}" VerticalAlignment="Center"
+                                     ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.ExcludeNames}"/>
+                          <TextBlock Grid.Column="1"
                                      VerticalAlignment="Center"
                                      Text="{Binding .}"
                                      TextWrapping="NoWrap"
                                      TextTrimming="CharacterEllipsis"
                                      ToolTip.Tip="{Binding .}"/>
-                          <Button Grid.Column="1"
+                          <Button Grid.Column="2"
                                   Classes="flat"
                                   Width="12"
                                   Height="12"
@@ -822,7 +829,6 @@
             <WrapPanel Orientation="Horizontal" Margin="0,5,0,0">
               <Button x:Name="ApplyPresetBranchFilterButton"
                       Classes="flat primary"
-                      IsEnabled="{Binding PresetBranchFilterDraft.HasChanges}"
                       Padding="8,2"
                       Click="OnApplyPresetBranchFilter">
                 <TextBlock Text="{DynamicResource Text.Repository.BranchesVisibility.ApplyFilter}"/>
