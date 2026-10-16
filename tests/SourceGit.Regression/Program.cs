@@ -93,6 +93,15 @@ internal static partial class Program
             return;
         }
 
+        if (args is ["--upstream-merge"])
+        {
+            TestTabReordering();
+            TestPushConfirmation();
+            TestLauncherTitleIntegration();
+            Console.WriteLine($"PASS: {_checks} upstream merge checks. Isolated data and preview: {_root}");
+            return;
+        }
+
         if (args is ["--folder-filter"])
         {
             TestFolderFilterAfterBranchChanges();
@@ -144,6 +153,7 @@ internal static partial class Program
         TestCrashReports();
         TestFilterEncodingUx();
         TestWorkflowUx();
+        TestLauncherTitleIntegration();
         Console.WriteLine($"PASS: {_checks} checks. Isolated data and preview: {_root}");
     }
 
