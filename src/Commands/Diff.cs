@@ -60,10 +60,11 @@ namespace SourceGit.Commands
 
         public async Task<Models.DiffResult> ReadAsync()
         {
+            // Keep the process alive until its cancellation registration has been removed.
+            using var proc = new Process();
             CancellationTokenRegistration registration = default;
             try
             {
-                using var proc = new Process();
                 proc.StartInfo = CreateGitStartInfo(true);
                 proc.Start();
 
@@ -71,8 +72,15 @@ namespace SourceGit.Commands
                 {
                     registration = CancellationToken.Register(() =>
                     {
-                        if (!proc.HasExited)
-                            Native.OS.TerminateProcess(proc);
+                        try
+                        {
+                            if (!proc.HasExited)
+                                Native.OS.TerminateProcess(proc);
+                        }
+                        catch (InvalidOperationException)
+                        {
+                            // The process may exit between the state check and termination.
+                        }
                     });
                 }
 

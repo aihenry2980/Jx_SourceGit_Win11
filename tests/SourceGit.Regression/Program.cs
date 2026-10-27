@@ -95,6 +95,7 @@ internal static partial class Program
 
         if (args is ["--upstream-merge"])
         {
+            TestMergeLifecycle();
             TestTabReordering();
             TestPushConfirmation();
             TestLauncherTitleIntegration();
@@ -138,6 +139,7 @@ internal static partial class Program
         }
 
         TestNames();
+        TestMergeLifecycle();
         TestRuntimeCrashes();
         TestMissingBranches();
         TestContainingBranches();

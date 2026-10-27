@@ -149,7 +149,15 @@ namespace SourceGit.ViewModels
         {
             if (!Dispatcher.UIThread.CheckAccess())
             {
-                Dispatcher.UIThread.Invoke(() => Complete(succeeded));
+                try
+                {
+                    Dispatcher.UIThread.Invoke(() => Complete(succeeded));
+                }
+                catch (TaskCanceledException)
+                {
+                    // Pending UI updates are canceled when the application exits.
+                }
+
                 return;
             }
 

@@ -632,7 +632,8 @@ namespace SourceGit.Views
 
         private void OnTreeKeyDown(object _, KeyEventArgs e)
         {
-            if (e.Key == Key.F && e.KeyModifiers == (OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control))
+            var cmdKey = OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control;
+            if (e.Key == Key.F && e.KeyModifiers == cmdKey)
             {
                 RaiseEvent(new RoutedEventArgs(SearchRequestedEvent));
                 e.Handled = true;
@@ -686,6 +687,25 @@ namespace SourceGit.Views
                     if (repo.CanCreatePopup())
                         repo.ShowPopup(new ViewModels.RenameBranch(repo, branch));
 
+                    e.Handled = true;
+                }
+            }
+            else if (e.Key == Key.C && e.KeyModifiers == cmdKey)
+            {
+                var selected = BranchesPresenter.SelectedItems;
+                if (selected == null)
+                    return;
+
+                var branches = new List<Models.Branch>();
+                foreach (var item in selected)
+                {
+                    if (item is ViewModels.BranchTreeNode node)
+                        CollectBranchesInNode(branches, node);
+                }
+
+                if (branches.Count == 1)
+                {
+                    var _1 = this.CopyTextAsync(branches[0].Name);
                     e.Handled = true;
                 }
             }
@@ -1181,6 +1201,7 @@ namespace SourceGit.Views
             var copy = new MenuItem();
             copy.Header = App.Text("BranchCM.CopyName");
             copy.Icon = App.CreateMenuIcon("Icons.Copy");
+            copy.Tag = OperatingSystem.IsMacOS() ? "⌘+C" : "Ctrl+C";
             copy.Click += async (_, e) =>
             {
                 await App.CopyTextAsync(branch.Name);
@@ -1482,6 +1503,7 @@ namespace SourceGit.Views
             var copy = new MenuItem();
             copy.Header = App.Text("BranchCM.CopyName");
             copy.Icon = App.CreateMenuIcon("Icons.Copy");
+            copy.Tag = OperatingSystem.IsMacOS() ? "⌘+C" : "Ctrl+C";
             copy.Click += async (_, e) =>
             {
                 await App.CopyTextAsync(name);
