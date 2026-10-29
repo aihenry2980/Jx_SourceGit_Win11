@@ -1,12 +1,7 @@
 using Avalonia.Controls;
-using System;
-using System.ComponentModel;
-
-using Avalonia;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
-using Avalonia.Media;
 using Avalonia.VisualTree;
 
 namespace SourceGit.Views
@@ -16,31 +11,6 @@ namespace SourceGit.Views
         public LauncherPage()
         {
             InitializeComponent();
-        }
-
-        protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
-        {
-            base.OnPropertyChanged(change);
-
-            if (change.Property.Name == nameof(ActualThemeVariant))
-                RefreshToolbarBackground();
-        }
-
-        protected override void OnDataContextChanged(EventArgs e)
-        {
-            base.OnDataContextChanged(e);
-
-            if (_ownerPage != null)
-                _ownerPage.PropertyChanged -= OnOwnerPagePropertyChanged;
-            if (_toolbarRepo != null)
-                _toolbarRepo.PropertyChanged -= OnToolbarRepoPropertyChanged;
-
-            _ownerPage = DataContext as ViewModels.LauncherPage;
-            if (_ownerPage != null)
-                _ownerPage.PropertyChanged += OnOwnerPagePropertyChanged;
-
-            AttachToolbarRepo(_ownerPage?.Data as ViewModels.Repository);
-            RefreshToolbarBackground();
         }
 
         private async void OnPopupSureByHotKey(object sender, RoutedEventArgs e)
@@ -115,45 +85,5 @@ namespace SourceGit.Views
         {
             this.FindAncestorOfType<ChromelessWindow>()?.BeginMoveWindow(sender, e);
         }
-
-        private void OnOwnerPagePropertyChanged(object sender, PropertyChangedEventArgs e)
-        {
-            if (e.PropertyName == nameof(ViewModels.LauncherPage.Data))
-            {
-                AttachToolbarRepo(_ownerPage?.Data as ViewModels.Repository);
-                RefreshToolbarBackground();
-            }
-        }
-
-        private void AttachToolbarRepo(ViewModels.Repository repo)
-        {
-            if (_toolbarRepo != null)
-                _toolbarRepo.PropertyChanged -= OnToolbarRepoPropertyChanged;
-
-            _toolbarRepo = repo;
-            if (_toolbarRepo != null)
-                _toolbarRepo.PropertyChanged += OnToolbarRepoPropertyChanged;
-        }
-
-        private void OnToolbarRepoPropertyChanged(object sender, PropertyChangedEventArgs e)
-        {
-            if (e.PropertyName == nameof(ViewModels.Repository.AccentToolbarBackground))
-                RefreshToolbarBackground();
-        }
-
-        private void RefreshToolbarBackground()
-        {
-            if (_toolbarRepo != null)
-            {
-                ToolBarBorder.Background = _toolbarRepo.AccentToolbarBackground;
-                return;
-            }
-
-            var fallback = this.FindResource("Brush.ToolBar") as IBrush;
-            ToolBarBorder.Background = fallback;
-        }
-
-        private ViewModels.LauncherPage _ownerPage = null;
-        private ViewModels.Repository _toolbarRepo = null;
     }
 }

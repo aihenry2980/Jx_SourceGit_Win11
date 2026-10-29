@@ -93,6 +93,15 @@ internal static partial class Program
             return;
         }
 
+        if (args is ["--tab-colors"])
+        {
+            TestTabHighlightPresentation();
+            TestTabReordering();
+            TestLauncherTitleIntegration();
+            Console.WriteLine($"PASS: {_checks} tab presentation checks. Isolated data and previews: {_root}");
+            return;
+        }
+
         if (args is ["--upstream-merge"])
         {
             TestPatchMergeIntegration();
@@ -154,6 +163,7 @@ internal static partial class Program
         TestPushConfirmation();
         TestCompactSubmodules();
         TestTabReordering();
+        TestTabHighlightPresentation();
         TestCrashReports();
         TestFilterEncodingUx();
         TestWorkflowUx();

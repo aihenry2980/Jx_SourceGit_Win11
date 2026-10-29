@@ -483,22 +483,6 @@ namespace SourceGit.ViewModels
             }
         }
 
-        public IBrush AccentToolbarBackground
-        {
-            get
-            {
-                var c = AccentColor;
-                if (Application.Current?.ActualThemeVariant == ThemeVariant.Dark)
-                {
-                    byte Darken(byte v) => (byte)Math.Clamp((int)Math.Round(v * 0.42 + 0x18 * 0.58), 0, 255);
-                    return new SolidColorBrush(Color.FromArgb(0xFF, Darken(c.R), Darken(c.G), Darken(c.B)));
-                }
-
-                byte Lighten(byte v) => (byte)(v + (255 - v) * 0.82);
-                return new SolidColorBrush(Color.FromArgb(0xFF, Lighten(c.R), Lighten(c.G), Lighten(c.B)));
-            }
-        }
-
         public IBrush CurrentBranchDisplayBackground
         {
             get
@@ -2456,7 +2440,6 @@ namespace SourceGit.ViewModels
         {
             OnPropertyChanged(nameof(AccentColor));
             OnPropertyChanged(nameof(AccentHoveredColor));
-            OnPropertyChanged(nameof(AccentToolbarBackground));
         }
 
         public void ClearHistoryFilters()

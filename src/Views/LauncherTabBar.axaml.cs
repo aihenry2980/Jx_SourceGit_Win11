@@ -15,6 +15,29 @@ namespace SourceGit.Views
 {
     public class LauncherTabSizeBox : Border
     {
+        public static readonly StyledProperty<int> HighlightProperty =
+            AvaloniaProperty.Register<LauncherTabSizeBox, int>(nameof(Highlight));
+
+        public static readonly StyledProperty<bool> IsActiveProperty =
+            AvaloniaProperty.Register<LauncherTabSizeBox, bool>(nameof(IsActive));
+
+        public static readonly DirectProperty<LauncherTabSizeBox, IBrush> ForegroundProperty =
+            AvaloniaProperty.RegisterDirect<LauncherTabSizeBox, IBrush>(nameof(Foreground), static o => o.Foreground);
+
+        public int Highlight
+        {
+            get => GetValue(HighlightProperty);
+            set => SetValue(HighlightProperty, value);
+        }
+
+        public bool IsActive
+        {
+            get => GetValue(IsActiveProperty);
+            set => SetValue(IsActiveProperty, value);
+        }
+
+        public IBrush Foreground => _foreground;
+
         public static readonly DirectProperty<LauncherTabSizeBox, bool> UseFixedWidthProperty =
             AvaloniaProperty.RegisterDirect<LauncherTabSizeBox, bool>(
                 nameof(UseFixedWidth),
@@ -34,6 +57,12 @@ namespace SourceGit.Views
 
         protected override Type StyleKeyOverride => typeof(Border);
 
+        protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+        {
+            base.OnAttachedToVisualTree(e);
+            UpdateColors();
+        }
+
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
         {
             base.OnPropertyChanged(change);
@@ -45,9 +74,41 @@ namespace SourceGit.Views
                 else
                     Width = double.NaN;
             }
+            else if (change.Property == HighlightProperty || change.Property == IsActiveProperty ||
+                     change.Property.Name == nameof(ActualThemeVariant))
+            {
+                UpdateColors();
+            }
+        }
+
+        private void UpdateColors()
+        {
+            var fallback = this.FindResource(ActualThemeVariant, "Color.Contents");
+            var highlight = Models.Bookmarks.Get(Highlight) as ISolidColorBrush;
+            var color = highlight?.Color ??
+                (fallback is Color background ? background : ActualThemeVariant == ThemeVariant.Dark ? Color.FromRgb(40, 40, 40) : Colors.White);
+            if (IsActive)
+                color = Color.FromArgb(color.A, (byte)(color.R * 0.72), (byte)(color.G * 0.72), (byte)(color.B * 0.72));
+            else if (highlight != null)
+                color = Color.FromArgb(color.A,
+                    (byte)(color.R + (255 - color.R) * 0.75),
+                    (byte)(color.G + (255 - color.G) * 0.75),
+                    (byte)(color.B + (255 - color.B) * 0.75));
+
+            SetCurrentValue(BackgroundProperty, new SolidColorBrush(color));
+            static double Linearize(byte channel)
+            {
+                var value = channel / 255.0;
+                return value <= 0.04045 ? value / 12.92 : Math.Pow((value + 0.055) / 1.055, 2.4);
+            }
+
+            var luminance = 0.2126 * Linearize(color.R) + 0.7152 * Linearize(color.G) + 0.0722 * Linearize(color.B);
+            SetAndRaise(ForegroundProperty, ref _foreground, luminance > 0.179 ? Brushes.Black : Brushes.White);
+            this.FindAncestorOfType<LauncherTabBar>()?.InvalidateVisual();
         }
 
         private bool _useFixedWidth = false;
+        private IBrush _foreground = Brushes.Black;
     }
 
     public partial class LauncherTabBar : UserControl
@@ -105,45 +166,6 @@ namespace SourceGit.Views
             var height = LauncherTabsScroller.Viewport.Height;
 
             var selectedIdx = LauncherTabsList.SelectedIndex;
-            var count = LauncherTabsList.ItemCount;
-            var inactiveBorder = new SolidColorBrush(
-                ActualThemeVariant == ThemeVariant.Dark ? Colors.White : Colors.Black,
-                ActualThemeVariant == ThemeVariant.Dark ? 0.32 : 0.25);
-            var inactiveFill = new SolidColorBrush(
-                ActualThemeVariant == ThemeVariant.Dark ? Colors.White : Colors.Black,
-                ActualThemeVariant == ThemeVariant.Dark ? 0.05 : 0.035);
-            var inactivePen = new Pen(inactiveBorder);
-
-            using (context.PushClip(new Rect(
-                LauncherTabsScroller.Bounds.X,
-                0,
-                LauncherTabsScroller.Viewport.Width,
-                height)))
-            {
-                for (var i = 0; i < count; i++)
-                {
-                    if (i == selectedIdx)
-                        continue;
-
-                    var container = LauncherTabsList.ContainerFromIndex(i);
-                    if (container == null)
-                        continue;
-
-                    var containerStartX = container.Bounds.Left;
-                    var containerEndX = container.Bounds.Right;
-                    if (containerEndX < startX || containerStartX > endX)
-                        continue;
-
-                    var drawLeftX = containerStartX - startX + LauncherTabsScroller.Bounds.X + 0.5;
-                    var drawRightX = containerEndX - startX + LauncherTabsScroller.Bounds.X - 0.5;
-                    var tabRect = new Rect(drawLeftX, 0.5, drawRightX - drawLeftX, height - 1);
-                    context.DrawRectangle(
-                        inactiveFill,
-                        inactivePen,
-                        new RoundedRect(tabRect, new CornerRadius(5)));
-                }
-            }
-
             var selected = LauncherTabsList.ContainerFromIndex(selectedIdx);
             if (selected == null)
                 return;
@@ -189,12 +211,8 @@ namespace SourceGit.Views
                 }
             }
 
-            IBrush fill = this.FindResource("Brush.ToolBar") as IBrush;
-            if (this.FindResource("SystemAccentColor") is Color accent)
-            {
-                var opacity = ActualThemeVariant == ThemeVariant.Dark ? 0.28 : 0.20;
-                fill = new SolidColorBrush(accent, opacity);
-            }
+            var tab = selected.GetVisualDescendants().OfType<LauncherTabSizeBox>().FirstOrDefault();
+            var fill = tab?.Background ?? this.FindResource("Brush.ToolBar") as IBrush;
 
             var stroke = new Pen(this.FindResource("Brush.Border1") as IBrush, 1.25);
             context.DrawGeometry(fill, stroke, geo);

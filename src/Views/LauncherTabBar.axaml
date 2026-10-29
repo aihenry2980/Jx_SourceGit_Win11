@@ -41,28 +41,26 @@
             </Style>
             <Style Selector="ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
               <Setter Property="Background" Value="Transparent"/>
-              <Setter Property="Opacity" Value=".68"/>
+              <Setter Property="Opacity" Value="1"/>
             </Style>
             <Style Selector="ListBoxItem:not(:selected) Border.launcher_tab">
-              <Setter Property="Background" Value="{DynamicResource Brush.Contents}"/>
               <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border1}"/>
               <Setter Property="BorderThickness" Value="1"/>
               <Setter Property="CornerRadius" Value="6"/>
             </Style>
             <Style Selector="ListBoxItem:not(:selected):pointerover Border.launcher_tab">
-              <Setter Property="Background" Value="{DynamicResource Brush.Window}"/>
               <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}"/>
             </Style>
             <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
               <Setter Property="Background" Value="Transparent"/>
-              <Setter Property="Opacity" Value=".9"/>
+              <Setter Property="Opacity" Value="1"/>
             </Style>
             <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
               <Setter Property="Background" Value="Transparent"/>
               <Setter Property="Opacity" Value="1"/>
             </Style>
             <Style Selector="ListBoxItem:selected TextBlock">
-              <Setter Property="FontWeight" Value="SemiBold"/>
+              <Setter Property="FontWeight" Value="Bold"/>
             </Style>
           </ListBox.Styles>
 
@@ -76,7 +74,10 @@
             <DataTemplate DataType="vm:LauncherPage">
               <v:LauncherTabSizeBox Classes="launcher_tab"
                                     UseFixedWidth="False" Height="30"
-                                    Padding="0,2,0,0"
+                                    Highlight="{Binding Node.Bookmark}"
+                                    IsActive="{Binding $parent[ListBoxItem].IsSelected}"
+                                    CornerRadius="6"
+                                    Padding="0"
                                     ContextRequested="OnTabContextRequested"
                                     DragDrop.AllowDrop="True">
                 <ToolTip.Tip>
@@ -90,15 +91,11 @@
                   </Grid>
                 </ToolTip.Tip>
 
-                <Grid ColumnDefinitions="Auto,*,Auto">
-                  <v:Bookmark Grid.Column="0"
-                              Width="12" Height="12"
-                              Margin="12,0"
-                              Value="{Binding Node.Bookmark, Mode=OneWay}"
-                              IsVisible="{Binding Node.IsRepository}"/>
+                <Grid>
+                <Grid ColumnDefinitions="Auto,*,Auto" Margin="16,2,0,3">
                   <Path Grid.Column="0"
-                        Width="12" Height="12" Margin="8,0"
-                        Fill="{DynamicResource Brush.FG1}"
+                        Width="12" Height="12" Margin="0,0,8,0"
+                        Fill="{Binding $parent[v:LauncherTabSizeBox].Foreground}"
                         Data="{StaticResource Icons.Repositories}"
                         IsVisible="{Binding !Node.IsRepository}"
                         IsHitTestVisible="False"/>
@@ -116,6 +113,7 @@
                              Fill="{Binding DirtyState, Converter={x:Static c:DirtyStateConverters.ToBrush}}"/>
 
                     <TextBlock Grid.Column="1"
+                               Foreground="{Binding $parent[v:LauncherTabSizeBox].Foreground}"
                                VerticalAlignment="Center"
                                FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=DefaultFontSize, Converter={x:Static c:DoubleConverters.Decrease}}"
                                TextAlignment="Center"
@@ -124,6 +122,7 @@
                   </Grid>
 
                   <TextBlock Grid.Column="1"
+                             Foreground="{Binding $parent[v:LauncherTabSizeBox].Foreground}"
                              HorizontalAlignment="Stretch" VerticalAlignment="Center"
                              FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=DefaultFontSize, Converter={x:Static c:DoubleConverters.Decrease}}"
                              TextAlignment="Center"
@@ -145,8 +144,26 @@
                                    Foreground="{DynamicResource MenuFlyoutItemKeyboardAcceleratorTextForeground}"/>
                       </StackPanel>
                     </ToolTip.Tip>
-                    <Path Width="9" Height="9" Data="{StaticResource Icons.Close}"/>
+                    <Path Width="9" Height="9" Data="{StaticResource Icons.Close}"
+                          Fill="{Binding $parent[v:LauncherTabSizeBox].Foreground}"/>
                   </Button>
+                </Grid>
+                <Path Classes="active_tab_arrow"
+                      Width="8" Height="10" Margin="4,0,0,1" HorizontalAlignment="Left" VerticalAlignment="Center"
+                      Data="{StaticResource Icons.TriangleRight}"
+                      Fill="{Binding $parent[v:LauncherTabSizeBox].Foreground}"
+                      IsVisible="{Binding $parent[v:LauncherTabSizeBox].IsActive}"
+                      IsHitTestVisible="False"/>
+                <Border Classes="active_tab_outline"
+                        BorderThickness="2" CornerRadius="6"
+                        BorderBrush="{Binding $parent[v:LauncherTabSizeBox].Foreground}"
+                        IsVisible="{Binding $parent[v:LauncherTabSizeBox].IsActive}"
+                        IsHitTestVisible="False"/>
+                <Border Classes="active_tab_underline"
+                        Height="3" Margin="8,0,8,0" VerticalAlignment="Bottom"
+                        Background="{Binding $parent[v:LauncherTabSizeBox].Foreground}"
+                        IsVisible="{Binding $parent[v:LauncherTabSizeBox].IsActive}"
+                        IsHitTestVisible="False"/>
                 </Grid>
               </v:LauncherTabSizeBox>
             </DataTemplate>
