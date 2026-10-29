@@ -29,6 +29,14 @@ internal static partial class Program
             window = new Window { Content = view, Width = 1100, Height = 850 };
             window.Show();
             PumpFor(200);
+            repo.IsSearchingCommits = true;
+            PumpFor(50);
+            var branches = view.FindControl<SourceGit.Views.BranchTree>("LocalBranchTree");
+            branches.Height = 1;
+            repo.IsSearchingCommits = false;
+            PumpFor(100);
+            Check(branches.Bounds.Height > 1 && view.FindControl<ScrollViewer>("DashboardScrollViewer").IsVisible,
+                "Returning from commit search recalculates the normal sidebar layout");
             var exact = view.FindControl<TextBox>("PresetBranchExactNameInputBox");
             var contains = view.FindControl<TextBox>("PresetBranchContainsPatternInputBox");
             var exclude = view.FindControl<TextBox>("PresetBranchExcludeNameInputBox");

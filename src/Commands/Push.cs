@@ -31,7 +31,7 @@ namespace SourceGit.Commands
             if (force)
                 builder.Append("--force-with-lease ");
 
-            builder.Append(remote.Name).Append(' ').Append(revision.SHA).Append(':').Append(remoteBranch.Name);
+            builder.Append(remote.Name).Append(' ').Append(revision.SHA).Append(":refs/heads/").Append(remoteBranch.Name);
             Args = builder.ToString();
         }
 
@@ -94,7 +94,12 @@ namespace SourceGit.Commands
             if (noVerify)
                 builder.Append("--no-verify ");
 
-            builder.Append(remote).Append(' ').Append(local).Append(':').Append(remoteBranch);
+            var source = local;
+            if (local != "HEAD" && !local.StartsWith("refs/", StringComparison.Ordinal) &&
+                (_knownLocalBranch || !(local.Length is 40 or 64 && local.All(char.IsAsciiHexDigit))))
+                source = $"refs/heads/{local}";
+            var destination = remoteBranch.StartsWith("refs/", StringComparison.Ordinal) ? remoteBranch : $"refs/heads/{remoteBranch}";
+            builder.Append(remote).Append(' ').Append(source).Append(':').Append(destination);
             Args = builder.ToString();
         }
 

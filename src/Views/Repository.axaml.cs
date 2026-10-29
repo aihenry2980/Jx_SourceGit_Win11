@@ -49,6 +49,12 @@ namespace SourceGit.Views
                 TxtSearchCommitsBox.Focus();
         }
 
+        private void OnDashboardPropertyChanged(object sender, AvaloniaPropertyChangedEventArgs e)
+        {
+            if (e.Property == IsVisibleProperty && sender is ScrollViewer { IsVisible: true })
+                UpdateLeftSidebarLayout();
+        }
+
         private void OnDashboardScrollViewerPointerWheelChanged(object sender, PointerWheelEventArgs e)
         {
             if (sender is ScrollViewer scrollViewer && !scrollViewer.IsPointerOver)

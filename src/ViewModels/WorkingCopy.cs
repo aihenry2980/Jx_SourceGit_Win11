@@ -850,8 +850,10 @@ namespace SourceGit.ViewModels
 
             if (File.Exists(Path.Combine(_repo.GitDir, "CHERRY_PICK_HEAD")))
                 nextContext = await CherryPickInProgress.CreateAsync(_repo);
-            else if (Directory.Exists(Path.Combine(_repo.GitDir, "rebase-merge")) || Directory.Exists(Path.Combine(_repo.GitDir, "rebase-apply")))
+            else if (Directory.Exists(Path.Combine(_repo.GitDir, "rebase-merge")))
                 nextContext = await RebaseInProgress.CreateAsync(_repo);
+            else if (Directory.Exists(Path.Combine(_repo.GitDir, "rebase-apply")))
+                nextContext = new AmInProgress(_repo);
             else if (File.Exists(Path.Combine(_repo.GitDir, "REVERT_HEAD")))
                 nextContext = await RevertInProgress.CreateAsync(_repo);
             else if (File.Exists(Path.Combine(_repo.GitDir, "MERGE_HEAD")))
@@ -876,6 +878,12 @@ namespace SourceGit.ViewModels
 
             if (LoadCommitMessageFromFile(Path.Combine(_repo.GitDir, "MERGE_MSG")))
                 return;
+
+            if (_inProgressContext is AmInProgress)
+            {
+                LoadCommitMessageFromFile(Path.Combine(_repo.GitDir, "rebase-apply", "final-commit"));
+                return;
+            }
 
             if (_inProgressContext is not RebaseInProgress { } rebasing)
                 return;

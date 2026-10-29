@@ -20,13 +20,15 @@ internal static partial class Program
 
         var key = new SourceGit.AI.ApiKey { Service = "https://fixture.invalid", Storage = SourceGit.AI.ApiKeyStorage.PlainText,
             KeyToAccess = "fixture-only-key" };
-        var edit = key.CreateEditObject();
-        edit.KeyToAccess = "changed-fixture-key";
-        Check(key.KeyToAccess == "fixture-only-key" && edit.Service == key.Service && edit.Storage == key.Storage,
-            "API key editing clones plaintext configuration without mutating the original or accessing the keychain");
+        Check(key.GetRawApiKey() == "fixture-only-key", "Plaintext API key retrieval returns the configured fixture without accessing the keychain");
         key.Storage = SourceGit.AI.ApiKeyStorage.EnvironmentVariable;
-        key.KeyToAccess = "SOURCEGIT_TEST_ONLY_API_KEY";
-        Check(key.CreateEditObject().KeyToAccess == key.KeyToAccess, "Environment-backed key editing preserves the variable name");
+        key.KeyToAccess = "SOURCEGIT_TEST_API_KEY_" + Guid.NewGuid().ToString("N");
+        Environment.SetEnvironmentVariable(key.KeyToAccess, "environment-fixture-key");
+        try
+        {
+            Check(key.GetRawApiKey() == "environment-fixture-key", "Environment-backed API key retrieval resolves the configured variable");
+        }
+        finally { Environment.SetEnvironmentVariable(key.KeyToAccess, null); }
 
         var path = NewRepository("delete attached worktree");
         Git(path, "commit", "--allow-empty", "-m", "initial");

@@ -95,6 +95,7 @@ internal static partial class Program
 
         if (args is ["--upstream-merge"])
         {
+            TestPatchMergeIntegration();
             TestMergeLifecycle();
             TestTabReordering();
             TestPushConfirmation();
@@ -139,6 +140,7 @@ internal static partial class Program
         }
 
         TestNames();
+        TestPatchMergeIntegration();
         TestMergeLifecycle();
         TestRuntimeCrashes();
         TestMissingBranches();
@@ -626,6 +628,15 @@ internal static partial class Program
         Check(Git(remotePath, "rev-parse", "refs/heads/release") == oldHead, "Unconfirmed push does not change the remote");
         Check(Wait(Push("main", "refs/heads/main").RunAsync()), "Same branch with canonical remote ref pushes without a warning");
         Check(Git(remotePath, "rev-parse", "refs/heads/main") == newHead, "Same-name push updates the correct branch");
+        Git(path, "tag", "main");
+        Git(remotePath, "tag", "main", oldHead);
+        Check(Wait(Push("main", "main").RunAsync()), "String-based branch push is unambiguous when a tag has the same name");
+        var typedPush = new SourceGit.Commands.Push(path, new Branch { Name = "main", IsLocal = true },
+            new Remote { Name = "origin" }, new Branch { Name = "main" }, false, false, false, false, false);
+        Check(Wait(typedPush.ExecAsync()), "Typed branch push is unambiguous when a tag has the same name");
+        Check(Wait(new SourceGit.Commands.Push(path, new Commit { SHA = newHead }, new Remote { Name = "origin" },
+            new Branch { Name = "main" }, false).ExecAsync()) && Git(remotePath, "rev-parse", "refs/tags/main") == oldHead,
+            "Revision push targets the branch explicitly and leaves a same-name remote tag unchanged");
 
         var owner = new Window { Width = 1100, Height = 800 };
         _lifetime.MainWindow = owner;
