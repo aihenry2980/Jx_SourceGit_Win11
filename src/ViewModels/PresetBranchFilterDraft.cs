@@ -12,7 +12,10 @@ namespace SourceGit.ViewModels
             set
             {
                 if (SetProperty(ref _exactNames, value ?? string.Empty))
+                {
                     NotifyChanges();
+                    Apply(false);
+                }
             }
         }
 
@@ -22,7 +25,10 @@ namespace SourceGit.ViewModels
             set
             {
                 if (SetProperty(ref _containsPatterns, value ?? string.Empty))
+                {
                     NotifyChanges();
+                    Apply(false);
+                }
             }
         }
 
@@ -32,7 +38,10 @@ namespace SourceGit.ViewModels
             set
             {
                 if (SetProperty(ref _excludeNames, value ?? string.Empty))
+                {
                     NotifyChanges();
+                    Apply(false);
+                }
             }
         }
 
@@ -78,42 +87,68 @@ namespace SourceGit.ViewModels
 
         public void Reset()
         {
-            _appliedExact = _repo.PresetBranchExactNames;
-            _appliedContains = _repo.PresetBranchContainsPatterns;
-            _appliedExclude = _repo.PresetBranchExcludeNames;
-            ExactNames = _appliedExact;
-            ContainsPatterns = _appliedContains;
-            ExcludeNames = _appliedExclude;
-            ExactInput = ContainsInput = ExcludeInput = string.Empty;
+            Reset(true);
+        }
+
+        private void Reset(bool clearInputs)
+        {
+            _synchronizing = true;
+            try
+            {
+                _appliedExact = _repo.PresetBranchExactNames;
+                _appliedContains = _repo.PresetBranchContainsPatterns;
+                _appliedExclude = _repo.PresetBranchExcludeNames;
+                ExactNames = _appliedExact;
+                ContainsPatterns = _appliedContains;
+                ExcludeNames = _appliedExclude;
+                if (clearInputs)
+                    ExactInput = ContainsInput = ExcludeInput = string.Empty;
+            }
+            finally { _synchronizing = false; }
             NotifyChanges();
         }
 
         public void Apply()
         {
+            Apply(true);
+        }
+
+        private void Apply(bool includeInputs)
+        {
+            if (_applying || _synchronizing)
+                return;
+
             _applying = true;
             try
             {
-                _repo.PresetBranchExactNames = AppendInput(ExactNames, ExactInput);
-                _repo.PresetBranchContainsPatterns = AppendInput(ContainsPatterns, ContainsInput);
-                _repo.PresetBranchExcludeNames = AppendInput(ExcludeNames, ExcludeInput);
+                // Confirmed items apply immediately without consuming unfinished text
+                // in this field or any of the other rule inputs.
+                _repo.PresetBranchExactNames = includeInputs ? AppendInput(ExactNames, ExactInput) : ExactNames;
+                _repo.PresetBranchContainsPatterns = includeInputs ? AppendInput(ContainsPatterns, ContainsInput) : ContainsPatterns;
+                _repo.PresetBranchExcludeNames = includeInputs ? AppendInput(ExcludeNames, ExcludeInput) : ExcludeNames;
                 _repo.ApplyPresetBranchFilter();
-                Reset();
+                Reset(includeInputs);
             }
             finally { _applying = false; }
         }
 
         public void SynchronizeAppliedRules()
         {
-            if (_applying)
+            if (_applying || _synchronizing)
                 return;
 
             // Preserve pending edits when another entry point adds a branch to the active filter.
-            ExactNames = Rebase(ExactNames, _appliedExact, _repo.PresetBranchExactNames);
-            ContainsPatterns = Rebase(ContainsPatterns, _appliedContains, _repo.PresetBranchContainsPatterns);
-            ExcludeNames = Rebase(ExcludeNames, _appliedExclude, _repo.PresetBranchExcludeNames);
-            _appliedExact = _repo.PresetBranchExactNames;
-            _appliedContains = _repo.PresetBranchContainsPatterns;
-            _appliedExclude = _repo.PresetBranchExcludeNames;
+            _synchronizing = true;
+            try
+            {
+                ExactNames = Rebase(ExactNames, _appliedExact, _repo.PresetBranchExactNames);
+                ContainsPatterns = Rebase(ContainsPatterns, _appliedContains, _repo.PresetBranchContainsPatterns);
+                ExcludeNames = Rebase(ExcludeNames, _appliedExclude, _repo.PresetBranchExcludeNames);
+                _appliedExact = _repo.PresetBranchExactNames;
+                _appliedContains = _repo.PresetBranchContainsPatterns;
+                _appliedExclude = _repo.PresetBranchExcludeNames;
+            }
+            finally { _synchronizing = false; }
             NotifyChanges();
         }
 
@@ -150,5 +185,6 @@ namespace SourceGit.ViewModels
         private string _appliedContains;
         private string _appliedExclude;
         private bool _applying;
+        private bool _synchronizing;
     }
 }

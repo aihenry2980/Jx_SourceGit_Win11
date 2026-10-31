@@ -44,18 +44,22 @@ internal static partial class Program
             exact.Text = "feature/test";
             PumpFor(50);
             Check(draft.HasChanges && apply.IsEnabled && repo.PresetBranchExactNames == "main",
-                "Typing marks draft pending without applying it");
+                "Unfinished input stays editable until it becomes a confirmed item");
             Invoke(view, "OnPresetBranchExactNameInputKeyDown", exact, new KeyEventArgs { Key = Key.Enter });
             Check(draft.ExactNames.Contains("feature/test") && string.IsNullOrEmpty(draft.ExactInput) &&
-                repo.PresetBranchExactNames == "main", "Enter tokenizes without applying");
+                repo.PresetBranchExactNames == "main\nfeature/test" && !draft.HasChanges,
+                "Enter adds and applies an exact-name item without clicking Apply");
             contains.Text = "feature/";
             Invoke(view, "OnPresetBranchContainsPatternInputKeyDown", contains, new KeyEventArgs { Key = Key.Space });
             exclude.Text = "external";
             Invoke(view, "CommitPresetBranchSuggestion", repo, exclude, "external");
-            Check(string.IsNullOrEmpty(repo.PresetBranchContainsPatterns) && string.IsNullOrEmpty(repo.PresetBranchExcludeNames),
-                "Space and suggestion selection only update drafts");
+            Check(repo.PresetBranchContainsPatterns == "feature/" && repo.PresetBranchExcludeNames == "external" && !draft.HasChanges,
+                "Space and suggestion selection apply contains and exclusion items immediately");
+            Check(repo.UIStates.HistoryFilters.Any(f => f.Pattern == "refs/heads/feature/test"),
+                "Auto-application updates active graph filters as well as saved rules");
             Invoke(view, "OnClearPresetBranchExactNames", exact, new RoutedEventArgs());
-            Check(string.IsNullOrEmpty(draft.ExactNames) && repo.PresetBranchExactNames == "main", "Clear does not apply");
+            Check(string.IsNullOrEmpty(draft.ExactNames) && string.IsNullOrEmpty(repo.PresetBranchExactNames) && !draft.HasChanges,
+                "Clearing exact-name items updates active rules immediately");
             draft.ExactNames = "main";
             exact.Text = "feature/test";
             Invoke(view, "OnApplyPresetBranchFilter", apply, new RoutedEventArgs());
@@ -73,11 +77,12 @@ internal static partial class Program
                 f.Mode == SourceGit.Models.FilterMode.Included) && !draft.HasChanges && apply.IsEffectivelyEnabled,
                 "Reapplying unchanged rules adopts the new matching remote branch and stays enabled");
             Invoke(view, "OnRemovePresetBranchExactName", new Button { Tag = "main" }, new RoutedEventArgs());
-            Check(draft.HasChanges && repo.PresetBranchExactNames.Contains("main"), "Removing a chip only edits the draft");
+            Check(!draft.HasChanges && repo.PresetBranchExactNames == "feature/test", "Removing a chip immediately applies the remaining rules");
+            draft.ContainsInput = "pending";
             repo.SetPresetBranchFilterMode(true);
             Check(repo.IsShowingAllBranches && draft.HasChanges, "All mode preserves pending edits");
             repo.SetPresetBranchFilterMode(false);
-            Check(!repo.IsShowingAllBranches && draft.ExactNames == "feature/test" && repo.PresetBranchExactNames.Contains("main"),
+            Check(!repo.IsShowingAllBranches && draft.ExactNames == "feature/test" && !repo.PresetBranchExactNames.Contains("main"),
                 "By-rules mode uses applied settings without consuming draft edits");
             draft.ContainsInput = "pending";
             repo.AddBranchToPresetFilter(repo.Branches.Single(b => b.Name == "external"));
@@ -85,6 +90,8 @@ internal static partial class Program
                 draft.ContainsInput == "pending" && string.IsNullOrEmpty(draft.ExcludeNames),
                 "Graph add-to-filter synchronizes draft while retaining unrelated pending edits");
             draft.ExcludeNames = "blocked";
+            Check(repo.PresetBranchExcludeNames == "blocked" && repo.PresetBranchContainsPatterns == "feature/" && draft.ContainsInput == "pending",
+                "Applying changed items never consumes unfinished text in another field");
             foreach (var locale in new[] { "en_US", "zh_CN" })
             {
                 SourceGit.App.SetLocale(locale);
@@ -101,11 +108,35 @@ internal static partial class Program
                 "Rule markers distinguish exact, contains and exclusion matching without branch colors");
             Invoke(view, "OnResetPresetBranchFilterDraft", apply, new RoutedEventArgs());
             Check(!draft.HasChanges && draft.ExactNames == repo.PresetBranchExactNames && string.IsNullOrEmpty(draft.ContainsInput),
-                "Discard restores applied rules and clears unfinished input");
+                "Discard clears unfinished input while retaining already auto-applied rules");
+            Check(repo.PresetBranchExcludeNames == "blocked", "Discarding text does not undo confirmed items");
+            repo.SetPresetBranchFilterMode(true);
+            exact.Text = "main";
+            Invoke(view, "OnPresetBranchExactNameInputKeyDown", exact, new KeyEventArgs { Key = Key.Enter });
+            Check(!repo.IsShowingAllBranches && !draft.HasChanges && repo.PresetBranchExactNames.Contains("main"),
+                "Adding an item in All mode automatically activates the updated branch filter");
             repo.SetPresetBranchFilterMode(true);
             apply.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Check(!repo.IsShowingAllBranches && !draft.HasChanges && apply.IsEffectivelyEnabled,
                 "Apply also reactivates unchanged rules from All mode");
+            exact.Text = "pasted/one pasted/two pasted/one";
+            PumpFor(60);
+            Check(!draft.HasChanges && string.IsNullOrEmpty(exact.Text) &&
+                repo.Settings.GetPresetBranchExactNameList().Count(n => n == "pasted/one") == 1 &&
+                repo.Settings.GetPresetBranchExactNameList().Contains("pasted/two"),
+                "Pasting several delimited items applies them automatically and removes duplicates");
+            Invoke(view, "OnRemovePresetBranchContainsPattern", new Button { Tag = "feature/" }, new RoutedEventArgs());
+            Invoke(view, "OnRemovePresetBranchExcludeName", new Button { Tag = "blocked" }, new RoutedEventArgs());
+            Check(string.IsNullOrEmpty(repo.PresetBranchContainsPatterns) && string.IsNullOrEmpty(repo.PresetBranchExcludeNames),
+                "Removing contains and exclusion chips immediately updates both rule groups");
+            contains.Text = "feature/";
+            Invoke(view, "OnPresetBranchContainsPatternInputKeyDown", contains, new KeyEventArgs { Key = Key.Enter });
+            exclude.Text = "external";
+            Invoke(view, "CommitPresetBranchSuggestion", repo, exclude, "external");
+            Invoke(view, "OnClearPresetBranchContainsPatterns", contains, new RoutedEventArgs());
+            Invoke(view, "OnClearPresetBranchExcludeNames", exclude, new RoutedEventArgs());
+            Check(string.IsNullOrEmpty(repo.PresetBranchContainsPatterns) && string.IsNullOrEmpty(repo.PresetBranchExcludeNames) && !draft.HasChanges,
+                "Clearing contains and exclusion groups applies without needing the Apply button");
             window.Close();
             SourceGit.App.SetLocale("en_US");
 

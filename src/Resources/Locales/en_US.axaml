@@ -855,7 +855,7 @@
   <x:String x:Key="Text.Repository.BranchesVisibility.ExcludeNames" xml:space="preserve">Exclude names</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ExcludeNames.Placeholder" xml:space="preserve">Type branch name</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ExcludeThisBranch" xml:space="preserve">Exclude this branch</x:String>
-  <x:String x:Key="Text.Repository.BranchesVisibility.EditorHint" xml:space="preserve">Case-sensitive matching: exact OR contains.</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.EditorHint" xml:space="preserve">Case-sensitive: exact OR contains. Add items with Enter, Space, or a suggestion; changes apply automatically.</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.SetPresetFilters" xml:space="preserve">Set preset filters</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ApplyFilter" xml:space="preserve">Apply filter</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ShowAll" xml:space="preserve">Show all branches</x:String>
@@ -1181,8 +1181,8 @@ Manually add a branch/tag history filter will disable this feature automatically
   <x:String x:Key="Text.CommitFlow.Encoding.MultipleFiles" xml:space="preserve">Per-file encoding</x:String>
   <x:String x:Key="Text.CommitFlow.Encoding.Target" xml:space="preserve">Target encoding</x:String>
   <x:String x:Key="Text.CommitFlow.Encoding.SaveTip" xml:space="preserve">Rewrite {0} highlighted text file(s) as {1}. Commit checkboxes do not select files for conversion.</x:String>
-  <x:String x:Key="Text.Repository.BranchesVisibility.Pending" xml:space="preserve">Unapplied changes</x:String>
-  <x:String x:Key="Text.Repository.BranchesVisibility.DiscardDraft" xml:space="preserve">Discard unapplied changes</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.Pending" xml:space="preserve">Press Enter to add this item and apply it</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.DiscardDraft" xml:space="preserve">Clear unfinished input</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ModeAll" xml:space="preserve">All</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ModeRules" xml:space="preserve">By rules</x:String>
   <x:String x:Key="Text.FindContainingBranches.Branches" xml:space="preserve">Branches ({0})</x:String>

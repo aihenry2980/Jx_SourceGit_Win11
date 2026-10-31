@@ -1132,6 +1132,18 @@ namespace SourceGit.Views
             if (sender is not TextBox textBox)
                 return;
 
+            if (DataContext is ViewModels.Repository repo && textBox.Text?.IndexOfAny(['\r', '\n', '\t', ' ']) >= 0)
+            {
+                _ = textBox.Name switch
+                {
+                    nameof(PresetBranchExactNameInputBox) => TryCommitPresetBranchExactNameInput(repo, textBox.Text),
+                    nameof(PresetBranchContainsPatternInputBox) => TryCommitPresetBranchContainsPatternInput(repo, textBox.Text),
+                    nameof(PresetBranchExcludeNameInputBox) => TryCommitPresetBranchExcludeNameInput(repo, textBox.Text),
+                    _ => false,
+                };
+                textBox.Text = string.Empty;
+            }
+
             QueuePresetBranchInputSuggestions(textBox);
         }
 

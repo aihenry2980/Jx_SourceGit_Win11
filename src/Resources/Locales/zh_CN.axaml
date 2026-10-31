@@ -1174,7 +1174,7 @@
   <x:String x:Key="Text.Repository.BranchesVisibility.ExcludeNames" xml:space="preserve">Exclude names</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ExcludeNames.Placeholder" xml:space="preserve">Type branch name</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ExcludeThisBranch" xml:space="preserve">Exclude this branch</x:String>
-  <x:String x:Key="Text.Repository.BranchesVisibility.EditorHint" xml:space="preserve">Case-sensitive matching: exact OR contains.</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.EditorHint" xml:space="preserve">区分大小写，匹配精确名称或包含规则。按回车、空格或选择候选项添加条目，修改后自动应用。</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ApplyFilter" xml:space="preserve">Apply filter</x:String>
   <x:String x:Key="Text.CommitFlow.Encoding.ConvertAndSave" xml:space="preserve">转换并保存</x:String>
   <x:String x:Key="Text.CommitFlow.Encoding.HighlightedFiles" xml:space="preserve">高亮选中文件：{0}</x:String>
@@ -1182,8 +1182,8 @@
   <x:String x:Key="Text.CommitFlow.Encoding.MultipleFiles" xml:space="preserve">各文件编码</x:String>
   <x:String x:Key="Text.CommitFlow.Encoding.Target" xml:space="preserve">目标编码</x:String>
   <x:String x:Key="Text.CommitFlow.Encoding.SaveTip" xml:space="preserve">将 {0} 个高亮选中的文本文件转换为 {1} 并写入磁盘。提交复选框不决定转换范围。</x:String>
-  <x:String x:Key="Text.Repository.BranchesVisibility.Pending" xml:space="preserve">有未应用修改</x:String>
-  <x:String x:Key="Text.Repository.BranchesVisibility.DiscardDraft" xml:space="preserve">撤销未应用修改</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.Pending" xml:space="preserve">按回车添加条目并自动应用</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.DiscardDraft" xml:space="preserve">清除尚未确认的输入</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ModeAll" xml:space="preserve">全部</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ModeRules" xml:space="preserve">按规则</x:String>
   <x:String x:Key="Text.FindContainingBranches.Branches" xml:space="preserve">分支（{0}）</x:String>
