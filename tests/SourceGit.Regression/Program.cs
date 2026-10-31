@@ -104,6 +104,8 @@ internal static partial class Program
 
         if (args is ["--upstream-merge"])
         {
+            TestFocusBranchMergeIntegration();
+            TestMergedRepositoryStatus();
             TestPatchMergeIntegration();
             TestMergeLifecycle();
             TestTabReordering();
@@ -134,6 +136,14 @@ internal static partial class Program
             return;
         }
 
+        if (args is ["--focus-merge"])
+        {
+            TestFocusBranchMergeIntegration();
+            TestMergedRepositoryStatus();
+            Console.WriteLine($"PASS: {_checks} focus merge checks. Isolated data: {_root}");
+            return;
+        }
+
         TestAddActionPicker();
         if (args is ["--add-action"])
         {
@@ -149,6 +159,8 @@ internal static partial class Program
         }
 
         TestNames();
+        TestFocusBranchMergeIntegration();
+        TestMergedRepositoryStatus();
         TestPatchMergeIntegration();
         TestMergeLifecycle();
         TestRuntimeCrashes();

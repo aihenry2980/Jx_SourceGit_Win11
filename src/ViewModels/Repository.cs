@@ -175,6 +175,24 @@ namespace SourceGit.ViewModels
 
         public string MachineName { get; } = Environment.MachineName;
 
+        public bool FocusOnCurrentBranch
+        {
+            get => _uiStates.FocusOnCurrentBranch;
+            set
+            {
+                if (value != _uiStates.FocusOnCurrentBranch)
+                {
+                    _uiStates.FocusOnCurrentBranch = value;
+                    OnPropertyChanged();
+
+                    if (value && _historyFilterMode != Models.FilterMode.None)
+                        ClearHistoryFilters();
+                    else
+                        RefreshCommits();
+                }
+            }
+        }
+
         public Models.FilterMode HistoryFilterMode
         {
             get => _historyFilterMode;
@@ -2021,9 +2039,10 @@ namespace SourceGit.ViewModels
 
         public void SetPresetBranchFilterMode(bool showAll)
         {
-            if (showAll == IsShowingAllBranches)
+            if (showAll == IsShowingAllBranches && !FocusOnCurrentBranch)
                 return;
 
+            DisableFocusOnCurrentBranch();
             if (showAll)
             {
                 ShowAllBranchesForSession();
@@ -2056,6 +2075,7 @@ namespace SourceGit.ViewModels
 
         public void ApplyPresetBranchFilter()
         {
+            DisableFocusOnCurrentBranch();
             UsePresetBranchFilterForSession();
             InvalidatePresetBranchFilterMatchCache();
 
@@ -2473,6 +2493,7 @@ namespace SourceGit.ViewModels
 
         public void SetHistoryPathFilters(IEnumerable<string> paths, bool clearExists = true)
         {
+            DisableFocusOnCurrentBranch();
             if (clearExists)
                 _uiStates.HistoryFilters.Clear();
             else
@@ -2514,6 +2535,13 @@ namespace SourceGit.ViewModels
 
         public void SetTagFilterMode(Models.Tag tag, Models.FilterMode mode)
         {
+            // Auto turn off `FocusOnCurrentBranch` when user set a tag filter manually.
+            if (_uiStates.FocusOnCurrentBranch)
+            {
+                _uiStates.FocusOnCurrentBranch = false;
+                OnPropertyChanged(nameof(FocusOnCurrentBranch));
+            }
+
             var changed = _uiStates.UpdateHistoryFilters(tag.Name, Models.FilterType.Tag, mode);
             if (changed)
                 RefreshHistoryFilters(true);
@@ -2551,6 +2579,13 @@ namespace SourceGit.ViewModels
 
         public void SetBranchFilterMode(BranchTreeNode node, Models.FilterMode mode, bool clearExists, bool refresh)
         {
+            // Auto turn off `FocusOnCurrentBranch` when user set a branch filter manually.
+            if (_uiStates.FocusOnCurrentBranch)
+            {
+                _uiStates.FocusOnCurrentBranch = false;
+                OnPropertyChanged(nameof(FocusOnCurrentBranch));
+            }
+
             var isLocal = node.Path.StartsWith("refs/heads/", StringComparison.Ordinal);
             var tree = isLocal ? _localBranchTrees : _remoteBranchTrees;
 
@@ -3027,8 +3062,18 @@ namespace SourceGit.ViewModels
                             }
                         });
 
-                        var fullLimits = BuildHistoryLimits(Preferences.Instance.MaxHistoryCommits);
-                        var quickLimits = fastAfterFetch ? string.Empty : BuildQuickHistoryLimits();
+                        var focusUpstream = string.Empty;
+                        if (_uiStates.FocusOnCurrentBranch)
+                        {
+                            focusUpstream = await new Commands.QueryUpstreamOfCurrentBranch(FullPath)
+                            {
+                                CancellationToken = token,
+                            }.GetResultAsync().ConfigureAwait(false);
+                        }
+
+                        token.ThrowIfCancellationRequested();
+                        var fullLimits = BuildHistoryLimits(Preferences.Instance.MaxHistoryCommits, focusUpstream);
+                        var quickLimits = fastAfterFetch ? string.Empty : BuildQuickHistoryLimits(focusUpstream);
 
                         if (!string.IsNullOrEmpty(quickLimits) && !quickLimits.Equals(fullLimits, StringComparison.Ordinal))
                         {
@@ -3075,12 +3120,18 @@ namespace SourceGit.ViewModels
             }
         }
 
-        private string BuildHistoryLimits(int maxCommits)
+        private string BuildHistoryLimits(int maxCommits, string focusUpstream)
         {
             var builder = new StringBuilder();
-            builder
-                .Append('-').Append(maxCommits).Append(' ')
-                .Append(_uiStates.BuildHistoryParams(GitDir));
+            builder.Append('-').Append(maxCommits).Append(' ');
+
+            if (_uiStates.FocusOnCurrentBranch)
+            {
+                builder.Append(_uiStates.BuildHistoryParams_FocusOnCurrentBranchMode(focusUpstream));
+                return builder.ToString();
+            }
+
+            builder.Append(_uiStates.BuildHistoryParams_NormalMode(GitDir));
 
             var hasIncludedHistoryFilters = false;
             foreach (var filter in _uiStates.HistoryFilters)
@@ -3106,14 +3157,14 @@ namespace SourceGit.ViewModels
             return builder.ToString();
         }
 
-        private string BuildQuickHistoryLimits()
+        private string BuildQuickHistoryLimits(string focusUpstream)
         {
             var fullCount = Preferences.Instance.MaxHistoryCommits;
             var quickCount = Math.Min(fullCount, 120);
             if (quickCount >= fullCount)
                 return string.Empty;
 
-            return BuildHistoryLimits(quickCount);
+            return BuildHistoryLimits(quickCount, focusUpstream);
         }
 
         private async Task<CommitHistorySnapshot> QueryCommitHistorySnapshotAsync(
@@ -4857,6 +4908,15 @@ namespace SourceGit.ViewModels
                 return new SubmoduleCollectionAsList() { Submodules = visible };
         }
 
+        private void DisableFocusOnCurrentBranch()
+        {
+            if (!_uiStates.FocusOnCurrentBranch)
+                return;
+
+            _uiStates.FocusOnCurrentBranch = false;
+            OnPropertyChanged(nameof(FocusOnCurrentBranch));
+        }
+
         private void RefreshHistoryFilters(bool refresh)
         {
             EnsureIncludedBranchFiltersHaveColors();
@@ -6078,7 +6138,7 @@ namespace SourceGit.ViewModels
 
             _shouldApplyPresetBranchFilterOnInitialBranchLoad = false;
 
-            if (_uiStates.HistoryFilters.Count > 0)
+            if (_uiStates.FocusOnCurrentBranch || _uiStates.HistoryFilters.Count > 0)
                 return;
 
             var exactNames = _settings?.GetPresetBranchExactNameSet() ?? [];

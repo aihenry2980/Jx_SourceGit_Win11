@@ -635,11 +635,28 @@
         </ToolTip.Tip>
 
         <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
-          <Path Width="13" Height="13" Margin="0,2,0,0" HorizontalAlignment="Center" Data="{StaticResource Icons.Target}" Fill="{DynamicResource Brush.FG1}"/>
+          <Path Width="14" Height="14" Margin="0,1,0,0" HorizontalAlignment="Center" Data="{StaticResource Icons.Target}" Fill="{DynamicResource Brush.FG1}"/>
           <TextBlock Classes="toolbar_label" Text="Head"/>
         </StackPanel>
       </Button>
       <Button Width="0" Height="0" Click="NavigateToHead" IsVisible="False" HotKey="{OnPlatform Ctrl+H, macOS=⌘+⌥+H}"/>
+      <ToggleButton x:Name="FocusCurrentBranchButton"
+                    Classes="line_path"
+                    Width="56" Height="46"
+                    Padding="4,2"
+                    Margin="4,0,0,0"
+                    IsChecked="{Binding FocusOnCurrentBranch, Mode=TwoWay}"
+                    ToolTip.Tip="{DynamicResource Text.Repository.FocusOnCurrentBranch}">
+        <ToggleButton.Styles>
+          <Style Selector="ToolTip">
+            <Setter Property="MaxWidth" Value="400"/>
+          </Style>
+        </ToggleButton.Styles>
+        <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
+          <Path Width="14" Height="14" Data="{StaticResource Icons.Magic}" Fill="{DynamicResource Brush.FG1}"/>
+          <TextBlock Classes="toolbar_label" Text="Focus"/>
+        </StackPanel>
+      </ToggleButton>
       <Button Classes="icon_button toolbar_button"
               Width="56"
               Margin="4,0,0,0"

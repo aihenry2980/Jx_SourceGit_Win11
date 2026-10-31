@@ -46,6 +46,11 @@ namespace SourceGit.ViewModels
             }
         }
 
+        public bool CanToggleReflog
+        {
+            get => !_repo.UIStates.FocusOnCurrentBranch;
+        }
+
         public bool IsAuthorColumnVisible
         {
             get => _repo?.UIStates?.IsAuthorColumnVisibleInHistory ?? true;

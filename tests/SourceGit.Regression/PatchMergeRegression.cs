@@ -44,6 +44,12 @@ internal static partial class Program
             Invoke(repo.WorkingCopy, "ScheduleUpdateInProgressState");
             WaitUntil(() => repo.WorkingCopy.InProgressContext == null, "Rebase progress did not clear after abort.");
             Check(Git(path, "rev-parse", "HEAD") == original, "Aborting rebase restores its original branch");
+
+            var staleApply = Path.Combine(path, ".git", "rebase-apply");
+            Directory.CreateDirectory(staleApply);
+            Invoke(repo.WorkingCopy, "ScheduleUpdateInProgressState");
+            WaitUntil(() => !Directory.Exists(staleApply), "Stale apply metadata was not cleaned up.");
+            Check(repo.WorkingCopy.InProgressContext == null, "A leftover apply directory without an applying marker is not mistaken for an active mailbox operation");
         }
         finally
         {
