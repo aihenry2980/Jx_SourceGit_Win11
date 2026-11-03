@@ -19,6 +19,9 @@
     </MultiBinding>
   </v:ChromelessWindow.Title>
 
+  <Border x:Name="WindowHighlightBorder"
+          BorderThickness="3"
+          BorderBrush="{Binding ActivePage.Node.Bookmark, Converter={x:Static c:IntConverters.ToBookmarkBrush}, TargetNullValue={StaticResource Brush.WindowBorder}, FallbackValue={StaticResource Brush.WindowBorder}}">
   <Grid DragDrop.AllowDrop="True">
     <Grid.RowDefinitions>
       <RowDefinition Height="{Binding #ThisControl.CaptionHeight}"/>
@@ -226,4 +229,5 @@
       </Border>
     </Border>
   </Grid>
+  </Border>
 </v:ChromelessWindow>

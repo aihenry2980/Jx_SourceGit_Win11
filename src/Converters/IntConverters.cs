@@ -1,10 +1,14 @@
 ﻿using Avalonia;
 using Avalonia.Data.Converters;
+using Avalonia.Media;
 
 namespace SourceGit.Converters
 {
     public static class IntConverters
     {
+        public static readonly FuncValueConverter<int, IBrush> ToBookmarkBrush =
+            new(v => Models.Bookmarks.Get(v));
+
         public static readonly FuncValueConverter<int, bool> IsGreaterThanZero =
             new(v => v > 0);
 

@@ -25,6 +25,10 @@ internal static partial class Program
         try
         {
             PumpFor(100);
+            var frame = window.FindControl<Border>("WindowHighlightBorder");
+            Check(frame.BorderThickness == new Thickness(3), "Launcher keeps a three-pixel perimeter around its content");
+            Check(((ISolidColorBrush)frame.BorderBrush).Color == Colors.Red,
+                "Window perimeter starts with the active repository highlight color");
             Check(window.Title == "Repository One - Workspace One", "Launcher title binds the active repository and workspace names");
             first.Node.Name = "Renamed Repository";
             PumpFor(30);
@@ -41,13 +45,17 @@ internal static partial class Program
             PumpFor(30);
             Check(((ISolidColorBrush)titleBar.Background).Color == before,
                 "Changing a tab highlight does not tint the title bar");
+            Check(((ISolidColorBrush)frame.BorderBrush).Color == Colors.Gold,
+                "Changing the active tab highlight updates the window perimeter");
             launcher.ActivePage = second;
             PumpFor(30);
             Check(window.Title == "Repository Two - Renamed Workspace", "Switching tabs updates the window title");
+            Check(((ISolidColorBrush)frame.BorderBrush).Color == Colors.Orange,
+                "Switching tabs changes the perimeter to the newly selected highlight");
             first.Node.Name = "Inactive Rename";
             PumpFor(30);
             Check(window.Title == "Repository Two - Renamed Workspace", "Renaming an inactive tab does not change the window title");
-            Check(DragDrop.GetAllowDrop((Grid)window.Content), "Launcher root retains drag/drop support after conflict resolution");
+            Check(DragDrop.GetAllowDrop((Grid)frame.Child), "Launcher root retains drag/drop support inside its perimeter");
             CaptureUxFrame(window, "launcher-title-merge");
             var path = NewRepository("neutral launcher chrome");
             Git(path, "commit", "--allow-empty", "-m", "Initial commit");
@@ -75,8 +83,18 @@ internal static partial class Program
                         Check(((ISolidColorBrush)titleBar.Background).Color == titleColor &&
                             ((ISolidColorBrush)toolbar.Background).Color == toolbarColor,
                             "Changing repository highlight leaves both chrome backgrounds neutral in " + theme);
+                        Check(((ISolidColorBrush)frame.BorderBrush).Color == ((ISolidColorBrush)SourceGit.Models.Bookmarks.Get(page.Node.Bookmark)).Color,
+                            "Window perimeter follows the highlight without tinting the chrome in " + theme);
                     }
                     CaptureUxFrame(window, "launcher-neutral-chrome-" + theme);
+                    foreach (var highlight in new[] { 0, -1, 999 })
+                    {
+                        second.Node.Bookmark = highlight;
+                        PumpFor(50);
+                        Check(((ISolidColorBrush)frame.BorderBrush).Color == (Color)window.FindResource(theme, "Color.WindowBorder"),
+                            "Missing or invalid highlight uses the theme window border in " + theme);
+                    }
+                    second.Node.Bookmark = 6;
                 }
             }
             finally
