@@ -1676,13 +1676,14 @@
               <Binding Path="ExcludedHistoryFilterCount" Converter="{x:Static c:IntConverters.IsGreaterThanZero}"/>
               <Binding Path="CanFoldVisibleBranchesInGraph"/>
               <Binding Path="CanUnfoldBranchesInGraph"/>
+              <Binding Path="FoldSubmoduleUpdatesInHistory"/>
               <Binding Path="HasInProgressStatus"/>
               <Binding Path="Submodules.Count" Converter="{x:Static c:IntConverters.IsGreaterThanZero}"/>
             </MultiBinding>
           </MultiBinding>
         </Border.IsVisible>
 
-        <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto,*">
+        <Grid x:Name="HistoryToolbarPanel" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto,Auto">
           <Path Grid.Column="0"
                 Margin="8,0,0,0"
                 Width="12" Height="12"
@@ -1837,7 +1838,8 @@
               <Path Width="12" Height="12"
                     Fill="{DynamicResource Brush.FG2}"
                     Data="{StaticResource Icons.Submodule}"/>
-              <TextBlock Text="{DynamicResource Text.Repository.SubmoduleUpdateFilter.Short}"/>
+              <TextBlock Text="{DynamicResource Text.Repository.SubmoduleUpdateFilter.Short}"
+                         IsVisible="{Binding #HistoryToolbarPanel.Bounds.Width, Converter={x:Static c:DoubleConverters.ShowHistoryToolbarLabels}}"/>
               <TextBlock Foreground="{DynamicResource Brush.Accent}"
                          FontWeight="SemiBold"
                          Text="{Binding HistoryPathFilterCount, StringFormat='({0})'}"
@@ -1854,25 +1856,35 @@
                       HorizontalAlignment="Right"
                       Spacing="6"
                       VerticalAlignment="Center">
-            <Button Classes="flat"
+            <CheckBox x:Name="FoldSubmoduleUpdatesToggle"
+                      IsChecked="{Binding FoldSubmoduleUpdatesInHistory, Mode=TwoWay}"
+                      AutomationProperties.Name="{DynamicResource Text.Repository.SubmoduleFold}"
+                      ToolTip.Tip="{DynamicResource Text.Repository.SubmoduleFold.ToolTip}">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <Path Width="12" Height="12" VerticalAlignment="Center" Data="{StaticResource Icons.Stashes}"/>
+                <TextBlock Text="{DynamicResource Text.Repository.SubmoduleFold}"
+                           IsVisible="{Binding #HistoryToolbarPanel.Bounds.Width, Converter={x:Static c:DoubleConverters.ShowHistoryToolbarLabels}}"/>
+              </StackPanel>
+            </CheckBox>
+            <Button x:Name="FoldVisibleBranchesButton" Classes="flat"
                     Padding="8,2"
                     Click="OnFoldVisibleBranchesInGraph"
                     IsEnabled="{Binding CanFoldVisibleBranchesInGraph}"
                     ToolTip.Tip="Fold all visible branches in graph">
-              <StackPanel Orientation="Horizontal">
-                <Path Width="12" Height="12" Margin="0,0,6,0" Data="{StaticResource Icons.Minus}" Fill="{DynamicResource Brush.FG2}"/>
-                <TextBlock Text="Fold Visible"/>
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <Path Width="12" Height="12" Data="{StaticResource Icons.Minus}" Fill="{DynamicResource Brush.FG2}"/>
+                <TextBlock Text="Fold Visible" IsVisible="{Binding #HistoryToolbarPanel.Bounds.Width, Converter={x:Static c:DoubleConverters.ShowHistoryToolbarLabels}}"/>
               </StackPanel>
             </Button>
 
-            <Button Classes="flat"
+            <Button x:Name="UnfoldAllBranchesButton" Classes="flat"
                     Padding="8,2"
                     Click="OnUnfoldAllBranchesInGraph"
                     IsEnabled="{Binding CanUnfoldBranchesInGraph}"
                     ToolTip.Tip="Unfold all folded branches in graph">
-              <StackPanel Orientation="Horizontal">
-                <Path Width="12" Height="12" Margin="0,0,6,0" Data="{StaticResource Icons.Plus}" Fill="{DynamicResource Brush.FG2}"/>
-                <TextBlock Text="Unfold All"/>
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <Path Width="12" Height="12" Data="{StaticResource Icons.Plus}" Fill="{DynamicResource Brush.FG2}"/>
+                <TextBlock Text="Unfold All" IsVisible="{Binding #HistoryToolbarPanel.Bounds.Width, Converter={x:Static c:DoubleConverters.ShowHistoryToolbarLabels}}"/>
               </StackPanel>
             </Button>
 
@@ -1909,6 +1921,7 @@
                 <RadioButton Classes="history_order_segment"
                              GroupName="HistoryOrderModeInline"
                              IsChecked="{Binding EnableTopoOrderInHistory}"
+                             x:Name="HistoryTopoOrderButton"
                              Click="OnHistoryOrderTopoClicked">
                   <ToolTip.Tip>
                     <StackPanel Orientation="Vertical" MaxWidth="320">

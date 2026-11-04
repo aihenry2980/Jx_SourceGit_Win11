@@ -1178,6 +1178,15 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
+        private void OnToggleSubmoduleCommitGroup(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button { DataContext: Models.Commit commit } &&
+                this.FindAncestorOfType<Repository>()?.DataContext is ViewModels.Repository repo)
+                repo.ToggleSubmoduleCommitGroup(commit);
+
+            e.Handled = true;
+        }
+
         private void OnToggleSubmoduleUpdateBadges(object sender, RoutedEventArgs e)
         {
             if (sender is Button { DataContext: Models.Commit commit })

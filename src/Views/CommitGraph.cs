@@ -193,6 +193,11 @@ namespace SourceGit.Views
                     break;
 
                 var pen = dot.IsHighlighted ? Models.CommitGraph.Pens[dot.Color] : grayedPen;
+                if (dot.HasFoldedSubmoduleCommits)
+                {
+                    context.DrawEllipse(dotFill, pen, new Point(center.X + 3, center.Y - 4), 4, 4);
+                    context.DrawEllipse(dotFill, pen, new Point(center.X + 1.5, center.Y - 2), 4, 4);
+                }
                 switch (dot.Type)
                 {
                     case Models.CommitGraph.DotType.Head:

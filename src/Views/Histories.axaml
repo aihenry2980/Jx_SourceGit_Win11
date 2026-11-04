@@ -253,6 +253,28 @@
                                 IsVisible="{Binding HasChangeBadges}"
                                 ToolTip.Tip="{Binding HistoryChangeSummaryToolTip}"
                                 Opacity="{Binding IsMerged, Converter={x:Static c:BoolConverters.IsMergedToOpacity}}">
+                      <Button Classes="flat submodule_commit_fold"
+                              Height="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Converter={x:Static c:DoubleConverters.ToHistoryBadgeHeight}}"
+                              MinWidth="48" Padding="5,0"
+                              IsVisible="{Binding HasSubmoduleCommitGroup}"
+                              ToolTip.Tip="{Binding SubmoduleCommitGroupToolTip}"
+                              AutomationProperties.Name="{Binding SubmoduleCommitGroupToolTip}"
+                              Click="OnToggleSubmoduleCommitGroup">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                          <Path Width="14" Height="14" VerticalAlignment="Center"
+                                Data="{StaticResource Icons.Stashes}"
+                                Fill="{DynamicResource Brush.Accent}"/>
+                          <TextBlock FontWeight="Bold" VerticalAlignment="Center"
+                                     FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Converter={x:Static c:DoubleConverters.ToHistoryBadgeFontSize}}"
+                                     Text="{Binding SubmoduleCommitGroupCount}"/>
+                          <Path Width="8" Height="8" VerticalAlignment="Center"
+                                Data="{StaticResource Icons.Down}"
+                                IsVisible="{Binding !IsSubmoduleCommitGroupExpanded}"/>
+                          <Path Width="8" Height="8" VerticalAlignment="Center"
+                                Data="{StaticResource Icons.Up}"
+                                IsVisible="{Binding IsSubmoduleCommitGroupExpanded}"/>
+                        </StackPanel>
+                      </Button>
                       <Border Height="16"
                               MinWidth="28"
                               Padding="6,0"

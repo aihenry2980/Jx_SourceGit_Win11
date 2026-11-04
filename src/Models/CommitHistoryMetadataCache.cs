@@ -153,6 +153,6 @@ namespace SourceGit.Models
         private readonly SemaphoreSlim _saveLock = new(1, 1);
         private readonly CommitHistoryMetadataCacheData _data = null;
         private string _contentHash = string.Empty;
-        private const int CURRENT_VERSION = 4;
+        private const int CURRENT_VERSION = 5;
     }
 }

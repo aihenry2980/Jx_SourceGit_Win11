@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -374,6 +375,46 @@ namespace SourceGit.ViewModels
                     RefreshCommits();
                 }
             }
+        }
+
+        public bool FoldSubmoduleUpdatesInHistory
+        {
+            get => _uiStates.FoldSubmoduleUpdatesInHistory;
+            set
+            {
+                if (_uiStates.FoldSubmoduleUpdatesInHistory == value)
+                    return;
+
+                _uiStates.FoldSubmoduleUpdatesInHistory = value;
+                _expandedSubmoduleCommitGroups = new(StringComparer.Ordinal);
+                OnPropertyChanged();
+                RefreshCommits();
+            }
+        }
+
+        public void ToggleSubmoduleCommitGroup(Models.Commit commit)
+        {
+            if (!FoldSubmoduleUpdatesInHistory || !commit.HasSubmoduleCommitGroup)
+                return;
+
+            var expanded = new HashSet<string>(_expandedSubmoduleCommitGroups, StringComparer.Ordinal);
+            if (!expanded.Add(commit.SHA))
+                expanded.Remove(commit.SHA);
+            _expandedSubmoduleCommitGroups = expanded;
+            NavigateToCommit(commit.SHA, true);
+            RefreshCommits();
+        }
+
+        public bool ExpandSubmoduleCommitGroupContaining(string sha)
+        {
+            var group = _histories?.Commits.Find(commit => commit.HasFoldedSubmoduleCommits &&
+                commit.SubmoduleCommitGroup.Any(member => member.SHA.StartsWith(sha, StringComparison.Ordinal)));
+            if (group == null)
+                return false;
+
+            ToggleSubmoduleCommitGroup(group);
+            NavigateToCommit(sha, true);
+            return true;
         }
 
         public bool OnlyShowSPPCommitsInHistory
@@ -3281,6 +3322,7 @@ namespace SourceGit.ViewModels
                     commit.AddedFileChangeCount = stat.AddedFileChangeCount;
                     commit.ModifiedFileChangeCount = stat.ModifiedFileChangeCount;
                     commit.SubmodulePointerChangeCount = submodulePointerChangeCount;
+                    commit.ChangedSubmodulePaths = stat.SubmodulePaths;
                     commit.SubmoduleUpdateBadges = stat.SubmodulePaths.Count > 0
                         ? stat.SubmodulePaths.ConvertAll(path => new Models.SubmoduleUpdateBadge(path, ResolveSubmoduleUpdateBadgeColor(path)))
                         : stat.HasSubmodulePointerChange
@@ -3297,6 +3339,7 @@ namespace SourceGit.ViewModels
                     commit.AddedFileChangeCount = 0;
                     commit.ModifiedFileChangeCount = 0;
                     commit.SubmodulePointerChangeCount = 0;
+                    commit.ChangedSubmodulePaths = [];
                     commit.SubmoduleUpdateBadges = [];
                     commit.HasRenameOrCopyChange = false;
                     commit.HasTypeChange = false;
@@ -3318,6 +3361,8 @@ namespace SourceGit.ViewModels
 
             ApplyFoldStateToDecorators(commits, foldableBranchFullNames);
             ApplyFoldedBranchRuns(commits, foldableBranchFullNames);
+            if (_uiStates.FoldSubmoduleUpdatesInHistory)
+                Models.SubmoduleCommitFolding.Apply(commits, _expandedSubmoduleCommitGroups);
 
             var prepareMilliseconds = stageStopwatch.ElapsedMilliseconds;
             stageStopwatch.Restart();
@@ -6436,6 +6481,7 @@ namespace SourceGit.ViewModels
         private readonly HashSet<string> _foldedBranchFullNames = new(StringComparer.Ordinal);
         private int _visibleFoldableBranchesCount = 0;
         private int _visibleFoldedBranchesCount = 0;
+        private HashSet<string> _expandedSubmoduleCommitGroups = new(StringComparer.Ordinal);
 
         private Models.BisectState _bisectState = Models.BisectState.None;
         private bool _isBisectCommandRunning = false;

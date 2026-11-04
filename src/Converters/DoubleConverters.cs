@@ -6,6 +6,9 @@ namespace SourceGit.Converters
 {
     public static class DoubleConverters
     {
+        public static readonly FuncValueConverter<double, bool> ShowHistoryToolbarLabels =
+            new(v => v >= 1100);
+
         public static readonly FuncValueConverter<double, double> Increase =
             new FuncValueConverter<double, double>(v => v + 1.0);
 

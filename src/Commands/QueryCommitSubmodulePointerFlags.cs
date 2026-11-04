@@ -32,7 +32,7 @@ namespace SourceGit.Commands
             Context = repo;
 
             var builder = new StringBuilder();
-            builder.Append("log --raw --no-abbrev --no-show-signature --format=%H ");
+            builder.Append("log --raw --full-diff --no-abbrev --no-show-signature --format=%H ");
             builder.Append(limits);
             Args = builder.ToString();
         }

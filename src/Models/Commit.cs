@@ -36,6 +36,17 @@ namespace SourceGit.Models
         public int AddedFileChangeCount { get; set; } = 0;
         public int ModifiedFileChangeCount { get; set; } = 0;
         public int SubmodulePointerChangeCount { get; set; } = 0;
+        public IReadOnlyList<string> ChangedSubmodulePaths { get; set; } = [];
+        public IReadOnlyList<Commit> SubmoduleCommitGroup { get; set; } = [];
+        public bool IsSubmoduleCommitGroupExpanded { get; set; }
+        public bool HasSubmoduleCommitGroup => SubmoduleCommitGroup.Count > 0;
+        public int SubmoduleCommitGroupCount => SubmoduleCommitGroup.Count + 1;
+        public bool HasFoldedSubmoduleCommits => HasSubmoduleCommitGroup && !IsSubmoduleCommitGroupExpanded;
+        // Only the drawn graph skips grouped commits; Git operations always use the original Parents.
+        public IReadOnlyList<string> GraphParents => HasFoldedSubmoduleCommits ? SubmoduleCommitGroup[^1].Parents : Parents;
+        public string SubmoduleCommitGroupToolTip => App.Text(
+            IsSubmoduleCommitGroupExpanded ? "Repository.SubmoduleFold.Collapse" : "Repository.SubmoduleFold.Expand",
+            SubmoduleCommitGroupCount);
         public List<SubmoduleUpdateBadge> SubmoduleUpdateBadges
         {
             get => _submoduleUpdateBadges;
@@ -167,6 +178,15 @@ namespace SourceGit.Models
             {
                 if (decorator.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
                     return true;
+            }
+
+            if (HasFoldedSubmoduleCommits)
+            {
+                foreach (var member in SubmoduleCommitGroup)
+                {
+                    if (member.MatchesHistoryQuickFind(query))
+                        return true;
+                }
             }
 
             return false;

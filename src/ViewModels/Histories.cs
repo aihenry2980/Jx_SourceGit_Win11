@@ -377,6 +377,9 @@ namespace SourceGit.ViewModels
 
         public void NavigateTo(string commitSHA)
         {
+            if (_repo.ExpandSubmoduleCommitGroupContaining(commitSHA))
+                return;
+
             var commit = _commits.Find(x => x.SHA.StartsWith(commitSHA, StringComparison.Ordinal));
             if (commit != null)
             {
@@ -790,10 +793,16 @@ namespace SourceGit.ViewModels
             var selected = new List<Models.Commit>();
             foreach (var c in _commits)
             {
-                if (set.Contains(c.SHA))
+                var wasSelected = set.Remove(c.SHA);
+                if (c.HasFoldedSubmoduleCommits)
+                {
+                    foreach (var member in c.SubmoduleCommitGroup)
+                        wasSelected |= set.Remove(member.SHA);
+                }
+
+                if (wasSelected)
                 {
                     selected.Add(c);
-                    set.Remove(c.SHA);
                     if (set.Count == 0)
                         break;
                 }

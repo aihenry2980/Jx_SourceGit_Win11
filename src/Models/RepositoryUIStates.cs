@@ -63,6 +63,8 @@ namespace SourceGit.Models
             set;
         } = false;
 
+        public bool FoldSubmoduleUpdatesInHistory { get; set; } = false;
+
         public BranchSortMode LocalBranchSortMode
         {
             get;

@@ -93,6 +93,13 @@ internal static partial class Program
             return;
         }
 
+        if (args is ["--submodule-folding"])
+        {
+            TestSubmoduleCommitFolding();
+            Console.WriteLine($"PASS: {_checks} submodule folding checks. Isolated data and previews: {_root}");
+            return;
+        }
+
         if (args is ["--tab-colors"])
         {
             TestTabHighlightPresentation();
@@ -159,6 +166,7 @@ internal static partial class Program
         }
 
         TestNames();
+        TestSubmoduleCommitFolding();
         TestFocusBranchMergeIntegration();
         TestMergedRepositoryStatus();
         TestPatchMergeIntegration();
