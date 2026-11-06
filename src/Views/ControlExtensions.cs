@@ -26,11 +26,21 @@ namespace SourceGit.Views
 
         public static async Task CopyTextAsync(this Control control, string text)
         {
-            var clipboard = TopLevel.GetTopLevel(control)?.Clipboard;
-            if (clipboard != null)
+            var topLevel = TopLevel.GetTopLevel(control) as Window;
+            if (topLevel == null)
+                return;
+
+            try
             {
-                await clipboard.SetTextAsync(text);
-                App.ShowCopyToast(text);
+                if (topLevel.Clipboard is { } clipboard)
+                {
+                    await clipboard.SetTextAsync(text);
+                    App.ShowCopyToast(text);
+                }
+            }
+            catch (Exception e)
+            {
+                await new Alert().ShowAsync(topLevel, "Failed to copy text to clipboard: " + e.Message, true);
             }
         }
 

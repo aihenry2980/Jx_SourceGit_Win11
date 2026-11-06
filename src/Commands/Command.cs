@@ -186,16 +186,17 @@ namespace SourceGit.Commands
 
             try
             {
-                var rs = new Result() { IsSuccess = true };
                 var stdoutTask = proc.StandardOutput.ReadToEndAsync(CancellationToken);
                 var stderrTask = proc.StandardError.ReadToEndAsync(CancellationToken);
-                await Task.WhenAll(stdoutTask, stderrTask).ConfigureAwait(false);
-                await proc.WaitForExitAsync(CancellationToken).ConfigureAwait(false);
+                var waitForExitTask = proc.WaitForExitAsync(CancellationToken);
+                await Task.WhenAll(stdoutTask, stderrTask, waitForExitTask).ConfigureAwait(false);
 
-                rs.StdOut = await stdoutTask.ConfigureAwait(false);
-                rs.StdErr = await stderrTask.ConfigureAwait(false);
-                rs.IsSuccess = proc.ExitCode == 0;
-                return rs;
+                return new Result
+                {
+                    IsSuccess = proc.ExitCode == 0,
+                    StdOut = await stdoutTask.ConfigureAwait(false),
+                    StdErr = await stderrTask.ConfigureAwait(false),
+                };
             }
             catch (OperationCanceledException)
             {

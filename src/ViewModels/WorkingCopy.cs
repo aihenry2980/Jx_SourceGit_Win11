@@ -874,6 +874,8 @@ namespace SourceGit.ViewModels
 
                 if (oldType != null && IsAutoLoadedCommitMessage())
                     CommitMessage = string.Empty;
+                else if (string.IsNullOrEmpty(_commitMessage))
+                    LoadCommitMessageFromFile(Path.Combine(_repo.GitDir, "MERGE_MSG"));
 
                 return;
             }

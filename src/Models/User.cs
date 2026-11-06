@@ -41,19 +41,12 @@ namespace SourceGit.Models
 
         public static User FindOrAdd(string data)
         {
-            var created = false;
-            var user = _caches.GetOrAdd(data, key =>
-            {
-                created = true;
-                return new User(key);
-            });
+            if (_caches.TryGetValue(data, out var cached))
+                return cached;
 
-            if (created)
-            {
-                _cacheKeys.Enqueue(data);
-                TryTrimCaches();
-            }
-
+            var user = _caches.GetOrAdd(data, static key => new User(key));
+            _cacheKeys.Enqueue(data);
+            TryTrimCaches();
             return user;
         }
 

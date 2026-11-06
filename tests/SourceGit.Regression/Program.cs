@@ -109,8 +109,16 @@ internal static partial class Program
             return;
         }
 
+        if (args is ["--upstream-diff"])
+        {
+            TestUpstreamDiffIntegration();
+            Console.WriteLine($"PASS: {_checks} upstream diff checks. Isolated data and previews: {_root}");
+            return;
+        }
+
         if (args is ["--upstream-merge"])
         {
+            TestUpstreamDiffIntegration();
             TestFocusBranchMergeIntegration();
             TestMergedRepositoryStatus();
             TestPatchMergeIntegration();
@@ -166,6 +174,7 @@ internal static partial class Program
         }
 
         TestNames();
+        TestUpstreamDiffIntegration();
         TestSubmoduleCommitFolding();
         TestFocusBranchMergeIntegration();
         TestMergedRepositoryStatus();
