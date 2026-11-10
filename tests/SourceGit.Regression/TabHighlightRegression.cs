@@ -43,23 +43,19 @@ internal static partial class Program
                 LauncherTabSizeBox Frame(int index) => list.ContainerFromIndex(index).GetVisualDescendants().OfType<LauncherTabSizeBox>().Single();
                 var active = Frame(0);
                 var inactive = Frame(1);
-                var baseColor = ((ISolidColorBrush)Bookmarks.Get(6)).Color;
                 var paleColor = Color.FromRgb(191, 239, 255);
                 Check(((ISolidColorBrush)inactive.Background).Color == paleColor,
                     "Inactive tab keeps its highlight hue as a pale background in " + theme);
                 Check(((ISolidColorBrush)inactive.Foreground).Color == Colors.Black,
                     "Inactive tab text stays readable on the pale highlight in " + theme);
-                Check(((ISolidColorBrush)active.Background).Color.R <= baseColor.R &&
-                    ((ISolidColorBrush)active.Background).Color.G < baseColor.G &&
-                    ((ISolidColorBrush)active.Background).Color.B < baseColor.B,
-                    "Current tab keeps a darker version of the same highlight in " + theme);
-                foreach (var marker in new[] { "active_tab_arrow", "active_tab_outline", "active_tab_underline" })
-                {
-                    var visibleMarkers = bar.GetVisualDescendants().OfType<Control>()
-                        .Where(control => control.Classes.Contains(marker) && control.IsEffectivelyVisible).ToList();
-                    Check(visibleMarkers.Count == 1 && visibleMarkers[0].FindAncestorOfType<LauncherTabSizeBox>() == active,
-                        "Only the current tab displays " + marker + " in " + theme);
-                }
+                Check(((ISolidColorBrush)active.Background).Color == paleColor,
+                    "Selecting a tab preserves its pale highlight background in " + theme);
+                Check(active.TextGlow is DropShadowEffect { BlurRadius: 4, OffsetX: 0, OffsetY: 0 } effect &&
+                    effect.Color == Color.FromRgb(0, 85, 114) && inactive.TextGlow == null,
+                    "Only the active tab has a darker same-hue text halo in " + theme);
+                Check(active.GetVisualDescendants().OfType<TextBlock>().Where(t => t.Classes.Contains("tab_title"))
+                    .All(t => t.Effect == active.TextGlow && t.FontWeight == FontWeight.Bold),
+                    "The halo is applied to bold tab titles, not the whole tab");
                 Check(!bar.GetVisualDescendants().OfType<SourceGit.Views.Bookmark>().Any(), "Tabs no longer reserve space for bookmark icons");
                 var neutral = ((ISolidColorBrush)Frame(5).Background).Color;
                 Check(theme == ThemeVariant.Dark ? neutral.R < 128 : neutral.R > 128,
@@ -84,9 +80,8 @@ internal static partial class Program
                 PumpFor(50);
                 Check(!Frame(0).IsActive && Frame(1).IsActive && ((ISolidColorBrush)Frame(0).Background).Color == paleColor,
                     "Switching tabs restores the old tab to its pale background");
-                Check(Frame(0).GetVisualDescendants().OfType<Control>().Where(control => control.Classes.Contains("active_tab_underline")).All(control => !control.IsEffectivelyVisible) &&
-                    Frame(1).GetVisualDescendants().OfType<Control>().Any(control => control.Classes.Contains("active_tab_underline") && control.IsEffectivelyVisible),
-                    "Switching tabs moves the high-contrast selection marker to the new tab");
+                Check(Frame(0).TextGlow == null && Frame(1).TextGlow != null,
+                    "Switching tabs moves the text halo to the new tab");
                 pages[1].Node.Bookmark = 4;
                 PumpFor(50);
                 Check(((ISolidColorBrush)Frame(1).Background).Color.G > ((ISolidColorBrush)Frame(1).Background).Color.B,

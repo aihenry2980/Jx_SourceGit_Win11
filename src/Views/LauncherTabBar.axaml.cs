@@ -38,6 +38,11 @@ namespace SourceGit.Views
 
         public IBrush Foreground => _foreground;
 
+        public static readonly DirectProperty<LauncherTabSizeBox, IEffect> TextGlowProperty =
+            AvaloniaProperty.RegisterDirect<LauncherTabSizeBox, IEffect>(nameof(TextGlow), static o => o.TextGlow);
+
+        public IEffect TextGlow => _textGlow;
+
         public static readonly DirectProperty<LauncherTabSizeBox, bool> UseFixedWidthProperty =
             AvaloniaProperty.RegisterDirect<LauncherTabSizeBox, bool>(
                 nameof(UseFixedWidth),
@@ -87,9 +92,13 @@ namespace SourceGit.Views
             var highlight = Models.Bookmarks.Get(Highlight) as ISolidColorBrush;
             var color = highlight?.Color ??
                 (fallback is Color background ? background : ActualThemeVariant == ThemeVariant.Dark ? Color.FromRgb(40, 40, 40) : Colors.White);
-            if (IsActive)
-                color = Color.FromArgb(color.A, (byte)(color.R * 0.72), (byte)(color.G * 0.72), (byte)(color.B * 0.72));
-            else if (highlight != null)
+            var glowColor = highlight?.Color ?? Colors.Gray;
+            glowColor = Color.FromRgb((byte)(glowColor.R * 0.45), (byte)(glowColor.G * 0.45), (byte)(glowColor.B * 0.45));
+            SetAndRaise(TextGlowProperty, ref _textGlow, IsActive ? new DropShadowEffect
+            {
+                Color = glowColor, BlurRadius = 4, OffsetX = 0, OffsetY = 0, Opacity = 0.85,
+            } : null);
+            if (highlight != null)
                 color = Color.FromArgb(color.A,
                     (byte)(color.R + (255 - color.R) * 0.75),
                     (byte)(color.G + (255 - color.G) * 0.75),
@@ -109,6 +118,7 @@ namespace SourceGit.Views
 
         private bool _useFixedWidth = false;
         private IBrush _foreground = Brushes.Black;
+        private IEffect _textGlow;
     }
 
     public partial class LauncherTabBar : UserControl

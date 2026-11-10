@@ -17,6 +17,8 @@
         public string SHA { get; set; } = string.Empty;
         public string URL { get; set; } = string.Empty;
         public string Branch { get; set; } = string.Empty;
+        public string CheckedOutBranch { get; set; } = string.Empty;
+        public string CheckedOutBranchLabel => string.IsNullOrEmpty(CheckedOutBranch) ? string.Empty : $" ({CheckedOutBranch})";
         public uint AccentColor { get; set; }
         public SubmoduleStatus Status { get; set; } = SubmoduleStatus.Unknown;
         public bool HasFileChanges { get; set; } = false;

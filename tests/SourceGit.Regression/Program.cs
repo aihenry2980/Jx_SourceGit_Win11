@@ -100,6 +100,13 @@ internal static partial class Program
             return;
         }
 
+        if (args is ["--submodule-presentation"])
+        {
+            TestSubmodulePresentation();
+            Console.WriteLine($"PASS: {_checks} submodule presentation checks. Isolated data and previews: {_root}");
+            return;
+        }
+
         if (args is ["--tab-colors"])
         {
             TestTabHighlightPresentation();
@@ -191,6 +198,7 @@ internal static partial class Program
         TestCommitMenuChips();
         TestPushConfirmation();
         TestCompactSubmodules();
+        TestSubmodulePresentation();
         TestTabReordering();
         TestTabHighlightPresentation();
         TestCrashReports();

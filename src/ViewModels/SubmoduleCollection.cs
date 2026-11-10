@@ -23,6 +23,7 @@ namespace SourceGit.ViewModels
         }
 
         public uint AccentColor => Module?.AccentColor ?? 0xFF9AA0A6;
+        public string CheckedOutBranchLabel => Module?.CheckedOutBranchLabel ?? string.Empty;
 
         public bool HasChildren
         {

@@ -882,6 +882,8 @@
   <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.SelectAll" xml:space="preserve">Select all</x:String>
   <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.Short" xml:space="preserve">SPP updates</x:String>
   <x:String x:Key="Text.Repository.SubmoduleFold" xml:space="preserve">Fold SPP</x:String>
+  <x:String x:Key="Text.Repository.SubmoduleFold.Off" xml:space="preserve">No Fold</x:String>
+  <x:String x:Key="Text.Repository.BranchFold" xml:space="preserve">Branch folding</x:String>
   <x:String x:Key="Text.Repository.SubmoduleFold.ToolTip" xml:space="preserve">Fold consecutive commits that only update the same submodules</x:String>
   <x:String x:Key="Text.Repository.SubmoduleFold.Expand" xml:space="preserve">Expand {0} submodule update commits</x:String>
   <x:String x:Key="Text.Repository.SubmoduleFold.Collapse" xml:space="preserve">Collapse {0} submodule update commits</x:String>

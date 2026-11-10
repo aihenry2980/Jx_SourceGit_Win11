@@ -88,8 +88,8 @@ internal static partial class Program
             window.Show();
             PumpFor(150);
             repo.Histories.SelectedCommits = [repo.Histories.Commits.Single(c => c.SHA == updates[0])];
-            var toggle = view.FindControl<CheckBox>("FoldSubmoduleUpdatesToggle");
-            toggle.IsChecked = true;
+            var toggle = view.FindControl<RadioButton>("FoldSubmoduleUpdatesToggle");
+            toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Refresh();
             PumpFor(150);
             var group = repo.Histories.Commits.Single(c => c.HasSubmoduleCommitGroup);
@@ -104,12 +104,28 @@ internal static partial class Program
             Check(FoldButton().GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == "3"),
                 "The stacked indicator displays the total number of commits in the group");
             CaptureUxFrame(window, "submodule-fold-collapsed-Light");
-            repo.FoldVisibleBranchesInGraph();
+            var menuButton = view.FindControl<Button>("HistoryFoldMenuButton");
+            var menu = (MenuFlyout)menuButton.Flyout;
+            Check(!menu.IsOpen && !view.GetVisualDescendants().OfType<Button>().Any(b => b.Name == "FoldVisibleBranchesButton"),
+                "Manual folding controls stay hidden until the arrow menu is opened");
+            menu.ShowAt(menuButton);
+            PumpFor(100);
+            var menuItems = menu.Items.OfType<MenuItem>().ToArray();
+            Check(menuItems.Length == 2 && menuItems[0].IsEnabled == repo.CanFoldVisibleBranchesInGraph &&
+                menuItems[1].IsEnabled == repo.CanUnfoldBranchesInGraph,
+                "Fold menu inherits current repository command availability");
+            CaptureUxFrame(window, "submodule-fold-menu");
+            menuItems[0].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            menu.Hide();
             Refresh();
             Check(repo.Histories.Commits.Any(c => c.FoldedCommitsBelow > 0) &&
                 repo.Histories.Commits.All(c => !c.HasSubmoduleCommitGroup),
                 "Manual branch folding remains independent and does not nest invisible pointer groups");
-            repo.UnfoldAllBranchesInGraph();
+            menu.ShowAt(menuButton);
+            PumpFor(50);
+            Check(menuItems[1].IsEnabled, "Unfold becomes available after branches have been folded");
+            menuItems[1].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            menu.Hide();
             Refresh();
             PumpFor(100);
             Check(repo.Histories.Commits.Any(c => c.HasFoldedSubmoduleCommits),
@@ -138,7 +154,7 @@ internal static partial class Program
             var position = toggle.TranslatePoint(default, window).Value;
             Check(position.X >= 0 && position.X + toggle.Bounds.Width <= window.ClientSize.Width,
                 "The folding toggle remains inside a narrow desktop window");
-            var unfold = view.FindControl<Button>("UnfoldAllBranchesButton");
+            var unfold = menuButton;
             Check(unfold.TranslatePoint(default, window).Value.X + unfold.Bounds.Width <= window.ClientSize.Width,
                 "Narrow toolbar keeps existing unfold controls accessible alongside the new toggle");
             CaptureUxFrame(window, "submodule-fold-1100");
@@ -160,7 +176,7 @@ internal static partial class Program
                 CaptureUxFrame(window, "submodule-fold-zoomed");
             }
             finally { SourceGit.ViewModels.Preferences.Instance.HistoriesZoom = originalZoom; }
-            toggle.IsChecked = false;
+            view.FindControl<RadioButton>("UnfoldSubmoduleUpdatesToggle").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Refresh();
             Check(repo.Histories.Commits.Count == fullCount && repo.Histories.Commits.All(c => !c.HasSubmoduleCommitGroup),
                 "Disabling folding removes every group and restores the original history");

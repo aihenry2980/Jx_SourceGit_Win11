@@ -910,6 +910,20 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
+        private void OnEnableSubmoduleFolding(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+                repo.FoldSubmoduleUpdatesInHistory = true;
+            e.Handled = true;
+        }
+
+        private void OnDisableSubmoduleFolding(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+                repo.FoldSubmoduleUpdatesInHistory = false;
+            e.Handled = true;
+        }
+
         private void OnFoldVisibleBranchesInGraph(object sender, RoutedEventArgs e)
         {
             if (DataContext is ViewModels.Repository repo)

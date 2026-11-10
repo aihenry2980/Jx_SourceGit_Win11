@@ -869,6 +869,8 @@
   <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.SelectAll" xml:space="preserve">全选</x:String>
   <x:String x:Key="Text.Repository.SubmoduleUpdateFilter.Short" xml:space="preserve">SPP 更新</x:String>
   <x:String x:Key="Text.Repository.SubmoduleFold" xml:space="preserve">折叠 SPP</x:String>
+  <x:String x:Key="Text.Repository.SubmoduleFold.Off" xml:space="preserve">不折叠</x:String>
+  <x:String x:Key="Text.Repository.BranchFold" xml:space="preserve">分支折叠</x:String>
   <x:String x:Key="Text.Repository.SubmoduleFold.ToolTip" xml:space="preserve">折叠连续且仅更新同一组子模块的提交</x:String>
   <x:String x:Key="Text.Repository.SubmoduleFold.Expand" xml:space="preserve">展开 {0} 个子模块更新提交</x:String>
   <x:String x:Key="Text.Repository.SubmoduleFold.Collapse" xml:space="preserve">折叠 {0} 个子模块更新提交</x:String>

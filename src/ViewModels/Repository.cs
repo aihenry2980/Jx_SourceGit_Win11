@@ -3510,6 +3510,7 @@ namespace SourceGit.ViewModels
 
                             hasChanged = !exist.SHA.Equals(module.SHA, StringComparison.Ordinal) ||
                                          !exist.Branch.Equals(module.Branch, StringComparison.Ordinal) ||
+                                         !exist.CheckedOutBranch.Equals(module.CheckedOutBranch, StringComparison.Ordinal) ||
                                          !exist.URL.Equals(module.URL, StringComparison.Ordinal) ||
                                          exist.Status != module.Status ||
                                          exist.HasFileChanges != module.HasFileChanges ||

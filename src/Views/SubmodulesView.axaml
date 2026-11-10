@@ -110,6 +110,7 @@
                            Foreground="{Binding AccentColor, Converter={x:Static c:CommitConverters.UInt32ToBrush}}">
                   <Run Text="{Binding DisplayPrefix, Mode=OneWay}" Foreground="#FF9AA0A6"/><Run Text="{Binding DisplayLeafName, Mode=OneWay}"/>
                   <Run Text="{Binding ChildCounter}" Foreground="{DynamicResource Brush.FG2}"/>
+                  <Run Text="{Binding CheckedOutBranchLabel}" FontSize="11" Foreground="{DynamicResource Brush.FG1}"/>
                 </TextBlock>
 
                 <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="3" Margin="0,0,8,0">
@@ -294,8 +295,11 @@
                       HorizontalAlignment="Left"
                       Data="{StaticResource Icons.Submodule}"/>
                 <Border Grid.Column="2" ClipToBounds="True">
-                  <TextBlock Text="{Binding Path}" TextTrimming="CharacterEllipsis"
-                             Foreground="{Binding AccentColor, Converter={x:Static c:CommitConverters.UInt32ToBrush}}"/>
+                  <TextBlock TextTrimming="CharacterEllipsis"
+                             Foreground="{Binding AccentColor, Converter={x:Static c:CommitConverters.UInt32ToBrush}}">
+                    <Run Text="{Binding Path}"/>
+                    <Run Text="{Binding CheckedOutBranchLabel}" FontSize="11" Foreground="{DynamicResource Brush.FG1}"/>
+                  </TextBlock>
                 </Border>
                 <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="3" Margin="8,0,8,0">
                   <Border MinWidth="14"

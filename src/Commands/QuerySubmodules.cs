@@ -53,6 +53,7 @@ namespace SourceGit.Commands
                     break;
 
                 var localPath = module.Path;
+                module.CheckedOutBranch = ReadCheckedOutBranch(Native.OS.GetAbsPath(normalizedRepo, localPath));
                 if (!string.IsNullOrEmpty(displayPrefix))
                     module.Path = CombineGitPath(displayPrefix, localPath);
 
@@ -77,6 +78,30 @@ namespace SourceGit.Commands
             }
 
             return outs;
+        }
+
+        private static string ReadCheckedOutBranch(string repo)
+        {
+            // Read only this worktree's HEAD; a missing .git must not resolve to the parent repo.
+            try
+            {
+                var gitDir = Path.Combine(repo, ".git");
+                if (File.Exists(gitDir))
+                {
+                    var redirect = File.ReadAllText(gitDir).Trim();
+                    if (!redirect.StartsWith("gitdir:", StringComparison.Ordinal))
+                        return string.Empty;
+                    gitDir = Path.GetFullPath(redirect[7..].Trim(), repo);
+                }
+
+                var head = File.ReadAllText(Path.Combine(gitDir, "HEAD")).Trim();
+                const string prefix = "ref: refs/heads/";
+                return head.StartsWith(prefix, StringComparison.Ordinal) ? head[prefix.Length..] : string.Empty;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+            {
+                return string.Empty;
+            }
         }
 
         private async Task<List<Models.Submodule>> GetCurrentLevelAsync()
