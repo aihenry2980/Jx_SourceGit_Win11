@@ -38,10 +38,15 @@ namespace SourceGit.Views
 
         public IBrush Foreground => _foreground;
 
-        public static readonly DirectProperty<LauncherTabSizeBox, IEffect> TextGlowProperty =
-            AvaloniaProperty.RegisterDirect<LauncherTabSizeBox, IEffect>(nameof(TextGlow), static o => o.TextGlow);
+        public static readonly DirectProperty<LauncherTabSizeBox, IBrush> SelectionBrushProperty =
+            AvaloniaProperty.RegisterDirect<LauncherTabSizeBox, IBrush>(nameof(SelectionBrush), static o => o.SelectionBrush);
 
-        public IEffect TextGlow => _textGlow;
+        public IBrush SelectionBrush => _selectionBrush;
+
+        public static readonly DirectProperty<LauncherTabSizeBox, IBrush> CloseRingBrushProperty =
+            AvaloniaProperty.RegisterDirect<LauncherTabSizeBox, IBrush>(nameof(CloseRingBrush), static o => o.CloseRingBrush);
+
+        public IBrush CloseRingBrush => _closeRingBrush;
 
         public static readonly DirectProperty<LauncherTabSizeBox, bool> UseFixedWidthProperty =
             AvaloniaProperty.RegisterDirect<LauncherTabSizeBox, bool>(
@@ -90,19 +95,21 @@ namespace SourceGit.Views
         {
             var fallback = this.FindResource(ActualThemeVariant, "Color.Contents");
             var highlight = Models.Bookmarks.Get(Highlight) as ISolidColorBrush;
-            var color = highlight?.Color ??
-                (fallback is Color background ? background : ActualThemeVariant == ThemeVariant.Dark ? Color.FromRgb(40, 40, 40) : Colors.White);
-            var glowColor = highlight?.Color ?? Colors.Gray;
-            glowColor = Color.FromRgb((byte)(glowColor.R * 0.45), (byte)(glowColor.G * 0.45), (byte)(glowColor.B * 0.45));
-            SetAndRaise(TextGlowProperty, ref _textGlow, IsActive ? new DropShadowEffect
+            var color = fallback is Color background ? background : ActualThemeVariant == ThemeVariant.Dark ? Color.FromRgb(40, 40, 40) : Colors.White;
+            SetAndRaise(SelectionBrushProperty, ref _selectionBrush,
+                highlight ?? this.FindResource(ActualThemeVariant, "Brush.Accent") as IBrush ?? Brushes.DeepSkyBlue);
+            if (IsActive)
             {
-                Color = glowColor, BlurRadius = 4, OffsetX = 0, OffsetY = 0, Opacity = 0.85,
-            } : null);
-            if (highlight != null)
-                color = Color.FromArgb(color.A,
-                    (byte)(color.R + (255 - color.R) * 0.75),
-                    (byte)(color.G + (255 - color.G) * 0.75),
-                    (byte)(color.B + (255 - color.B) * 0.75));
+                // Even the brightest bookmark colors must remain readable with white labels.
+                color = highlight is { Color: var activeHue }
+                    ? Color.FromRgb((byte)(activeHue.R * 0.45), (byte)(activeHue.G * 0.45), (byte)(activeHue.B * 0.45))
+                    : Color.FromRgb(48, 48, 48);
+            }
+            else if (highlight is { Color: var hue })
+                color = Color.FromArgb(hue.A,
+                    (byte)(hue.R + (255 - hue.R) * 0.75),
+                    (byte)(hue.G + (255 - hue.G) * 0.75),
+                    (byte)(hue.B + (255 - hue.B) * 0.75));
 
             SetCurrentValue(BackgroundProperty, new SolidColorBrush(color));
             static double Linearize(byte channel)
@@ -112,13 +119,21 @@ namespace SourceGit.Views
             }
 
             var luminance = 0.2126 * Linearize(color.R) + 0.7152 * Linearize(color.G) + 0.0722 * Linearize(color.B);
-            SetAndRaise(ForegroundProperty, ref _foreground, luminance > 0.179 ? Brushes.Black : Brushes.White);
+            SetAndRaise(ForegroundProperty, ref _foreground, IsActive || luminance <= 0.179 ? Brushes.White : Brushes.Black);
+            var ringColor = (_selectionBrush as ISolidColorBrush)?.Color ?? Colors.Gray;
+            ringColor = luminance > 0.179
+                ? Color.FromRgb((byte)(ringColor.R * 0.5), (byte)(ringColor.G * 0.5), (byte)(ringColor.B * 0.5))
+                : Color.FromRgb((byte)(ringColor.R + (255 - ringColor.R) * 0.3),
+                    (byte)(ringColor.G + (255 - ringColor.G) * 0.3),
+                    (byte)(ringColor.B + (255 - ringColor.B) * 0.3));
+            SetAndRaise(CloseRingBrushProperty, ref _closeRingBrush, new SolidColorBrush(ringColor));
             this.FindAncestorOfType<LauncherTabBar>()?.InvalidateVisual();
         }
 
         private bool _useFixedWidth = false;
         private IBrush _foreground = Brushes.Black;
-        private IEffect _textGlow;
+        private IBrush _selectionBrush = Brushes.DimGray;
+        private IBrush _closeRingBrush = Brushes.DimGray;
     }
 
     public partial class LauncherTabBar : UserControl

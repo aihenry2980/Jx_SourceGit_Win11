@@ -51,6 +51,9 @@
             <Style Selector="ListBoxItem:not(:selected):pointerover Border.launcher_tab">
               <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}"/>
             </Style>
+            <Style Selector="ListBoxItem:selected Border.launcher_tab">
+              <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border2}"/>
+            </Style>
             <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
               <Setter Property="Background" Value="Transparent"/>
               <Setter Property="Opacity" Value="1"/>
@@ -59,8 +62,11 @@
               <Setter Property="Background" Value="Transparent"/>
               <Setter Property="Opacity" Value="1"/>
             </Style>
-            <Style Selector="ListBoxItem:selected TextBlock">
-              <Setter Property="FontWeight" Value="Bold"/>
+            <Style Selector="ListBoxItem:selected TextBlock.tab_title">
+              <Setter Property="FontWeight" Value="SemiBold"/>
+            </Style>
+            <Style Selector="ListBoxItem:selected Button.tab_close /template/ ContentPresenter#PART_ContentPresenter">
+              <Setter Property="Opacity" Value="1"/>
             </Style>
           </ListBox.Styles>
 
@@ -92,20 +98,33 @@
                 </ToolTip.Tip>
 
                 <Grid>
-                <Grid ColumnDefinitions="Auto,*,Auto" Margin="16,2,0,3">
+                <Grid ColumnDefinitions="20,*,22" Margin="4,2,4,3">
                   <Path Grid.Column="0"
-                        Width="12" Height="12" Margin="0,0,8,0"
+                        Width="12" Height="12"
                         Fill="{Binding $parent[v:LauncherTabSizeBox].Foreground}"
                         Data="{StaticResource Icons.Repositories}"
                         IsVisible="{Binding !Node.IsRepository}"
                         IsHitTestVisible="False"/>
+                  <Path Grid.Column="0" Classes="active_tab_star"
+                        Width="16" Height="16" Stretch="Uniform"
+                        Data="{StaticResource Icons.Star}"
+                        Fill="#FFFFC107" Stroke="#FF6D4C00" StrokeThickness="0.8"
+                        IsHitTestVisible="False">
+                    <Path.IsVisible>
+                      <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="Node.IsRepository"/>
+                        <Binding Path="$parent[v:LauncherTabSizeBox].IsActive"/>
+                      </MultiBinding>
+                    </Path.IsVisible>
+                  </Path>
 
                   <Grid Grid.Column="1"
+                        Margin="4,0,6,0"
                         HorizontalAlignment="Center" VerticalAlignment="Center"
                         ColumnDefinitions="Auto,*"
                         IsHitTestVisible="False"
                         IsVisible="{Binding Node.IsRepository}">
-                    <Ellipse Grid.Column="0"
+                    <Ellipse Grid.Column="0" Classes="tab_dirty_state"
                              Width="8" Height="8"
                              Margin="0,0,6,0"
                              VerticalAlignment="Center"
@@ -114,7 +133,6 @@
 
                     <TextBlock Grid.Column="1"
                                Classes="tab_title"
-                               Effect="{Binding $parent[v:LauncherTabSizeBox].TextGlow}"
                                Foreground="{Binding $parent[v:LauncherTabSizeBox].Foreground}"
                                VerticalAlignment="Center"
                                FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=DefaultFontSize, Converter={x:Static c:DoubleConverters.Decrease}}"
@@ -124,8 +142,8 @@
                   </Grid>
 
                   <TextBlock Grid.Column="1"
+                             Margin="4,0,6,0"
                              Classes="tab_title"
-                             Effect="{Binding $parent[v:LauncherTabSizeBox].TextGlow}"
                              Foreground="{Binding $parent[v:LauncherTabSizeBox].Foreground}"
                              HorizontalAlignment="Stretch" VerticalAlignment="Center"
                              FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=DefaultFontSize, Converter={x:Static c:DoubleConverters.Decrease}}"
@@ -135,8 +153,9 @@
                              IsHitTestVisible="False"/>
 
                   <Button Grid.Column="2"
-                          Classes="icon_button"
-                          Width="14" Height="12" Margin="8,0"
+                          Classes="icon_button tab_close"
+                          Width="22" Height="22" Padding="0"
+                          HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
                           Click="OnCloseTab">
                     <ToolTip.Tip>
                       <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -148,10 +167,23 @@
                                    Foreground="{DynamicResource MenuFlyoutItemKeyboardAcceleratorTextForeground}"/>
                       </StackPanel>
                     </ToolTip.Tip>
-                    <Path Width="9" Height="9" Data="{StaticResource Icons.Close}"
-                          Fill="{Binding $parent[v:LauncherTabSizeBox].Foreground}"/>
+                    <Grid Width="20" Height="20">
+                      <Ellipse Classes="active_tab_close_ring" Width="20" Height="20"
+                               Stroke="{Binding $parent[v:LauncherTabSizeBox].CloseRingBrush}"
+                               StrokeThickness="1.5"
+                               IsVisible="{Binding $parent[v:LauncherTabSizeBox].IsActive}"
+                               IsHitTestVisible="False"/>
+                      <Path Width="9" Height="9" Data="{StaticResource Icons.Close}"
+                            Fill="{Binding $parent[v:LauncherTabSizeBox].Foreground}"/>
+                    </Grid>
                   </Button>
                 </Grid>
+                <Border Classes="active_tab_indicator"
+                        Height="3" Margin="5,-1,5,0" CornerRadius="1"
+                        VerticalAlignment="Top"
+                        Background="{Binding $parent[v:LauncherTabSizeBox].SelectionBrush}"
+                        IsVisible="{Binding $parent[v:LauncherTabSizeBox].IsActive}"
+                        IsHitTestVisible="False"/>
                 </Grid>
               </v:LauncherTabSizeBox>
             </DataTemplate>
