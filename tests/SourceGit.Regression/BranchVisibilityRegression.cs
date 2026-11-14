@@ -98,47 +98,66 @@ internal static partial class Program
             var graph = (ContextMenu)Invoke(histories, "CreateContextMenuForSingleCommit", repo, commit, false, null);
             var graphDeletes = FindDeleteItems(graph).ToList();
             Check(graphDeletes.Count == 2, "Both graph local and remote delete actions use the danger style");
+            Check(graph.Items.OfType<MenuItem>().Count(item => item.Classes.Contains("delete_branch")) == 2 &&
+                !graph.Items.OfType<MenuItem>().SelectMany(FindDeleteItems).Any(),
+                "Graph branch deletion is available at the top level, not duplicated in submenus");
             var localDelete = FindDeleteItems(treeLocal).Single();
             var remoteDelete = FindDeleteItems(treeRemote).Single();
             var disabled = FindDeleteItems(treeCurrent).Single();
             Check(localDelete.IsEnabled && remoteDelete.IsEnabled && !disabled.IsEnabled,
                 "Sidebar delete styling preserves current-branch deletion protection");
+            var bulkDelete = new MenuItem
+            {
+                Classes = { "delete_branch" },
+                Header = SourceGit.Views.ControlExtensions.CreateBranchDeleteActionBadge(SourceGit.App.Text("BranchCM.DeleteMultiBranches", 2)),
+                Icon = tree.CreateMenuIcon("Icons.Clear"),
+            };
 
             foreach (var theme in new[] { ThemeVariant.Light, ThemeVariant.Dark })
             {
                 Application.Current.RequestedThemeVariant = theme;
                 var panel = new StackPanel { Margin = new Thickness(16), Spacing = 8 };
-                var menuItems = new[] { localDelete, remoteDelete }.Concat(graphDeletes).Append(disabled).ToList();
+                var menuItems = new[] { localDelete, remoteDelete }.Concat(graphDeletes).Append(disabled).Append(bulkDelete).ToList();
                 foreach (var item in menuItems)
                 {
                     if (item.Parent is ItemsControl parent)
                         parent.Items.Remove(item);
                     panel.Children.Add(item);
                 }
-                var window = new Window { Width = 640, Height = 230, Content = panel };
+                var window = new Window { Width = 640, Height = 270, Content = panel };
                 window.Show();
                 PumpFor(100);
                 foreach (var item in menuItems)
                 {
                     var border = item.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "PART_LayoutRoot");
+                    var action = item.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("branch_delete_action"));
+                    var scope = item.GetVisualDescendants().OfType<Border>().SingleOrDefault(b => b.Classes.Contains("branch_delete_scope"));
                     if (!item.IsEnabled)
                     {
-                        Check(border.Background is ISolidColorBrush { Color.A: 0 }, "Disabled delete does not look actionable");
+                        Check(!IsRed(border.Background) && action.Opacity <= 0.4 && scope?.Opacity <= 0.4,
+                            "Disabled delete badges are muted and the row is not red");
                         continue;
                     }
-                    Check(IsRed(border.Background) && border.Bounds.Width >= item.Bounds.Width - 1,
-                        "Delete action has a full-width red background in " + theme);
+                    Check(!IsRed(border.Background) && IsRed(action.Background) && action.Bounds.Width < border.Bounds.Width - 20,
+                        "Only the Delete action badge is red, not the menu row in " + theme);
                     var icon = (Avalonia.Controls.Shapes.Path)item.Icon;
-                    Check(icon.Fill is ISolidColorBrush { Color: var iconColor } && iconColor == Colors.White,
-                        "Delete icon remains white on red");
-                    var labels = item.GetVisualDescendants().OfType<TextBlock>()
-                        .Where(t => t.Parent is not Border && !string.IsNullOrEmpty(t.Text));
-                    Check(labels.All(t => t.Foreground is ISolidColorBrush { Color: var color } && color == Colors.White),
-                        "Delete label and shortcut remain readable on red");
+                    Check(IsRed(icon.Fill), "Delete icon retains its danger color");
+                    Check(((TextBlock)action.Child).Foreground is ISolidColorBrush { Color: var actionColor } && actionColor == Colors.White,
+                        "Delete action uses white text on its red badge");
+                    if (scope != null)
+                    {
+                        var localScope = scope.Classes.Contains("local");
+                        Check(scope.Background is ISolidColorBrush { Color: var scopeBackground } &&
+                            scopeBackground == Color.Parse(localScope ? "#21834A" : "#F4CE61"),
+                            "Local scope is green and remote scope is yellow in " + theme);
+                        Check(((TextBlock)scope.Child).Foreground is ISolidColorBrush { Color: var scopeText } &&
+                            scopeText == (localScope ? Colors.White : Color.Parse("#332500")),
+                            "Scope text contrasts with the green/yellow badge");
+                    }
                     item.IsSelected = true;
                     PumpFor(20);
-                    Check(IsRed(border.Background) && ((ISolidColorBrush)border.Background).Color.R < 0xC6,
-                        "Selected delete stays red and darkens");
+                    Check(!IsRed(border.Background) && IsRed(action.Background),
+                        "Hover uses the normal menu highlight and keeps the red Delete badge");
                     item.IsSelected = false;
                 }
                 AvaloniaHeadlessPlatform.ForceRenderTimerTick();

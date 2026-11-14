@@ -1034,46 +1034,39 @@
     <Setter Property="Foreground" Value="#FFF7FAFC"/>
   </Style>
 
-  <Style Selector="MenuItem.delete_branch">
-    <Setter Property="Background" Value="#C62828"/>
-    <Setter Property="Foreground" Value="White"/>
-    <Setter Property="FontWeight" Value="Bold"/>
-  </Style>
-
-  <Style Selector="MenuItem.delete_branch TextBlock">
-    <Setter Property="Foreground" Value="White"/>
-  </Style>
-
-  <Style Selector="MenuItem.delete_branch /template/ TextBlock">
-    <Setter Property="Foreground" Value="White"/>
-  </Style>
-
   <Style Selector="MenuItem.delete_branch Path">
-    <Setter Property="Fill" Value="White"/>
+    <Setter Property="Fill" Value="#C62828"/>
   </Style>
 
-  <Style Selector="MenuItem.delete_branch:selected /template/ Border#PART_LayoutRoot">
-    <Setter Property="Background" Value="#991B1B"/>
+  <Style Selector="Border.branch_delete_action">
+    <Setter Property="Background" Value="#C62828"/>
+    <Setter Property="BorderBrush" Value="#A51F1F"/>
   </Style>
 
-  <Style Selector="MenuItem.delete_branch:selected /template/ ContentPresenter#PART_HeaderPresenter">
+  <Style Selector="Border.branch_delete_action TextBlock">
     <Setter Property="Foreground" Value="White"/>
   </Style>
 
-  <Style Selector="MenuItem.delete_branch:disabled /template/ Border#PART_LayoutRoot">
-    <Setter Property="Background" Value="Transparent"/>
+  <Style Selector="Border.branch_delete_scope.local">
+    <Setter Property="Background" Value="#21834A"/>
+    <Setter Property="BorderBrush" Value="#176339"/>
   </Style>
 
-  <Style Selector="MenuItem.delete_branch:disabled">
-    <Setter Property="Foreground" Value="{DynamicResource Brush.FG2}"/>
+  <Style Selector="Border.branch_delete_scope.local TextBlock">
+    <Setter Property="Foreground" Value="White"/>
   </Style>
 
-  <Style Selector="MenuItem.delete_branch:disabled TextBlock">
-    <Setter Property="Foreground" Value="{DynamicResource Brush.FG2}"/>
+  <Style Selector="Border.branch_delete_scope.remote">
+    <Setter Property="Background" Value="#F4CE61"/>
+    <Setter Property="BorderBrush" Value="#B58B18"/>
   </Style>
 
-  <Style Selector="MenuItem.delete_branch:disabled /template/ TextBlock">
-    <Setter Property="Foreground" Value="{DynamicResource Brush.FG2}"/>
+  <Style Selector="Border.branch_delete_scope.remote TextBlock">
+    <Setter Property="Foreground" Value="#332500"/>
+  </Style>
+
+  <Style Selector="MenuItem.delete_branch:disabled Border.branch_delete_action, MenuItem.delete_branch:disabled Border.branch_delete_scope">
+    <Setter Property="Opacity" Value="0.4"/>
   </Style>
 
   <Style Selector="MenuItem.delete_branch:disabled Path">

@@ -42,13 +42,20 @@
                              TotalCommits="{Binding Commits.Count, Mode=OneWay}"
                              SelectedCommits="{Binding SelectedCommits, Mode=TwoWay}"
                              ColumnHeaderHeight="24"
+                             CompactRowHeight="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesRowHeight}"
+                             CompactTrackingBranches="{Binding Source={x:Static vm:Preferences.Instance}, Path=CompactTrackingBranches}"
                              FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Mode=OneWay}"
-                             RowHeight="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesRowHeight, Mode=OneWay}"
                              Loaded="OnCommitListLoaded"
                              LayoutUpdated="OnCommitListLayoutUpdated"
                              ContextRequested="OnCommitListContextRequested"
                              DoubleTapped="OnCommitListDoubleTapped"
                              KeyDown="OnCommitListKeyDown">
+        <v:HistoriesCommitList.ExpandedRowHeight>
+          <MultiBinding Converter="{x:Static c:DoubleConverters.ToBranchHistoryRowHeight}">
+            <Binding Source="{x:Static vm:Preferences.Instance}" Path="HistoriesFontSize"/>
+            <Binding Source="{DynamicResource Fonts.Default}"/>
+          </MultiBinding>
+        </v:HistoriesCommitList.ExpandedRowHeight>
         <DataGrid.Resources>
           <SolidColorBrush x:Key="DataGridRowSelectedBackgroundBrush" Color="Transparent"/>
           <SolidColorBrush x:Key="DataGridRowSelectedHoveredBackgroundBrush" Color="Transparent"/>
@@ -420,6 +427,7 @@
                     </StackPanel>
 
                     <v:CommitRefsPresenter Grid.Column="3"
+                                           FontFamily="{DynamicResource Fonts.Default}"
                                            Background="{DynamicResource Brush.Contents}"
                                            CompactTrackingBranches="{Binding Source={x:Static vm:Preferences.Instance}, Path=CompactTrackingBranches}"
                                            Foreground="{DynamicResource Brush.FG1}"

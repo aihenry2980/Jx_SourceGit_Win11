@@ -611,7 +611,7 @@ namespace SourceGit.Views
 
                     var deleteMulti = new MenuItem();
                     deleteMulti.Classes.Add("delete_branch");
-                    deleteMulti.Header = App.Text("BranchCM.DeleteMultiBranches", branches.Count);
+                    deleteMulti.Header = ControlExtensions.CreateBranchDeleteActionBadge(App.Text("BranchCM.DeleteMultiBranches", branches.Count));
                     deleteMulti.Icon = this.CreateMenuIcon("Icons.Clear");
                     deleteMulti.Tag = "Delete/Back";
                     deleteMulti.Click += (_, ev) =>
@@ -1100,7 +1100,7 @@ namespace SourceGit.Views
 
             var delete = new MenuItem();
             delete.Classes.Add("delete_branch");
-            delete.Header = App.Text("BranchCM.Delete", branch.Name);
+            delete.Header = ControlExtensions.CreateDeleteBranchHeader(branch);
             delete.Icon = this.CreateMenuIcon("Icons.Clear");
             delete.Tag = "Delete/Back";
             delete.IsEnabled = !branch.IsCurrent;
@@ -1198,15 +1198,8 @@ namespace SourceGit.Views
             menu.Items.Add(archive);
             menu.Items.Add(new MenuItem() { Header = "-" });
 
-            var copy = new MenuItem();
-            copy.Header = App.Text("BranchCM.CopyName");
-            copy.Icon = App.CreateMenuIcon("Icons.Copy");
+            var copy = this.CreateCopyBranchNameMenuItem(branch);
             copy.Tag = OperatingSystem.IsMacOS() ? "⌘+C" : "Ctrl+C";
-            copy.Click += async (_, e) =>
-            {
-                await App.CopyTextAsync(branch.Name);
-                e.Handled = true;
-            };
             menu.Items.Add(copy);
 
             return menu;
@@ -1436,7 +1429,7 @@ namespace SourceGit.Views
 
             var delete = new MenuItem();
             delete.Classes.Add("delete_branch");
-            delete.Header = App.Text("BranchCM.Delete", name);
+            delete.Header = ControlExtensions.CreateDeleteBranchHeader(branch);
             delete.Icon = this.CreateMenuIcon("Icons.Clear");
             delete.Tag = "Delete/Back";
             delete.Click += (_, e) =>
@@ -1500,15 +1493,8 @@ namespace SourceGit.Views
                 e.Handled = true;
             };
 
-            var copy = new MenuItem();
-            copy.Header = App.Text("BranchCM.CopyName");
-            copy.Icon = App.CreateMenuIcon("Icons.Copy");
+            var copy = this.CreateCopyBranchNameMenuItem(branch);
             copy.Tag = OperatingSystem.IsMacOS() ? "⌘+C" : "Ctrl+C";
-            copy.Click += async (_, e) =>
-            {
-                await App.CopyTextAsync(name);
-                e.Handled = true;
-            };
 
             menu.Items.Add(archive);
             menu.Items.Add(new MenuItem() { Header = "-" });

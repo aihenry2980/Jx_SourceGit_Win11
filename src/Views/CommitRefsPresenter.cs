@@ -11,6 +11,8 @@ namespace SourceGit.Views
 {
     public class CommitRefsPresenter : Control
     {
+        public double MeasuredContentHeight => ReferenceEquals(DataContext, _measuredCommit) ? _measuredContentHeight : 0;
+
         public class RenderItem
         {
             public Geometry Icon { get; set; } = null;
@@ -24,6 +26,9 @@ namespace SourceGit.Views
             public string RawLabel { get; set; } = string.Empty;
             public Typeface LabelTypeface { get; set; } = new Typeface(FontFamily.Default);
             public double LabelFontSize { get; set; } = 0;
+            public int LineBreak { get; set; } = -1;
+            public FormattedText FirstLine { get; set; } = null;
+            public FormattedText SecondLine { get; set; } = null;
             public IBrush Brush { get; set; } = null;
             public IBrush BorderBrush { get; set; } = null;
             public IBrush IconBrush { get; set; } = null;
@@ -160,6 +165,8 @@ namespace SourceGit.Views
                 BackgroundProperty,
                 ShowTagsProperty,
                 HighlightTextProperty,
+                AllowWrapProperty,
+                HasSingleRemoteProperty,
                 CompactTrackingBranchesProperty);
         }
 
@@ -213,6 +220,7 @@ namespace SourceGit.Views
             var allowWrap = AllowWrap;
             var x = 1.5;
             var y = 0.5;
+            var lineHeight = 0.0;
             var hasSingleRemote = HasSingleRemote;
 
             foreach (var item in _items)
@@ -220,8 +228,10 @@ namespace SourceGit.Views
                 if (allowWrap && x > 1.5 && x + item.Width > Bounds.Width)
                 {
                     x = 1.5;
-                    y += item.Height + 4.0;
+                    y += lineHeight + 4.0;
+                    lineHeight = 0;
                 }
+                lineHeight = Math.Max(lineHeight, item.Height);
 
                 var rightCornerRadius = item.IsBranch ? item.Height * 0.5 : 4.0;
                 var entireRect = new RoundedRect(
@@ -262,17 +272,23 @@ namespace SourceGit.Views
                     }
 
                     var labelX = x + item.LeadingWidth;
-                    DrawLabelHighlights(context, item, labelX, centerY - item.Label.Height * 0.5);
-                    if (item.PrefixLabel != null)
+                    DrawLabel(context, item, labelX, centerY);
+                    if (item.LineBreak >= 0)
+                        labelX += item.Label.Width;
+                    else
                     {
-                        context.DrawText(item.PrefixLabel, new Point(labelX, centerY - item.PrefixLabel.Height * 0.5));
-                        labelX += item.PrefixLabel.WidthIncludingTrailingWhitespace;
-                    }
+                        if (item.PrefixLabel != null)
+                        {
+                            context.DrawText(item.PrefixLabel, new Point(labelX, centerY - item.PrefixLabel.Height * 0.5));
+                            labelX += item.PrefixLabel.WidthIncludingTrailingWhitespace;
+                        }
 
-                    context.DrawText(item.Label, new Point(labelX, centerY - item.Label.Height * 0.5));
+                        context.DrawText(item.Label, new Point(labelX, centerY - item.Label.Height * 0.5));
+                        labelX += item.Label.Width;
+                    }
                     if (item.HeadLabel != null)
                     {
-                        var badgeX = labelX + item.Label.Width + 4;
+                        var badgeX = labelX + 4;
                         var badgeHeight = item.Height - 4;
                         context.DrawRectangle(s_currentBranchBadgeBrush, null,
                             new RoundedRect(new Rect(badgeX, y + 2, item.HeadBadgeWidth, badgeHeight), new CornerRadius(3)));
@@ -328,14 +344,17 @@ namespace SourceGit.Views
                     }
 
                     var labelX = x + item.LeadingWidth + 4;
-                    DrawLabelHighlights(context, item, labelX, centerY - item.Label.Height * 0.5);
-                    if (item.PrefixLabel != null)
+                    DrawLabel(context, item, labelX, centerY);
+                    if (item.LineBreak < 0)
                     {
-                        context.DrawText(item.PrefixLabel, new Point(labelX, centerY - item.PrefixLabel.Height * 0.5));
-                        labelX += item.PrefixLabel.WidthIncludingTrailingWhitespace;
-                    }
+                        if (item.PrefixLabel != null)
+                        {
+                            context.DrawText(item.PrefixLabel, new Point(labelX, centerY - item.PrefixLabel.Height * 0.5));
+                            labelX += item.PrefixLabel.WidthIncludingTrailingWhitespace;
+                        }
 
-                    context.DrawText(item.Label, new Point(labelX, centerY - item.Label.Height * 0.5));
+                        context.DrawText(item.Label, new Point(labelX, centerY - item.Label.Height * 0.5));
+                    }
                 }
 
                 var borderBrush = item.HeadLabel != null ? fg : item.BorderBrush ?? item.Brush;
@@ -431,6 +450,8 @@ namespace SourceGit.Views
         protected override Size MeasureOverride(Size availableSize)
         {
             _items.Clear();
+            _measuredCommit = DataContext as Models.Commit;
+            _measuredContentHeight = 0;
 
             if (DataContext is not Models.Commit commit)
                 return new Size(0, 0);
@@ -443,8 +464,8 @@ namespace SourceGit.Views
                 var fg = Foreground;
                 var normalBG = UseGraphColor ? Models.CommitGraph.Pens[commit.Color].Brush : Brushes.Gray;
                 var labelSize = FontSize;
-                var requiredHeight = 16.0;
-                var currentLineHeight = 16.0;
+                var requiredHeight = 0.0;
+                var currentLineHeight = 0.0;
                 var x = 0.0;
                 var allowWrap = AllowWrap;
                 var showTags = ShowTags;
@@ -468,7 +489,7 @@ namespace SourceGit.Views
                         decorator.Type is Models.DecoratorType.CurrentBranchHead or Models.DecoratorType.LocalBranchHead &&
                         !string.IsNullOrWhiteSpace(decorator.Name))
                     {
-                        var remoteDecoratorIndex = FindCompactRemoteMatch(refs, decorator.Name);
+                        var remoteDecoratorIndex = Models.BranchLabelLayout.FindCompactRemoteMatch(refs, decorator.Name);
                         if (remoteDecoratorIndex >= 0 && remoteDecoratorIndex != i)
                         {
                             consumedRemoteDecoratorIndexes.Add(remoteDecoratorIndex);
@@ -546,6 +567,36 @@ namespace SourceGit.Views
                         IsMuted = isMutedIncidentalBranch,
                         Decorator = decorator,
                     };
+
+                    if (isBranch && !isMutedIncidentalBranch)
+                    {
+                        item.LineBreak = Models.BranchLabelLayout.GetLineBreak(decorator.Name);
+                        if (item.LineBreak >= 0)
+                        {
+                            var first = decorator.Name.Substring(0, item.LineBreak);
+                            var second = decorator.Name.Substring(item.LineBreak);
+                            item.FirstLine = new FormattedText(first, CultureInfo.CurrentCulture,
+                                FlowDirection.LeftToRight, labelTypeface, labelSizeForItem, labelBrush);
+                            item.SecondLine = new FormattedText(second, CultureInfo.CurrentCulture,
+                                FlowDirection.LeftToRight, labelTypeface, labelSizeForItem, labelBrush);
+                            if (prefixLabel != null)
+                            {
+                                var prefixLength = decorator.Name.IndexOf('/') + 1;
+                                item.FirstLine.SetForegroundBrush(s_remotePrefixAccentBrush, 0, Math.Min(prefixLength, first.Length));
+                                item.FirstLine.SetFontWeight(FontWeight.Bold, 0, Math.Min(prefixLength, first.Length));
+                                if (prefixLength > first.Length)
+                                {
+                                    item.SecondLine.SetForegroundBrush(s_remotePrefixAccentBrush, 0, prefixLength - first.Length);
+                                    item.SecondLine.SetFontWeight(FontWeight.Bold, 0, prefixLength - first.Length);
+                                }
+                            }
+                            item.PrefixLabel = null;
+                            prefixLabel = null;
+                            label = new FormattedText(first + "\n" + second, CultureInfo.CurrentCulture,
+                                FlowDirection.LeftToRight, labelTypeface, labelSizeForItem, labelBrush);
+                            item.Label = label;
+                        }
+                    }
 
                     if (secondaryDecorator != null)
                     {
@@ -706,7 +757,10 @@ namespace SourceGit.Views
                         item.Height += 4;
 
                     var prefixWidth = prefixLabel?.WidthIncludingTrailingWhitespace ?? 0.0;
-                    item.Width = item.LeadingWidth + (isHead ? 0 : 4) + prefixWidth + label.Width + 4;
+                    var textWidth = item.LineBreak >= 0
+                        ? Math.Max(item.FirstLine.WidthIncludingTrailingWhitespace, item.SecondLine.WidthIncludingTrailingWhitespace)
+                        : label.WidthIncludingTrailingWhitespace;
+                    item.Width = item.LeadingWidth + (isHead ? 0 : 4) + prefixWidth + textWidth + 4;
                     if (item.HeadLabel != null)
                         item.Width += item.HeadBadgeWidth + 6;
                     if (item.CanFold)
@@ -719,20 +773,21 @@ namespace SourceGit.Views
                         item.Arrow = SubmoduleUpdateBadgeShape.CreateArrowGeometry(new Rect(0, 0, item.Width, item.Height));
                     }
                     _items.Add(item);
-                    currentLineHeight = Math.Max(currentLineHeight, item.Height);
-                    requiredHeight = Math.Max(requiredHeight, currentLineHeight);
-
-                    x += item.Width + 4;
-                    if (allowWrap)
+                    if (allowWrap && x > 0 && x + item.Width + 3 > availableSize.Width)
                     {
-                        if (x > availableSize.Width)
-                        {
-                            requiredHeight += currentLineHeight + 4.0;
-                            currentLineHeight = item.Height;
-                            x = item.Width;
-                        }
+                        requiredHeight += currentLineHeight + 4.0;
+                        currentLineHeight = 0;
+                        x = 0;
                     }
+                    currentLineHeight = Math.Max(currentLineHeight, item.Height);
+                    x += item.Width + 4;
                 }
+
+                if (_items.Count == 0)
+                    return default;
+
+                requiredHeight += currentLineHeight + 1;
+                _measuredContentHeight = requiredHeight;
 
                 var requiredWidth = allowWrap && requiredHeight > 16.0
                     ? (double.IsInfinity(availableSize.Width) ? x + 2 : availableSize.Width)
@@ -876,43 +931,40 @@ namespace SourceGit.Views
                 if (found < 0)
                     break;
 
-                var prefixWidth = 0.0;
-                if (found > 0)
+                var matchEnd = found + Math.Min(query.Length, item.RawLabel.Length - found);
+                for (var offset = found; offset < matchEnd;)
                 {
-                    var prefix = new FormattedText(
-                        item.RawLabel.Substring(0, found),
-                        CultureInfo.CurrentCulture,
-                        FlowDirection.LeftToRight,
-                        item.LabelTypeface,
-                        item.LabelFontSize,
-                        item.LabelBrush);
-                    prefixWidth = prefix.WidthIncludingTrailingWhitespace;
+                    var second = item.LineBreak >= 0 && offset >= item.LineBreak;
+                    var lineStart = second ? item.LineBreak : 0;
+                    var lineEnd = item.LineBreak >= 0 && !second ? item.LineBreak : item.RawLabel.Length;
+                    var length = Math.Min(matchEnd, lineEnd) - offset;
+                    var prefix = new FormattedText(item.RawLabel.Substring(lineStart, offset - lineStart),
+                        CultureInfo.CurrentCulture, FlowDirection.LeftToRight, item.LabelTypeface, item.LabelFontSize, item.LabelBrush);
+                    var match = new FormattedText(item.RawLabel.Substring(offset, length),
+                        CultureInfo.CurrentCulture, FlowDirection.LeftToRight, item.LabelTypeface, item.LabelFontSize, s_highlightForeground);
+                    var top = y + (second ? item.FirstLine.Height : 0);
+                    var rect = new RoundedRect(new Rect(x + prefix.WidthIncludingTrailingWhitespace - 1, top,
+                        match.WidthIncludingTrailingWhitespace + 2, match.Height), new CornerRadius(3));
+                    context.DrawRectangle(s_highlightBackground, null, rect);
+                    context.DrawText(match, new Point(x + prefix.WidthIncludingTrailingWhitespace, top));
+                    offset += length;
                 }
-
-                var matchLen = Math.Min(query.Length, item.RawLabel.Length - found);
-                var match = new FormattedText(
-                    item.RawLabel.Substring(found, matchLen),
-                    CultureInfo.CurrentCulture,
-                    FlowDirection.LeftToRight,
-                    item.LabelTypeface,
-                    item.LabelFontSize,
-                    item.LabelBrush);
-
-                var rect = new RoundedRect(
-                    new Rect(x + prefixWidth - 1, y, match.WidthIncludingTrailingWhitespace + 2, item.Label.Height),
-                    new CornerRadius(3));
-                context.DrawRectangle(s_highlightBackground, null, rect);
-
-                var highlightText = new FormattedText(
-                    item.RawLabel.Substring(found, matchLen),
-                    CultureInfo.CurrentCulture,
-                    FlowDirection.LeftToRight,
-                    item.LabelTypeface,
-                    item.LabelFontSize,
-                    s_highlightForeground);
-                context.DrawText(highlightText, new Point(x + prefixWidth, y));
-                start = found + matchLen;
+                start = matchEnd;
             }
+        }
+
+        private void DrawLabel(DrawingContext context, RenderItem item, double x, double centerY)
+        {
+            if (item.LineBreak < 0)
+            {
+                DrawLabelHighlights(context, item, x, centerY - item.Label.Height * .5);
+                return;
+            }
+
+            var y = centerY - (item.FirstLine.Height + item.SecondLine.Height) * .5;
+            context.DrawText(item.FirstLine, new Point(x, y));
+            context.DrawText(item.SecondLine, new Point(x, y + item.FirstLine.Height));
+            DrawLabelHighlights(context, item, x, y);
         }
 
         private bool TryGetItemAtPoint(Point point, out RenderItem found, out Rect foldRect)
@@ -923,13 +975,16 @@ namespace SourceGit.Views
             var allowWrap = AllowWrap;
             var x = 1.5;
             var y = 0.5;
+            var lineHeight = 0.0;
             foreach (var item in _items)
             {
                 if (allowWrap && x > 1.5 && x + item.Width > Bounds.Width)
                 {
                     x = 1.5;
-                    y += item.Height + 4.0;
+                    y += lineHeight + 4.0;
+                    lineHeight = 0;
                 }
+                lineHeight = Math.Max(lineHeight, item.Height);
 
                 var itemRect = new Rect(x, y, item.Width, item.Height);
                 if (itemRect.Contains(point))
@@ -967,47 +1022,6 @@ namespace SourceGit.Views
             return drawGeo;
         }
 
-        private static int FindCompactRemoteMatch(List<Models.Decorator> refs, string localName)
-        {
-            if (refs == null || string.IsNullOrWhiteSpace(localName))
-                return -1;
-
-            var exactOriginName = $"origin/{localName}";
-            var firstMatch = -1;
-            var matchCount = 0;
-
-            for (var i = 0; i < refs.Count; i++)
-            {
-                var decorator = refs[i];
-                if (decorator.Type != Models.DecoratorType.RemoteBranchHead)
-                    continue;
-
-                if (!GetRemoteLeafName(decorator.Name).Equals(localName, StringComparison.Ordinal))
-                    continue;
-
-                if (decorator.Name.Equals(exactOriginName, StringComparison.Ordinal))
-                    return i;
-
-                if (firstMatch < 0)
-                    firstMatch = i;
-
-                matchCount++;
-            }
-
-            return matchCount == 1 ? firstMatch : -1;
-        }
-
-        private static string GetRemoteLeafName(string remoteName)
-        {
-            if (string.IsNullOrWhiteSpace(remoteName))
-                return string.Empty;
-
-            var slashIdx = remoteName.IndexOf('/');
-            return slashIdx >= 0 && slashIdx + 1 < remoteName.Length
-                ? remoteName.Substring(slashIdx + 1)
-                : remoteName;
-        }
-
         private static string AbbreviateMutedBranchName(string name)
         {
             if (string.IsNullOrWhiteSpace(name))
@@ -1020,6 +1034,8 @@ namespace SourceGit.Views
         private const double TRACKING_PAIR_BADGE_WIDTH = 36.0;
 
         private List<RenderItem> _items = new List<RenderItem>();
+        private Models.Commit _measuredCommit;
+        private double _measuredContentHeight;
         private static readonly IBrush s_currentBranchBadgeBrush = new SolidColorBrush(Color.Parse("#263238"));
         private static readonly IBrush s_headTagBackgroundBrush = new SolidColorBrush(Color.Parse("#C62828"));
         private static readonly IBrush s_headTagBorderBrush = new SolidColorBrush(Color.Parse("#7F0000"));

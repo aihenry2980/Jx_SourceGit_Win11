@@ -2109,7 +2109,8 @@ namespace SourceGit.ViewModels
                 names.Add(branch.Name);
 
             var exclusions = _settings.GetPresetBranchExcludeNameList();
-            exclusions.RemoveAll(name => name.Equals(branch.Name, StringComparison.Ordinal));
+            exclusions.RemoveAll(name => name.Equals(branch.Name, StringComparison.Ordinal) ||
+                name.Equals(branch.FriendlyName, StringComparison.Ordinal) || name.Equals(branch.FullName, StringComparison.Ordinal));
             PresetBranchExactNames = string.Join('\n', names);
             PresetBranchExcludeNames = string.Join('\n', exclusions);
             IsPresetBranchFilterEditorExpanded = true;
@@ -2163,7 +2164,7 @@ namespace SourceGit.ViewModels
                 {
                     foreach (var branch in _branches)
                     {
-                        if (!excludeNames.Contains(branch.Name))
+                        if (!presetBranchFilter.IsExcluded(branch))
                             continue;
 
                         if (branch.IsLocal)
@@ -2181,11 +2182,15 @@ namespace SourceGit.ViewModels
 
             foreach (var branch in _branches)
             {
-                if (!presetBranchFilter.ShouldShow(branch.Name))
+                if (!presetBranchFilter.ShouldShow(branch))
                     continue;
 
                 var color = 0u;
-                if (exactNames.Contains(branch.Name))
+                if (exactNames.Contains(branch.FriendlyName))
+                    color = exactNameColors.GetValueOrDefault(branch.FriendlyName);
+                else if (exactNames.Contains(branch.FullName))
+                    color = exactNameColors.GetValueOrDefault(branch.FullName);
+                else if (exactNames.Contains(branch.Name))
                     color = exactNameColors.GetValueOrDefault(branch.Name);
 
                 if (branch.IsLocal)
@@ -2195,7 +2200,7 @@ namespace SourceGit.ViewModels
                     if (!string.IsNullOrEmpty(branch.Upstream) &&
                         !branch.IsUpstreamGone &&
                         branchesByFullName.TryGetValue(branch.Upstream, out var upstreamBranch) &&
-                        presetBranchFilter.ShouldShow(upstreamBranch.Name))
+                        presetBranchFilter.ShouldShow(upstreamBranch))
                     {
                         AddIncludedHistoryFilter(branch.Upstream, Models.FilterType.RemoteBranch, color);
                     }
@@ -2593,10 +2598,77 @@ namespace SourceGit.ViewModels
 
         public void SetBranchFilterMode(Models.Branch branch, Models.FilterMode mode, bool clearExists, bool refresh)
         {
+            if (branch == null || branch.IsDetachedHead || _uiStates == null)
+                return;
+
             var node = FindBranchNode(branch.IsLocal ? _localBranchTrees : _remoteBranchTrees, branch.FullName);
+            if (node == null)
+            {
+                // Graph refs may not be present in the filtered sidebar.
+                var builder = new BranchTreeNode.Builder(_uiStates.LocalBranchSortMode, _uiStates.RemoteBranchSortMode,
+                    GetRebaseBaseBranch()?.FullName);
+                builder.Run([branch], _remotes, false);
+                node = FindBranchNode(branch.IsLocal ? builder.Locals : builder.Remotes, branch.FullName);
+            }
             if (node != null)
                 SetBranchFilterMode(node, mode, clearExists, refresh);
         }
+
+        private bool SynchronizeBranchVisibilityRules(Models.Branch branch, Models.FilterMode mode)
+        {
+            if (_settings == null || branch.IsDetachedHead)
+                return false;
+
+            var names = _settings.GetPresetBranchExcludeNameList();
+            var exactNames = _settings.GetPresetBranchExactNameList();
+            var changed = false;
+            void Update(Models.Branch target)
+            {
+                if (mode == Models.FilterMode.Included)
+                {
+                    if (!exactNames.Contains(target.FriendlyName))
+                    {
+                        exactNames.Add(target.FriendlyName);
+                        changed = true;
+                    }
+                }
+                else
+                {
+                    changed |= exactNames.RemoveAll(name => name.Equals(target.FriendlyName, StringComparison.Ordinal) ||
+                        name.Equals(target.FullName, StringComparison.Ordinal)) > 0;
+                }
+
+                if (mode == Models.FilterMode.Excluded)
+                {
+                    if (!names.Contains(target.FriendlyName))
+                    {
+                        names.Add(target.FriendlyName);
+                        changed = true;
+                    }
+                }
+                else
+                {
+                    changed |= names.RemoveAll(name => name.Equals(target.Name, StringComparison.Ordinal) ||
+                        name.Equals(target.FriendlyName, StringComparison.Ordinal) || name.Equals(target.FullName, StringComparison.Ordinal)) > 0;
+                }
+            }
+            Update(branch);
+            if (branch.IsLocal && !string.IsNullOrEmpty(branch.Upstream) && !branch.IsUpstreamGone &&
+                _branches.Find(b => b.FullName.Equals(branch.Upstream, StringComparison.Ordinal)) is { } upstream)
+                Update(upstream);
+
+            if (changed)
+            {
+                PresetBranchExactNames = string.Join('\n', exactNames);
+                PresetBranchExcludeNames = string.Join('\n', names);
+            }
+            if (mode is Models.FilterMode.Excluded or Models.FilterMode.Included)
+                IsPresetBranchFilterEditorExpanded = true;
+            return changed;
+        }
+
+        public bool IsBranchExcludedByPresetFilter(Models.Branch branch) => branch != null && !IsShowingAllBranches &&
+            GetPresetBranchFilterMatchCache().IsExcluded(branch);
 
         private bool IncludeBranchInHistoryFilter(Models.Branch branch, bool refresh)
         {
@@ -2641,9 +2713,10 @@ namespace SourceGit.ViewModels
 
             if (node.Backend is Models.Branch branch)
             {
+                var ruleChanged = SynchronizeBranchVisibilityRules(branch, mode);
                 var type = isLocal ? Models.FilterType.LocalBranch : Models.FilterType.RemoteBranch;
                 var changed = _uiStates.UpdateHistoryFilters(node.Path, type, mode);
-                if (!changed)
+                if (!changed && !ruleChanged)
                     return;
 
                 if (isLocal && !string.IsNullOrEmpty(branch.Upstream) && !branch.IsUpstreamGone)
@@ -2695,6 +2768,8 @@ namespace SourceGit.ViewModels
                 var configured = _settings.GetPresetBranchConfiguredColorMap();
                 if (configured.TryGetValue(branch.Name, out var color) && color != 0)
                     return color;
+                if (configured.TryGetValue(branch.FriendlyName, out color) && color != 0)
+                    return color;
             }
 
             return Models.RepositorySettings.PRESET_BRANCH_EXACT_DEFAULT_COLOR;
@@ -2711,6 +2786,8 @@ namespace SourceGit.ViewModels
             {
                 var configuredColors = _settings.GetPresetBranchConfiguredColorMap();
                 if (configuredColors.TryGetValue(branch.Name, out var configuredColor) && configuredColor != 0)
+                    return configuredColor;
+                if (configuredColors.TryGetValue(branch.FriendlyName, out configuredColor) && configuredColor != 0)
                     return configuredColor;
             }
 
@@ -2759,6 +2836,15 @@ namespace SourceGit.ViewModels
             if (_settings != null)
             {
                 changed |= _settings.SetPresetBranchExactNameColor(branch.Name, color);
+                var exactNames = _settings.GetPresetBranchExactNameSet();
+                if (exactNames.Contains(branch.FriendlyName))
+                    changed |= _settings.SetPresetBranchExactNameColor(branch.FriendlyName, color);
+                if (exactNames.Contains(branch.FullName))
+                    changed |= _settings.SetPresetBranchExactNameColor(branch.FullName, color);
+                if (branch.IsLocal && !branch.IsUpstreamGone &&
+                    _branches.Find(b => b.FullName.Equals(branch.Upstream, StringComparison.Ordinal)) is { } upstream &&
+                    exactNames.Contains(upstream.FriendlyName))
+                    changed |= _settings.SetPresetBranchExactNameColor(upstream.FriendlyName, color);
                 if (changed)
                     SavePresetBranchFilterSettingsAsync();
             }
@@ -2793,6 +2879,7 @@ namespace SourceGit.ViewModels
 
             var before = _uiStates.GetHistoryFilterMode(branch.FullName);
             SetBranchFilterMode(branch, Models.FilterMode.Included, false, false);
+            UpdatePresetBranchExactNameColor(branch.FriendlyName, color);
 
             var changed = before != Models.FilterMode.Included;
             if (branch.IsLocal)
@@ -4850,7 +4937,7 @@ namespace SourceGit.ViewModels
             foreach (var branch in _branches)
             {
                 if (!IsShowingAllBranches &&
-                    !presetBranchFilter.ShouldShow(branch.Name))
+                    !presetBranchFilter.ShouldShow(branch))
                     continue;
 
                 if (!string.IsNullOrEmpty(_filter) && !branch.FullName.Contains(_filter, StringComparison.OrdinalIgnoreCase))
@@ -6514,12 +6601,15 @@ namespace SourceGit.ViewModels
             public HashSet<string> ExcludeNames { get; set; } = new(StringComparer.Ordinal);
             public HashSet<string> VisibleBranchNames { get; } = new(StringComparer.Ordinal);
 
-            public bool ShouldShow(string name)
+            public bool IsExcluded(Models.Branch branch) => ExcludeNames.Contains(branch.Name) ||
+                ExcludeNames.Contains(branch.FriendlyName) || ExcludeNames.Contains(branch.FullName);
+
+            public bool ShouldShow(Models.Branch branch)
             {
-                if (string.IsNullOrEmpty(name))
+                if (string.IsNullOrEmpty(branch.Name) || IsExcluded(branch))
                     return false;
 
-                return VisibleBranchNames.Contains(name);
+                return VisibleBranchNames.Contains(branch.Name) || ExactNames.Contains(branch.FriendlyName) || ExactNames.Contains(branch.FullName);
             }
         }
 

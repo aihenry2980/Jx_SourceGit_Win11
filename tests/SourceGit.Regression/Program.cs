@@ -165,6 +165,35 @@ internal static partial class Program
             return;
         }
 
+        if (args is ["--branch-labels"])
+        {
+            TestBranchLabels();
+            Console.WriteLine($"PASS: {_checks} branch label checks. Isolated data and previews: {_root}");
+            return;
+        }
+
+        if (args is ["--visibility-excludes"])
+        {
+            TestVisibilityExclusions();
+            Console.WriteLine($"PASS: {_checks} visibility exclusion checks. Isolated data and previews: {_root}");
+            return;
+        }
+
+        if (args is ["--visibility-includes"])
+        {
+            TestVisibilityIncludes();
+            Console.WriteLine($"PASS: {_checks} visibility inclusion checks. Isolated data and previews: {_root}");
+            return;
+        }
+
+        if (args is ["--branch-menus"])
+        {
+            TestBranchMenus();
+            TestDeleteBranchVisibility();
+            Console.WriteLine($"PASS: {_checks} branch menu checks. Isolated data and previews: {_root}");
+            return;
+        }
+
         if (args is ["--focus-merge"])
         {
             TestFocusBranchMergeIntegration();
@@ -212,6 +241,10 @@ internal static partial class Program
         TestFilterEncodingUx();
         TestWorkflowUx();
         TestWorkspaceStyle();
+        TestBranchLabels();
+        TestVisibilityExclusions();
+        TestVisibilityIncludes();
+        TestBranchMenus();
         TestLauncherTitleIntegration();
         Console.WriteLine($"PASS: {_checks} checks. Isolated data and preview: {_root}");
     }

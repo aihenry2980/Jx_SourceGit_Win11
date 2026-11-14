@@ -6,7 +6,49 @@ using Avalonia.Media;
 
 namespace SourceGit.Models
 {
-    public record CommitGraphLayout(double StartY, double ClipWidth, double RowHeight, double OffsetX = 0, double OffsetY = 0);
+    public record CommitGraphLayout(double StartY, double ClipWidth, double RowHeight, double OffsetX = 0, double OffsetY = 0,
+        CommitGraphRowMetrics Rows = null, IReadOnlyList<Point> VisibleRowCenters = null)
+    {
+        private double GetEstimatedY(double rowPosition) => Rows?.GetY(rowPosition) ?? rowPosition * RowHeight;
+
+        public double GetY(double rowPosition)
+        {
+            var visible = VisibleRowCenters;
+            if (visible == null || visible.Count == 0)
+                return GetEstimatedY(rowPosition);
+
+            var first = visible[0];
+            var last = visible[^1];
+            if (rowPosition <= first.X)
+                return GetEstimatedY(rowPosition) + first.Y - GetEstimatedY(first.X);
+            if (rowPosition >= last.X)
+                return GetEstimatedY(rowPosition) + last.Y - GetEstimatedY(last.X);
+
+            var low = 0;
+            var high = visible.Count - 1;
+            while (high - low > 1)
+            {
+                var middle = (low + high) / 2;
+                if (visible[middle].X <= rowPosition)
+                    low = middle;
+                else
+                    high = middle;
+            }
+            var a = visible[low];
+            var b = visible[high];
+            return a.Y + (rowPosition - a.X) / (b.X - a.X) * (b.Y - a.Y);
+        }
+
+        public bool HasSameVisibleRows(IReadOnlyList<Point> rows)
+        {
+            if (VisibleRowCenters == null || VisibleRowCenters.Count != rows.Count)
+                return false;
+            for (var i = 0; i < rows.Count; i++)
+                if (VisibleRowCenters[i].X != rows[i].X || Math.Abs(VisibleRowCenters[i].Y - rows[i].Y) > 0.01)
+                    return false;
+            return true;
+        }
+    }
 
     public enum CommitGraphHighlighting
     {

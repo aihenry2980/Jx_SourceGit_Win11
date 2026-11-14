@@ -53,6 +53,8 @@ namespace SourceGit.ViewModels
             if (_target is Models.Branch b)
             {
                 _mode = _repo.UIStates.GetHistoryFilterMode(b.FullName);
+                if (_mode == Models.FilterMode.None && _repo.IsBranchExcludedByPresetFilter(b))
+                    _mode = Models.FilterMode.Excluded;
                 var selectedColor = initialBranchColor != 0 ? initialBranchColor : _repo.GetEffectiveBranchDisplayColor(b);
                 _selectedBranchColor = FindBranchColorOption(selectedColor);
                 if (_selectedBranchColor == null)

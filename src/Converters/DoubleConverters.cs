@@ -1,11 +1,29 @@
 ﻿using Avalonia;
 using Avalonia.Data.Converters;
 using System;
+using System.Collections.Generic;
+using System.Globalization;
+using Avalonia.Media;
 
 namespace SourceGit.Converters
 {
     public static class DoubleConverters
     {
+        public static readonly IMultiValueConverter ToBranchHistoryRowHeight = new BranchHistoryRowHeightConverter();
+
+        private sealed class BranchHistoryRowHeightConverter : IMultiValueConverter
+        {
+            public object Convert(IList<object> values, Type targetType, object parameter, CultureInfo culture)
+            {
+                var fontSize = values.Count > 0 && values[0] is double size ? size : 13.0;
+                var height = Math.Max(16.0, fontSize + 10.0);
+                var family = values.Count > 1 && values[1] is FontFamily font ? font : FontFamily.Default;
+                var text = new FormattedText("Ag\nAg", CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
+                    new Typeface(family, FontStyle.Normal, FontWeight.Bold), fontSize, Brushes.Black);
+                return Math.Max(height, Math.Ceiling(text.Height + 7));
+            }
+        }
+
         public static readonly FuncValueConverter<double, bool> ShowHistoryToolbarLabels =
             new(v => v >= 1100);
 

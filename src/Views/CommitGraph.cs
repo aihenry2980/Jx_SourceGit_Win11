@@ -61,14 +61,13 @@ namespace SourceGit.Views
             var offsetX = _layout.OffsetX;
             var offsetY = _layout.OffsetY;
             var clipHeight = Bounds.Height;
-            var rowHeight = _layout.RowHeight;
             var endY = startY + clipHeight + 28;
 
             using (context.PushClip(new Rect(offsetX, 0, clipWidth, clipHeight)))
             using (context.PushTransform(Matrix.CreateTranslation(offsetX, -startY + offsetY)))
             {
-                DrawCurves(context, _graph, startY, endY, rowHeight);
-                DrawAnchors(context, _graph, startY, endY, rowHeight);
+                DrawCurves(context, _graph, startY, endY, _layout);
+                DrawAnchors(context, _graph, startY, endY, _layout);
             }
         }
 
@@ -82,14 +81,14 @@ namespace SourceGit.Views
                 InvalidateVisual();
         }
 
-        private void DrawCurves(DrawingContext context, Models.CommitGraph graph, double top, double bottom, double rowHeight)
+        private void DrawCurves(DrawingContext context, Models.CommitGraph graph, double top, double bottom, Models.CommitGraphLayout layout)
         {
             var grayedPen = new Pen(new SolidColorBrush(Colors.Gray, 0.4), Models.CommitGraph.Pens[0].Thickness);
 
             foreach (var link in graph.Links)
             {
-                var startY = link.Start.Y * rowHeight;
-                var endY = link.End.Y * rowHeight;
+                var startY = layout.GetY(link.Start.Y);
+                var endY = layout.GetY(link.End.Y);
 
                 if (endY < top)
                     continue;
@@ -100,7 +99,7 @@ namespace SourceGit.Views
                 using (var ctx = geo.Open())
                 {
                     ctx.BeginFigure(new Point(link.Start.X, startY), false);
-                    ctx.QuadraticBezierTo(new Point(link.Control.X, link.Control.Y * rowHeight), new Point(link.End.X, endY));
+                    ctx.QuadraticBezierTo(new Point(link.Control.X, layout.GetY(link.Control.Y)), new Point(link.End.X, endY));
                 }
 
                 var pen = link.IsHighlighted ? Models.CommitGraph.Pens[link.Color] : grayedPen;
@@ -109,9 +108,9 @@ namespace SourceGit.Views
 
             foreach (var line in graph.Paths)
             {
-                var last = new Point(line.Points[0].X, line.Points[0].Y * rowHeight);
+                var last = new Point(line.Points[0].X, layout.GetY(line.Points[0].Y));
                 var size = line.Points.Count;
-                var endY = line.Points[size - 1].Y * rowHeight;
+                var endY = layout.GetY(line.Points[size - 1].Y);
 
                 if (endY < top)
                     continue;
@@ -127,7 +126,7 @@ namespace SourceGit.Views
                     var ended = false;
                     for (int i = 1; i < size; i++)
                     {
-                        var cur = new Point(line.Points[i].X, line.Points[i].Y * rowHeight);
+                        var cur = new Point(line.Points[i].X, layout.GetY(line.Points[i].Y));
                         if (cur.Y < top)
                         {
                             last = cur;
@@ -177,7 +176,7 @@ namespace SourceGit.Views
             }
         }
 
-        private void DrawAnchors(DrawingContext context, Models.CommitGraph graph, double top, double bottom, double rowHeight)
+        private void DrawAnchors(DrawingContext context, Models.CommitGraph graph, double top, double bottom, Models.CommitGraphLayout layout)
         {
             var dotFill = DotBrush;
             var dotFillPen = new Pen(dotFill, 2);
@@ -185,7 +184,7 @@ namespace SourceGit.Views
 
             foreach (var dot in graph.Dots)
             {
-                var center = new Point(dot.Center.X, dot.Center.Y * rowHeight);
+                var center = new Point(dot.Center.X, layout.GetY(dot.Center.Y));
 
                 if (center.Y < top)
                     continue;
@@ -217,6 +216,7 @@ namespace SourceGit.Views
                 if (dot.FoldedCommitsBelow > 0)
                 {
                     // Mark folded history on the line itself, so it reads as a fold marker instead of a stray dot.
+                    var rowHeight = layout.Rows?.GetHeight((int)Math.Floor(dot.Center.Y)) ?? layout.RowHeight;
                     var markerCenter = new Point(center.X, center.Y + rowHeight * 0.38);
                     if (markerCenter.Y >= bottom)
                         continue;

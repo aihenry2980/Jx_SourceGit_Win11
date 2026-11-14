@@ -13,6 +13,7 @@ using Avalonia.Controls.Shapes;
 using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
@@ -89,6 +90,32 @@ namespace SourceGit.Views
 
     public class HistoriesCommitList : DataGrid
     {
+        public static readonly StyledProperty<double> CompactRowHeightProperty =
+            AvaloniaProperty.Register<HistoriesCommitList, double>(nameof(CompactRowHeight), 24);
+        public double CompactRowHeight
+        {
+            get => GetValue(CompactRowHeightProperty);
+            set => SetValue(CompactRowHeightProperty, value);
+        }
+
+        public static readonly StyledProperty<double> ExpandedRowHeightProperty =
+            AvaloniaProperty.Register<HistoriesCommitList, double>(nameof(ExpandedRowHeight), 40);
+        public double ExpandedRowHeight
+        {
+            get => GetValue(ExpandedRowHeightProperty);
+            set => SetValue(ExpandedRowHeightProperty, value);
+        }
+
+        public Models.CommitGraphRowMetrics RowMetrics { get; private set; }
+
+        public static readonly StyledProperty<bool> CompactTrackingBranchesProperty =
+            AvaloniaProperty.Register<HistoriesCommitList, bool>(nameof(CompactTrackingBranches));
+        public bool CompactTrackingBranches
+        {
+            get => GetValue(CompactTrackingBranchesProperty);
+            set => SetValue(CompactTrackingBranchesProperty, value);
+        }
+
         public static readonly DirectProperty<HistoriesCommitList, int> TotalCommitsProperty =
             AvaloniaProperty.RegisterDirect<HistoriesCommitList, int>(
                 nameof(TotalCommits),
@@ -138,10 +165,93 @@ namespace SourceGit.Views
 
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
         {
+            var updateRows = change.Property == ItemsSourceProperty || change.Property == CompactRowHeightProperty ||
+                change.Property == ExpandedRowHeightProperty || change.Property == CompactTrackingBranchesProperty;
+            if (updateRows)
+                RebuildRowMetrics();
+
             base.OnPropertyChanged(change);
+
+            if (updateRows)
+                UpdateRealizedRowHeights();
 
             if (change.Property == SelectedCommitsProperty && IsLoaded && !_ignoreSelectionChanged)
                 ApplySelection();
+        }
+
+        protected override void OnLoadingRow(DataGridRowEventArgs e)
+        {
+            base.OnLoadingRow(e);
+            ApplyRowHeight(e.Row);
+        }
+
+        protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+        {
+            base.OnAttachedToVisualTree(e);
+            _rowMetricsTopLevel = TopLevel.GetTopLevel(this);
+            if (_rowMetricsTopLevel != null)
+                _rowMetricsTopLevel.ScalingChanged += OnRowScalingChanged;
+            OnRowScalingChanged(this, EventArgs.Empty);
+        }
+
+        protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+        {
+            if (_rowMetricsTopLevel != null)
+                _rowMetricsTopLevel.ScalingChanged -= OnRowScalingChanged;
+            _rowMetricsTopLevel = null;
+            base.OnDetachedFromVisualTree(e);
+        }
+
+        private void OnRowScalingChanged(object sender, EventArgs e)
+        {
+            RebuildRowMetrics();
+            UpdateRealizedRowHeights();
+        }
+
+        private void RebuildRowMetrics()
+        {
+            var scale = LayoutHelper.GetLayoutScale(this);
+            // Match the grid's physical-pixel layout so rounding cannot accumulate down the graph.
+            var compact = UseLayoutRounding ? LayoutHelper.RoundLayoutValueUp(CompactRowHeight, scale) : CompactRowHeight;
+            var expanded = UseLayoutRounding ? LayoutHelper.RoundLayoutValueUp(ExpandedRowHeight, scale) : ExpandedRowHeight;
+            RowMetrics = new(ItemsSource as IReadOnlyList<Models.Commit>, compact, Math.Max(compact, expanded), CompactTrackingBranches);
+        }
+
+        private void UpdateRealizedRowHeights()
+        {
+            foreach (var child in this.GetVisualDescendants())
+                if (child is DataGridRow row)
+                    ApplyRowHeight(row);
+        }
+
+        private void ApplyRowHeight(DataGridRow row)
+        {
+            // Ref metadata estimates offscreen graph positions, never the actual row height.
+            // Start compact; measured chips can enlarge just this row after layout.
+            row.MinHeight = RowMetrics?.CompactHeight ?? CompactRowHeight;
+            row.Height = row.MinHeight;
+        }
+
+        public bool UpdateMeasuredRowHeights(DataGridRowsPresenter rowsPresenter)
+        {
+            var changed = false;
+            var scale = LayoutHelper.GetLayoutScale(this);
+            foreach (var child in rowsPresenter.Children)
+            {
+                if (child is not DataGridRow { IsVisible: true } row)
+                    continue;
+                var refs = row.FindDescendantOfType<CommitRefsPresenter>();
+                if (refs == null || !ReferenceEquals(refs.DataContext, row.DataContext))
+                    continue;
+                var height = Math.Max(RowMetrics.CompactHeight, refs.MeasuredContentHeight);
+                if (UseLayoutRounding)
+                    height = LayoutHelper.RoundLayoutValueUp(height, scale);
+                if (Math.Abs(row.Height - height) <= 0.01)
+                    continue;
+                row.Height = height;
+                changed = true;
+            }
+            return changed;
         }
 
         protected override void OnSelectionChanged(SelectionChangedEventArgs e)
@@ -236,6 +346,7 @@ namespace SourceGit.Views
         }
 
         private bool _ignoreSelectionChanged = false;
+        private TopLevel _rowMetricsTopLevel;
         private int _totalCommits = 0;
         private List<Models.Commit> _selectedCommits = [];
     }
@@ -362,13 +473,12 @@ namespace SourceGit.Views
             if (rowsPresenter is { Children: { Count: > 0 } rows } &&
                 TryGetGraphColumnLayout(dataGrid, out var graphOffsetX, out var graphClipWidth))
             {
-                var rowHeight = dataGrid.RowHeight;
-                if (rowHeight <= 0 || double.IsNaN(rowHeight))
-                    rowHeight = rows[0].Bounds.Height;
-                var offsetY = CalculateGraphVerticalOffset(rowsPresenter, rowHeight, 0);
+                var metrics = dataGrid.RowMetrics;
+                var rowHeight = dataGrid.CompactRowHeight;
+                var offsetY = CalculateGraphVerticalOffset(rowsPresenter, metrics, 0);
 
                 UpdateCommitGraphMargin(rowsPresenter);
-                CommitGraph.Layout = new(0, graphClipWidth, rowHeight, graphOffsetX, offsetY);
+                CommitGraph.Layout = new(0, graphClipWidth, rowHeight, graphOffsetX, offsetY, metrics);
             }
 
             if (dataGrid.SelectedItems.Count == 1)
@@ -721,11 +831,15 @@ namespace SourceGit.Views
             if (rowsPresenter == null)
                 return;
 
+            if (dataGrid.UpdateMeasuredRowHeights(rowsPresenter))
+                return;
+
             ScheduleHistoryColumnWidthFreeze(rowsPresenter);
 
-            var rowHeight = dataGrid.RowHeight;
-            if (rowHeight <= 0 || double.IsNaN(rowHeight))
-                rowHeight = 24;
+            var rowHeight = dataGrid.CompactRowHeight;
+            var metrics = dataGrid.RowMetrics;
+            if (metrics == null)
+                return;
 
             UpdateCommitGraphMargin(rowsPresenter);
             
@@ -737,24 +851,33 @@ namespace SourceGit.Views
             {
                 if (child is DataGridRow { IsVisible: true } row)
                 {
-                    if (row.Bounds.Top <= 0 && row.Bounds.Top > -rowHeight)
+                    if (row.Bounds.Bottom > 0)
                     {
-                        var test = rowHeight * row.Index - row.Bounds.Top;
-                        if (startY < test)
-                            startY = test;
+                        startY = metrics.GetTop(row.Index) - row.Bounds.Top;
+                        break;
                     }
                 }
             }
 
             IsScrollToTopVisible = startY >= rowHeight;
 
-            var graphOffsetY = CalculateGraphVerticalOffset(rowsPresenter, rowHeight, startY);
+            var graphOffsetY = CalculateGraphVerticalOffset(rowsPresenter, metrics, startY);
+            // Recycled rows can be spaced by the grid's own estimates. Anchor visible geometry
+            // to measured centers; use cumulative heights only for offscreen portions of paths.
+            var visibleRowCenters = new List<Point>();
+            foreach (var child in rowsPresenter.Children)
+                if (child is DataGridRow { IsVisible: true } row && row.Bounds.Height > 0 && row.Bounds.Bottom > 0)
+                    visibleRowCenters.Add(new Point(row.Index + 0.5,
+                        row.Bounds.Center.Y + startY - graphOffsetY));
+            visibleRowCenters.Sort(static (a, b) => a.X.CompareTo(b.X));
 
             if (Math.Abs(_lastGraphStartY - startY) > 0.01 ||
                 Math.Abs(_lastGraphClipWidth - clipWidth) > 0.01 ||
                 Math.Abs(_lastGraphRowHeight - rowHeight) > 0.01 ||
                 Math.Abs(_lastGraphOffsetX - graphOffsetX) > 0.01 ||
-                Math.Abs(_lastGraphOffsetY - graphOffsetY) > 0.01)
+                Math.Abs(_lastGraphOffsetY - graphOffsetY) > 0.01 ||
+                !ReferenceEquals(CommitGraph.Layout?.Rows, metrics) ||
+                !CommitGraph.Layout.HasSameVisibleRows(visibleRowCenters))
             {
                 _lastGraphStartY = startY;
                 _lastGraphClipWidth = clipWidth;
@@ -762,7 +885,7 @@ namespace SourceGit.Views
                 _lastGraphOffsetX = graphOffsetX;
                 _lastGraphOffsetY = graphOffsetY;
 
-                CommitGraph.Layout = new(startY, clipWidth, rowHeight, graphOffsetX, graphOffsetY);
+                CommitGraph.Layout = new(startY, clipWidth, rowHeight, graphOffsetX, graphOffsetY, metrics, visibleRowCenters);
             }
 
             if (_pendingEnsureHeadVisibleRetries > 0)
@@ -875,7 +998,7 @@ namespace SourceGit.Views
             column.Width = new DataGridLength(Math.Ceiling(column.ActualWidth), DataGridLengthUnitType.Pixel);
         }
 
-        private static double CalculateGraphVerticalOffset(DataGridRowsPresenter rowsPresenter, double rowHeight, double startY)
+        private static double CalculateGraphVerticalOffset(DataGridRowsPresenter rowsPresenter, Models.CommitGraphRowMetrics metrics, double startY)
         {
             foreach (var child in rowsPresenter.Children)
             {
@@ -884,7 +1007,7 @@ namespace SourceGit.Views
                     !double.IsNaN(row.Bounds.Height) &&
                     row.Bounds.Bottom > 0)
                 {
-                    var expectedCenter = row.Index * rowHeight + rowHeight * 0.5 - startY;
+                    var expectedCenter = metrics.GetY(row.Index + 0.5) - startY;
                     var actualCenter = row.Bounds.Top + row.Bounds.Height * 0.5;
                     return actualCenter - expectedCenter;
                 }
@@ -951,7 +1074,7 @@ namespace SourceGit.Views
                 return false;
 
             // Center inside the commit rows viewport (history graph area), not the whole window.
-            var centerY = row.Index * rowHeight + rowHeight * 0.5;
+            var centerY = scrollViewer.Offset.Y + row.Bounds.Top + row.Bounds.Height * 0.5;
             var targetOffsetY = centerY - viewportHeight * 0.5;
             var maxOffsetY = Math.Max(0, extentHeight - viewportHeight);
             var clampedOffsetY = Math.Clamp(targetOffsetY, 0, maxOffsetY);
@@ -2382,7 +2505,7 @@ namespace SourceGit.Views
             AddLevel1PushBranchMenuItem(menu, repo, current, actionBackground, color);
             AddLevel1CheckoutRebaseAndForcePushMenuItem(menu, repo, current, actionBackground, color);
             AddLevel1ForcePushBranchMenuItem(menu, repo, current, actionBackground, color);
-            AddLevel1CopyBranchNameMenuItem(menu, current.Name, actionBackground);
+            AddLevel1CopyBranchNameMenuItem(menu, current, actionBackground);
         }
 
         private void FillOtherLocalBranchMenu(ContextMenu menu, ViewModels.Repository repo, Models.Branch branch, Models.Branch current, bool merged, uint decoratorColor, int commitColorIndex)
@@ -2503,15 +2626,17 @@ namespace SourceGit.Views
 
             var delete = new MenuItem();
             delete.Classes.Add("delete_branch");
-            delete.Header = CreateLocalizedBranchActionHeader(repo, "BranchCM.Delete", branch, branch.Name);
+            delete.Classes.Add("branch_action");
+            delete.Background = actionBackground;
+            delete.Header = ControlExtensions.CreateDeleteBranchHeader(branch, CreateBranchNameHighlight(repo, branch, color));
             delete.Icon = App.CreateMenuIcon("Icons.Clear");
+            delete.IsEnabled = !branch.IsCurrent;
             delete.Click += (_, e) =>
             {
                 if (repo.CanCreatePopup())
                     repo.ShowPopup(new ViewModels.DeleteBranch(repo, branch));
                 e.Handled = true;
             };
-            submenu.Items.Add(delete);
             submenu.Items.Add(new MenuItem() { Header = "-" });
 
             if (!repo.IsBare)
@@ -2545,14 +2670,7 @@ namespace SourceGit.Views
             submenu.Items.Add(compare);
             submenu.Items.Add(new MenuItem() { Header = "-" });
 
-            var copy = new MenuItem();
-            copy.Header = App.Text("BranchCM.CopyName");
-            copy.Icon = this.CreateMenuIcon("Icons.Copy");
-            copy.Click += async (_, e) =>
-            {
-                await this.CopyTextAsync(branch.Name);
-                e.Handled = true;
-            };
+            var copy = this.CreateCopyBranchNameMenuItem(branch);
             submenu.Items.Add(copy);
             menu.Items.Add(submenu);
             AddLevel1BranchFilterModeMenuItem(menu, filterModeVm, actionBackground);
@@ -2562,7 +2680,8 @@ namespace SourceGit.Views
             AddLevel1PushBranchMenuItem(menu, repo, branch, actionBackground, color);
             AddLevel1CheckoutRebaseAndForcePushMenuItem(menu, repo, branch, actionBackground, color);
             AddLevel1ForcePushBranchMenuItem(menu, repo, branch, actionBackground, color);
-            AddLevel1CopyBranchNameMenuItem(menu, branch.Name, actionBackground);
+            AddLevel1CopyBranchNameMenuItem(menu, branch, actionBackground);
+            menu.Items.Add(delete);
         }
 
         private void FillRemoteBranchMenu(ContextMenu menu, ViewModels.Repository repo, Models.Branch branch, Models.Branch current, bool merged, uint decoratorColor, int commitColorIndex)
@@ -2633,7 +2752,9 @@ namespace SourceGit.Views
 
             var delete = new MenuItem();
             delete.Classes.Add("delete_branch");
-            delete.Header = CreateLocalizedBranchActionHeader(repo, "BranchCM.Delete", branch, name);
+            delete.Classes.Add("branch_action");
+            delete.Background = actionBackground;
+            delete.Header = ControlExtensions.CreateDeleteBranchHeader(branch, CreateBranchNameHighlight(repo, branch, color));
             delete.Icon = App.CreateMenuIcon("Icons.Clear");
             delete.Click += (_, e) =>
             {
@@ -2641,13 +2762,14 @@ namespace SourceGit.Views
                     repo.ShowPopup(new ViewModels.DeleteBranch(repo, branch));
                 e.Handled = true;
             };
-            submenu.Items.Add(delete);
             menu.Items.Add(submenu);
             AddLevel1BranchFilterModeMenuItem(menu, filterModeVm, actionBackground, remoteIndent);
             AddLevel1CheckoutBranchMenuItem(menu, repo, branch, name, actionBackground, color, remoteIndent);
             AddLevel1SetRebaseBaseBranchMenuItem(menu, repo, branch, actionBackground, remoteIndent);
             AddLevel1MergeBranchMenuItem(menu, repo, branch, current, merged, actionBackground, color, remoteIndent);
-            AddLevel1CopyBranchNameMenuItem(menu, name, actionBackground, remoteIndent);
+            AddLevel1CopyBranchNameMenuItem(menu, branch, actionBackground, remoteIndent);
+            delete.Margin = remoteIndent;
+            menu.Items.Add(delete);
         }
 
         private static void AddLevel1BranchFilterModeMenuItem(ContextMenu menu, ViewModels.FilterModeInGraph filterModeVm, IBrush background, Thickness? margin = null)
@@ -2984,20 +3106,14 @@ namespace SourceGit.Views
             menu.Items.Add(item);
         }
 
-        private static void AddLevel1CopyBranchNameMenuItem(ContextMenu menu, string branchName, IBrush background, Thickness? margin = null)
+        private void AddLevel1CopyBranchNameMenuItem(ContextMenu menu, Models.Branch branch, IBrush background, Thickness? margin = null)
         {
-            var copy = new MenuItem();
+            var copy = this.CreateCopyBranchNameMenuItem(branch);
             copy.Classes.Add("branch_action");
-            copy.Header = App.Text("BranchCM.CopyName");
             copy.Icon = CreateBranchActionIcon(copy, "Icons.Copy");
             copy.Background = background;
             if (margin.HasValue)
                 copy.Margin = margin.Value;
-            copy.Click += async (_, e) =>
-            {
-                await App.CopyTextAsync(branchName);
-                e.Handled = true;
-            };
             menu.Items.Add(copy);
         }
 
