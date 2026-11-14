@@ -16,7 +16,7 @@ namespace SourceGit.Converters
                 if (commit is { IsCurrentHead: true })
                     return Brushes.White;
 
-                return commit is { IsMerged: true } ? s_currentBranchSHAForegroundBrush : s_offBranchSHAForegroundBrush;
+                return commit is { IsMerged: true } ? FindBrush("Brush.FG1", s_currentBranchSHAForegroundBrush) : s_offBranchSHAForegroundBrush;
             });
 
         public static readonly FuncValueConverter<Models.Commit, IBrush> SHABackground =
@@ -42,7 +42,7 @@ namespace SourceGit.Converters
             new(commit =>
             {
                 if (commit is { IsCurrentHead: true })
-                    return s_headForegroundBrush;
+                    return FindBrush("Brush.History.HeadForeground", s_headForegroundBrush);
 
                 return Application.Current?.FindResource("Brush.CommitSubject") as IBrush;
             });
@@ -51,7 +51,7 @@ namespace SourceGit.Converters
             new(_ => Application.Current?.FindResource("Brush.FG1") as IBrush ?? Brushes.Black);
 
         public static readonly FuncValueConverter<Models.Commit, IBrush> HeadAwareForeground =
-            new(commit => commit is { IsCurrentHead: true } ? s_headForegroundBrush : Application.Current?.FindResource("Brush.FG1") as IBrush);
+            new(commit => commit is { IsCurrentHead: true } ? FindBrush("Brush.History.HeadForeground", s_headForegroundBrush) : Application.Current?.FindResource("Brush.FG1") as IBrush);
 
         public static readonly FuncValueConverter<Models.Commit, FontWeight> SubjectFontWeight =
             new(commit => commit is { IsCurrentHead: true } ? FontWeight.Bold : FontWeight.Regular);
@@ -67,9 +67,12 @@ namespace SourceGit.Converters
                     return Brushes.Transparent;
 
                 var isSelected = values.Count > 1 && values[1] is true;
-                return isSelected ? s_headSubjectSelectedBackground : s_headSubjectBackground;
+                return isSelected ? FindBrush("Brush.History.HeadSelectedBackground", s_headSubjectSelectedBackground) :
+                    FindBrush("Brush.History.HeadBackground", s_headSubjectBackground);
             }
         }
+
+        private static IBrush FindBrush(string key, IBrush fallback) => Application.Current?.FindResource(key) as IBrush ?? fallback;
 
         private static readonly IBrush s_headSubjectBackground = new SolidColorBrush(Color.Parse("#FFFFE9E9"));
         private static readonly IBrush s_headSubjectSelectedBackground = new SolidColorBrush(Color.Parse("#FFFFC7C7"));

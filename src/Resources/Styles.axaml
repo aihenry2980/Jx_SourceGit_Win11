@@ -657,7 +657,8 @@
   <Style Selector="Button.flat">
     <Setter Property="BorderThickness" Value="1"/>
     <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border2}"/>
-    <Setter Property="FontWeight" Value="Bold"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="CornerRadius" Value="4"/>
     <Setter Property="TextBlock.TextAlignment" Value="Center"/>
     <Setter Property="Foreground" Value="{DynamicResource Brush.FG1}"/>
     <Setter Property="Background" Value="{DynamicResource Brush.FlatButton.Background}"/>
@@ -771,6 +772,12 @@
                     CornerRadius="{TemplateBinding CornerRadius}"
                     Opacity="0"/>
 
+            <Border Name="PART_SelectionIndicator"
+                    Width="3" Margin="0,3" CornerRadius="1"
+                    HorizontalAlignment="Left"
+                    Background="{DynamicResource Brush.Accent}"
+                    IsHitTestVisible="False" IsVisible="False"/>
+
             <ContentPresenter ContentTemplate="{TemplateBinding ContentTemplate}"
                               Content="{TemplateBinding Content}"
                               Padding="{TemplateBinding Padding}"
@@ -782,20 +789,23 @@
     </Style>
 
     <Style Selector="^ ListBoxItem:pointerover /template/ Border#PART_Background">
-      <Setter Property="Background" Value="{DynamicResource Brush.AccentHovered}" />
-      <Setter Property="Opacity" Value=".5"/>
-    </Style>
-    <Style Selector="^ ListBoxItem:selected /template/ Border#PART_Background">
-      <Setter Property="Background" Value="{DynamicResource Brush.AccentHovered}" />
+      <Setter Property="Background" Value="{DynamicResource Brush.Hover}" />
       <Setter Property="Opacity" Value="1"/>
     </Style>
+    <Style Selector="^ ListBoxItem:selected /template/ Border#PART_Background">
+      <Setter Property="Background" Value="{DynamicResource Brush.SubtleAccent}" />
+      <Setter Property="Opacity" Value="1"/>
+    </Style>
+    <Style Selector="^ ListBoxItem:selected /template/ Border#PART_SelectionIndicator">
+      <Setter Property="IsVisible" Value="True"/>
+    </Style>
     <Style Selector="^:focus-within ListBoxItem:selected /template/ Border#PART_Background">
-      <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
-      <Setter Property="Opacity" Value=".65"/>
+      <Setter Property="Background" Value="{DynamicResource Brush.SubtleAccent}" />
+      <Setter Property="Opacity" Value="1"/>
     </Style>
     <Style Selector="^:focus-within ListBoxItem:selected:pointerover /template/ Border#PART_Background">
-      <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
-      <Setter Property="Opacity" Value=".8"/>
+      <Setter Property="Background" Value="{DynamicResource Brush.SubtleAccent}" />
+      <Setter Property="Opacity" Value="1"/>
     </Style>
   </Style>
 

@@ -490,9 +490,12 @@ namespace SourceGit.Views
                 Width = 14,
                 Height = 14,
                 HorizontalAlignment = HorizontalAlignment.Center,
-                Fill = foreground,
                 Data = App.Current?.FindResource(isConfigured ? "Icons.Action" : "Icons.Plus") as StreamGeometry,
             };
+            if (isConfigured)
+                icon.Fill = foreground;
+            else
+                icon.Classes.Add("empty_action_icon");
 
             return new StackPanel
             {
@@ -506,8 +509,8 @@ namespace SourceGit.Views
                         Width = 24,
                         Height = 24,
                         HorizontalAlignment = HorizontalAlignment.Center,
-                        Background = new SolidColorBrush(color),
-                        CornerRadius = new CornerRadius(5),
+                        Background = isConfigured ? new SolidColorBrush(color) : Brushes.Transparent,
+                        CornerRadius = new CornerRadius(4),
                         Padding = new Thickness(4),
                         Child = icon,
                     },
@@ -515,7 +518,6 @@ namespace SourceGit.Views
                     {
                         Classes = { "toolbar_label" },
                         FontWeight = isConfigured ? FontWeight.SemiBold : FontWeight.Normal,
-                        Opacity = isConfigured ? 1 : 0.55,
                         Text = isConfigured ? action.Name : "Add action",
                     },
                 },

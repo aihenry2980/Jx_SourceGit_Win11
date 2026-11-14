@@ -12,6 +12,7 @@
   <UserControl.Resources>
     <SolidColorBrush x:Key="Brush.Accent" Color="{Binding AccentColor}"/>
     <SolidColorBrush x:Key="Brush.AccentHovered" Color="{Binding AccentHoveredColor}"/>
+    <SolidColorBrush x:Key="Brush.SubtleAccent" Color="{Binding AccentColor}" Opacity="0.14"/>
   </UserControl.Resources>
   <UserControl.Styles>
     <Style Selector="ToggleButton.group_expander.sidebar_group">
@@ -20,6 +21,7 @@
     </Style>
     <Style Selector="ToggleButton.sidebar_group TextBlock.group_header_label">
       <Setter Property="Foreground" Value="{DynamicResource Brush.FG1}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
       <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
     </Style>
     <Style Selector="ToggleButton.sidebar_group TextBlock.sidebar_count">
@@ -101,8 +103,22 @@
       <Setter Property="Background" Value="#B65C00"/>
     </Style>
     <Style Selector="Border.preset_rule_chip">
-      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border1}"/>
-      <Setter Property="Background" Value="{DynamicResource Brush.BG1}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border2}"/>
+      <Setter Property="Background" Value="{DynamicResource Brush.ToolBar}"/>
+    </Style>
+    <Style Selector="Border.preset_rule_field">
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border2}"/>
+      <Setter Property="Background" Value="{DynamicResource Brush.Contents}"/>
+    </Style>
+    <Style Selector="Border.preset_rule_field:focus-within">
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}"/>
+    </Style>
+    <Style Selector="Border.preset_rule_field TextBox /template/ Border#PART_BorderElement">
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="Border.preset_rule_chip Button.icon_button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Brush.Hover}"/>
     </Style>
     <Style Selector="RadioButton.preset_mode">
       <Setter Property="Height" Value="26"/>
@@ -253,9 +269,9 @@
                     IsVisible="{Binding !IsSearchingCommits}">
       <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*">
         <!-- Page Switcher for Right Panel -->
-        <Border Grid.Row="0" Margin="8,0,4,0" BorderThickness="1" BorderBrush="{DynamicResource Brush.Border2}" CornerRadius="6">
-          <Border CornerRadius="6" ClipToBounds="True">
-            <ListBox Background="Transparent" SelectedIndex="{Binding SelectedViewIndex, Mode=TwoWay}" SelectionMode="AlwaysSelected">
+        <Border Grid.Row="0" Margin="8,0,4,0">
+          <Border CornerRadius="4" ClipToBounds="True">
+            <ListBox x:Name="RepositoryNavigation" Background="Transparent" SelectedIndex="{Binding SelectedViewIndex, Mode=TwoWay}" SelectionMode="AlwaysSelected">
               <ListBox.Styles>
                 <Style Selector="Path.icon">
                   <Setter Property="Width" Value="12"/>
@@ -265,23 +281,27 @@
                 </Style>
                 <Style Selector="TextBlock.header">
                   <Setter Property="Foreground" Value="{DynamicResource Brush.FG2}"/>
-                  <Setter Property="FontWeight" Value="Bold"/>
+                  <Setter Property="FontWeight" Value="SemiBold"/>
+                  <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
                 </Style>
                 <Style Selector="ListBoxItem">
                   <Setter Property="Height" Value="28"/>
                   <Setter Property="Margin" Value="0"/>
                   <Setter Property="Padding" Value="0"/>
-                  <Setter Property="BorderThickness" Value="0,0,0,1"/>
-                  <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border2}"/>
+                  <Setter Property="BorderThickness" Value="3,0,0,0"/>
+                  <Setter Property="BorderBrush" Value="Transparent"/>
                 </Style>
-                <Style Selector="ListBoxItem:nth-last-child(1)">
-                  <Setter Property="BorderThickness" Value="0"/>
+                <Style Selector="ListBoxItem:selected">
+                  <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}"/>
                 </Style>
                 <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter, ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
                   <Setter Property="Background" Value="Transparent"/>
                 </Style>
+                <Style Selector="ListBoxItem:pointerover Grid.view_mode">
+                  <Setter Property="Background" Value="{DynamicResource Brush.Hover}"/>
+                </Style>
                 <Style Selector="ListBoxItem:selected Grid.view_mode">
-                  <Setter Property="Background" Value="{DynamicResource Brush.AccentHovered}"/>
+                  <Setter Property="Background" Value="{DynamicResource Brush.SubtleAccent}"/>
                 </Style>
                 <Style Selector="ListBoxItem:selected TextBlock.header">
                   <Setter Property="Foreground" Value="{DynamicResource Brush.FG1}"/>
@@ -341,49 +361,50 @@
               </ListBoxItem>
 
               <ListBoxItem IsVisible="{Binding !IsBare}" Height="52">
-                <Grid Classes="view_mode" RowDefinitions="28,24" ColumnDefinitions="Auto,*,Auto">
-                  <Path Grid.Column="0" Classes="icon" Data="{StaticResource Icons.Changes}"/>
-                  <TextBlock Grid.Column="1" Classes="header" Text="{DynamicResource Text.WorkingCopy}" IsVisible="{Binding !IsLeftSidebarCompact}"/>
-                  <StackPanel Grid.Column="2"
-                              Orientation="Horizontal"
-                              HorizontalAlignment="Right"
-                              Spacing="4"
-                              IsVisible="{Binding !IsLeftSidebarCompact}">
-                    <Border Height="18"
-                            Margin="6,0,0,0"
-                            Padding="9,0"
-                            CornerRadius="9"
+                <Grid Classes="view_mode" RowDefinitions="28,24" ColumnDefinitions="*,Auto">
+                  <Grid Grid.ColumnSpan="2" ColumnDefinitions="Auto,*,Auto">
+                    <Path Grid.Column="0" Classes="icon" Data="{StaticResource Icons.Changes}"/>
+                    <TextBlock Grid.Column="1" Classes="header" Text="{DynamicResource Text.WorkingCopy}" IsVisible="{Binding !IsLeftSidebarCompact}"/>
+                    <StackPanel Grid.Column="2"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Right"
+                                Spacing="4"
+                                IsVisible="{Binding !IsLeftSidebarCompact}">
+                      <Border Height="18"
+                              Margin="6,0,0,0"
+                              Padding="6,0"
+                              CornerRadius="4"
+                              VerticalAlignment="Center"
+                              Background="{DynamicResource Brush.SubtleAccent}">
+                        <Border.IsVisible>
+                          <Binding Path="LocalChangesCount" Converter="{x:Static c:IntConverters.IsGreaterThanZero}"/>
+                        </Border.IsVisible>
+                        <TextBlock Text="{Binding LocalChangesCount, Mode=OneWay}"
+                                   Foreground="{DynamicResource Brush.FG1}"
+                                   FontFamily="{DynamicResource Fonts.Monospace}"
+                                   FontWeight="Bold"
+                                   FontSize="10"/>
+                      </Border>
+                      <Path Width="12"
+                            Height="12"
+                            Margin="0,0,2,0"
                             VerticalAlignment="Center"
-                            Background="#FFFF3B30"
-                            BorderBrush="White"
-                            BorderThickness="1">
-                      <Border.IsVisible>
-                        <Binding Path="LocalChangesCount" Converter="{x:Static c:IntConverters.IsGreaterThanZero}"/>
-                      </Border.IsVisible>
-                      <TextBlock Text="{Binding LocalChangesCount, Mode=OneWay}"
-                                 Foreground="White"
-                                 FontFamily="{DynamicResource Fonts.Monospace}"
-                                 FontWeight="Bold"
-                                 FontSize="10"/>
-                    </Border>
-                    <Path Width="12"
-                          Height="12"
-                          Margin="0,0,2,0"
-                          VerticalAlignment="Center"
-                          Data="{StaticResource Icons.Info}"
-                          Fill="DarkOrange"
-                          IsVisible="{Binding InProgressContext, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                    <Button Classes="icon_button"
-                            Width="26"
-                            Height="26"
-                            Click="OnDiscardAllChanges"
-                            ToolTip.Tip="{DynamicResource Text.Repository.DiscardAll}">
-                      <Path Width="12" Height="12" Data="{StaticResource Icons.Undo}"/>
-                    </Button>
-                  </StackPanel>
+                            Data="{StaticResource Icons.Info}"
+                            Fill="DarkOrange"
+                            IsVisible="{Binding InProgressContext, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                      <Button Classes="icon_button"
+                              Width="26"
+                              Height="26"
+                              Click="OnDiscardAllChanges"
+                              ToolTip.Tip="{DynamicResource Text.Repository.DiscardAll}">
+                        <Path Width="12" Height="12" Data="{StaticResource Icons.Undo}"/>
+                      </Button>
+                    </StackPanel>
+                  </Grid>
 
                   <Button Grid.Row="1"
-                          Grid.Column="1"
+                          Grid.Column="0"
+                          Margin="28,0,0,0"
                           Padding="0"
                           Background="Transparent"
                           BorderThickness="0"
@@ -392,21 +413,14 @@
                           Click="OnOpenRecursiveLocalChanges"
                           IsVisible="{Binding !IsLeftSidebarCompact}"
                           ToolTip.Tip="Show parent-repository changes and changed submodules recursively">
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
-                      <Path Width="10"
-                            Height="10"
-                            Margin="0,0,6,0"
-                            VerticalAlignment="Center"
-                            Fill="{DynamicResource Brush.FG2}"
-                            Data="{StaticResource Icons.Submodules}"/>
-                      <TextBlock FontSize="10"
-                                 Foreground="{DynamicResource Brush.FG2}"
-                                 Text="Local changes recursively"/>
-                    </StackPanel>
+                    <TextBlock FontSize="10"
+                               Foreground="{DynamicResource Brush.FG2}"
+                               TextTrimming="CharacterEllipsis"
+                               Text="Recursive changes"/>
                   </Button>
 
                   <StackPanel Grid.Row="1"
-                              Grid.Column="2"
+                              Grid.Column="1"
                               Orientation="Horizontal"
                               HorizontalAlignment="Right"
                               VerticalAlignment="Center"
@@ -572,11 +586,10 @@
             </MultiBinding>
           </Border.IsVisible>
           <StackPanel Orientation="Vertical">
-            <Border Margin="0"
-                    Padding="4,2"
-                    CornerRadius="3"
+            <Border Classes="preset_rule_field" Margin="0"
+                    Padding="6,3"
+                    CornerRadius="4"
                     BorderThickness="1"
-                    BorderBrush="{DynamicResource Brush.Border1}"
                     DragDrop.AllowDrop="True"
                     DragDrop.DragOver="OnPresetBranchFilterTextBoxDragOver"
                     DragDrop.Drop="OnDropToPresetBranchExactNames">
@@ -597,7 +610,7 @@
                               BorderThickness="1"
                               DoubleTapped="OnPresetBranchRuleDoubleTapped"
                               ContextRequested="OnPresetBranchRuleContextRequested">
-                        <Grid ColumnDefinitions="16,*,18">
+                        <Grid ColumnDefinitions="16,*,22">
                           <TextBlock Classes="rule_kind" Text="=" FontWeight="Bold"
                                      Foreground="{DynamicResource Brush.FG2}" VerticalAlignment="Center"
                                      ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.ExactNames}"/>
@@ -608,14 +621,16 @@
                                      TextTrimming="CharacterEllipsis"
                                      ToolTip.Tip="{Binding .}"/>
                           <Button Grid.Column="2"
-                                  Classes="flat"
-                                  Width="12"
-                                  Height="12"
-                                  MinWidth="12"
-                                  Margin="6,0,0,0"
+                                  Classes="icon_button"
+                                  Width="18"
+                                  Height="18"
+                                  MinWidth="18"
+                                  Margin="2,0,0,0"
                                   Padding="0"
                                   VerticalAlignment="Center"
                                   Tag="{Binding .}"
+                                  ToolTip.Tip="Remove rule"
+                                  AutomationProperties.Name="Remove exact-name rule"
                                   Click="OnRemovePresetBranchExactName">
                             <Path Width="7"
                                   Height="7"
@@ -657,11 +672,10 @@
               </StackPanel>
             </Border>
 
-            <Border Margin="0,5,0,0"
-                    Padding="4,2"
-                    CornerRadius="3"
+            <Border Classes="preset_rule_field" Margin="0,5,0,0"
+                    Padding="6,3"
+                    CornerRadius="4"
                     BorderThickness="1"
-                    BorderBrush="{DynamicResource Brush.Border1}"
                     DragDrop.AllowDrop="True"
                     DragDrop.DragOver="OnPresetBranchFilterTextBoxDragOver"
                     DragDrop.Drop="OnDropToPresetBranchContainsPatterns">
@@ -682,7 +696,7 @@
                               BorderThickness="1"
                               DoubleTapped="OnPresetBranchRuleDoubleTapped"
                               ContextRequested="OnPresetBranchRuleContextRequested">
-                        <Grid ColumnDefinitions="16,*,18">
+                        <Grid ColumnDefinitions="16,*,22">
                           <TextBlock Classes="rule_kind" Text="*" FontWeight="Bold"
                                      Foreground="{DynamicResource Brush.FG2}" VerticalAlignment="Center"
                                      ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.ContainsPatterns}"/>
@@ -693,14 +707,16 @@
                                      TextTrimming="CharacterEllipsis"
                                      ToolTip.Tip="{Binding .}"/>
                           <Button Grid.Column="2"
-                                  Classes="flat"
-                                  Width="12"
-                                  Height="12"
-                                  MinWidth="12"
-                                  Margin="6,0,0,0"
+                                  Classes="icon_button"
+                                  Width="18"
+                                  Height="18"
+                                  MinWidth="18"
+                                  Margin="2,0,0,0"
                                   Padding="0"
                                   VerticalAlignment="Center"
                                   Tag="{Binding .}"
+                                  ToolTip.Tip="Remove rule"
+                                  AutomationProperties.Name="Remove contains rule"
                                   Click="OnRemovePresetBranchContainsPattern">
                             <Path Width="7"
                                   Height="7"
@@ -742,11 +758,10 @@
               </StackPanel>
             </Border>
 
-            <Border Margin="0,5,0,0"
-                    Padding="4,2"
-                    CornerRadius="3"
+            <Border Classes="preset_rule_field" Margin="0,5,0,0"
+                    Padding="6,3"
+                    CornerRadius="4"
                     BorderThickness="1"
-                    BorderBrush="{DynamicResource Brush.Border1}"
                     DragDrop.AllowDrop="True"
                     DragDrop.DragOver="OnPresetBranchFilterTextBoxDragOver"
                     DragDrop.Drop="OnDropToPresetBranchExcludeNames">
@@ -767,7 +782,7 @@
                               BorderThickness="1"
                               DoubleTapped="OnPresetBranchRuleDoubleTapped"
                               ContextRequested="OnPresetBranchRuleContextRequested">
-                        <Grid ColumnDefinitions="16,*,18">
+                        <Grid ColumnDefinitions="16,*,22">
                           <TextBlock Classes="rule_kind" Text="-" FontWeight="Bold"
                                      Foreground="{DynamicResource Brush.FG2}" VerticalAlignment="Center"
                                      ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.ExcludeNames}"/>
@@ -778,14 +793,16 @@
                                      TextTrimming="CharacterEllipsis"
                                      ToolTip.Tip="{Binding .}"/>
                           <Button Grid.Column="2"
-                                  Classes="flat"
-                                  Width="12"
-                                  Height="12"
-                                  MinWidth="12"
-                                  Margin="6,0,0,0"
+                                  Classes="icon_button"
+                                  Width="18"
+                                  Height="18"
+                                  MinWidth="18"
+                                  Margin="2,0,0,0"
                                   Padding="0"
                                   VerticalAlignment="Center"
                                   Tag="{Binding .}"
+                                  ToolTip.Tip="Remove rule"
+                                  AutomationProperties.Name="Remove exclusion rule"
                                   Click="OnRemovePresetBranchExcludeName">
                             <Path Width="7"
                                   Height="7"

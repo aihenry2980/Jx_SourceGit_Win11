@@ -158,6 +158,13 @@ internal static partial class Program
             return;
         }
 
+        if (args is ["--workspace-style"])
+        {
+            TestWorkspaceStyle();
+            Console.WriteLine($"PASS: {_checks} workspace style checks. Isolated data and previews: {_root}");
+            return;
+        }
+
         if (args is ["--focus-merge"])
         {
             TestFocusBranchMergeIntegration();
@@ -204,6 +211,7 @@ internal static partial class Program
         TestCrashReports();
         TestFilterEncodingUx();
         TestWorkflowUx();
+        TestWorkspaceStyle();
         TestLauncherTitleIntegration();
         Console.WriteLine($"PASS: {_checks} checks. Isolated data and preview: {_root}");
     }

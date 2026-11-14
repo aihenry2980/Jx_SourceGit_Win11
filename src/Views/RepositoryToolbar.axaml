@@ -42,18 +42,32 @@
       <Setter Property="MaxWidth" Value="78"/>
       <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
     </Style>
+    <Style Selector="Path.empty_action_icon">
+      <Setter Property="Fill" Value="{DynamicResource Brush.FG2}"/>
+    </Style>
     <Style Selector="Button.toolbar_button">
       <Setter Property="Height" Value="46"/>
       <Setter Property="Padding" Value="4,2"/>
       <Setter Property="CornerRadius" Value="4"/>
     </Style>
     <Style Selector="Button.toolbar_button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource Brush.AccentHovered}"/>
+      <Setter Property="Background" Value="{DynamicResource Brush.Hover}"/>
+    </Style>
+    <Style Selector="Button.toolbar_button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Brush.SubtleAccent}"/>
     </Style>
     <Style Selector="Border.toolbar_group">
       <Setter Property="Margin" Value="6,2"/>
       <Setter Property="Padding" Value="2,0"/>
-      <Setter Property="BorderThickness" Value="0,0,0,2"/>
+      <Setter Property="BorderThickness" Value="1,0,0,0"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border2}"/>
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="Border.toolbar_feedback_group.fetch_group.busy">
+      <Setter Property="BorderBrush" Value="{DynamicResource Toolbar.Fetch}"/>
+    </Style>
+    <Style Selector="Border.toolbar_feedback_group.pull_group.busy">
+      <Setter Property="BorderBrush" Value="{DynamicResource Toolbar.Pull}"/>
     </Style>
     <Style Selector="Border.toolbar_feedback_group.fetch_group.busy">
       <Style.Animations>
@@ -235,9 +249,9 @@
         </ToolTip.Tip>
 
         <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
-          <Border Background="#FF0F766E" CornerRadius="4" Padding="3" Width="24" Height="24" HorizontalAlignment="Center">
-            <Path Width="18" Height="18" HorizontalAlignment="Center" Fill="#FFFFE066" Data="{StaticResource Icons.Commit}"/>
-          </Border>
+          <Grid Width="24" Height="24" HorizontalAlignment="Center">
+            <Path Width="20" Height="20" Fill="{DynamicResource Toolbar.Pull}" Data="{StaticResource Icons.Commit}"/>
+          </Grid>
           <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Commit"/>
         </StackPanel>
       </Button>
@@ -245,7 +259,7 @@
 
     </StackPanel>
 
-    <Border Classes="toolbar_group toolbar_feedback_group fetch_group" BorderBrush="{DynamicResource Toolbar.Fetch}" Background="#0C2563EB">
+    <Border Classes="toolbar_group toolbar_feedback_group fetch_group">
       <StackPanel x:Name="FetchToolbarGroup" Orientation="Horizontal">
         <!-- Standard SourceGit Fetch entry point -->
         <Button x:Name="FetchButton"
@@ -314,7 +328,7 @@
       </StackPanel>
     </Border>
 
-    <Border Classes="toolbar_group toolbar_feedback_group pull_group" BorderBrush="{DynamicResource Toolbar.Pull}" Background="#0C0F766E" IsVisible="{Binding !IsBare}">
+    <Border Classes="toolbar_group toolbar_feedback_group pull_group" IsVisible="{Binding !IsBare}">
       <StackPanel x:Name="PullToolbarGroup" Orientation="Horizontal">
         <!-- Standard SourceGit Pull entry point -->
         <Button x:Name="PullButton"
@@ -566,9 +580,9 @@
       </Button>
 
       <StackPanel x:Name="CustomActionSlots" Orientation="Horizontal">
-        <Button x:Name="CustomActionSlot0Button" Classes="icon_button toolbar_button" Width="68" Margin="8,0,0,0" Click="ExecuteToolbarCustomAction" Tag="0"/>
-        <Button x:Name="CustomActionSlot1Button" Classes="icon_button toolbar_button" Width="68" Margin="8,0,0,0" Click="ExecuteToolbarCustomAction" Tag="1"/>
-        <Button x:Name="CustomActionSlot2Button" Classes="icon_button toolbar_button" Width="68" Margin="8,0,0,0" Click="ExecuteToolbarCustomAction" Tag="2"/>
+        <Button x:Name="CustomActionSlot0Button" Classes="icon_button toolbar_button" Width="80" Margin="4,0,0,0" Click="ExecuteToolbarCustomAction" Tag="0"/>
+        <Button x:Name="CustomActionSlot1Button" Classes="icon_button toolbar_button" Width="80" Margin="4,0,0,0" Click="ExecuteToolbarCustomAction" Tag="1"/>
+        <Button x:Name="CustomActionSlot2Button" Classes="icon_button toolbar_button" Width="80" Margin="4,0,0,0" Click="ExecuteToolbarCustomAction" Tag="2"/>
       </StackPanel>
 
       <Button Classes="icon_button toolbar_button" Width="56" Margin="8,0,0,0" Click="Cleanup" IsVisible="False">

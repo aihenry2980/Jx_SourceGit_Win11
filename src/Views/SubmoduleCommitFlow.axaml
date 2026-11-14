@@ -155,7 +155,10 @@
             <Setter Property="Margin" Value="0"/>
           </Style>
           <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource Brush.AccentHovered}"/>
+            <Setter Property="Background" Value="{DynamicResource Brush.SubtleAccent}"/>
+          </Style>
+          <Style Selector="ListBoxItem:pointerover:not(:selected) /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource Brush.Hover}"/>
           </Style>
         </ListBox.Styles>
         <ListBox.ItemTemplate>

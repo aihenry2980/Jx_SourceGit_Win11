@@ -2,12 +2,12 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <ResourceDictionary.ThemeDictionaries>
     <ResourceDictionary x:Key="Light">
-      <Color x:Key="Color.Window">#FFF4F4F4</Color>
+      <Color x:Key="Color.Window">#FFF5F6F8</Color>
       <Color x:Key="Color.WindowBorder">#FF999999</Color>
-      <Color x:Key="Color.TitleBar">#FFF2F0F0</Color>
-      <Color x:Key="Color.ToolBar">#FFF0F3F5</Color>
+      <Color x:Key="Color.TitleBar">#FFEDEFF2</Color>
+      <Color x:Key="Color.ToolBar">#FFF5F6F8</Color>
       <Color x:Key="Color.Popup">#FFFAFAFA</Color>
-      <Color x:Key="Color.PopupBorder">#FFFFFFFF</Color>
+      <Color x:Key="Color.PopupBorder">#FFD4D8DE</Color>
       <Color x:Key="Color.Contents">#FFFFFFFF</Color>
       <Color x:Key="Color.Badge">#FFB0CEE8</Color>
       <Color x:Key="Color.BadgeFG">#FF1F1F1F</Color>
@@ -15,14 +15,18 @@
       <Color x:Key="Color.Conflict.Foreground">#FFFFFFFF</Color>
       <Color x:Key="Color.Conflict.MineBG">#400078D7</Color>
       <Color x:Key="Color.Conflict.TheirsBG">#40FF8C00</Color>
-      <Color x:Key="Color.Border0">#FFCFCFCF</Color>
-      <Color x:Key="Color.Border1">#FF898989</Color>
-      <Color x:Key="Color.Border2">#FFCFCFCF</Color>
+      <Color x:Key="Color.Border0">#FFDDE1E6</Color>
+      <Color x:Key="Color.Border1">#FFAEB6C0</Color>
+      <Color x:Key="Color.Border2">#FFD4D8DE</Color>
       <Color x:Key="Color.FlatButton.Background">#FFF8F8F8</Color>
       <Color x:Key="Color.FlatButton.BackgroundHovered">White</Color>
       <Color x:Key="Color.FlatButton.FloatingBorder">#FF898989</Color>
-      <Color x:Key="Color.FG1">#FF1F1F1F</Color>
-      <Color x:Key="Color.FG2">#FF6F6F6F</Color>
+      <Color x:Key="Color.FG1">#FF242424</Color>
+      <Color x:Key="Color.FG2">#FF59636E</Color>
+      <Color x:Key="Color.Hover">#0C000000</Color>
+      <Color x:Key="Color.History.HeadForeground">#FFB4232D</Color>
+      <Color x:Key="Color.History.HeadBackground">#FFFFF0F1</Color>
+      <Color x:Key="Color.History.HeadSelectedBackground">#FFFFDFE2</Color>
       <Color x:Key="Color.Diff.EmptyBG">#10000000</Color>
       <Color x:Key="Color.Diff.AddedBG">#80BFE6C1</Color>
       <Color x:Key="Color.Diff.DeletedBG">#80FF9797</Color>
@@ -57,6 +61,10 @@
       <Color x:Key="Color.FlatButton.FloatingBorder">#FF4F4F4F</Color>
       <Color x:Key="Color.FG1">#FFDFDFDF</Color>
       <Color x:Key="Color.FG2">#FF9F9F9F</Color>
+      <Color x:Key="Color.Hover">#14FFFFFF</Color>
+      <Color x:Key="Color.History.HeadForeground">#FFFF929B</Color>
+      <Color x:Key="Color.History.HeadBackground">#FF342327</Color>
+      <Color x:Key="Color.History.HeadSelectedBackground">#FF482A30</Color>
       <Color x:Key="Color.Diff.EmptyBG">#3C000000</Color>
       <Color x:Key="Color.Diff.AddedBG">#C03A5C3F</Color>
       <Color x:Key="Color.Diff.DeletedBG">#C0633F3E</Color>
@@ -91,7 +99,12 @@
   <SolidColorBrush x:Key="Brush.FlatButton.FloatingBorder" Color="{DynamicResource Color.FlatButton.FloatingBorder}"/>
   <SolidColorBrush x:Key="Brush.FG1" Color="{DynamicResource Color.FG1}"/>
   <SolidColorBrush x:Key="Brush.FG2" Color="{DynamicResource Color.FG2}"/>
-  <SolidColorBrush x:Key="Brush.CommitSubject" Color="{DynamicResource Color.FG2}" Opacity="0.55"/>
+  <SolidColorBrush x:Key="Brush.CommitSubject" Color="{DynamicResource Color.FG2}"/>
+  <SolidColorBrush x:Key="Brush.Hover" Color="{DynamicResource Color.Hover}"/>
+  <SolidColorBrush x:Key="Brush.History.HeadForeground" Color="{DynamicResource Color.History.HeadForeground}"/>
+  <SolidColorBrush x:Key="Brush.History.HeadBackground" Color="{DynamicResource Color.History.HeadBackground}"/>
+  <SolidColorBrush x:Key="Brush.History.HeadSelectedBackground" Color="{DynamicResource Color.History.HeadSelectedBackground}"/>
+  <SolidColorBrush x:Key="Brush.SubtleAccent" Color="{DynamicResource SystemAccentColor}" Opacity="0.14"/>
   <SolidColorBrush x:Key="Brush.Accent" Color="{DynamicResource SystemAccentColor}"/>
   <SolidColorBrush x:Key="Brush.AccentHovered" Color="{DynamicResource SystemListLowColor}"/>
   <SolidColorBrush x:Key="Brush.Diff.EmptyBG" Color="{DynamicResource Color.Diff.EmptyBG}"/>
