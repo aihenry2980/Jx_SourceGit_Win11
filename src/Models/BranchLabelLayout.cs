@@ -6,15 +6,18 @@ namespace SourceGit.Models
 {
     public static class BranchLabelLayout
     {
-        public const int TwoLineThreshold = 25;
+        public const int MinimumWrapLength = 10;
+        public const int MaximumWrapLength = 120;
+        public const int DefaultWrapLength = 50;
 
-        public static int GetLineBreak(string name)
+        public static int GetLineBreak(string name, int wrapLength = DefaultWrapLength)
         {
-            if (string.IsNullOrEmpty(name) || name.Length <= TwoLineThreshold)
+            wrapLength = Math.Clamp(wrapLength, MinimumWrapLength, MaximumWrapLength);
+            if (string.IsNullOrEmpty(name) || name.Length <= wrapLength)
                 return -1;
 
             var elements = StringInfo.ParseCombiningCharacters(name);
-            if (elements.Length <= TwoLineThreshold)
+            if (elements.Length <= wrapLength)
                 return -1;
 
             var middle = elements.Length / 2;
@@ -40,7 +43,7 @@ namespace SourceGit.Models
         public static bool IsBranch(Decorator decorator) => decorator.Type is DecoratorType.CurrentBranchHead or
             DecoratorType.LocalBranchHead or DecoratorType.RemoteBranchHead;
 
-        public static bool HasTwoLineNames(IReadOnlyList<Decorator> refs, bool compactTrackingBranches)
+        public static bool HasTwoLineNames(IReadOnlyList<Decorator> refs, bool compactTrackingBranches, int wrapLength = DefaultWrapLength)
         {
             HashSet<int> consumed = null;
             if (compactTrackingBranches && refs.Count > 1)
@@ -60,7 +63,7 @@ namespace SourceGit.Models
             {
                 var branch = refs[i];
                 if (consumed?.Contains(i) != true && IsBranch(branch) &&
-                    (branch.Color == 0 || (branch.Color >> 24) > 0x40) && GetLineBreak(branch.Name) >= 0)
+                    (branch.Color == 0 || (branch.Color >> 24) > 0x40) && GetLineBreak(branch.Name, wrapLength) >= 0)
                     return true;
             }
             return false;

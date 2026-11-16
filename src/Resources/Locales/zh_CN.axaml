@@ -713,6 +713,7 @@
   <x:String x:Key="Text.Preferences.AI.ReasoningEffortLevel" xml:space="preserve">推理努力等级</x:String>
   <x:String x:Key="Text.Preferences.AI.Server" xml:space="preserve">服务地址</x:String>
   <x:String x:Key="Text.Preferences.Appearance" xml:space="preserve">外观配置</x:String>
+  <x:String x:Key="Text.Preferences.Appearance.BranchNameWrapLength" xml:space="preserve">分支名换行长度（字符）</x:String>
   <x:String x:Key="Text.Preferences.Appearance.DefaultFont" xml:space="preserve">缺省字体</x:String>
   <x:String x:Key="Text.Preferences.Appearance.EditorTabWidth" xml:space="preserve">编辑器制表符宽度</x:String>
   <x:String x:Key="Text.Preferences.Appearance.FontSize" xml:space="preserve">字体大小</x:String>

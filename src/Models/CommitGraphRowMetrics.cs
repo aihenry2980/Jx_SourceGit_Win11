@@ -6,12 +6,13 @@ namespace SourceGit.Models
     // Graph coordinates use row units; the grid can give each commit a different pixel height.
     public sealed class CommitGraphRowMetrics
     {
-        public CommitGraphRowMetrics(IReadOnlyList<Commit> commits, double compactHeight, double expandedHeight, bool compactTrackingBranches = false)
+        public CommitGraphRowMetrics(IReadOnlyList<Commit> commits, double compactHeight, double expandedHeight, bool compactTrackingBranches = false,
+            int branchNameWrapLength = BranchLabelLayout.DefaultWrapLength)
         {
             CompactHeight = compactHeight;
             _tops = new double[(commits?.Count ?? 0) + 1];
             for (var i = 0; i < _tops.Length - 1; i++)
-                _tops[i + 1] = _tops[i] + (BranchLabelLayout.HasTwoLineNames(commits[i].Decorators, compactTrackingBranches) ? expandedHeight : compactHeight);
+                _tops[i + 1] = _tops[i] + (BranchLabelLayout.HasTwoLineNames(commits[i].Decorators, compactTrackingBranches, branchNameWrapLength) ? expandedHeight : compactHeight);
         }
 
         public double CompactHeight { get; }

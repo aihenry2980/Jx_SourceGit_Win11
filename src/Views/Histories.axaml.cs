@@ -116,6 +116,14 @@ namespace SourceGit.Views
             set => SetValue(CompactTrackingBranchesProperty, value);
         }
 
+        public static readonly StyledProperty<int> BranchNameWrapLengthProperty =
+            AvaloniaProperty.Register<HistoriesCommitList, int>(nameof(BranchNameWrapLength), Models.BranchLabelLayout.DefaultWrapLength);
+        public int BranchNameWrapLength
+        {
+            get => GetValue(BranchNameWrapLengthProperty);
+            set => SetValue(BranchNameWrapLengthProperty, value);
+        }
+
         public static readonly DirectProperty<HistoriesCommitList, int> TotalCommitsProperty =
             AvaloniaProperty.RegisterDirect<HistoriesCommitList, int>(
                 nameof(TotalCommits),
@@ -166,7 +174,8 @@ namespace SourceGit.Views
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
         {
             var updateRows = change.Property == ItemsSourceProperty || change.Property == CompactRowHeightProperty ||
-                change.Property == ExpandedRowHeightProperty || change.Property == CompactTrackingBranchesProperty;
+                change.Property == ExpandedRowHeightProperty || change.Property == CompactTrackingBranchesProperty ||
+                change.Property == BranchNameWrapLengthProperty;
             if (updateRows)
                 RebuildRowMetrics();
 
@@ -214,7 +223,7 @@ namespace SourceGit.Views
             // Match the grid's physical-pixel layout so rounding cannot accumulate down the graph.
             var compact = UseLayoutRounding ? LayoutHelper.RoundLayoutValueUp(CompactRowHeight, scale) : CompactRowHeight;
             var expanded = UseLayoutRounding ? LayoutHelper.RoundLayoutValueUp(ExpandedRowHeight, scale) : ExpandedRowHeight;
-            RowMetrics = new(ItemsSource as IReadOnlyList<Models.Commit>, compact, Math.Max(compact, expanded), CompactTrackingBranches);
+            RowMetrics = new(ItemsSource as IReadOnlyList<Models.Commit>, compact, Math.Max(compact, expanded), CompactTrackingBranches, BranchNameWrapLength);
         }
 
         private void UpdateRealizedRowHeights()

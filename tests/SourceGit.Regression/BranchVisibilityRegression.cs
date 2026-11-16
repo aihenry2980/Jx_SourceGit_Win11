@@ -146,6 +146,23 @@ internal static partial class Program
                         "Delete action uses white text on its red badge");
                     if (scope != null)
                     {
+                        var actionLabel = (TextBlock)action.Child;
+                        var scopeLabel = (TextBlock)scope.Child;
+                        Check(scopeLabel.FontSize == actionLabel.FontSize && scopeLabel.FontWeight == actionLabel.FontWeight &&
+                            Math.Abs(scope.Bounds.Height - action.Bounds.Height) < 1,
+                            "LOCAL/REMOTE badges match the Delete badge's font size, weight and height");
+                        var preferences = SourceGit.ViewModels.Preferences.Instance;
+                        var previousSize = preferences.DefaultFontSize;
+                        try
+                        {
+                            preferences.DefaultFontSize = 17;
+                            PumpFor(20);
+                            Check(scopeLabel.FontSize == 17 && actionLabel.FontSize == 17 &&
+                                Math.Abs(scope.Bounds.Height - action.Bounds.Height) < 1,
+                                "Both delete badges follow enlarged global text together");
+                        }
+                        finally { preferences.DefaultFontSize = previousSize; }
+                        PumpFor(20);
                         var localScope = scope.Classes.Contains("local");
                         Check(scope.Background is ISolidColorBrush { Color: var scopeBackground } &&
                             scopeBackground == Color.Parse(localScope ? "#21834A" : "#F4CE61"),

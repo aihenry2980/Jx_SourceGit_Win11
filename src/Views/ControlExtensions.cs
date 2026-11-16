@@ -125,7 +125,6 @@ namespace SourceGit.Views
                 {
                     Text = branch.IsLocal ? "LOCAL" : $"REMOTE: {branch.Remote}",
                     Classes = { "branch_delete_scope_label" },
-                    FontSize = 11,
                     FontWeight = FontWeight.Bold,
                     MaxWidth = 200,
                     TextTrimming = TextTrimming.CharacterEllipsis,

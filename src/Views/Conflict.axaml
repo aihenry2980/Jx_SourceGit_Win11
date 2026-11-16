@@ -29,6 +29,7 @@
               <StackPanel Orientation="Horizontal">
                 <v:CommitRefsPresenter Foreground="{DynamicResource Brush.FG1}"
                                        CompactTrackingBranches="{Binding Source={x:Static vm:Preferences.Instance}, Path=CompactTrackingBranches}"
+                                       BranchNameWrapLength="{Binding Source={x:Static vm:Preferences.Instance}, Path=BranchNameWrapLength}"
                                        FontSize="12"
                                        VerticalAlignment="Center"
                                        UseGraphColor="False"/>

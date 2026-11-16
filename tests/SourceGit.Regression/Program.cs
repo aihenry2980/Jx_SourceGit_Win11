@@ -168,7 +168,15 @@ internal static partial class Program
         if (args is ["--branch-labels"])
         {
             TestBranchLabels();
+            TestBranchWrapSettings();
             Console.WriteLine($"PASS: {_checks} branch label checks. Isolated data and previews: {_root}");
+            return;
+        }
+
+        if (args is ["--branch-wrap-settings"])
+        {
+            TestBranchWrapSettings();
+            Console.WriteLine($"PASS: {_checks} branch wrap settings checks. Isolated data and previews: {_root}");
             return;
         }
 
@@ -242,6 +250,7 @@ internal static partial class Program
         TestWorkflowUx();
         TestWorkspaceStyle();
         TestBranchLabels();
+        TestBranchWrapSettings();
         TestVisibilityExclusions();
         TestVisibilityIncludes();
         TestBranchMenus();

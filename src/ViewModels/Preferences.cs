@@ -366,6 +366,13 @@ namespace SourceGit.ViewModels
             set => SetProperty(ref _compactTrackingBranches, value);
         }
 
+        public int BranchNameWrapLength
+        {
+            get => _branchNameWrapLength;
+            set => SetProperty(ref _branchNameWrapLength,
+                Math.Clamp(value, Models.BranchLabelLayout.MinimumWrapLength, Models.BranchLabelLayout.MaximumWrapLength));
+        }
+
         public bool UseCompactBranchNamesInGraph
         {
             get => _useCompactBranchNamesInGraph;
@@ -1302,6 +1309,7 @@ namespace SourceGit.ViewModels
 
         private bool _showTagsInGraph = true;
         private bool _compactTrackingBranches = false;
+        private int _branchNameWrapLength = Models.BranchLabelLayout.DefaultWrapLength;
         private bool _useTwoColumnsLayoutInHistories = false;
         private bool _displayTimeAsPeriodInHistories = false;
         private bool _useSideBySideDiff = false;

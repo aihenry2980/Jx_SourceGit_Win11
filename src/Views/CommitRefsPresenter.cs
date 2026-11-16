@@ -154,6 +154,15 @@ namespace SourceGit.Views
             set => SetValue(CompactTrackingBranchesProperty, value);
         }
 
+        public static readonly StyledProperty<int> BranchNameWrapLengthProperty =
+            AvaloniaProperty.Register<CommitRefsPresenter, int>(nameof(BranchNameWrapLength), Models.BranchLabelLayout.DefaultWrapLength);
+
+        public int BranchNameWrapLength
+        {
+            get => GetValue(BranchNameWrapLengthProperty);
+            set => SetValue(BranchNameWrapLengthProperty, value);
+        }
+
         static CommitRefsPresenter()
         {
             AffectsMeasure<CommitRefsPresenter>(
@@ -167,7 +176,8 @@ namespace SourceGit.Views
                 HighlightTextProperty,
                 AllowWrapProperty,
                 HasSingleRemoteProperty,
-                CompactTrackingBranchesProperty);
+                CompactTrackingBranchesProperty,
+                BranchNameWrapLengthProperty);
         }
 
         public Models.Decorator DecoratorAt(Point point)
@@ -570,7 +580,7 @@ namespace SourceGit.Views
 
                     if (isBranch && !isMutedIncidentalBranch)
                     {
-                        item.LineBreak = Models.BranchLabelLayout.GetLineBreak(decorator.Name);
+                        item.LineBreak = Models.BranchLabelLayout.GetLineBreak(decorator.Name, BranchNameWrapLength);
                         if (item.LineBreak >= 0)
                         {
                             var first = decorator.Name.Substring(0, item.LineBreak);

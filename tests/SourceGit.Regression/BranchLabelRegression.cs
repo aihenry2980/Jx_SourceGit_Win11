@@ -13,17 +13,29 @@ internal static partial class Program
 {
     private static void TestBranchLabels()
     {
+        var preferences = SourceGit.ViewModels.Preferences.Instance;
+        var previous = preferences.BranchNameWrapLength;
+        try
+        {
+            preferences.BranchNameWrapLength = 25;
+            TestBranchLabelsAtThreshold25();
+        }
+        finally { preferences.BranchNameWrapLength = previous; }
+    }
+
+    private static void TestBranchLabelsAtThreshold25()
+    {
         TestShortTrackingBranchRow();
-        Check(BranchLabelLayout.GetLineBreak(new string('a', 25)) == -1, "25-character branch stays on one line");
-        Check(BranchLabelLayout.GetLineBreak(new string('a', 26)) == 13, "26-character branch splits into balanced lines");
+        Check(BranchLabelLayout.GetLineBreak(new string('a', 25), 25) == -1, "25-character branch stays on one line");
+        Check(BranchLabelLayout.GetLineBreak(new string('a', 26), 25) == 13, "26-character branch splits into balanced lines");
         var unicode = string.Concat(Enumerable.Repeat("e\u0301", 26));
-        Check(BranchLabelLayout.GetLineBreak(unicode) == 26 && BranchLabelLayout.GetLineBreak(unicode[..50]) == -1,
+        Check(BranchLabelLayout.GetLineBreak(unicode, 25) == 26 && BranchLabelLayout.GetLineBreak(unicode[..50], 25) == -1,
             "Threshold and split respect combining-character boundaries");
         var emoji = string.Concat(Enumerable.Repeat("\U0001F680", 26));
-        Check(BranchLabelLayout.GetLineBreak(emoji) == 26, "Line split never separates a surrogate pair");
+        Check(BranchLabelLayout.GetLineBreak(emoji, 25) == 26, "Line split never separates a surrogate pair");
         var longName = "feature/AW2020TE-13568/hapsim-home-network-fixes";
         var remoteName = "origin/" + longName;
-        var split = BranchLabelLayout.GetLineBreak(longName);
+        var split = BranchLabelLayout.GetLineBreak(longName, 25);
         Check(longName[split - 1] is '/' or '-' or '_' or '.', "Long branch prefers a natural separator");
         var metricCommits = new List<Commit>
         {
@@ -32,7 +44,7 @@ internal static partial class Program
             new() { Decorators = [new Decorator { Type = DecoratorType.Tag, Name = longName }] },
             new() { Decorators = [new Decorator { Type = DecoratorType.RemoteBranchHead, Name = remoteName, Color = 0x18808080 }] },
         };
-        var metrics = new CommitGraphRowMetrics(metricCommits, 23, 42);
+        var metrics = new CommitGraphRowMetrics(metricCommits, 23, 42, branchNameWrapLength: 25);
         Check(Enumerable.Range(0, 4).Select(metrics.GetHeight).SequenceEqual(new double[] { 23, 42, 23, 23 }),
             "Short names, tags and abbreviated muted branches never expand other rows");
         Check(metrics.GetTop(2) == 65 && metrics.GetY(1.5) == 44 && metrics.GetY(-0.5) == -11.5 && metrics.GetY(4.5) == 122.5,
@@ -46,9 +58,9 @@ internal static partial class Program
             new() { Name = new string('a', 25), Type = DecoratorType.LocalBranchHead },
             new() { Name = "origin/" + new string('a', 25), Type = DecoratorType.RemoteBranchHead },
         };
-        Check(BranchLabelLayout.HasTwoLineNames(compactPair, false) && !BranchLabelLayout.HasTwoLineNames(compactPair, true),
+        Check(BranchLabelLayout.HasTwoLineNames(compactPair, false, 25) && !BranchLabelLayout.HasTwoLineNames(compactPair, true, 25),
             "Hidden remote prefixes in L+R chips do not unnecessarily expand the commit row");
-        Check(BranchLabelLayout.HasTwoLineNames(compactPair.AsEnumerable().Reverse().ToList(), true),
+        Check(BranchLabelLayout.HasTwoLineNames(compactPair.AsEnumerable().Reverse().ToList(), true, 25),
             "Row sizing also matches presenters whose decorators arrive in remote-first order");
         var field = typeof(CommitRefsPresenter).GetField("_items", BindingFlags.Instance | BindingFlags.NonPublic);
         List<CommitRefsPresenter.RenderItem> Items(CommitRefsPresenter presenter) => (List<CommitRefsPresenter.RenderItem>)field.GetValue(presenter);
@@ -70,7 +82,7 @@ internal static partial class Program
                         commit.Decorators.Add(new Decorator { Type = DecoratorType.RemoteBranchHead, Name = remoteName, Color = decorator.Color });
                     var presenter = new CommitRefsPresenter { DataContext = commit, FontFamily = FontFamily.Default,
                         Foreground = (IBrush)Application.Current.FindResource("Brush.FG1"), Background = panel.Background,
-                        CompactTrackingBranches = true, HighlightText = "13568/hapsim" };
+                        CompactTrackingBranches = true, BranchNameWrapLength = 25, HighlightText = "13568/hapsim" };
                     panel.Children.Add(presenter);
                     foreach (var size in new[] { 10.5, 14, 21, 35, 14 })
                     {
@@ -104,7 +116,7 @@ internal static partial class Program
                 var shortBranch = new Decorator { Name = "main", Type = DecoratorType.LocalBranchHead, Color = 0xFF2E8B57 };
                 var next = new Decorator { Name = "release/next", Type = DecoratorType.LocalBranchHead, Color = 0xFFF7630C };
                 var wrapped = new CommitRefsPresenter { DataContext = new Commit { Decorators = [tall, shortBranch, next] },
-                    FontFamily = FontFamily.Default, FontSize = 18, AllowWrap = true,
+                    FontFamily = FontFamily.Default, FontSize = 18, AllowWrap = true, BranchNameWrapLength = 25,
                     Foreground = (IBrush)Application.Current.FindResource("Brush.FG1"), Background = panel.Background };
                 wrapped.Measure(Size.Infinity);
                 var items = Items(wrapped);
@@ -148,7 +160,7 @@ internal static partial class Program
                 Check(rows.Count > 2, "Virtualized graph has enough visible rows to verify mixed heights");
                 foreach (var row in rows)
                 {
-                    var expanded = BranchLabelLayout.HasTwoLineNames(repo.Histories.Commits[row.Index].Decorators, grid.CompactTrackingBranches);
+                    var expanded = BranchLabelLayout.HasTwoLineNames(repo.Histories.Commits[row.Index].Decorators, grid.CompactTrackingBranches, grid.BranchNameWrapLength);
                     var refsHeight = row.GetVisualDescendants().OfType<CommitRefsPresenter>().Select(p => p.DesiredSize.Height).DefaultIfEmpty(0).Max();
                     var expected = Math.Max(grid.RowMetrics.CompactHeight, refsHeight);
                     Check((expanded ? row.Bounds.Height >= expected - 1 : Math.Abs(row.Bounds.Height - expected) < 1),
