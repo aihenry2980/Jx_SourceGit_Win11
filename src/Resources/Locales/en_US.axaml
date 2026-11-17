@@ -710,6 +710,12 @@
   <x:String x:Key="Text.Preferences.AI.Server" xml:space="preserve">Server</x:String>
   <x:String x:Key="Text.Preferences.Appearance" xml:space="preserve">APPEARANCE</x:String>
   <x:String x:Key="Text.Preferences.Appearance.BranchNameWrapLength" xml:space="preserve">Branch wrap length (characters)</x:String>
+  <x:String x:Key="Text.Preferences.Appearance.CustomActionSlots" xml:space="preserve">Custom action slots</x:String>
+  <x:String x:Key="Text.Preferences.Avatars" xml:space="preserve">AVATARS</x:String>
+  <x:String x:Key="Text.Preferences.Avatars.Email" xml:space="preserve">Commit author email</x:String>
+  <x:String x:Key="Text.Preferences.Avatars.Clear" xml:space="preserve">Remove custom avatar</x:String>
+  <x:String x:Key="Text.Preferences.Avatars.Limit" xml:space="preserve">Five custom avatars are already configured. Remove one in Settings > Avatars first.</x:String>
+  <x:String x:Key="Text.Histories.ResizeDetails" xml:space="preserve">Resize history and commit details</x:String>
   <x:String x:Key="Text.Preferences.Appearance.DefaultFont" xml:space="preserve">Default Font</x:String>
   <x:String x:Key="Text.Preferences.Appearance.EditorTabWidth" xml:space="preserve">Editor Tab Width</x:String>
   <x:String x:Key="Text.Preferences.Appearance.FontSize" xml:space="preserve">Font Size</x:String>

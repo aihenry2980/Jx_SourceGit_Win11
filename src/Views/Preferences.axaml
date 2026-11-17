@@ -306,7 +306,7 @@
           <TabItem.Header>
             <TextBlock Classes="tab_header" Text="{DynamicResource Text.Preferences.Appearance}"/>
           </TabItem.Header>
-          <Grid Margin="8" RowDefinitions="32,32,32,32,32,32,32,32,32,32,Auto" ColumnDefinitions="Auto,*">
+          <Grid Margin="8" RowDefinitions="32,32,32,32,32,32,32,32,32,32,32,Auto" ColumnDefinitions="Auto,*">
             <TextBlock Grid.Row="0" Grid.Column="0"
                        Text="{DynamicResource Text.Preferences.Appearance.Theme}"
                        HorizontalAlignment="Right"
@@ -483,7 +483,16 @@
                          Text="{Binding BranchNameWrapLength}"/>
             </Grid>
 
-            <CheckBox Grid.Row="10" Grid.Column="1"
+            <TextBlock Grid.Row="10" Grid.Column="0"
+                       Text="{DynamicResource Text.Preferences.Appearance.CustomActionSlots}"
+                       HorizontalAlignment="Right" Margin="0,0,16,0"/>
+            <NumericUpDown x:Name="ToolbarCustomActionSlotsInput" Grid.Row="10" Grid.Column="1"
+                           Minimum="1" Maximum="3" Increment="1" FormatString="0"
+                           Width="100" Height="28" HorizontalAlignment="Left"
+                           Padding="4" CornerRadius="3"
+                           Value="{Binding ToolbarCustomActionSlots, Mode=TwoWay}"/>
+
+            <CheckBox Grid.Row="11" Grid.Column="1"
                       Height="32"
                       Content="{DynamicResource Text.Preferences.Appearance.UseNativeWindowFrame}"
                       IsChecked="{Binding UseSystemWindowFrame, Mode=OneTime}"
@@ -1164,6 +1173,38 @@
                 </DataTemplate>
               </ContentControl.DataTemplates>
             </ContentControl>
+          </Grid>
+        </TabItem>
+        <TabItem x:Name="UserAvatarsTab">
+          <TabItem.Header>
+            <TextBlock Classes="tab_header" Text="{DynamicResource Text.Preferences.Avatars}"/>
+          </TabItem.Header>
+          <Grid Margin="16" RowDefinitions="Auto,*" MinHeight="320">
+            <TextBlock Grid.Row="0" Margin="52,0,0,8" Text="{DynamicResource Text.Preferences.Avatars.Email}"/>
+            <ItemsControl x:Name="UserAvatarSlots" Grid.Row="1" ItemsSource="{Binding UserAvatars}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="m:UserAvatar">
+                  <Grid ColumnDefinitions="40,12,*,8,32,4,32" Margin="0,4" Height="48">
+                    <Border Grid.Column="0" Width="40" Height="40" CornerRadius="4" ClipToBounds="True"
+                            Background="{DynamicResource Brush.ToolBar}" BorderThickness="1" BorderBrush="{DynamicResource Brush.Border2}">
+                      <Image Source="{Binding Preview}" Stretch="UniformToFill"/>
+                    </Border>
+                    <TextBox Grid.Column="2" Height="28" CornerRadius="3" VerticalAlignment="Center"
+                             Watermark="{DynamicResource Text.Preferences.Avatars.Email}"
+                             Text="{Binding Email, Mode=TwoWay}"/>
+                    <Button Grid.Column="4" Classes="icon_button" Width="32" Height="32"
+                            IsEnabled="{Binding HasEmail}" Click="OnChooseUserAvatar"
+                            ToolTip.Tip="{DynamicResource Text.Avatar.Load}">
+                      <Path Width="14" Height="14" Data="{StaticResource Icons.Folder.Open}"/>
+                    </Button>
+                    <Button Grid.Column="6" Classes="icon_button" Width="32" Height="32"
+                            Click="OnClearUserAvatar" ToolTip.Tip="{DynamicResource Text.Preferences.Avatars.Clear}">
+                      <Path Width="12" Height="12" Data="{StaticResource Icons.Clear}"/>
+                    </Button>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
           </Grid>
         </TabItem>
       </TabControl>

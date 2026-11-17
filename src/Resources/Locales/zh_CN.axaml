@@ -714,6 +714,12 @@
   <x:String x:Key="Text.Preferences.AI.Server" xml:space="preserve">服务地址</x:String>
   <x:String x:Key="Text.Preferences.Appearance" xml:space="preserve">外观配置</x:String>
   <x:String x:Key="Text.Preferences.Appearance.BranchNameWrapLength" xml:space="preserve">分支名换行长度（字符）</x:String>
+  <x:String x:Key="Text.Preferences.Appearance.CustomActionSlots" xml:space="preserve">自定义操作快捷位数量</x:String>
+  <x:String x:Key="Text.Preferences.Avatars" xml:space="preserve">用户头像</x:String>
+  <x:String x:Key="Text.Preferences.Avatars.Email" xml:space="preserve">提交者邮箱</x:String>
+  <x:String x:Key="Text.Preferences.Avatars.Clear" xml:space="preserve">移除自定义头像</x:String>
+  <x:String x:Key="Text.Preferences.Avatars.Limit" xml:space="preserve">已配置五位用户头像，请先在“设置 → 用户头像”中移除一位。</x:String>
+  <x:String x:Key="Text.Histories.ResizeDetails" xml:space="preserve">调整历史记录与提交详情的大小</x:String>
   <x:String x:Key="Text.Preferences.Appearance.DefaultFont" xml:space="preserve">缺省字体</x:String>
   <x:String x:Key="Text.Preferences.Appearance.EditorTabWidth" xml:space="preserve">编辑器制表符宽度</x:String>
   <x:String x:Key="Text.Preferences.Appearance.FontSize" xml:space="preserve">字体大小</x:String>

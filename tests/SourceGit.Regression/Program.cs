@@ -158,6 +158,13 @@ internal static partial class Program
             return;
         }
 
+        if (args is ["--daily-gui"])
+        {
+            TestDailyGui();
+            Console.WriteLine($"PASS: {_checks} daily GUI checks. Isolated data and previews: {_root}");
+            return;
+        }
+
         if (args is ["--workspace-style"])
         {
             TestWorkspaceStyle();
@@ -249,6 +256,7 @@ internal static partial class Program
         TestFilterEncodingUx();
         TestWorkflowUx();
         TestWorkspaceStyle();
+        TestDailyGui();
         TestBranchLabels();
         TestBranchWrapSettings();
         TestVisibilityExclusions();

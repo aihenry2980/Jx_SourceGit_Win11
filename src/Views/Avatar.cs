@@ -76,7 +76,7 @@ namespace SourceGit.Views
                     FlowDirection.LeftToRight,
                     typeface,
                     Math.Max(Bounds.Width * 0.65, 10),
-                    Brushes.White);
+                    new SolidColorBrush(Color.Parse("#394149")));
 
                 var chars = fallback.ToCharArray();
                 var sum = 0;
@@ -96,7 +96,7 @@ namespace SourceGit.Views
             }
             else
             {
-                context.DrawRectangle(Brushes.White, new Pen(new SolidColorBrush(Colors.Black, 0.3f), 0.65f), rect, corner, corner);
+                context.DrawRectangle(new SolidColorBrush(Color.Parse("#ECEFF1")), new Pen(new SolidColorBrush(Colors.Black, 0.2f), 0.65f), rect, corner, corner);
 
                 var offsetX = Bounds.Width / 10.0;
                 var offsetY = Bounds.Height / 10.0;
@@ -107,7 +107,7 @@ namespace SourceGit.Views
                 var lowered = _user.Email.ToLower(CultureInfo.CurrentCulture).Trim();
                 var hash = MD5.HashData(Encoding.Default.GetBytes(lowered));
 
-                var brush = new SolidColorBrush(new Color(255, hash[0], hash[1], hash[2]));
+                var brush = new SolidColorBrush(Color.FromRgb((byte)(108 + hash[0] / 20), (byte)(108 + hash[1] / 20), (byte)(108 + hash[2] / 20)));
                 var switches = new bool[15];
                 for (int i = 0; i < switches.Length; i++)
                     switches[i] = hash[i + 1] % 2 == 1;
@@ -147,25 +147,28 @@ namespace SourceGit.Views
 
         public void OnAvatarResourceChanged(string email, Bitmap image)
         {
-            if (email.Equals(_user?.Email, StringComparison.Ordinal))
+            if (email.Equals(_user?.Email?.Trim(), StringComparison.OrdinalIgnoreCase))
             {
                 _img = image;
                 InvalidateVisual();
             }
         }
 
-        protected override void OnLoaded(RoutedEventArgs e)
+        protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
         {
-            base.OnLoaded(e);
+            base.OnAttachedToVisualTree(e);
             Models.AvatarManager.Instance.Subscribe(this);
+            if (_user != null)
+                _img = Models.AvatarManager.Instance.Request(_user.Email, false);
+            InvalidateVisual();
             ContextRequested += OnContextRequested;
         }
 
-        protected override void OnUnloaded(RoutedEventArgs e)
+        protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
         {
-            base.OnUnloaded(e);
             ContextRequested -= OnContextRequested;
             Models.AvatarManager.Instance.Unsubscribe(this);
+            base.OnDetachedFromVisualTree(e);
         }
 
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -218,12 +221,14 @@ namespace SourceGit.Views
                     AllowMultiple = false,
                 };
 
-                var selected = await toplevel.StorageProvider.OpenFilePickerAsync(options);
-                if (selected.Count == 1)
+                try
                 {
-                    var localFile = selected[0].Path.LocalPath;
-                    Models.AvatarManager.Instance.SetFromLocal(_user.Email, localFile);
+                    var selected = await toplevel.StorageProvider.OpenFilePickerAsync(options);
+                    if (selected.Count == 1 && _user != null &&
+                        !ViewModels.Preferences.Instance.SetUserAvatar(_user.Email, selected[0].Path.LocalPath))
+                        App.RaiseException(string.Empty, App.Text("Preferences.Avatars.Limit"));
                 }
+                catch (Exception ex) { App.RaiseException(string.Empty, ex.Message); }
 
                 ev.Handled = true;
             };
@@ -292,11 +297,11 @@ namespace SourceGit.Views
         }
 
         private static readonly GradientStops[] FALLBACK_GRADIENTS = [
-            new() { new GradientStop(Colors.Orange, 0), new GradientStop(Color.FromRgb(255, 213, 134), 1) },
-            new() { new GradientStop(Colors.DodgerBlue, 0), new GradientStop(Colors.LightSkyBlue, 1) },
-            new() { new GradientStop(Colors.LimeGreen, 0), new GradientStop(Color.FromRgb(124, 241, 124), 1) },
-            new() { new GradientStop(Colors.Orchid, 0), new GradientStop(Color.FromRgb(248, 161, 245), 1) },
-            new() { new GradientStop(Colors.Tomato, 0), new GradientStop(Color.FromRgb(252, 165, 150), 1) },
+            new() { new GradientStop(Color.Parse("#E2E6E8"), 0), new GradientStop(Color.Parse("#C5CDD2"), 1) },
+            new() { new GradientStop(Color.Parse("#E2E5E9"), 0), new GradientStop(Color.Parse("#C7CFD8"), 1) },
+            new() { new GradientStop(Color.Parse("#E2E7E3"), 0), new GradientStop(Color.Parse("#C8D2CB"), 1) },
+            new() { new GradientStop(Color.Parse("#E7E3E8"), 0), new GradientStop(Color.Parse("#D1CAD4"), 1) },
+            new() { new GradientStop(Color.Parse("#E8E5E2"), 0), new GradientStop(Color.Parse("#D3CDC7"), 1) },
         ];
 
         private Models.User _user = null;

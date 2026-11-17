@@ -39,7 +39,7 @@
       <Setter Property="FontSize" Value="12"/>
       <Setter Property="HorizontalAlignment" Value="Center"/>
       <Setter Property="TextAlignment" Value="Center"/>
-      <Setter Property="MaxWidth" Value="78"/>
+      <Setter Property="MaxWidth" Value="85.8"/>
       <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
     </Style>
     <Style Selector="Path.empty_action_icon">
@@ -117,7 +117,7 @@
       <Setter Property="Margin" Value="6,0,0,0"/>
     </Style>
   </UserControl.Styles>
-  <Grid ColumnDefinitions="Auto,*,Auto">
+  <Grid x:Name="ToolbarLayout" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
     <StackPanel x:Name="LeftToolbarGroup" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Top" Margin="4,2,6,2">
       <Button x:Name="OpenWithExternalToolsButton" Classes="icon_button toolbar_button" Width="44" Click="OpenWithExternalTools">
         <ToolTip.Tip>
@@ -421,7 +421,7 @@
           </StackPanel>
         </Button>
         <Button x:Name="PullSubmoduleOptionsButton" Classes="icon_button"
-                Width="18" Height="46" Padding="0" Click="OnPullSubmoduleOptionsClicked"
+                Width="19.8" Height="46" Padding="0" Click="OnPullSubmoduleOptionsClicked"
                 IsEnabled="{Binding !IsBare}"
                 AutomationProperties.Name="{DynamicResource Text.Toolbar.SubmoduleOptions}"
                 ToolTip.Tip="{DynamicResource Text.Toolbar.SubmoduleOptions}">
@@ -564,6 +564,8 @@
         </StackPanel>
       </Button>
       <Button Width="0" Height="0" Click="CreateNewBranchByHotKey" IsVisible="False" HotKey="{OnPlatform Ctrl+Shift+B, macOS=⌘+⇧+B}"/>
+    </StackPanel>
+    <StackPanel x:Name="CustomActionsToolbarGroup" Orientation="Horizontal" Margin="6,2">
       <Button x:Name="OpenCustomActionMenuButton" Classes="icon_button toolbar_button" Width="56" Margin="8,0,0,0" Click="OpenCustomActionMenu">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
@@ -581,8 +583,8 @@
 
       <StackPanel x:Name="CustomActionSlots" Orientation="Horizontal">
         <Button x:Name="CustomActionSlot0Button" Classes="icon_button toolbar_button" Width="80" Margin="4,0,0,0" Click="ExecuteToolbarCustomAction" Tag="0"/>
-        <Button x:Name="CustomActionSlot1Button" Classes="icon_button toolbar_button" Width="80" Margin="4,0,0,0" Click="ExecuteToolbarCustomAction" Tag="1"/>
-        <Button x:Name="CustomActionSlot2Button" Classes="icon_button toolbar_button" Width="80" Margin="4,0,0,0" Click="ExecuteToolbarCustomAction" Tag="2"/>
+        <Button x:Name="CustomActionSlot1Button" Classes="icon_button toolbar_button" Width="80" Margin="4,0,0,0" Click="ExecuteToolbarCustomAction" Tag="1" IsVisible="False"/>
+        <Button x:Name="CustomActionSlot2Button" Classes="icon_button toolbar_button" Width="80" Margin="4,0,0,0" Click="ExecuteToolbarCustomAction" Tag="2" IsVisible="False"/>
       </StackPanel>
 
       <Button Classes="icon_button toolbar_button" Width="56" Margin="8,0,0,0" Click="Cleanup" IsVisible="False">
@@ -656,7 +658,7 @@
       <Button Width="0" Height="0" Click="NavigateToHead" IsVisible="False" HotKey="{OnPlatform Ctrl+H, macOS=⌘+⌥+H}"/>
       <ToggleButton x:Name="FocusCurrentBranchButton"
                     Classes="line_path"
-                    Width="56" Height="46"
+                    Width="61.6" Height="46"
                     Padding="4,2"
                     Margin="4,0,0,0"
                     IsChecked="{Binding FocusOnCurrentBranch, Mode=TwoWay}"

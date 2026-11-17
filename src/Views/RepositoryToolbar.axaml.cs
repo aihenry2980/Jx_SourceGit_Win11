@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -12,6 +13,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
+using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
@@ -43,8 +45,44 @@ namespace SourceGit.Views
         public RepositoryToolbar()
         {
             InitializeComponent();
+            foreach (var button in this.GetLogicalDescendants().OfType<Button>())
+                if (button.Classes.Contains("toolbar_button") && button.Width > 0 && double.IsFinite(button.Width))
+                    button.Width *= 1.1;
             AddHandler(PointerPressedEvent, OnToolbarButtonFeedbackPointerPressed, RoutingStrategies.Tunnel);
             DataContextChanged += (_, _) => RefreshCustomActionSlots();
+            SizeChanged += (_, _) => UpdateToolbarArrangement();
+        }
+
+        private void UpdateToolbarArrangement()
+        {
+            var separateRow = Bounds.Width < 1400;
+            if (separateRow == _usesSeparateToolbarRow)
+                return;
+            _usesSeparateToolbarRow = separateRow;
+            Grid.SetRow(CenterToolbarGroup, separateRow ? 1 : 0);
+            Grid.SetColumn(CenterToolbarGroup, separateRow ? 0 : 1);
+            Grid.SetColumnSpan(CenterToolbarGroup, separateRow ? 3 : 1);
+        }
+
+        private bool _usesSeparateToolbarRow;
+
+        protected override void OnLoaded(RoutedEventArgs e)
+        {
+            base.OnLoaded(e);
+            ViewModels.Preferences.Instance.PropertyChanged += OnToolbarPreferencesChanged;
+            RefreshCustomActionSlots();
+        }
+
+        protected override void OnUnloaded(RoutedEventArgs e)
+        {
+            ViewModels.Preferences.Instance.PropertyChanged -= OnToolbarPreferencesChanged;
+            base.OnUnloaded(e);
+        }
+
+        private void OnToolbarPreferencesChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(ViewModels.Preferences.ToolbarCustomActionSlots))
+                RefreshCustomActionSlots();
         }
 
         private async void OnToolbarButtonFeedbackPointerPressed(object sender, PointerPressedEventArgs e)
@@ -473,6 +511,7 @@ namespace SourceGit.Views
             for (var i = 0; i < slots.Length; i++)
             {
                 var slot = slots[i];
+                slot.IsVisible = i < ViewModels.Preferences.Instance.ToolbarCustomActionSlots;
                 var action = i < actions.Count ? actions[i].Item1 : null;
                 slot.Tag = action;
                 slot.Content = CreateToolbarCustomActionContent(action);

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -16,6 +17,7 @@ namespace SourceGit.ViewModels
         public const int MIN_HISTORY_COMMITS = 1000;
         public const int MAX_HISTORY_COMMITS = 50000;
         public const int DEFAULT_HISTORY_COMMITS = 10000;
+        public const int MAX_USER_AVATARS = 5;
         public const int MIN_RECURSIVE_SUBMODULE_DISPLAY_DEPTH = 1;
         public const int MAX_RECURSIVE_SUBMODULE_DISPLAY_DEPTH = 20;
         public const int DEFAULT_RECURSIVE_SUBMODULE_DISPLAY_DEPTH = 5;
@@ -66,6 +68,66 @@ namespace SourceGit.ViewModels
 
                 return _instance;
             }
+        }
+
+        public Preferences()
+        {
+            foreach (var avatar in _userAvatars)
+                avatar.PropertyChanged += OnUserAvatarChanged;
+        }
+
+        public Models.UserAvatar[] UserAvatars
+        {
+            get => _userAvatars;
+            set
+            {
+                foreach (var avatar in _userAvatars)
+                    avatar.PropertyChanged -= OnUserAvatarChanged;
+                _userAvatars = CreateUserAvatarSlots(value);
+                foreach (var avatar in _userAvatars)
+                    avatar.PropertyChanged += OnUserAvatarChanged;
+                OnPropertyChanged();
+                if (!_isLoading)
+                    Models.AvatarManager.RefreshCustomAvatarsIfLoaded();
+            }
+        }
+
+        public int ToolbarCustomActionSlots
+        {
+            get => _toolbarCustomActionSlots;
+            set => SetProperty(ref _toolbarCustomActionSlots, Math.Clamp(value, 1, 3));
+        }
+
+        public bool SetUserAvatar(string email, string file)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                return false;
+            var normalized = email.Trim();
+            var slot = Array.Find(_userAvatars, avatar => avatar.Email.Trim().Equals(normalized, StringComparison.OrdinalIgnoreCase)) ??
+                Array.Find(_userAvatars, avatar => !avatar.HasEmail);
+            if (slot == null)
+                return false;
+            // Decode before changing the selected identity, so a bad file cannot replace it.
+            var image = new Models.UserAvatar();
+            image.SetFromFile(file);
+            slot.Email = normalized;
+            slot.ImageData = image.ImageData;
+            Save();
+            return true;
+        }
+
+        private static Models.UserAvatar[] CreateUserAvatarSlots(Models.UserAvatar[] avatars)
+        {
+            var slots = new Models.UserAvatar[MAX_USER_AVATARS];
+            for (var i = 0; i < slots.Length; i++)
+                slots[i] = avatars != null && i < avatars.Length && avatars[i] != null ? avatars[i] : new Models.UserAvatar();
+            return slots;
+        }
+
+        private void OnUserAvatarChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (!_isLoading && e.PropertyName is nameof(Models.UserAvatar.Email) or nameof(Models.UserAvatar.ImageData))
+                Models.AvatarManager.RefreshCustomAvatarsIfLoaded();
         }
 
         public string Locale
@@ -1270,6 +1332,8 @@ namespace SourceGit.ViewModels
         private static Preferences _instance = null;
 
         private bool _isLoading = true;
+        private Models.UserAvatar[] _userAvatars = CreateUserAvatarSlots(null);
+        private int _toolbarCustomActionSlots = 1;
         private bool _isReadonly = true;
         private string _locale = "en_US";
         private string _theme = "Default";

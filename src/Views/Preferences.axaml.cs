@@ -227,6 +227,38 @@ namespace SourceGit.Views
             preferences.Save();
         }
 
+        private async void OnChooseUserAvatar(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Control { DataContext: Models.UserAvatar avatar } || !avatar.HasEmail)
+                return;
+            try
+            {
+                var selected = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+                {
+                    AllowMultiple = false,
+                    FileTypeFilter = [new FilePickerFileType("Images") { Patterns = ["*.png", "*.jpg", "*.jpeg", "*.bmp", "*.webp"] }],
+                });
+                if (selected.Count == 1)
+                {
+                    avatar.SetFromFile(selected[0].Path.LocalPath);
+                    ViewModels.Preferences.Instance.Save();
+                }
+            }
+            catch (Exception ex) { await new Alert().ShowAsync(this, ex.Message, true); }
+            e.Handled = true;
+        }
+
+        private void OnClearUserAvatar(object sender, RoutedEventArgs e)
+        {
+            if (sender is Control { DataContext: Models.UserAvatar avatar })
+            {
+                avatar.Email = string.Empty;
+                avatar.ImageData = string.Empty;
+                ViewModels.Preferences.Instance.Save();
+            }
+            e.Handled = true;
+        }
+
         private async void SelectThemeOverrideFile(object _, RoutedEventArgs e)
         {
             var options = new FilePickerOpenOptions()

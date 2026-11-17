@@ -47,6 +47,33 @@ namespace SourceGit.Models
         private LinkedList<string> _resourceLru = new LinkedList<string>();
         private HashSet<string> _requesting = new HashSet<string>();
         private HashSet<string> _defaultAvatars = new HashSet<string>();
+        private HashSet<string> _customAvatarEmails = new(StringComparer.OrdinalIgnoreCase);
+
+        public static void RefreshCustomAvatarsIfLoaded() => _instance?.RefreshCustomAvatars();
+
+        private Bitmap GetCustomAvatar(string email)
+        {
+            foreach (var avatar in ViewModels.Preferences.Instance.UserAvatars)
+            {
+                if (avatar.HasEmail && avatar.Email.Trim().Equals(email.Trim(), StringComparison.OrdinalIgnoreCase) && avatar.Preview is { } image)
+                {
+                    _customAvatarEmails.Add(email);
+                    return image;
+                }
+            }
+            return null;
+        }
+
+        private void RefreshCustomAvatars()
+        {
+            var changed = new HashSet<string>(_customAvatarEmails, StringComparer.OrdinalIgnoreCase);
+            foreach (var avatar in ViewModels.Preferences.Instance.UserAvatars)
+                if (avatar.HasEmail)
+                    changed.Add(avatar.Email.Trim());
+            _customAvatarEmails.Clear();
+            foreach (var email in changed)
+                NotifyResourceChanged(email, Request(email, false));
+        }
 
         public void Start()
         {
@@ -96,7 +123,7 @@ namespace SourceGit.Models
                     Dispatcher.UIThread.Post(() =>
                     {
                         SetResource(email, img);
-                        NotifyResourceChanged(email, img);
+                        NotifyResourceChanged(email, GetCustomAvatar(email) ?? img);
                     });
                 }
 
@@ -118,6 +145,9 @@ namespace SourceGit.Models
         {
             if (string.IsNullOrWhiteSpace(email))
                 return null;
+
+            if (GetCustomAvatar(email) is { } custom)
+                return custom;
 
             if (forceRefetch)
             {
@@ -220,6 +250,11 @@ namespace SourceGit.Models
 
         private string GetLocalAvatarFile(string email)
         {
+            if (string.IsNullOrEmpty(_storePath))
+            {
+                _storePath = Path.Combine(Native.OS.BasicDirectories.CacheDir, "avatars");
+                Directory.CreateDirectory(_storePath);
+            }
             return Path.Combine(_storePath, GetEmailHash(email));
         }
 

@@ -10,16 +10,57 @@
              x:Class="SourceGit.Views.Histories"
              x:DataType="vm:Histories"
              x:Name="ThisControl">
+  <UserControl.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="History.Splitter" Color="#CED5DB"/>
+          <SolidColorBrush x:Key="History.SplitterHover" Color="#91A7B9"/>
+          <SolidColorBrush x:Key="History.SplitterGrip" Color="#596A78"/>
+          <SolidColorBrush x:Key="History.HeadOutline" Color="#C62828"/>
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="History.Splitter" Color="#464D55"/>
+          <SolidColorBrush x:Key="History.SplitterHover" Color="#667D91"/>
+          <SolidColorBrush x:Key="History.SplitterGrip" Color="#C1CCD5"/>
+          <SolidColorBrush x:Key="History.HeadOutline" Color="#EF7171"/>
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+    </ResourceDictionary>
+  </UserControl.Resources>
+  <UserControl.Styles>
+    <Style Selector="GridSplitter.history_details_splitter">
+      <Setter Property="Background" Value="{DynamicResource History.Splitter}"/>
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+            <Grid>
+              <Border Width="32" Height="3" CornerRadius="1.5" Background="{DynamicResource History.SplitterGrip}"
+                      HorizontalAlignment="Center" VerticalAlignment="Center"
+                      IsVisible="{Binding Source={x:Static vm:Preferences.Instance}, Path=!UseTwoColumnsLayoutInHistories}"/>
+              <Border Width="3" Height="32" CornerRadius="1.5" Background="{DynamicResource History.SplitterGrip}"
+                      HorizontalAlignment="Center" VerticalAlignment="Center"
+                      IsVisible="{Binding Source={x:Static vm:Preferences.Instance}, Path=UseTwoColumnsLayoutInHistories}"/>
+            </Grid>
+          </Border>
+        </ControlTemplate>
+      </Setter>
+    </Style>
+    <Style Selector="GridSplitter.history_details_splitter:pointerover">
+      <Setter Property="Background" Value="{DynamicResource History.SplitterHover}"/>
+    </Style>
+  </UserControl.Styles>
   <v:HistoriesLayout UseHorizontal="{Binding Source={x:Static vm:Preferences.Instance}, Path=UseTwoColumnsLayoutInHistories}">
     <v:HistoriesLayout.RowDefinitions>
       <RowDefinition Height="{Binding TopArea, Mode=TwoWay}" MinHeight="100"/>
-      <RowDefinition Height="3"/>
+      <RowDefinition Height="8"/>
       <RowDefinition Height="{Binding BottomArea, Mode=TwoWay}" MinHeight="200"/>
     </v:HistoriesLayout.RowDefinitions>
 
     <v:HistoriesLayout.ColumnDefinitions>
       <ColumnDefinition Width="{Binding LeftArea, Mode=TwoWay}" MinWidth="100"/>
-      <ColumnDefinition Width="3"/>
+      <ColumnDefinition Width="8"/>
       <ColumnDefinition Width="{Binding RightArea, Mode=TwoWay}" MinWidth="100"/>
     </v:HistoriesLayout.ColumnDefinitions>
 
@@ -465,7 +506,13 @@
                         </Border.Background>
                       </Border>
 
-                      <v:CommitSubjectPresenter FontFamily="{DynamicResource Fonts.Default}"
+                      <Rectangle Classes="head_subject_outline" IsVisible="{Binding IsCurrentHead}"
+                                 Height="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesRowHeight, Converter={x:Static c:DoubleConverters.ToHeadSubjectHighlightHeight}}"
+                                 VerticalAlignment="Center" Margin="1,0"
+                                 Stroke="{DynamicResource History.HeadOutline}" StrokeThickness="1.25"
+                                 StrokeDashArray="4,3" RadiusX="3" RadiusY="3" IsHitTestVisible="False"/>
+
+                      <v:CommitSubjectPresenter Margin="5,0" FontFamily="{DynamicResource Fonts.Default}"
                                                 CodeFontFamily="{DynamicResource Fonts.Monospace}"
                                                 HighlightText="{Binding $parent[v:Repository].((vm:Repository)DataContext).HistoryQuickFindAppliedText}"
                                                 InlineCodeBackground="{DynamicResource Brush.InlineCode}"
@@ -616,10 +663,11 @@
       <v:LoadingIcon Width="48" Height="48" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsLoading}"/>
     </Grid>
 
-    <GridSplitter Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3"
+    <GridSplitter x:Name="HistoryDetailsSplitter" Classes="history_details_splitter"
+                  Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3"
                   MinWidth="1" MinHeight="1"
                   HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-                  Background="{DynamicResource Brush.Window}"
+                  ToolTip.Tip="{DynamicResource Text.Histories.ResizeDetails}"
                   BorderBrush="{DynamicResource Brush.Border0}"/>
 
     <Grid Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3">
