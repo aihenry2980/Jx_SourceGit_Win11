@@ -711,6 +711,13 @@
   <x:String x:Key="Text.Preferences.Appearance" xml:space="preserve">APPEARANCE</x:String>
   <x:String x:Key="Text.Preferences.Appearance.BranchNameWrapLength" xml:space="preserve">Branch wrap length (characters)</x:String>
   <x:String x:Key="Text.Preferences.Appearance.CustomActionSlots" xml:space="preserve">Custom action slots</x:String>
+  <x:String x:Key="Text.Preferences.Appearance.MachineTag" xml:space="preserve">Machine label</x:String>
+  <x:String x:Key="Text.Preferences.Appearance.MachineTagColors" xml:space="preserve">Machine label colors</x:String>
+  <x:String x:Key="Text.Preferences.Appearance.MachineTagBackground" xml:space="preserve">Label background</x:String>
+  <x:String x:Key="Text.Preferences.Appearance.MachineTagForeground" xml:space="preserve">Label text color</x:String>
+  <x:String x:Key="Text.Preferences.Appearance.MachineTagReset" xml:space="preserve">Restore accent background and automatic text color</x:String>
+  <x:String x:Key="Text.Preferences.Avatars.NameColor" xml:space="preserve">Author name color</x:String>
+  <x:String x:Key="Text.Preferences.Avatars.ResetNameColor" xml:space="preserve">Restore default author name color</x:String>
   <x:String x:Key="Text.Preferences.Avatars" xml:space="preserve">AVATARS</x:String>
   <x:String x:Key="Text.Preferences.Avatars.Email" xml:space="preserve">Commit author email</x:String>
   <x:String x:Key="Text.Preferences.Avatars.Clear" xml:space="preserve">Remove custom avatar</x:String>

@@ -69,7 +69,7 @@ internal static partial class Program
                         "Dark HEAD background does not reuse a bright light-theme surface");
                 }
                 var merged = new SourceGit.Models.Commit { IsMerged = true };
-                var sha = (ISolidColorBrush)SourceGit.Converters.CommitConverters.SHAForeground.Convert(merged, typeof(IBrush), null, null);
+                var sha = (ISolidColorBrush)SourceGit.Converters.CommitConverters.SHAForeground.Convert(new object[] { merged }, typeof(IBrush), null, null);
                 Check(WorkspaceContrast(sha.Color, contents.Color) >= 4.5, "Current-branch SHA is readable in " + theme);
                 var selected = (ListBoxItem)nav.ContainerFromIndex(0);
                 Check(selected.BorderThickness.Left == 3 && Equals(selected.BorderBrush, view.FindResource("Brush.Accent")),

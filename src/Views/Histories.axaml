@@ -221,20 +221,31 @@
                 <Border Classes="commit_sha_cell"
                         Padding="6,0"
                         Margin="4,0,0,0"
-                        Background="{Binding ., Converter={x:Static c:CommitConverters.SHABackground}}"
                         CornerRadius="3"
                         ClipToBounds="True">
+                  <Border.Background>
+                    <MultiBinding Converter="{x:Static c:CommitConverters.SHABackground}">
+                      <Binding/>
+                      <Binding Source="{x:Static vm:Preferences.Instance}" Path="MainAccentColor"/>
+                    </MultiBinding>
+                  </Border.Background>
                   <v:CommitSubjectPresenter Subject="{Binding SHA, Converter={x:Static c:StringConverters.ToShortSHA5}}"
                                             HighlightText="{Binding $parent[v:Repository].((vm:Repository)DataContext).HistoryQuickFindAppliedText}"
                                             FontFamily="{DynamicResource Fonts.Monospace}"
                                             CodeFontFamily="{DynamicResource Fonts.Monospace}"
                                             InlineCodeBackground="Transparent"
-                                            Foreground="{Binding ., Converter={x:Static c:CommitConverters.SHAForeground}}"
-                                            LinkForeground="{Binding ., Converter={x:Static c:CommitConverters.SHAForeground}}"
+                                            LinkForeground="{Binding Foreground, RelativeSource={RelativeSource Self}}"
                                             FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Mode=OneWay}"
                                             FontWeight="{Binding ., Converter={x:Static c:CommitConverters.SHAFontWeight}}"
                                             ToolTip.Tip="{Binding ., Converter={x:Static c:CommitConverters.SHAToolTip}}"
-                                            Opacity="{Binding IsMerged, Converter={x:Static c:BoolConverters.IsMergedToOpacity}}"/>
+                                            Opacity="{Binding IsMerged, Converter={x:Static c:BoolConverters.IsMergedToOpacity}}">
+                    <v:CommitSubjectPresenter.Foreground>
+                      <MultiBinding Converter="{x:Static c:CommitConverters.SHAForeground}">
+                        <Binding/>
+                        <Binding Source="{x:Static vm:Preferences.Instance}" Path="MainAccentColor"/>
+                      </MultiBinding>
+                    </v:CommitSubjectPresenter.Foreground>
+                  </v:CommitSubjectPresenter>
                 </Border>
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
@@ -507,12 +518,12 @@
                       </Border>
 
                       <Rectangle Classes="head_subject_outline" IsVisible="{Binding IsCurrentHead}"
-                                 Height="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesRowHeight, Converter={x:Static c:DoubleConverters.ToHeadSubjectHighlightHeight}}"
+                                 Height="{Binding $parent[DataGridRow].Bounds.Height, Converter={x:Static c:DoubleConverters.ToHeadOutlineHeight}}"
                                  VerticalAlignment="Center" Margin="1,0"
                                  Stroke="{DynamicResource History.HeadOutline}" StrokeThickness="1.25"
                                  StrokeDashArray="4,3" RadiusX="3" RadiusY="3" IsHitTestVisible="False"/>
 
-                      <v:CommitSubjectPresenter Margin="5,0" FontFamily="{DynamicResource Fonts.Default}"
+                      <v:CommitSubjectPresenter Margin="{Binding ., Converter={x:Static c:CommitConverters.SubjectMargin}}" FontFamily="{DynamicResource Fonts.Default}"
                                                 CodeFontFamily="{DynamicResource Fonts.Monospace}"
                                                 HighlightText="{Binding $parent[v:Repository].((vm:Repository)DataContext).HistoryQuickFindAppliedText}"
                                                 InlineCodeBackground="{DynamicResource Brush.InlineCode}"
@@ -561,9 +572,16 @@
                   <Border Grid.Column="1" Padding="8,0" ClipToBounds="True">
                     <TextBlock Text="{Binding Author.Name}"
                                FontWeight="{Binding IsCurrentHead, Converter={x:Static c:BoolConverters.IsBoldToFontWeight}}"
-                               Foreground="{Binding ., Converter={x:Static c:CommitConverters.HeadAwareForeground}}"
                                TextTrimming="CharacterEllipsis"
-                               ToolTip.Tip="{Binding Author.Name}"/>
+                               ToolTip.Tip="{Binding Author.Name}">
+                      <TextBlock.Foreground>
+                        <MultiBinding Converter="{x:Static c:UserConverters.NameForeground}">
+                          <Binding Path="Author"/>
+                          <Binding Source="{x:Static vm:Preferences.Instance}" Path="UserNameColorRevision"/>
+                          <Binding Converter="{x:Static c:CommitConverters.HeadAwareForeground}"/>
+                        </MultiBinding>
+                      </TextBlock.Foreground>
+                    </TextBlock>
                   </Border>
                 </Grid>
               </DataTemplate>

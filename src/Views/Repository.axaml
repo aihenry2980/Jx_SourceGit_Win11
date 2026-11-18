@@ -239,20 +239,21 @@
           <Path Width="12" Height="12" Stretch="Fill" HorizontalAlignment="Center" Data="{StaticResource Icons.Search}"/>
         </RadioButton>
 
-        <Border Height="24"
+        <Border x:Name="MachineIdentityTag" Height="24"
                 MinWidth="64"
                 MaxWidth="170"
                 Margin="8,0,0,0"
                 Padding="10,0"
                 VerticalAlignment="Center"
-                Background="{DynamicResource Brush.Popup}"
+                Background="{Binding Source={x:Static vm:Preferences.Instance}, Path=MachineTagBackgroundBrush}"
                 BorderBrush="{DynamicResource Brush.Border0}"
                 BorderThickness="1"
                 CornerRadius="6"
                 IsVisible="{Binding !IsLeftSidebarCompact}">
-          <TextBlock Text="{Binding MachineName}"
+          <TextBlock Text="{Binding Source={x:Static vm:Preferences.Instance}, Path=MachineTagLabel}"
                      FontWeight="Bold"
-                     Foreground="{DynamicResource Brush.FG1}"
+                     Foreground="{Binding Source={x:Static vm:Preferences.Instance}, Path=MachineTagForegroundBrush}"
+                     ToolTip.Tip="{Binding MachineName}"
                      VerticalAlignment="Center"
                      TextAlignment="Center"
                      TextTrimming="CharacterEllipsis"/>
@@ -1499,7 +1500,15 @@
               <StackPanel MinWidth="400" Orientation="Vertical">
                 <Grid ColumnDefinitions="Auto,*,Auto">
                   <v:Avatar Grid.Column="0" Width="16" Height="16" VerticalAlignment="Center" IsHitTestVisible="False" User="{Binding Author}"/>
-                  <TextBlock Grid.Column="1" Text="{Binding Author.Name}" Margin="8,0,0,0"/>
+                  <TextBlock Grid.Column="1" Text="{Binding Author.Name}" Margin="8,0,0,0">
+                    <TextBlock.Foreground>
+                      <MultiBinding Converter="{x:Static c:UserConverters.NameForeground}">
+                        <Binding Path="Author"/>
+                        <Binding Source="{x:Static vm:Preferences.Instance}" Path="UserNameColorRevision"/>
+                        <Binding Source="{DynamicResource Brush.FG1}"/>
+                      </MultiBinding>
+                    </TextBlock.Foreground>
+                  </TextBlock>
                   <TextBlock Grid.Column="2" Text="{Binding CommitterTimeStr}" Foreground="{DynamicResource Brush.FG2}" Margin="8,0,0,0"/>
                 </Grid>
 

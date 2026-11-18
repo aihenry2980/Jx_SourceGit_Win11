@@ -303,6 +303,27 @@ namespace SourceGit.Native
             _backend.OpenTerminal(cwd, args);
         }
 
+        public static ProcessStartInfo CreateWindowsTerminalStartInfo(string workdir)
+        {
+            var cwd = Path.GetFullPath(string.IsNullOrWhiteSpace(workdir)
+                ? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) : workdir);
+            var start = new ProcessStartInfo("wt.exe") { WorkingDirectory = cwd, UseShellExecute = false };
+            start.ArgumentList.Add("-d");
+            start.ArgumentList.Add(".");
+            return start;
+        }
+
+        public static void OpenWindowsTerminal(string workdir)
+        {
+            if (!OperatingSystem.IsWindows())
+                return;
+            try { Process.Start(CreateWindowsTerminalStartInfo(workdir)); }
+            catch (Exception ex)
+            {
+                Models.Notification.Send(workdir, $"Windows Terminal could not be started. Install Windows Terminal or enable its wt.exe app execution alias. {ex.Message}", true);
+            }
+        }
+
         public static void OpenWithDefaultEditor(string file)
         {
             _backend.OpenWithDefaultEditor(file);

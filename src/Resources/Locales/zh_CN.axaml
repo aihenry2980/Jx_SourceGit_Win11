@@ -715,6 +715,13 @@
   <x:String x:Key="Text.Preferences.Appearance" xml:space="preserve">外观配置</x:String>
   <x:String x:Key="Text.Preferences.Appearance.BranchNameWrapLength" xml:space="preserve">分支名换行长度（字符）</x:String>
   <x:String x:Key="Text.Preferences.Appearance.CustomActionSlots" xml:space="preserve">自定义操作快捷位数量</x:String>
+  <x:String x:Key="Text.Preferences.Appearance.MachineTag" xml:space="preserve">本机标签文字</x:String>
+  <x:String x:Key="Text.Preferences.Appearance.MachineTagColors" xml:space="preserve">本机标签颜色</x:String>
+  <x:String x:Key="Text.Preferences.Appearance.MachineTagBackground" xml:space="preserve">标签背景色</x:String>
+  <x:String x:Key="Text.Preferences.Appearance.MachineTagForeground" xml:space="preserve">标签文字颜色</x:String>
+  <x:String x:Key="Text.Preferences.Appearance.MachineTagReset" xml:space="preserve">恢复强调色背景与自动文字颜色</x:String>
+  <x:String x:Key="Text.Preferences.Avatars.NameColor" xml:space="preserve">作者名字颜色</x:String>
+  <x:String x:Key="Text.Preferences.Avatars.ResetNameColor" xml:space="preserve">恢复默认名字颜色</x:String>
   <x:String x:Key="Text.Preferences.Avatars" xml:space="preserve">用户头像</x:String>
   <x:String x:Key="Text.Preferences.Avatars.Email" xml:space="preserve">提交者邮箱</x:String>
   <x:String x:Key="Text.Preferences.Avatars.Clear" xml:space="preserve">移除自定义头像</x:String>

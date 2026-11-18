@@ -20,6 +20,10 @@
           <SolidColorBrush x:Key="Toolbar.Pull.BusyHigh" Color="#660F766E"/>
           <SolidColorBrush x:Key="Toolbar.Undo" Color="#B45309"/>
           <SolidColorBrush x:Key="Toolbar.Submodules" Color="#10893E"/>
+          <SolidColorBrush x:Key="Toolbar.Navigation" Color="#475569"/>
+          <SolidColorBrush x:Key="Toolbar.Inspection" Color="#77568D"/>
+          <SolidColorBrush x:Key="Toolbar.Commit" Color="#8851A4"/>
+          <SolidColorBrush x:Key="Toolbar.Actions" Color="#8C4E84"/>
         </ResourceDictionary>
         <ResourceDictionary x:Key="Dark">
           <SolidColorBrush x:Key="Toolbar.Fetch" Color="#80ADFF"/>
@@ -30,12 +34,17 @@
           <SolidColorBrush x:Key="Toolbar.Pull.BusyHigh" Color="#6662D6CA"/>
           <SolidColorBrush x:Key="Toolbar.Undo" Color="#FBBF60"/>
           <SolidColorBrush x:Key="Toolbar.Submodules" Color="#72D99A"/>
+          <SolidColorBrush x:Key="Toolbar.Navigation" Color="#B3C4D5"/>
+          <SolidColorBrush x:Key="Toolbar.Inspection" Color="#C5ACE0"/>
+          <SolidColorBrush x:Key="Toolbar.Commit" Color="#D0A4ED"/>
+          <SolidColorBrush x:Key="Toolbar.Actions" Color="#E1AAD8"/>
         </ResourceDictionary>
       </ResourceDictionary.ThemeDictionaries>
     </ResourceDictionary>
   </UserControl.Resources>
   <UserControl.Styles>
     <Style Selector="TextBlock.toolbar_label">
+      <Setter Property="Foreground" Value="{DynamicResource Toolbar.Navigation}"/>
       <Setter Property="FontSize" Value="12"/>
       <Setter Property="HorizontalAlignment" Value="Center"/>
       <Setter Property="TextAlignment" Value="Center"/>
@@ -43,7 +52,31 @@
       <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
     </Style>
     <Style Selector="Path.empty_action_icon">
-      <Setter Property="Fill" Value="{DynamicResource Brush.FG2}"/>
+      <Setter Property="Fill" Value="{DynamicResource Brush.Accent}"/>
+    </Style>
+    <Style Selector="Button.toolbar_button Path, ToggleButton#FocusCurrentBranchButton Path, Button#PullSubmoduleOptionsButton Path">
+      <Setter Property="Fill" Value="{DynamicResource Brush.Accent}"/>
+    </Style>
+    <Style Selector="Button.inspection TextBlock.toolbar_label">
+      <Setter Property="Foreground" Value="{DynamicResource Toolbar.Inspection}"/>
+    </Style>
+    <Style Selector="Button#SubmoduleCommitFlowButton TextBlock.toolbar_label">
+      <Setter Property="Foreground" Value="{DynamicResource Toolbar.Commit}"/>
+    </Style>
+    <Style Selector="StackPanel#FetchToolbarGroup TextBlock.toolbar_label">
+      <Setter Property="Foreground" Value="{DynamicResource Toolbar.Fetch}"/>
+    </Style>
+    <Style Selector="StackPanel#PullToolbarGroup TextBlock.toolbar_label">
+      <Setter Property="Foreground" Value="{DynamicResource Toolbar.Pull}"/>
+    </Style>
+    <Style Selector="StackPanel#MaintenanceToolbarGroup TextBlock.toolbar_label">
+      <Setter Property="Foreground" Value="{DynamicResource Toolbar.Undo}"/>
+    </Style>
+    <Style Selector="Button#UpdateSubmodulesRecursivelyButton TextBlock.toolbar_label">
+      <Setter Property="Foreground" Value="{DynamicResource Toolbar.Submodules}"/>
+    </Style>
+    <Style Selector="StackPanel#CustomActionsToolbarGroup TextBlock.toolbar_label">
+      <Setter Property="Foreground" Value="{DynamicResource Toolbar.Actions}"/>
     </Style>
     <Style Selector="Button.toolbar_button">
       <Setter Property="Height" Value="46"/>
@@ -135,7 +168,16 @@
       </Button>
       <Button Width="0" Height="0" Click="OpenWithExternalToolsByHotKey" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+O, macOS=⌘+⌥+O}"/>
 
-      <Button x:Name="LogsButton" Classes="icon_button toolbar_button" Width="44" Click="OpenGitLogs" ContextRequested="OnLogsContextRequested" PointerPressed="OnLogsPointerPressed">
+      <Button x:Name="WindowsTerminalButton" Classes="icon_button toolbar_button" Width="64"
+              IsVisible="{OnPlatform False, Windows=True}" HotKey="F12" Click="OnOpenWindowsTerminal"
+              AutomationProperties.Name="Windows Terminal" ToolTip.Tip="Windows Terminal · F12">
+        <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
+          <Path Width="16" Height="16" HorizontalAlignment="Center" Data="{StaticResource Icons.Terminal}"/>
+          <TextBlock Classes="toolbar_label" Text="Terminal"/>
+        </StackPanel>
+      </Button>
+
+      <Button x:Name="LogsButton" Classes="icon_button toolbar_button inspection" Width="44" Click="OpenGitLogs" ContextRequested="OnLogsContextRequested" PointerPressed="OnLogsPointerPressed">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="View SourceGit command logs and operation history for this repository." TextWrapping="Wrap" MaxWidth="420"/>
@@ -153,7 +195,7 @@
 
       <Button Width="0" Height="0" Click="OpenMemoryProfilerByHotKey" IsVisible="False" HotKey="Ctrl+Alt+M"/>
       <Button Width="0" Height="0" Click="OpenCpuProfilerByHotKey" IsVisible="False" HotKey="Ctrl+Alt+Shift+M"/>
-      <Button Classes="icon_button toolbar_button" Width="44" Click="OpenStatistics">
+      <Button Classes="icon_button toolbar_button inspection" Width="44" Click="OpenStatistics">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Show repository statistics such as commit activity and contributor trends." TextWrapping="Wrap" MaxWidth="420"/>
@@ -169,7 +211,7 @@
       </Button>
       <Button Width="0" Height="0" Click="OpenStatistics" IsVisible="False" HotKey="{OnPlatform Ctrl+Alt+I, macOS=⌘+⌥+I}"/>
 
-      <Button Classes="icon_button toolbar_button" Width="60" Click="CompareWithOtherRepo">
+      <Button Classes="icon_button toolbar_button inspection" Width="60" Click="CompareWithOtherRepo">
         <ToolTip.Tip>
           <StackPanel Orientation="Vertical">
             <TextBlock Text="Compare this repo with another open repo on the same remote URL but a different checked-out branch." TextWrapping="Wrap" MaxWidth="420"/>
@@ -250,7 +292,7 @@
 
         <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
           <Grid Width="24" Height="24" HorizontalAlignment="Center">
-            <Path Width="20" Height="20" Fill="{DynamicResource Toolbar.Pull}" Data="{StaticResource Icons.Commit}"/>
+            <Path Width="20" Height="20" Fill="{DynamicResource Brush.Accent}" Data="{StaticResource Icons.Commit}"/>
           </Grid>
           <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Commit"/>
         </StackPanel>
@@ -278,7 +320,7 @@
 
           <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
             <Grid Width="24" Height="24">
-              <Path Width="18" Height="18" HorizontalAlignment="Center" Fill="{DynamicResource Toolbar.Fetch}" Data="{StaticResource Icons.Fetch}"/>
+              <Path Width="18" Height="18" HorizontalAlignment="Center" Fill="{DynamicResource Brush.Accent}" Data="{StaticResource Icons.Fetch}"/>
             </Grid>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="3">
               <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Fetch…"/>
@@ -311,13 +353,13 @@
             <Grid Width="24" Height="24">
               <Path Width="18"
                     Height="18"
-                    Fill="{DynamicResource Toolbar.Fetch}"
+                    Fill="{DynamicResource Brush.Accent}"
                     Data="{StaticResource Icons.Submodule}"
                     IsVisible="{Binding IsBackgroundRecursiveFetchRunning, Converter={x:Static BoolConverters.Not}}"/>
               <Path Classes="rotating"
                     Width="18"
                     Height="18"
-                    Fill="{DynamicResource Toolbar.Fetch}"
+                    Fill="{DynamicResource Brush.Accent}"
                     IsVisible="{Binding IsBackgroundRecursiveFetchRunning}"/>
             </Grid>
             <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Fetch + Subs" MaxWidth="90"/>
@@ -349,10 +391,10 @@
 
           <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
             <Grid Width="24" Height="24" HorizontalAlignment="Center">
-              <Path Width="18" Height="18" Fill="{DynamicResource Toolbar.Pull}" Data="{StaticResource Icons.Pull}"/>
+              <Path Width="18" Height="18" Fill="{DynamicResource Brush.Accent}" Data="{StaticResource Icons.Pull}"/>
               <Ellipse Width="7" Height="7"
                        HorizontalAlignment="Right" VerticalAlignment="Top"
-                       Fill="Green"
+                       Fill="{DynamicResource Brush.Accent}"
                        IsVisible="{Binding CurrentBranch?.Behind, Mode=OneWay, Converter={x:Static c:ListConverters.IsNotNullOrEmpty}}"/>
             </Grid>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="3">
@@ -385,7 +427,7 @@
 
           <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
             <Grid Width="24" Height="24">
-              <Path Width="18" Height="18" Fill="{DynamicResource Toolbar.Pull}" Data="{StaticResource Icons.Home}"/>
+              <Path Width="18" Height="18" Fill="{DynamicResource Brush.Accent}" Data="{StaticResource Icons.Home}"/>
             </Grid>
             <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Pull Top"/>
           </StackPanel>
@@ -415,7 +457,7 @@
 
           <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
             <Grid Width="24" Height="24">
-              <Path Width="18" Height="18" Fill="{DynamicResource Toolbar.Pull}" Data="{StaticResource Icons.Submodule}"/>
+              <Path Width="18" Height="18" Fill="{DynamicResource Brush.Accent}" Data="{StaticResource Icons.Submodule}"/>
             </Grid>
             <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Pull + Subs"/>
           </StackPanel>
@@ -425,7 +467,7 @@
                 IsEnabled="{Binding !IsBare}"
                 AutomationProperties.Name="{DynamicResource Text.Toolbar.SubmoduleOptions}"
                 ToolTip.Tip="{DynamicResource Text.Toolbar.SubmoduleOptions}">
-          <Path Width="8" Height="5" Data="{StaticResource Icons.Down}" Fill="{DynamicResource Toolbar.Pull}"/>
+          <Path Width="8" Height="5" Data="{StaticResource Icons.Down}" Fill="{DynamicResource Brush.Accent}"/>
         </Button>
 
       </StackPanel>
@@ -451,7 +493,7 @@
 
         <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
           <Grid Width="24" Height="24">
-            <Path Width="18" Height="18" Fill="{DynamicResource Brush.FG1}" Data="{StaticResource Icons.Refresh}"/>
+            <Path Width="18" Height="18" Fill="{DynamicResource Brush.Accent}" Data="{StaticResource Icons.Refresh}"/>
           </Grid>
           <TextBlock Classes="toolbar_label" Text="Refresh"/>
         </StackPanel>
@@ -470,7 +512,7 @@
 
         <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
           <Grid Width="24" Height="24">
-            <Path Width="18" Height="18" Fill="{DynamicResource Toolbar.Undo}" Data="{StaticResource Icons.Undo}"/>
+            <Path Width="18" Height="18" Fill="{DynamicResource Brush.Accent}" Data="{StaticResource Icons.Undo}"/>
           </Grid>
           <TextBlock Classes="toolbar_label" Text="Undo"/>
         </StackPanel>
@@ -500,7 +542,7 @@
 
         <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
           <Grid Width="24" Height="24">
-            <Path Width="18" Height="18" Fill="{DynamicResource Toolbar.Submodules}" Data="{StaticResource Icons.Submodule}"/>
+            <Path Width="18" Height="18" Fill="{DynamicResource Brush.Accent}" Data="{StaticResource Icons.Submodule}"/>
           </Grid>
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="3">
             <TextBlock Classes="toolbar_label" Text="Update Subs"/>
@@ -651,7 +693,7 @@
         </ToolTip.Tip>
 
         <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
-          <Path Width="14" Height="14" Margin="0,1,0,0" HorizontalAlignment="Center" Data="{StaticResource Icons.Target}" Fill="{DynamicResource Brush.FG1}"/>
+          <Path Width="14" Height="14" Margin="0,1,0,0" HorizontalAlignment="Center" Data="{StaticResource Icons.Target}" Fill="{DynamicResource Brush.Accent}"/>
           <TextBlock Classes="toolbar_label" Text="Head"/>
         </StackPanel>
       </Button>
@@ -669,7 +711,7 @@
           </Style>
         </ToggleButton.Styles>
         <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
-          <Path Width="14" Height="14" Data="{StaticResource Icons.Magic}" Fill="{DynamicResource Brush.FG1}"/>
+          <Path Width="14" Height="14" Data="{StaticResource Icons.Magic}" Fill="{DynamicResource Brush.Accent}"/>
           <TextBlock Classes="toolbar_label" Text="Focus"/>
         </StackPanel>
       </ToggleButton>
@@ -687,7 +729,7 @@
         </ToolTip.Tip>
 
         <StackPanel Orientation="Vertical" Spacing="1" HorizontalAlignment="Center">
-          <Path Width="13" Height="13" Margin="0,2,0,0" HorizontalAlignment="Center" Data="{StaticResource Icons.Submodule}" Fill="{DynamicResource Brush.FG1}"/>
+          <Path Width="13" Height="13" Margin="0,2,0,0" HorizontalAlignment="Center" Data="{StaticResource Icons.Submodule}" Fill="{DynamicResource Brush.Accent}"/>
           <TextBlock Classes="toolbar_label" Text="SPP"/>
         </StackPanel>
       </Button>

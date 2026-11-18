@@ -48,6 +48,9 @@ namespace SourceGit.Converters
         public static readonly FuncValueConverter<double, double> ToHeadSubjectHighlightHeight =
             new FuncValueConverter<double, double>(v => Math.Max(14.0, v * 0.6));
 
+        public static readonly FuncValueConverter<double, double> ToHeadOutlineHeight =
+            new(v => Math.Max(0, v - 2));
+
         public static readonly FuncValueConverter<double, string> ToPercentage =
             new FuncValueConverter<double, string>(v => (v * 100).ToString("F0") + "%");
 

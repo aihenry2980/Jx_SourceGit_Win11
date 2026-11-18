@@ -227,6 +227,21 @@ namespace SourceGit.Views
             preferences.Save();
         }
 
+        private void OnResetMachineTagColors(object sender, RoutedEventArgs e)
+        {
+            var preferences = ViewModels.Preferences.Instance;
+            preferences.MachineTagBackgroundColor = 0;
+            preferences.MachineTagForegroundColor = 0;
+            e.Handled = true;
+        }
+
+        private void OnResetUserNameColor(object sender, RoutedEventArgs e)
+        {
+            if (sender is Control { DataContext: Models.UserAvatar avatar })
+                avatar.NameColor = 0;
+            e.Handled = true;
+        }
+
         private async void OnChooseUserAvatar(object sender, RoutedEventArgs e)
         {
             if (sender is not Control { DataContext: Models.UserAvatar avatar } || !avatar.HasEmail)
@@ -254,6 +269,7 @@ namespace SourceGit.Views
             {
                 avatar.Email = string.Empty;
                 avatar.ImageData = string.Empty;
+                avatar.NameColor = 0;
                 ViewModels.Preferences.Instance.Save();
             }
             e.Handled = true;

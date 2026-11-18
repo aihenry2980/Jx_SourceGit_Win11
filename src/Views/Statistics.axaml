@@ -169,7 +169,15 @@
                                     HorizontalAlignment="Center" VerticalAlignment="Center"
                                     User="{Binding User}"/>
                           <Border Grid.Column="1" Padding="4,0,8,0" ClipToBounds="True">
-                            <TextBlock Text="{Binding User.Name}" HorizontalAlignment="Left"/>
+                            <TextBlock Text="{Binding User.Name}" HorizontalAlignment="Left">
+                              <TextBlock.Foreground>
+                                <MultiBinding Converter="{x:Static c:UserConverters.NameForeground}">
+                                  <Binding Path="User"/>
+                                  <Binding Source="{x:Static vm:Preferences.Instance}" Path="UserNameColorRevision"/>
+                                  <Binding Source="{DynamicResource Brush.FG1}"/>
+                                </MultiBinding>
+                              </TextBlock.Foreground>
+                            </TextBlock>
                           </Border>
                           <Border Grid.Column="2" Padding="8,0" ClipToBounds="True">
                             <TextBlock Text="{Binding Count}" HorizontalAlignment="Right"/>

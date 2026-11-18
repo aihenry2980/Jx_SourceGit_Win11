@@ -84,7 +84,15 @@
               <Grid RowDefinitions="Auto,*">
                 <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,96">
                   <v:Avatar Grid.Column="0" Width="16" Height="16" VerticalAlignment="Center" IsHitTestVisible="False" User="{Binding Author}"/>
-                  <TextBlock Grid.Column="1" Text="{Binding Author.Name}" Margin="8,0,0,0" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Grid.Column="1" Text="{Binding Author.Name}" Margin="8,0,0,0" TextTrimming="CharacterEllipsis">
+                    <TextBlock.Foreground>
+                      <MultiBinding Converter="{x:Static c:UserConverters.NameForeground}">
+                        <Binding Path="Author"/>
+                        <Binding Source="{x:Static vm:Preferences.Instance}" Path="UserNameColorRevision"/>
+                        <Binding Source="{DynamicResource Brush.FG1}"/>
+                      </MultiBinding>
+                    </TextBlock.Foreground>
+                  </TextBlock>
                   <TextBlock Grid.Column="2"
                              Text="{Binding SHA, Converter={x:Static c:StringConverters.ToShortSHA}}"
                              FontFamily="{DynamicResource Fonts.Monospace}"
@@ -193,7 +201,15 @@
                     <Grid RowDefinitions="Auto,*">
                       <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto">
                         <v:Avatar Grid.Column="0" Width="16" Height="16" VerticalAlignment="Center" IsHitTestVisible="False" User="{Binding Author}"/>
-                        <TextBlock Grid.Column="1" Text="{Binding Author.Name}" Margin="8,0,0,0"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Author.Name}" Margin="8,0,0,0">
+                          <TextBlock.Foreground>
+                            <MultiBinding Converter="{x:Static c:UserConverters.NameForeground}">
+                              <Binding Path="Author"/>
+                              <Binding Source="{x:Static vm:Preferences.Instance}" Path="UserNameColorRevision"/>
+                              <Binding Source="{DynamicResource Brush.FG1}"/>
+                            </MultiBinding>
+                          </TextBlock.Foreground>
+                        </TextBlock>
                         <TextBlock Grid.Column="2"
                                    Text="{Binding SHA, Converter={x:Static c:StringConverters.ToShortSHA}}"
                                    FontFamily="{DynamicResource Fonts.Monospace}"

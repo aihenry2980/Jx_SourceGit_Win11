@@ -88,7 +88,10 @@ namespace SourceGit.ViewModels
                     avatar.PropertyChanged += OnUserAvatarChanged;
                 OnPropertyChanged();
                 if (!_isLoading)
+                {
                     Models.AvatarManager.RefreshCustomAvatarsIfLoaded();
+                    NotifyUserNameColorsChanged();
+                }
             }
         }
 
@@ -128,6 +131,84 @@ namespace SourceGit.ViewModels
         {
             if (!_isLoading && e.PropertyName is nameof(Models.UserAvatar.Email) or nameof(Models.UserAvatar.ImageData))
                 Models.AvatarManager.RefreshCustomAvatarsIfLoaded();
+            if (!_isLoading && e.PropertyName is nameof(Models.UserAvatar.Email) or nameof(Models.UserAvatar.NameColor))
+                NotifyUserNameColorsChanged();
+        }
+
+        [JsonIgnore]
+        public int UserNameColorRevision => _userNameColorRevision;
+
+        private void NotifyUserNameColorsChanged()
+        {
+            _userNameColorRevision++;
+            OnPropertyChanged(nameof(UserNameColorRevision));
+        }
+
+        public Avalonia.Media.IBrush GetUserNameBrush(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                return null;
+            var entry = Array.Find(_userAvatars, avatar => avatar.NameColor != 0 &&
+                avatar.Email.Trim().Equals(email.Trim(), StringComparison.OrdinalIgnoreCase));
+            return entry?.NameBrush;
+        }
+
+        public string MachineTagText
+        {
+            get => _machineTagText;
+            set
+            {
+                if (SetProperty(ref _machineTagText, value ?? string.Empty))
+                    OnPropertyChanged(nameof(MachineTagLabel));
+            }
+        }
+
+        public uint MachineTagBackgroundColor
+        {
+            get => _machineTagBackgroundColor;
+            set
+            {
+                if (SetProperty(ref _machineTagBackgroundColor, value))
+                    NotifyMachineTagColorsChanged();
+            }
+        }
+
+        public uint MachineTagForegroundColor
+        {
+            get => _machineTagForegroundColor;
+            set
+            {
+                if (SetProperty(ref _machineTagForegroundColor, value))
+                    NotifyMachineTagColorsChanged();
+            }
+        }
+
+        [JsonIgnore]
+        public string MachineTagLabel => string.IsNullOrWhiteSpace(_machineTagText) ? Environment.MachineName : _machineTagText;
+
+        [JsonIgnore]
+        public string SystemMachineName => Environment.MachineName;
+
+        [JsonIgnore]
+        public Avalonia.Media.IBrush MachineTagBackgroundBrush => new Avalonia.Media.SolidColorBrush(
+            Avalonia.Media.Color.FromUInt32(_machineTagBackgroundColor == 0 ? _mainAccentColor : _machineTagBackgroundColor));
+
+        [JsonIgnore]
+        public Avalonia.Media.IBrush MachineTagForegroundBrush
+        {
+            get
+            {
+                if (_machineTagForegroundColor != 0)
+                    return new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromUInt32(_machineTagForegroundColor));
+                var background = ((Avalonia.Media.SolidColorBrush)MachineTagBackgroundBrush).Color;
+                return background.R * 0.299 + background.G * 0.587 + background.B * 0.114 > 160 ? Avalonia.Media.Brushes.Black : Avalonia.Media.Brushes.White;
+            }
+        }
+
+        private void NotifyMachineTagColorsChanged()
+        {
+            OnPropertyChanged(nameof(MachineTagBackgroundBrush));
+            OnPropertyChanged(nameof(MachineTagForegroundBrush));
         }
 
         public string Locale
@@ -247,6 +328,7 @@ namespace SourceGit.ViewModels
                 if (SetProperty(ref _mainAccentColor, value))
                 {
                     OnPropertyChanged(nameof(MainAccentBrush));
+                    NotifyMachineTagColorsChanged();
                     if (!_isLoading)
                         App.SetAccentColor(value);
                 }
@@ -1334,6 +1416,10 @@ namespace SourceGit.ViewModels
         private bool _isLoading = true;
         private Models.UserAvatar[] _userAvatars = CreateUserAvatarSlots(null);
         private int _toolbarCustomActionSlots = 1;
+        private int _userNameColorRevision;
+        private string _machineTagText = string.Empty;
+        private uint _machineTagBackgroundColor;
+        private uint _machineTagForegroundColor;
         private bool _isReadonly = true;
         private string _locale = "en_US";
         private string _theme = "Default";

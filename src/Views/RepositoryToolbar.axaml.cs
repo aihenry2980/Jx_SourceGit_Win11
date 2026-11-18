@@ -252,6 +252,12 @@ namespace SourceGit.Views
 
                 menu.Items.Add(explore);
                 menu.Items.Add(terminal);
+                if (OperatingSystem.IsWindows())
+                {
+                    var windowsTerminal = new MenuItem { Header = "Windows Terminal", Tag = "F12", Icon = this.CreateMenuIcon("Icons.Terminal") };
+                    windowsTerminal.Click += (_, e) => { Native.OS.OpenWindowsTerminal(fullpath); e.Handled = true; };
+                    menu.Items.Add(windowsTerminal);
+                }
 
                 var tools = Native.OS.ExternalTools;
                 if (tools.Count > 0)
@@ -519,11 +525,16 @@ namespace SourceGit.Views
             }
         }
 
+        private void OnOpenWindowsTerminal(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.Repository repo)
+                Native.OS.OpenWindowsTerminal(repo.FullPath);
+            e.Handled = true;
+        }
+
         private static Control CreateToolbarCustomActionContent(Models.CustomAction action)
         {
             var isConfigured = action != null;
-            var color = isConfigured && action.Color != 0 ? Color.FromUInt32(action.Color) : Color.Parse("#FF7A818C");
-            var foreground = isConfigured && (color.R * 0.299 + color.G * 0.587 + color.B * 0.114) > 168 ? Brushes.Black : Brushes.White;
             var icon = new Avalonia.Controls.Shapes.Path
             {
                 Width = 14,
@@ -531,10 +542,8 @@ namespace SourceGit.Views
                 HorizontalAlignment = HorizontalAlignment.Center,
                 Data = App.Current?.FindResource(isConfigured ? "Icons.Action" : "Icons.Plus") as StreamGeometry,
             };
-            if (isConfigured)
-                icon.Fill = foreground;
-            else
-                icon.Classes.Add("empty_action_icon");
+            icon.Bind(Avalonia.Controls.Shapes.Path.FillProperty, new Avalonia.Data.Binding(nameof(ViewModels.Preferences.MainAccentBrush))
+                { Source = ViewModels.Preferences.Instance });
 
             return new StackPanel
             {
@@ -548,7 +557,7 @@ namespace SourceGit.Views
                         Width = 24,
                         Height = 24,
                         HorizontalAlignment = HorizontalAlignment.Center,
-                        Background = isConfigured ? new SolidColorBrush(color) : Brushes.Transparent,
+                        Background = Brushes.Transparent,
                         CornerRadius = new CornerRadius(4),
                         Padding = new Thickness(4),
                         Child = icon,

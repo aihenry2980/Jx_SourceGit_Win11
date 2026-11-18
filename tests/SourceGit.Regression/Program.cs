@@ -158,6 +158,13 @@ internal static partial class Program
             return;
         }
 
+        if (args is ["--appearance-terminal"])
+        {
+            TestAppearanceAndTerminal();
+            Console.WriteLine($"PASS: {_checks} appearance/terminal checks. Isolated data and previews: {_root}");
+            return;
+        }
+
         if (args is ["--daily-gui"])
         {
             TestDailyGui();
@@ -258,6 +265,7 @@ internal static partial class Program
         TestWorkspaceStyle();
         TestDailyGui();
         TestBranchLabels();
+        TestAppearanceAndTerminal();
         TestBranchWrapSettings();
         TestVisibilityExclusions();
         TestVisibilityIncludes();

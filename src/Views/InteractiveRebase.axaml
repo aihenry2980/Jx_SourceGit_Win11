@@ -188,7 +188,15 @@
                     <TextBlock Margin="6,0,12,0"
                                Text="{Binding Commit.Author.Name}"
                                Opacity="{Binding Action, Mode=OneWay, Converter={x:Static c:InteractiveRebaseActionConverters.ToOpacity}}"
-                               Classes.dropped="{Binding Action, Mode=OneWay, Converter={x:Static c:InteractiveRebaseActionConverters.IsDrop}}"/>
+                               Classes.dropped="{Binding Action, Mode=OneWay, Converter={x:Static c:InteractiveRebaseActionConverters.IsDrop}}">
+                      <TextBlock.Foreground>
+                        <MultiBinding Converter="{x:Static c:UserConverters.NameForeground}">
+                          <Binding Path="Commit.Author"/>
+                          <Binding Source="{x:Static vm:Preferences.Instance}" Path="UserNameColorRevision"/>
+                          <Binding Source="{DynamicResource Brush.FG1}"/>
+                        </MultiBinding>
+                      </TextBlock.Foreground>
+                    </TextBlock>
                   </Border>
 
                   <!-- Commit SHA -->

@@ -3,6 +3,7 @@ using System.IO;
 using System.Text.Json.Serialization;
 
 using Avalonia;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -10,6 +11,19 @@ namespace SourceGit.Models
 {
     public class UserAvatar : ObservableObject
     {
+        public uint NameColor
+        {
+            get => _nameColor;
+            set
+            {
+                if (SetProperty(ref _nameColor, value))
+                    OnPropertyChanged(nameof(NameBrush));
+            }
+        }
+
+        [JsonIgnore]
+        public IBrush NameBrush => _nameColor == 0 ? Brushes.Gray : new SolidColorBrush(Color.FromUInt32(_nameColor));
+
         public string Email
         {
             get => _email;
@@ -77,6 +91,7 @@ namespace SourceGit.Models
         }
 
         private string _email = string.Empty;
+        private uint _nameColor;
         private string _imageData = string.Empty;
         private Bitmap _preview;
         private bool _decoded;
