@@ -18,6 +18,7 @@ namespace SourceGit.ViewModels
         public const int MAX_HISTORY_COMMITS = 50000;
         public const int DEFAULT_HISTORY_COMMITS = 10000;
         public const int MAX_USER_AVATARS = 5;
+        public const int MAX_FILE_TYPE_COLORS = 10;
         public const int MIN_RECURSIVE_SUBMODULE_DISPLAY_DEPTH = 1;
         public const int MAX_RECURSIVE_SUBMODULE_DISPLAY_DEPTH = 20;
         public const int DEFAULT_RECURSIVE_SUBMODULE_DISPLAY_DEPTH = 5;
@@ -74,7 +75,73 @@ namespace SourceGit.ViewModels
         {
             foreach (var avatar in _userAvatars)
                 avatar.PropertyChanged += OnUserAvatarChanged;
+            foreach (var rule in _fileTypeColors)
+                rule.PropertyChanged += OnFileTypeColorChanged;
         }
+
+        public Models.FileTypeColor[] FileTypeColors
+        {
+            get => _fileTypeColors;
+            set
+            {
+                foreach (var rule in _fileTypeColors)
+                    rule.PropertyChanged -= OnFileTypeColorChanged;
+                _fileTypeColors = CreateFileTypeColorSlots(value);
+                foreach (var rule in _fileTypeColors)
+                    rule.PropertyChanged += OnFileTypeColorChanged;
+                OnPropertyChanged();
+                NotifyFileTypeColorsChanged();
+            }
+        }
+
+        [JsonIgnore]
+        public int FileTypeColorsRevision => _fileTypeColorsRevision;
+
+        public Models.FileTypeColor FindFileTypeColor(string path)
+        {
+            var extension = Models.FileTypeColor.GetExtensionKey(path);
+            if (extension.Length == 0)
+                return null;
+            // Later rows override duplicate extensions, including prefilled defaults.
+            for (var i = _fileTypeColors.Length - 1; i >= 0; i--)
+                if (_fileTypeColors[i].ExtensionKey == extension)
+                    return _fileTypeColors[i];
+            return null;
+        }
+
+        public void ResetFileTypeColors() => FileTypeColors = CreateDefaultFileTypeColors();
+
+        private void OnFileTypeColorChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName is nameof(Models.FileTypeColor.Extension) or nameof(Models.FileTypeColor.Color))
+                NotifyFileTypeColorsChanged();
+        }
+
+        private void NotifyFileTypeColorsChanged()
+        {
+            _fileTypeColorsRevision++;
+            OnPropertyChanged(nameof(FileTypeColorsRevision));
+        }
+
+        private static Models.FileTypeColor[] CreateFileTypeColorSlots(Models.FileTypeColor[] rules)
+        {
+            var slots = new Models.FileTypeColor[MAX_FILE_TYPE_COLORS];
+            for (var i = 0; i < slots.Length; i++)
+                slots[i] = rules != null && i < rules.Length && rules[i] != null ? rules[i] : new Models.FileTypeColor();
+            return slots;
+        }
+
+        private static Models.FileTypeColor[] CreateDefaultFileTypeColors() => CreateFileTypeColorSlots(
+        [
+            new() { Extension = "c", Color = 0xFFB42332 },
+            new() { Extension = "cpp", Color = 0xFFB42332 },
+            new() { Extension = "h", Color = 0xFF245EB7 },
+            new() { Extension = "hh", Color = 0xFF245EB7 },
+            new() { Extension = "hpp", Color = 0xFF245EB7 },
+            new() { Extension = "hxx", Color = 0xFF245EB7 },
+            new() { Extension = "hl", Color = 0xFF245EB7 },
+            new() { Extension = "inl", Color = 0xFF245EB7 },
+        ]);
 
         public Models.UserAvatar[] UserAvatars
         {
@@ -1415,6 +1482,8 @@ namespace SourceGit.ViewModels
 
         private bool _isLoading = true;
         private Models.UserAvatar[] _userAvatars = CreateUserAvatarSlots(null);
+        private Models.FileTypeColor[] _fileTypeColors = CreateDefaultFileTypeColors();
+        private int _fileTypeColorsRevision;
         private int _toolbarCustomActionSlots = 1;
         private int _userNameColorRevision;
         private string _machineTagText = string.Empty;

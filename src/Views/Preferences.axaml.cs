@@ -235,6 +235,22 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
+        private void OnClearFileTypeColor(object sender, RoutedEventArgs e)
+        {
+            if (sender is Control { DataContext: Models.FileTypeColor rule })
+            {
+                rule.Extension = string.Empty;
+                rule.Color = Models.FileTypeColor.DEFAULT_COLOR;
+            }
+            e.Handled = true;
+        }
+
+        private void OnResetFileTypeColors(object sender, RoutedEventArgs e)
+        {
+            ViewModels.Preferences.Instance.ResetFileTypeColors();
+            e.Handled = true;
+        }
+
         private void OnResetUserNameColor(object sender, RoutedEventArgs e)
         {
             if (sender is Control { DataContext: Models.UserAvatar avatar })

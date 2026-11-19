@@ -59,6 +59,14 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
+        private async void OnPopupSureWithSubmodules(object _, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.LauncherPage page)
+                await page.ProcessPopupAsync(true);
+
+            e.Handled = true;
+        }
+
         private void OnPopupTerminate(object _, RoutedEventArgs e)
         {
             if (DataContext is ViewModels.LauncherPage page)

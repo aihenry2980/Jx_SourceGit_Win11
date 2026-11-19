@@ -67,6 +67,7 @@ namespace SourceGit.ViewModels
         }
 
         public virtual bool ShowOptions => true;
+        public virtual bool ShowCheckoutActions => false;
         public virtual double PopupWidth => 512;
         public virtual bool AllowCancelWhenRunning => false;
         public virtual bool AllowContentInteractionWhenRunning => false;
@@ -76,6 +77,8 @@ namespace SourceGit.ViewModels
         {
             return Task.FromResult(false);
         }
+
+        public virtual Task<bool> SureWithSubmodules() => Sure();
 
         public virtual void Terminate()
         {

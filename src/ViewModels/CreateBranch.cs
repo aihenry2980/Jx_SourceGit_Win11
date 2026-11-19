@@ -4,9 +4,10 @@ using System.Threading.Tasks;
 
 namespace SourceGit.ViewModels
 {
-    public class CreateBranch : Popup
+    public class CreateBranch : CheckoutPopup
     {
         public override double PopupWidth => 720;
+        public override bool ShowCheckoutActions => CheckoutAfterCreated && !_repo.IsBare;
 
         [Required(ErrorMessage = "Branch name is required!")]
         [CustomValidation(typeof(CreateBranch), nameof(ValidateBranchName))]
@@ -41,6 +42,7 @@ namespace SourceGit.ViewModels
                 {
                     _repo.UIStates.CheckoutBranchOnCreateBranch = value;
                     OnPropertyChanged();
+                    OnPropertyChanged(nameof(ShowCheckoutActions));
                     UpdateOverrideTip();
                 }
             }
@@ -135,7 +137,7 @@ namespace SourceGit.ViewModels
             return new ValidationResult("Missing runtime context to create branch!");
         }
 
-        public override async Task<bool> Sure()
+        protected override async Task<bool> CheckoutAsync(bool updateSubmodules)
         {
             using var lockWatcher = _repo.LockWatcher();
 
@@ -167,12 +169,14 @@ namespace SourceGit.ViewModels
             };
 
             bool succ;
+            var submodulesUpdated = true;
+            var localChangesRestored = true;
             if (CheckoutAfterCreated && !_repo.IsBare)
             {
                 var needPopStash = false;
                 if (DealWithLocalChanges == Models.DealWithLocalChanges.DoNothing)
                 {
-                    succ = await new Commands.Checkout(_repo.FullPath)
+                    succ = await new Commands.Checkout(_repo.FullPath, false)
                         .Use(log)
                         .BranchAsync(_name, _baseOnRevision, false, _allowOverwrite);
                 }
@@ -194,23 +198,23 @@ namespace SourceGit.ViewModels
                         needPopStash = true;
                     }
 
-                    succ = await new Commands.Checkout(_repo.FullPath)
+                    succ = await new Commands.Checkout(_repo.FullPath, false)
                         .Use(log)
                         .BranchAsync(_name, _baseOnRevision, false, _allowOverwrite);
                 }
                 else
                 {
-                    succ = await new Commands.Checkout(_repo.FullPath)
+                    succ = await new Commands.Checkout(_repo.FullPath, false)
                         .Use(log)
                         .BranchAsync(_name, _baseOnRevision, true, _allowOverwrite);
                 }
 
                 if (succ)
                 {
-                    await _repo.AutoUpdateSubmodulesAsync(log);
+                    submodulesUpdated = await UpdateSubmodulesAfterCheckoutAsync(_repo, log, updateSubmodules);
 
                     if (needPopStash)
-                        await new Commands.Stash(_repo.FullPath)
+                        localChangesRestored = await new Commands.Stash(_repo.FullPath)
                             .Use(log)
                             .PopAsync("stash@{0}");
                 }
@@ -244,7 +248,7 @@ namespace SourceGit.ViewModels
                 _repo.MarkWorkingCopyDirtyManually();
             }
 
-            log.Complete();
+            log.Complete(succ && submodulesUpdated && localChangesRestored);
             return true;
         }
 

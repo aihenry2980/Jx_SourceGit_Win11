@@ -158,6 +158,20 @@ internal static partial class Program
             return;
         }
 
+        if (args is ["--file-type-colors"])
+        {
+            TestCustomFileTypeColors();
+            Console.WriteLine($"PASS: {_checks} custom file type color checks. Isolated data and previews: {_root}");
+            return;
+        }
+
+        if (args is ["--checkout-file-tags"])
+        {
+            TestCheckoutChoicesAndFileTags();
+            Console.WriteLine($"PASS: {_checks} checkout/file tag checks. Isolated data and previews: {_root}");
+            return;
+        }
+
         if (args is ["--appearance-terminal"])
         {
             TestAppearanceAndTerminal();
@@ -266,6 +280,8 @@ internal static partial class Program
         TestDailyGui();
         TestBranchLabels();
         TestAppearanceAndTerminal();
+        TestCheckoutChoicesAndFileTags();
+        TestCustomFileTypeColors();
         TestBranchWrapSettings();
         TestVisibilityExclusions();
         TestVisibilityIncludes();

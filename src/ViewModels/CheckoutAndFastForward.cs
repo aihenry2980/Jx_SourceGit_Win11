@@ -2,7 +2,7 @@
 
 namespace SourceGit.ViewModels
 {
-    public class CheckoutAndFastForward : Popup
+    public class CheckoutAndFastForward : CheckoutPopup
     {
         public Models.Branch LocalBranch
         {
@@ -36,7 +36,7 @@ namespace SourceGit.ViewModels
                 Models.DealWithLocalChanges.DoNothing;
         }
 
-        public override async Task<bool> Sure()
+        protected override async Task<bool> CheckoutAsync(bool updateSubmodules)
         {
             using var lockWatcher = _repo.LockWatcher();
             ProgressDescription = $"Checkout and Fast-Forward '{LocalBranch.Name}' ...";
@@ -58,10 +58,12 @@ namespace SourceGit.ViewModels
 
             var succ = false;
             var needPopStash = false;
+            var submodulesUpdated = true;
+            var localChangesRestored = true;
 
             if (DealWithLocalChanges == Models.DealWithLocalChanges.DoNothing)
             {
-                succ = await new Commands.Checkout(_repo.FullPath)
+                succ = await new Commands.Checkout(_repo.FullPath, false)
                     .Use(log)
                     .BranchAsync(LocalBranch.Name, RemoteBranch.Head, false, true);
             }
@@ -83,23 +85,23 @@ namespace SourceGit.ViewModels
                     needPopStash = true;
                 }
 
-                succ = await new Commands.Checkout(_repo.FullPath)
+                succ = await new Commands.Checkout(_repo.FullPath, false)
                     .Use(log)
                     .BranchAsync(LocalBranch.Name, RemoteBranch.Head, false, true);
             }
             else
             {
-                succ = await new Commands.Checkout(_repo.FullPath)
+                succ = await new Commands.Checkout(_repo.FullPath, false)
                     .Use(log)
                     .BranchAsync(LocalBranch.Name, RemoteBranch.Head, true, true);
             }
 
             if (succ)
             {
-                await _repo.AutoUpdateSubmodulesAsync(log);
+                submodulesUpdated = await UpdateSubmodulesAfterCheckoutAsync(_repo, log, updateSubmodules);
 
                 if (needPopStash)
-                    await new Commands.Stash(_repo.FullPath)
+                    localChangesRestored = await new Commands.Stash(_repo.FullPath)
                         .Use(log)
                         .PopAsync("stash@{0}");
 
@@ -114,7 +116,7 @@ namespace SourceGit.ViewModels
                 _repo.MarkWorkingCopyDirtyManually();
             }
 
-            log.Complete();
+            log.Complete(succ && submodulesUpdated && localChangesRestored);
             _repo.MarkBranchesDirtyManually();
             if (succ)
                 _repo.RefreshSuperProjectSubmodulePointer();

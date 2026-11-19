@@ -6,16 +6,19 @@ namespace SourceGit.Commands
 {
     public class Checkout : Command
     {
-        public Checkout(string repo)
+        public Checkout(string repo, bool allowSubmoduleRecursion = true)
         {
             WorkingDirectory = repo;
             Context = repo;
+            _allowSubmoduleRecursion = allowSubmoduleRecursion;
         }
 
         public async Task<bool> BranchAsync(string branch, bool force)
         {
             var builder = new StringBuilder();
             builder.Append("checkout --progress ");
+            if (!_allowSubmoduleRecursion)
+                builder.Append("--no-recurse-submodules ");
             if (force)
                 builder.Append("--force ");
             builder.Append(branch.Quoted());
@@ -28,6 +31,8 @@ namespace SourceGit.Commands
         {
             var builder = new StringBuilder();
             builder.Append("checkout --progress ");
+            if (!_allowSubmoduleRecursion)
+                builder.Append("--no-recurse-submodules ");
             if (force)
                 builder.Append("--force ");
             builder.Append(allowOverwrite ? "-B " : "-b ");
@@ -42,7 +47,8 @@ namespace SourceGit.Commands
         public async Task<bool> CommitAsync(string commitId, bool force)
         {
             var option = force ? "--force" : string.Empty;
-            Args = $"checkout {option} --detach --progress {commitId}";
+            var recursion = _allowSubmoduleRecursion ? string.Empty : "--no-recurse-submodules";
+            Args = $"checkout {option} {recursion} --detach --progress {commitId}";
             return await ExecAsync().ConfigureAwait(false);
         }
 
@@ -87,5 +93,7 @@ namespace SourceGit.Commands
             Args = builder.ToString();
             return await ExecAsync().ConfigureAwait(false);
         }
+
+        private readonly bool _allowSubmoduleRecursion;
     }
 }

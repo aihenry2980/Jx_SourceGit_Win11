@@ -26,6 +26,23 @@
       <Setter Property="Margin" Value="0"/>
       <Setter Property="Padding" Value="0"/>
     </Style>
+    <Style Selector="Border.file_type_tag">
+      <Setter Property="Width" Value="40"/>
+      <Setter Property="Height" Value="18"/>
+      <Setter Property="Margin" Value="0,0,5,0"/>
+      <Setter Property="Padding" Value="3,0"/>
+      <Setter Property="CornerRadius" Value="3"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="IsHitTestVisible" Value="False"/>
+    </Style>
+    <Style Selector="Border.file_type_tag TextBlock">
+      <Setter Property="FontSize" Value="10"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="TextAlignment" Value="Center"/>
+      <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
   </UserControl.Styles>
 
   <UserControl.DataTemplates>
@@ -81,6 +98,23 @@
               </CheckBox>
 
               <StackPanel Grid.Column="3" Orientation="Horizontal" Margin="4,0,0,0">
+                <Border Classes="file_type_tag"
+                        IsVisible="{Binding Change, Converter={x:Static c:PathConverters.ShowFileTypeTag}}">
+                  <Border.Background>
+                    <MultiBinding Converter="{x:Static c:PathConverters.FileTypeBackground}">
+                      <Binding Path="Change.Path"/>
+                      <Binding Source="{x:Static vm:Preferences.Instance}" Path="FileTypeColorsRevision"/>
+                    </MultiBinding>
+                  </Border.Background>
+                  <TextBlock Text="{Binding Change.Path, Converter={x:Static c:PathConverters.FileTypeLabel}}">
+                    <TextBlock.Foreground>
+                      <MultiBinding Converter="{x:Static c:PathConverters.FileTypeForeground}">
+                        <Binding Path="Change.Path"/>
+                        <Binding Source="{x:Static vm:Preferences.Instance}" Path="FileTypeColorsRevision"/>
+                      </MultiBinding>
+                    </TextBlock.Foreground>
+                  </TextBlock>
+                </Border>
                 <TextBlock Text="{Binding ConflictMarker, Mode=OneWay}" Foreground="DarkOrange" FontWeight="Bold" Margin="0,0,4,0" IsVisible="{Binding ShowConflictMarker}"/>
                 <TextBlock Text="{Binding DisplayName, Mode=OneWay}"
                            FontWeight="{Binding IsSubmodulePointerChange, Converter={x:Static c:BoolConverters.IsBoldToFontWeight}}"/>
@@ -174,6 +208,23 @@
                         Unchecked="OnCommitIncludeCheckChanged"/>
 
               <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="4,0">
+                <Border Classes="file_type_tag"
+                        IsVisible="{Binding ., Converter={x:Static c:PathConverters.ShowFileTypeTag}}">
+                  <Border.Background>
+                    <MultiBinding Converter="{x:Static c:PathConverters.FileTypeBackground}">
+                      <Binding Path="Path"/>
+                      <Binding Source="{x:Static vm:Preferences.Instance}" Path="FileTypeColorsRevision"/>
+                    </MultiBinding>
+                  </Border.Background>
+                  <TextBlock Text="{Binding Path, Converter={x:Static c:PathConverters.FileTypeLabel}}">
+                    <TextBlock.Foreground>
+                      <MultiBinding Converter="{x:Static c:PathConverters.FileTypeForeground}">
+                        <Binding Path="Path"/>
+                        <Binding Source="{x:Static vm:Preferences.Instance}" Path="FileTypeColorsRevision"/>
+                      </MultiBinding>
+                    </TextBlock.Foreground>
+                  </TextBlock>
+                </Border>
                 <TextBlock Text="{Binding ConflictMarker}" Foreground="DarkOrange" FontWeight="Bold" Margin="0,0,4,0" IsVisible="{Binding IsConflicted}"/>
                 <TextBlock Text="{Binding Path, Converter={x:Static c:PathConverters.PureFileName}}"
                            FontWeight="{Binding IsSubmodulePointerChange, Converter={x:Static c:BoolConverters.IsBoldToFontWeight}}"/>
@@ -271,6 +322,23 @@
                         Unchecked="OnCommitIncludeCheckChanged"/>
 
               <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="4,0">
+                <Border Classes="file_type_tag"
+                        IsVisible="{Binding ., Converter={x:Static c:PathConverters.ShowFileTypeTag}}">
+                  <Border.Background>
+                    <MultiBinding Converter="{x:Static c:PathConverters.FileTypeBackground}">
+                      <Binding Path="Path"/>
+                      <Binding Source="{x:Static vm:Preferences.Instance}" Path="FileTypeColorsRevision"/>
+                    </MultiBinding>
+                  </Border.Background>
+                  <TextBlock Text="{Binding Path, Converter={x:Static c:PathConverters.FileTypeLabel}}">
+                    <TextBlock.Foreground>
+                      <MultiBinding Converter="{x:Static c:PathConverters.FileTypeForeground}">
+                        <Binding Path="Path"/>
+                        <Binding Source="{x:Static vm:Preferences.Instance}" Path="FileTypeColorsRevision"/>
+                      </MultiBinding>
+                    </TextBlock.Foreground>
+                  </TextBlock>
+                </Border>
                 <TextBlock Text="{Binding ConflictMarker}" Foreground="DarkOrange" FontWeight="Bold" Margin="0,0,4,0" IsVisible="{Binding IsConflicted}"/>
                 <TextBlock Text="{Binding Path}"
                            FontWeight="{Binding IsSubmodulePointerChange, Converter={x:Static c:BoolConverters.IsBoldToFontWeight}}"/>

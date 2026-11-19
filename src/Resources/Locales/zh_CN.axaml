@@ -135,6 +135,10 @@
   <x:String x:Key="Text.Checkout" xml:space="preserve">检出(checkout)分支</x:String>
   <x:String x:Key="Text.Checkout.LocalChanges" xml:space="preserve">未提交更改 ：</x:String>
   <x:String x:Key="Text.Checkout.Target" xml:space="preserve">目标分支 ：</x:String>
+  <x:String x:Key="Text.Checkout.Only" xml:space="preserve">仅 Checkout</x:String>
+  <x:String x:Key="Text.Checkout.WithSubmodules" xml:space="preserve">Checkout + 更新子模块</x:String>
+  <x:String x:Key="Text.Checkout.UpdatingSubmodules" xml:space="preserve">正在将子模块更新到目标 commit 记录的版本...</x:String>
+  <x:String x:Key="Text.Checkout.SubmoduleUpdateFailed" xml:space="preserve">Checkout 已完成，但子模块更新失败。分支已经切换，请查看操作日志后重试更新子模块。</x:String>
   <x:String x:Key="Text.Checkout.WarnLostCommits" xml:space="preserve">您当前游离的HEAD包含未被任何分支及标签引用的提交！是否继续？</x:String>
   <x:String x:Key="Text.Checkout.WarnUpdatingSubmodules" xml:space="preserve">以下子模块需要更新：{0}是否立即更新？</x:String>
   <x:String x:Key="Text.Checkout.WithFastForward" xml:space="preserve">检出分支并快进</x:String>
@@ -723,6 +727,12 @@
   <x:String x:Key="Text.Preferences.Avatars.NameColor" xml:space="preserve">作者名字颜色</x:String>
   <x:String x:Key="Text.Preferences.Avatars.ResetNameColor" xml:space="preserve">恢复默认名字颜色</x:String>
   <x:String x:Key="Text.Preferences.Avatars" xml:space="preserve">用户头像</x:String>
+  <x:String x:Key="Text.Preferences.FileTypes" xml:space="preserve">文件类型</x:String>
+  <x:String x:Key="Text.Preferences.FileTypes.Extension" xml:space="preserve">扩展名</x:String>
+  <x:String x:Key="Text.Preferences.FileTypes.Color" xml:space="preserve">颜色</x:String>
+  <x:String x:Key="Text.Preferences.FileTypes.Preview" xml:space="preserve">预览</x:String>
+  <x:String x:Key="Text.Preferences.FileTypes.Clear" xml:space="preserve">清空此扩展名规则</x:String>
+  <x:String x:Key="Text.Preferences.FileTypes.Reset" xml:space="preserve">恢复默认文件类型颜色</x:String>
   <x:String x:Key="Text.Preferences.Avatars.Email" xml:space="preserve">提交者邮箱</x:String>
   <x:String x:Key="Text.Preferences.Avatars.Clear" xml:space="preserve">移除自定义头像</x:String>
   <x:String x:Key="Text.Preferences.Avatars.Limit" xml:space="preserve">已配置五位用户头像，请先在“设置 → 用户头像”中移除一位。</x:String>

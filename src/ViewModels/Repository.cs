@@ -3747,10 +3747,7 @@ namespace SourceGit.ViewModels
 
             if (branch.IsLocal)
             {
-                if (_workingCopy is { CanSwitchBranchDirectly: true })
-                    await ShowAndStartPopupAsync(new Checkout(this, branch));
-                else
-                    ShowPopup(new Checkout(this, branch));
+                ShowPopup(new Checkout(this, branch));
             }
             else
             {

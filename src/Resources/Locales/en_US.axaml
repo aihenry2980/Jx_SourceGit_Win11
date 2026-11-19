@@ -131,6 +131,10 @@
   <x:String x:Key="Text.Checkout" xml:space="preserve">Checkout Branch</x:String>
   <x:String x:Key="Text.Checkout.LocalChanges" xml:space="preserve">Local Changes:</x:String>
   <x:String x:Key="Text.Checkout.Target" xml:space="preserve">Branch:</x:String>
+  <x:String x:Key="Text.Checkout.Only" xml:space="preserve">Checkout Only</x:String>
+  <x:String x:Key="Text.Checkout.WithSubmodules" xml:space="preserve">Checkout + Update Submodules</x:String>
+  <x:String x:Key="Text.Checkout.UpdatingSubmodules" xml:space="preserve">Updating submodules to the checked-out commit...</x:String>
+  <x:String x:Key="Text.Checkout.SubmoduleUpdateFailed" xml:space="preserve">Checkout completed, but updating submodules failed. The branch has already changed; check the operation log before retrying the submodule update.</x:String>
   <x:String x:Key="Text.Checkout.WarnLostCommits" xml:space="preserve">Your current HEAD contains commit(s) not connected to any branches/tags! Do you want to continue?</x:String>
   <x:String x:Key="Text.Checkout.WarnUpdatingSubmodules" xml:space="preserve">The following submodules need to be updated:{0}Do you want to update them?</x:String>
   <x:String x:Key="Text.Checkout.WithFastForward" xml:space="preserve">Checkout &amp; Fast-Forward</x:String>
@@ -719,6 +723,12 @@
   <x:String x:Key="Text.Preferences.Avatars.NameColor" xml:space="preserve">Author name color</x:String>
   <x:String x:Key="Text.Preferences.Avatars.ResetNameColor" xml:space="preserve">Restore default author name color</x:String>
   <x:String x:Key="Text.Preferences.Avatars" xml:space="preserve">AVATARS</x:String>
+  <x:String x:Key="Text.Preferences.FileTypes" xml:space="preserve">FILE TYPES</x:String>
+  <x:String x:Key="Text.Preferences.FileTypes.Extension" xml:space="preserve">Extension</x:String>
+  <x:String x:Key="Text.Preferences.FileTypes.Color" xml:space="preserve">Color</x:String>
+  <x:String x:Key="Text.Preferences.FileTypes.Preview" xml:space="preserve">Preview</x:String>
+  <x:String x:Key="Text.Preferences.FileTypes.Clear" xml:space="preserve">Clear this extension rule</x:String>
+  <x:String x:Key="Text.Preferences.FileTypes.Reset" xml:space="preserve">Restore default file type colors</x:String>
   <x:String x:Key="Text.Preferences.Avatars.Email" xml:space="preserve">Commit author email</x:String>
   <x:String x:Key="Text.Preferences.Avatars.Clear" xml:space="preserve">Remove custom avatar</x:String>
   <x:String x:Key="Text.Preferences.Avatars.Limit" xml:space="preserve">Five custom avatars are already configured. Remove one in Settings > Avatars first.</x:String>

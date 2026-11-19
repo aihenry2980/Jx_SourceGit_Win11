@@ -1836,8 +1836,9 @@
                   ToolTip.Tip="Show or hide tag refs in the history graph">
             <StackPanel Orientation="Horizontal" Spacing="1">
               <RadioButton Classes="history_order_segment"
+                           x:Name="HistoryTagsShownToggle"
                            GroupName="HistoryTagsInline"
-                           IsChecked="{Binding Source={x:Static vm:Preferences.Instance}, Path=ShowTagsInGraph}"
+                           IsChecked="{Binding Source={x:Static vm:Preferences.Instance}, Path=ShowTagsInGraph, Mode=OneWay}"
                            Click="OnHistoryTagsShownClicked">
                 <StackPanel Orientation="Horizontal" Spacing="4">
                   <Path Width="10"
@@ -1848,8 +1849,9 @@
               </RadioButton>
 
               <RadioButton Classes="history_order_segment"
+                           x:Name="HistoryTagsHiddenToggle"
                            GroupName="HistoryTagsInline"
-                           IsChecked="{Binding Source={x:Static vm:Preferences.Instance}, Path=ShowTagsInGraph, Converter={x:Static BoolConverters.Not}}"
+                           IsChecked="{Binding Source={x:Static vm:Preferences.Instance}, Path=ShowTagsInGraph, Mode=OneWay, Converter={x:Static BoolConverters.Not}}"
                            Click="OnHistoryTagsHiddenClicked">
                 <TextBlock Text="No Tags"/>
               </RadioButton>

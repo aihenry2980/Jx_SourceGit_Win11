@@ -104,6 +104,20 @@
                               IsEnabled="{Binding ShowOptions}"
                               Focusable="False"/>
                       <Button Classes="flat primary"
+                              x:Name="CheckoutOnlyButton"
+                              MinWidth="100" Height="28" Padding="12,0"
+                              IsVisible="{Binding ShowCheckoutActions}"
+                              Content="{DynamicResource Text.Checkout.Only}"
+                              Click="OnPopupSure" ToolTip.Tip="Enter"/>
+                      <Button Classes="flat"
+                              x:Name="CheckoutWithSubmodulesButton"
+                              MinWidth="100" Height="28" Padding="12,0" Margin="8,0,0,0"
+                              IsVisible="{Binding ShowCheckoutActions}"
+                              Content="{DynamicResource Text.Checkout.WithSubmodules}"
+                              Click="OnPopupSureWithSubmodules"/>
+                      <Button Classes="flat primary"
+                              x:Name="PopupSureButton"
+                              IsVisible="{Binding !ShowCheckoutActions}"
                               Width="100" Height="28"
                               Padding="0"
                               HorizontalContentAlignment="Center"

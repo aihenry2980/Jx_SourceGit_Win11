@@ -2,7 +2,7 @@
 
 namespace SourceGit.ViewModels
 {
-    public class CheckoutDetached : Popup
+    public class CheckoutDetached : CheckoutPopup
     {
         public object Target
         {
@@ -47,7 +47,7 @@ namespace SourceGit.ViewModels
                 Models.DealWithLocalChanges.DoNothing;
         }
 
-        public override async Task<bool> Sure()
+        protected override async Task<bool> CheckoutAsync(bool updateSubmodules)
         {
             using var lockWatcher = _repo.LockWatcher();
             if (CreatesBranch)
@@ -76,6 +76,8 @@ namespace SourceGit.ViewModels
 
             var succ = false;
             var needPop = false;
+            var submodulesUpdated = true;
+            var localChangesRestored = true;
 
             if (DealWithLocalChanges == Models.DealWithLocalChanges.DoNothing)
             {
@@ -108,10 +110,10 @@ namespace SourceGit.ViewModels
 
             if (succ)
             {
-                await _repo.AutoUpdateSubmodulesAsync(log);
+                submodulesUpdated = await UpdateSubmodulesAfterCheckoutAsync(_repo, log, updateSubmodules);
 
                 if (needPop)
-                    await new Commands.Stash(_repo.FullPath)
+                    localChangesRestored = await new Commands.Stash(_repo.FullPath)
                         .Use(log)
                         .PopAsync("stash@{0}");
 
@@ -133,13 +135,13 @@ namespace SourceGit.ViewModels
                 _repo.RefreshSuperProjectSubmodulePointer();
             }
 
-            log.Complete();
+            log.Complete(succ && submodulesUpdated && localChangesRestored);
             return succ;
         }
 
         private Task<bool> CheckoutTargetAsync(CommandLog log, bool force)
         {
-            var command = new Commands.Checkout(_repo.FullPath).Use(log);
+            var command = new Commands.Checkout(_repo.FullPath, false).Use(log);
             return CreatesBranch
                 ? command.BranchAsync(BranchName, _revision, force, false)
                 : command.CommitAsync(_revision, force);

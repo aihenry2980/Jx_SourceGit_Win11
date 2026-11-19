@@ -99,7 +99,7 @@ namespace SourceGit.ViewModels
             return _popup is not { InProgress: true };
         }
 
-        public async Task ProcessPopupAsync()
+        public async Task ProcessPopupAsync(bool updateCheckoutSubmodules = false)
         {
             if (_popup is { InProgress: false } dump)
             {
@@ -110,7 +110,8 @@ namespace SourceGit.ViewModels
 
                 try
                 {
-                    var finished = await dump.Sure();
+                    var finished = updateCheckoutSubmodules && dump.ShowCheckoutActions
+                        ? await dump.SureWithSubmodules() : await dump.Sure();
                     if (finished)
                     {
                         dump.Cleanup();

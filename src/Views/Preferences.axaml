@@ -1241,6 +1241,46 @@
             </ItemsControl>
           </Grid>
         </TabItem>
+        <TabItem x:Name="FileTypeColorsTab">
+          <TabItem.Header>
+            <TextBlock Classes="tab_header" Text="{DynamicResource Text.Preferences.FileTypes}"/>
+          </TabItem.Header>
+          <Grid Margin="16" RowDefinitions="Auto,Auto,Auto">
+            <Grid Grid.Row="0" ColumnDefinitions="*,12,36,12,72,8,28" Margin="0,0,0,8">
+              <TextBlock Grid.Column="0" Text="{DynamicResource Text.Preferences.FileTypes.Extension}"/>
+              <TextBlock Grid.Column="2" Text="{DynamicResource Text.Preferences.FileTypes.Color}" TextAlignment="Center" FontSize="11"/>
+              <TextBlock Grid.Column="4" Text="{DynamicResource Text.Preferences.FileTypes.Preview}" TextAlignment="Center" FontSize="11"/>
+            </Grid>
+            <ItemsControl x:Name="FileTypeColorSlots" Grid.Row="1" ItemsSource="{Binding FileTypeColors}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="m:FileTypeColor">
+                  <Grid ColumnDefinitions="*,12,36,12,72,8,28" Height="36">
+                    <TextBox Grid.Column="0" Height="28" CornerRadius="3" VerticalAlignment="Center" Watermark="ext"
+                             Text="{Binding Extension, Mode=TwoWay}"/>
+                    <Button Grid.Column="2" Width="36" Height="28" VerticalAlignment="Center" Background="{Binding BackgroundBrush}"
+                            ToolTip.Tip="{DynamicResource Text.Preferences.FileTypes.Color}">
+                      <Button.Flyout>
+                        <Flyout><v:ColorPicker Margin="8" Value="{Binding Color, Mode=TwoWay}"/></Flyout>
+                      </Button.Flyout>
+                    </Button>
+                    <Border Grid.Column="4" Height="24" VerticalAlignment="Center" Padding="4,0" CornerRadius="3" Background="{Binding BackgroundBrush}">
+                      <TextBlock Text="{Binding PreviewLabel}" Foreground="{Binding ForegroundBrush}" FontWeight="Bold" FontSize="11"
+                                 VerticalAlignment="Center" TextAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                    </Border>
+                    <Button Grid.Column="6" Classes="icon_button" Width="28" Height="28" VerticalAlignment="Center" Click="OnClearFileTypeColor"
+                            ToolTip.Tip="{DynamicResource Text.Preferences.FileTypes.Clear}">
+                      <Path Width="12" Height="12" Data="{StaticResource Icons.Clear}"/>
+                    </Button>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button Grid.Row="2" Classes="icon_button" Width="28" Height="28" Margin="0,8,0,0" HorizontalAlignment="Right"
+                    Click="OnResetFileTypeColors" ToolTip.Tip="{DynamicResource Text.Preferences.FileTypes.Reset}">
+              <Path Width="14" Height="14" Data="{StaticResource Icons.Undo}"/>
+            </Button>
+          </Grid>
+        </TabItem>
       </TabControl>
     </Border>
   </Grid>
