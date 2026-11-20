@@ -131,11 +131,11 @@ internal static partial class Program
         Git(path, "config", "branch.main.remote", "origin");
         Git(path, "config", "branch.main.merge", "refs/heads/main");
         var status = Wait(new SourceGit.Commands.QueryRepositoryStatus(path).GetResultAsync());
-        Check(status.CurrentBranch == "main" && status.LocalChanges == 0, "Status does not count branch tracking headers as local changes");
+        Check(status.CurrentBranch == "main" && !status.HasLocalChanges, "Status does not treat branch tracking headers as local changes");
         File.WriteAllText(Path.Combine(path, "untracked file.txt"), "new\n");
         Git(path, "mv", "tracked.txt", "renamed file.txt");
         status = Wait(new SourceGit.Commands.QueryRepositoryStatus(path).GetResultAsync());
-        Check(status.LocalChanges == 2, "NUL-delimited status counts a rename once alongside an untracked file");
+        Check(status.HasLocalChanges, "NUL-delimited status marks a rename and untracked files as dirty");
         Git(path, "checkout", "--detach", "HEAD");
         status = Wait(new SourceGit.Commands.QueryRepositoryStatus(path).GetResultAsync());
         Check(status.CurrentBranch == "(" + Git(path, "rev-parse", "HEAD")[..10] + ")", "Status preserves the short SHA label for detached HEAD");

@@ -3130,7 +3130,7 @@ namespace SourceGit.ViewModels
             {
                 var worktrees = await new Commands.Worktree(FullPath).ReadAllAsync().ConfigureAwait(false);
                 var cleaned = Worktree.Build(FullPath, worktrees);
-                Dispatcher.UIThread.Invoke(() => Worktrees = cleaned);
+                Dispatcher.UIThread.Post(() => Worktrees = cleaned);
             });
         }
 
@@ -3145,7 +3145,7 @@ namespace SourceGit.ViewModels
             Task.Run(async () =>
             {
                 var tags = await new Commands.QueryTags(FullPath).GetResultAsync().ConfigureAwait(false);
-                Dispatcher.UIThread.Invoke(() =>
+                Dispatcher.UIThread.Post(() =>
                 {
                     if (token.IsCancellationRequested)
                         return;
@@ -3548,8 +3548,10 @@ namespace SourceGit.ViewModels
 
             if (!MayHaveSubmodules())
             {
-                Dispatcher.UIThread.Invoke(() =>
+                Dispatcher.UIThread.Post(() =>
                 {
+                    if (refreshVersion != _refreshSubmodulesVersion)
+                        return;
                     IsSubmodulesLoading = false;
 
                     if (_submodules.Count > 0)
@@ -3575,7 +3577,7 @@ namespace SourceGit.ViewModels
                     var depth = Preferences.Instance.RecursiveSubmoduleDisplayDepth;
                     var submodules = await new Commands.QuerySubmodules(FullPath, depth, queryStatus).GetResultAsync().ConfigureAwait(false);
 
-                    Dispatcher.UIThread.Invoke(() =>
+                    Dispatcher.UIThread.Post(() =>
                     {
                         if (refreshVersion != _refreshSubmodulesVersion)
                             return;
@@ -3665,7 +3667,7 @@ namespace SourceGit.ViewModels
                 await MarkSubmodulePointerChangesAsync(changes).ConfigureAwait(false);
                 changes.Sort((l, r) => Models.NumericSort.Compare(l.Path, r.Path));
 
-                Dispatcher.UIThread.Invoke(() =>
+                await Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     if (token.IsCancellationRequested)
                         return;
@@ -3694,7 +3696,7 @@ namespace SourceGit.ViewModels
             Task.Run(async () =>
             {
                 var stashes = await new Commands.QueryStashes(FullPath).GetResultAsync().ConfigureAwait(false);
-                Dispatcher.UIThread.Invoke(() =>
+                Dispatcher.UIThread.Post(() =>
                 {
                     if (token.IsCancellationRequested)
                         return;

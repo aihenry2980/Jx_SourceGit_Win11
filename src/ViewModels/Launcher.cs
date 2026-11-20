@@ -580,7 +580,7 @@ namespace SourceGit.ViewModels
         {
             if (!Dispatcher.UIThread.CheckAccess())
             {
-                Dispatcher.UIThread.Invoke(() => DispatchNotification(notification));
+                Dispatcher.UIThread.Post(() => DispatchNotification(notification));
                 return;
             }
 

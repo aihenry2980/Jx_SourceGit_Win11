@@ -123,6 +123,13 @@ internal static partial class Program
             return;
         }
 
+        if (args is ["--welcome-merge"])
+        {
+            TestWelcomeUpstreamMerge();
+            Console.WriteLine($"PASS: {_checks} Welcome upstream merge checks. Isolated data and previews: {_root}");
+            return;
+        }
+
         if (args is ["--upstream-merge"])
         {
             TestUpstreamDiffIntegration();
@@ -258,6 +265,7 @@ internal static partial class Program
         TestFocusBranchMergeIntegration();
         TestMergedRepositoryStatus();
         TestPatchMergeIntegration();
+        TestWelcomeUpstreamMerge();
         TestMergeLifecycle();
         TestRuntimeCrashes();
         TestMissingBranches();
