@@ -165,6 +165,13 @@ internal static partial class Program
             return;
         }
 
+        if (args is ["--history-polish"])
+        {
+            TestHistoryUiPolish();
+            Console.WriteLine($"PASS: {_checks} history UI polish checks. Isolated data and previews: {_root}");
+            return;
+        }
+
         if (args is ["--file-type-colors"])
         {
             TestCustomFileTypeColors();
@@ -197,6 +204,13 @@ internal static partial class Program
         {
             TestWorkspaceStyle();
             Console.WriteLine($"PASS: {_checks} workspace style checks. Isolated data and previews: {_root}");
+            return;
+        }
+
+        if (args is ["--raised-toolbar"])
+        {
+            TestRaisedToolbar();
+            Console.WriteLine($"PASS: {_checks} raised toolbar checks. Isolated data and previews: {_root}");
             return;
         }
 
@@ -285,12 +299,14 @@ internal static partial class Program
         TestFilterEncodingUx();
         TestWorkflowUx();
         TestWorkspaceStyle();
+        TestRaisedToolbar();
         TestDailyGui();
         TestBranchLabels();
         TestAppearanceAndTerminal();
         TestCheckoutChoicesAndFileTags();
         TestCustomFileTypeColors();
         TestBranchWrapSettings();
+        TestHistoryUiPolish();
         TestVisibilityExclusions();
         TestVisibilityIncludes();
         TestBranchMenus();

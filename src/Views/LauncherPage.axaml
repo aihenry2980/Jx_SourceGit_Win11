@@ -112,7 +112,7 @@
                       <Button Classes="flat"
                               x:Name="CheckoutWithSubmodulesButton"
                               MinWidth="100" Height="28" Padding="12,0" Margin="8,0,0,0"
-                              IsVisible="{Binding ShowCheckoutActions}"
+                              IsVisible="{Binding ShowCheckoutSubmoduleAction}"
                               Content="{DynamicResource Text.Checkout.WithSubmodules}"
                               Click="OnPopupSureWithSubmodules"/>
                       <Button Classes="flat primary"

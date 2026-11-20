@@ -241,9 +241,10 @@ internal static partial class Program
                     var label = tag.GetVisualDescendants().OfType<TextBlock>().Single();
                     var change = tag.DataContext is Change c ? c : ((ChangeTreeNode)tag.DataContext).Change;
                     var expected = (IBrush)SourceGit.Converters.PathConverters.FileTypeBackground.Convert(new object[] { change.Path }, typeof(IBrush), null, null);
-                    Check(((ISolidColorBrush)tag.Background).Color == ((ISolidColorBrush)expected).Color && tag.Bounds.Size == new Size(40, 18) &&
+                    Check(((ISolidColorBrush)tag.Background).Color == ((ISolidColorBrush)expected).Color && tag.Bounds.Height == 18 &&
+                        Math.Abs(tag.Bounds.Width - Math.Min(96, Math.Ceiling(label.TextLayout.Width) + 8)) <= 1 &&
                         WorkspaceContrast(((ISolidColorBrush)tag.Background).Color, Colors.White) > 4.5,
-                        "File type tags retain readable colors and compact fixed dimensions: " + change.Path);
+                        "File type tags retain readable colors and text-fitted dimensions: " + change.Path);
                     var row = tag.FindAncestorOfType<ListBoxItem>();
                     Check(row.Bounds.Height == 24 && label.Bounds.Height <= tag.Bounds.Height,
                         "Type tags do not enlarge file rows or overlap labels");

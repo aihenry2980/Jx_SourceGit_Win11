@@ -25,7 +25,7 @@ namespace SourceGit.ViewModels
             set;
         }
 
-        public CheckoutAndFastForward(Repository repo, Models.Branch localBranch, Models.Branch remoteBranch)
+        public CheckoutAndFastForward(Repository repo, Models.Branch localBranch, Models.Branch remoteBranch) : base(repo)
         {
             _repo = repo;
             LocalBranch = localBranch;

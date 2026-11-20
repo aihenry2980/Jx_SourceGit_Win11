@@ -394,18 +394,20 @@
                                       Click="OnOpenSubmoduleFileChange">
                                 <Grid Margin="0,2,0,2"
                                       ColumnSpacing="10"
-                                      ColumnDefinitions="18,*,Auto">
+                                      ColumnDefinitions="18,Auto,*,Auto">
                                   <v:ChangeStatusIcon Grid.Column="0"
                                                       Width="14"
                                                       Height="14"
                                                       VerticalAlignment="Center"
                                                       Change="{Binding}"/>
-                                  <TextBlock Grid.Column="1"
+                                  <v:FileTypeTag Grid.Column="1" FilePath="{Binding Path}"
+                                                 IsVisible="{Binding ., Converter={x:Static c:PathConverters.ShowFileTypeTag}}"/>
+                                  <TextBlock Grid.Column="2"
                                              Margin="8,0,0,0"
                                              Text="{Binding Path}"
                                              TextTrimming="CharacterEllipsis"
                                              TextDecorations="Underline"/>
-                                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="16"
+                                  <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="16"
                                               Margin="4,0,0,0" IsVisible="{Binding HasLineStats}">
                                     <TextBlock Classes="submodule_line_count deleted"
                                                Classes.zero="{Binding DeletedLines, Converter={x:Static ObjectConverters.Equal}, ConverterParameter='0'}"

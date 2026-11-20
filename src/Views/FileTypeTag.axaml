@@ -1,0 +1,25 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SourceGit.ViewModels"
+             xmlns:c="using:SourceGit.Converters"
+             x:Class="SourceGit.Views.FileTypeTag" x:Name="ThisControl"
+             HorizontalAlignment="Left" VerticalAlignment="Center" IsHitTestVisible="False">
+  <Border Classes="file_type_tag" Height="18" MaxWidth="96" Padding="4,0" CornerRadius="3"
+          HorizontalAlignment="Left" VerticalAlignment="Center">
+    <Border.Background>
+      <MultiBinding Converter="{x:Static c:PathConverters.FileTypeBackground}">
+        <Binding Path="#ThisControl.FilePath"/>
+        <Binding Source="{x:Static vm:Preferences.Instance}" Path="FileTypeColorsRevision"/>
+      </MultiBinding>
+    </Border.Background>
+    <TextBlock Text="{Binding #ThisControl.FilePath, Converter={x:Static c:PathConverters.FileTypeLabel}}"
+               FontSize="10" FontWeight="Bold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
+      <TextBlock.Foreground>
+        <MultiBinding Converter="{x:Static c:PathConverters.FileTypeForeground}">
+          <Binding Path="#ThisControl.FilePath"/>
+          <Binding Source="{x:Static vm:Preferences.Instance}" Path="FileTypeColorsRevision"/>
+        </MultiBinding>
+      </TextBlock.Foreground>
+    </TextBlock>
+  </Border>
+</UserControl>

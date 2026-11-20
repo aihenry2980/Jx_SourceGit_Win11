@@ -15,8 +15,11 @@ namespace SourceGit.Converters
             public object Convert(IList<object> values, Type targetType, object parameter, CultureInfo culture)
             {
                 var user = values.Count > 0 ? values[0] as Models.User : null;
+                var fallback = values.Count > 2 ? values[2] as IBrush : null;
+                if (values.Count > 4 && values[3] is Models.Commit { IsCurrentHead: true } && values[4] is uint accent)
+                    fallback = CommitConverters.GetHeadForeground(accent);
                 return ViewModels.Preferences.Instance.GetUserNameBrush(user?.Email) ??
-                    (values.Count > 2 ? values[2] as IBrush : null) ?? Brushes.Gray;
+                    fallback ?? Brushes.Gray;
             }
         }
     }

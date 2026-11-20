@@ -12,6 +12,22 @@
     <ResourceDictionary>
       <ResourceDictionary.ThemeDictionaries>
         <ResourceDictionary x:Key="Light">
+          <LinearGradientBrush x:Key="Toolbar.Button.Face" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0" Color="#FFFFFF"/>
+            <GradientStop Offset="0.45" Color="#F5F7FA"/>
+            <GradientStop Offset="1" Color="#DFE4EA"/>
+          </LinearGradientBrush>
+          <LinearGradientBrush x:Key="Toolbar.Button.Hover" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0" Color="#FFFFFF"/>
+            <GradientStop Offset="1" Color="#E4EDF6"/>
+          </LinearGradientBrush>
+          <LinearGradientBrush x:Key="Toolbar.Button.Pressed" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0" Color="#CBD3DD"/>
+            <GradientStop Offset="1" Color="#EDF1F5"/>
+          </LinearGradientBrush>
+          <SolidColorBrush x:Key="Toolbar.Button.Edge" Color="#A9B1BB"/>
+          <SolidColorBrush x:Key="Toolbar.Button.Bevel" Color="#DFFFFFFF"/>
+          <SolidColorBrush x:Key="Toolbar.Button.Disabled" Color="#E9ECF0"/>
           <SolidColorBrush x:Key="Toolbar.Fetch" Color="#2563EB"/>
           <SolidColorBrush x:Key="Toolbar.Fetch.BusyLow" Color="#182563EB"/>
           <SolidColorBrush x:Key="Toolbar.Fetch.BusyHigh" Color="#662563EB"/>
@@ -26,6 +42,22 @@
           <SolidColorBrush x:Key="Toolbar.Actions" Color="#8C4E84"/>
         </ResourceDictionary>
         <ResourceDictionary x:Key="Dark">
+          <LinearGradientBrush x:Key="Toolbar.Button.Face" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0" Color="#555D67"/>
+            <GradientStop Offset="0.45" Color="#414851"/>
+            <GradientStop Offset="1" Color="#30363E"/>
+          </LinearGradientBrush>
+          <LinearGradientBrush x:Key="Toolbar.Button.Hover" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0" Color="#687481"/>
+            <GradientStop Offset="1" Color="#414C59"/>
+          </LinearGradientBrush>
+          <LinearGradientBrush x:Key="Toolbar.Button.Pressed" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0" Color="#242A31"/>
+            <GradientStop Offset="1" Color="#424B56"/>
+          </LinearGradientBrush>
+          <SolidColorBrush x:Key="Toolbar.Button.Edge" Color="#161B21"/>
+          <SolidColorBrush x:Key="Toolbar.Button.Bevel" Color="#807A8796"/>
+          <SolidColorBrush x:Key="Toolbar.Button.Disabled" Color="#343A42"/>
           <SolidColorBrush x:Key="Toolbar.Fetch" Color="#80ADFF"/>
           <SolidColorBrush x:Key="Toolbar.Fetch.BusyLow" Color="#2080ADFF"/>
           <SolidColorBrush x:Key="Toolbar.Fetch.BusyHigh" Color="#6680ADFF"/>
@@ -40,6 +72,21 @@
           <SolidColorBrush x:Key="Toolbar.Actions" Color="#E1AAD8"/>
         </ResourceDictionary>
       </ResourceDictionary.ThemeDictionaries>
+      <ControlTemplate x:Key="Toolbar.Button.Template" TargetType="Button">
+        <Border x:Name="ToolbarButtonShell" Margin="1,0,1,1"
+                Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="4">
+          <Grid>
+            <Border x:Name="ToolbarButtonBevel" CornerRadius="3" BorderThickness="1,1,0,0"
+                    BorderBrush="{DynamicResource Toolbar.Button.Bevel}" IsHitTestVisible="False"/>
+            <ContentPresenter x:Name="PART_ContentPresenter" Background="Transparent"
+                              Padding="{TemplateBinding Padding}"
+                              HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                              Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                              Foreground="{TemplateBinding Foreground}" RecognizesAccessKey="True"/>
+          </Grid>
+        </Border>
+      </ControlTemplate>
     </ResourceDictionary>
   </UserControl.Resources>
   <UserControl.Styles>
@@ -83,11 +130,43 @@
       <Setter Property="Padding" Value="4,2"/>
       <Setter Property="CornerRadius" Value="4"/>
     </Style>
-    <Style Selector="Button.toolbar_button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource Brush.Hover}"/>
+    <Style Selector=":is(Button).toolbar_button, :is(Button).toolbar_aux">
+      <Setter Property="Background" Value="{DynamicResource Toolbar.Button.Face}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource Toolbar.Button.Edge}"/>
+      <Setter Property="Template" Value="{StaticResource Toolbar.Button.Template}"/>
     </Style>
-    <Style Selector="Button.toolbar_button:pressed /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource Brush.SubtleAccent}"/>
+    <Style Selector=":is(Button).toolbar_button /template/ Border#ToolbarButtonShell, :is(Button).toolbar_aux /template/ Border#ToolbarButtonShell">
+      <Setter Property="BoxShadow" Value="0 1 2 0 #40000000"/>
+    </Style>
+    <Style Selector=":is(Button).toolbar_button /template/ ContentPresenter#PART_ContentPresenter, :is(Button).toolbar_aux /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Opacity" Value="1"/>
+    </Style>
+    <Style Selector=":is(Button).toolbar_button:pointerover, :is(Button).toolbar_aux:pointerover">
+      <Setter Property="Background" Value="{DynamicResource Toolbar.Button.Hover}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}"/>
+    </Style>
+    <Style Selector=":is(Button).toolbar_button:focus-visible, :is(Button).toolbar_aux:focus-visible">
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}"/>
+    </Style>
+    <Style Selector=":is(Button).toolbar_button:pressed, :is(Button).toolbar_aux:pressed, :is(Button).toolbar_aux:checked">
+      <Setter Property="Background" Value="{DynamicResource Toolbar.Button.Pressed}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}"/>
+    </Style>
+    <Style Selector=":is(Button).toolbar_button:pressed /template/ Border#ToolbarButtonShell, :is(Button).toolbar_aux:pressed /template/ Border#ToolbarButtonShell, :is(Button).toolbar_aux:checked /template/ Border#ToolbarButtonShell">
+      <Setter Property="BoxShadow" Value="inset 0 1 2 0 #40000000"/>
+    </Style>
+    <Style Selector=":is(Button).toolbar_button:pressed /template/ ContentPresenter#PART_ContentPresenter, :is(Button).toolbar_aux:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="RenderTransform" Value="translate(0px,1px)"/>
+    </Style>
+    <Style Selector="Border.toolbar_feedback_group.busy :is(Button).toolbar_button, Border.toolbar_feedback_group.busy :is(Button).toolbar_aux">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector=":is(Button).toolbar_button:disabled, :is(Button).toolbar_aux:disabled">
+      <Setter Property="Background" Value="{DynamicResource Toolbar.Button.Disabled}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource Toolbar.Button.Edge}"/>
+    </Style>
+    <Style Selector=":is(Button).toolbar_button:disabled /template/ ContentPresenter#PART_ContentPresenter, :is(Button).toolbar_aux:disabled /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Opacity" Value="0.4"/>
     </Style>
     <Style Selector="Border.toolbar_group">
       <Setter Property="Margin" Value="6,2"/>
@@ -462,7 +541,7 @@
             <TextBlock Classes="toolbar_label" FontWeight="SemiBold" Text="Pull + Subs"/>
           </StackPanel>
         </Button>
-        <Button x:Name="PullSubmoduleOptionsButton" Classes="icon_button"
+        <Button x:Name="PullSubmoduleOptionsButton" Classes="toolbar_aux"
                 Width="19.8" Height="46" Padding="0" Click="OnPullSubmoduleOptionsClicked"
                 IsEnabled="{Binding !IsBare}"
                 AutomationProperties.Name="{DynamicResource Text.Toolbar.SubmoduleOptions}"
@@ -699,7 +778,7 @@
       </Button>
       <Button Width="0" Height="0" Click="NavigateToHead" IsVisible="False" HotKey="{OnPlatform Ctrl+H, macOS=⌘+⌥+H}"/>
       <ToggleButton x:Name="FocusCurrentBranchButton"
-                    Classes="line_path"
+                    Classes="toolbar_aux"
                     Width="61.6" Height="46"
                     Padding="4,2"
                     Margin="4,0,0,0"

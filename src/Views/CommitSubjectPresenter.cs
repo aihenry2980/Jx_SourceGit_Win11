@@ -95,6 +95,33 @@ namespace SourceGit.Views
             set => SetValue(ShowStrikethroughProperty, value);
         }
 
+        public static readonly StyledProperty<IBrush> HoverForegroundProperty =
+            AvaloniaProperty.Register<CommitSubjectPresenter, IBrush>(nameof(HoverForeground));
+
+        public IBrush HoverForeground
+        {
+            get => GetValue(HoverForegroundProperty);
+            set => SetValue(HoverForegroundProperty, value);
+        }
+
+        public static readonly StyledProperty<bool> IsRowHoveredProperty =
+            AvaloniaProperty.Register<CommitSubjectPresenter, bool>(nameof(IsRowHovered));
+
+        public bool IsRowHovered
+        {
+            get => GetValue(IsRowHoveredProperty);
+            set => SetValue(IsRowHoveredProperty, value);
+        }
+
+        public static readonly StyledProperty<bool> UseUniformForegroundProperty =
+            AvaloniaProperty.Register<CommitSubjectPresenter, bool>(nameof(UseUniformForeground));
+
+        public bool UseUniformForeground
+        {
+            get => GetValue(UseUniformForegroundProperty);
+            set => SetValue(UseUniformForegroundProperty, value);
+        }
+
         public static readonly DirectProperty<CommitSubjectPresenter, string> SubjectProperty =
             AvaloniaProperty.RegisterDirect<CommitSubjectPresenter, string>(
                 nameof(Subject),
@@ -155,6 +182,15 @@ namespace SourceGit.Views
                     if (inline.X > width)
                         break;
 
+                    var brush = IsRowHovered && HoverForeground != null && inline.Element?.Type != Models.InlineElementType.Code
+                        ? HoverForeground : inline.Brush;
+                    inline.RenderBrush ??= inline.Brush;
+                    if (!ReferenceEquals(inline.RenderBrush, brush))
+                    {
+                        inline.Text.SetForegroundBrush(brush);
+                        inline.RenderBrush = brush;
+                    }
+
                     if (inline.Element is { Type: Models.InlineElementType.Code })
                     {
                         var rect = new Rect(inline.X, (height - inline.Text.Height - 2) * 0.5, inline.Text.WidthIncludingTrailingWhitespace + 8, inline.Text.Height + 2);
@@ -202,7 +238,8 @@ namespace SourceGit.Views
                 change.Property == FontWeightProperty ||
                 change.Property == ForegroundProperty ||
                 change.Property == LinkForegroundProperty ||
-                change.Property == InlineCodeForegroundProperty)
+                change.Property == InlineCodeForegroundProperty ||
+                change.Property == UseUniformForegroundProperty)
             {
                 _needRebuildInlines = true;
                 InvalidateVisual();
@@ -212,7 +249,9 @@ namespace SourceGit.Views
                 InvalidateVisual();
             }
             else if (change.Property == InlineCodeBackgroundProperty ||
-                change.Property == ShowStrikethroughProperty)
+                change.Property == ShowStrikethroughProperty ||
+                change.Property == HoverForegroundProperty ||
+                change.Property == IsRowHoveredProperty)
             {
                 InvalidateVisual();
             }
@@ -342,7 +381,8 @@ namespace SourceGit.Views
             var codeFontFamily = CodeFontFamily;
             var fontSize = FontSize;
             var foreground = Foreground;
-            var linkForeground = LinkForeground;
+            var linkForeground = UseUniformForeground ? foreground : LinkForeground;
+            var countPrefixForeground = UseUniformForeground ? foreground : s_countPrefixForeground;
             var inlineCodeForeground = InlineCodeForeground;
             var typeface = new Typeface(fontFamily, FontStyle.Normal, FontWeight);
             var codeTypeface = new Typeface(codeFontFamily, FontStyle.Normal, FontWeight);
@@ -436,13 +476,13 @@ namespace SourceGit.Views
                         FlowDirection.LeftToRight,
                         new Typeface(fontFamily, FontStyle.Normal, FontWeight.Bold),
                         fontSize,
-                        s_countPrefixForeground);
+                        countPrefixForeground);
                     _inlines.Add(new Inline(x, prefix, elem)
                     {
                         RawText = raw,
                         Typeface = new Typeface(fontFamily, FontStyle.Normal, FontWeight.Bold),
                         FontSize = fontSize,
-                        Brush = s_countPrefixForeground,
+                        Brush = countPrefixForeground,
                     });
                     x += prefix.WidthIncludingTrailingWhitespace;
                 }
@@ -550,6 +590,7 @@ namespace SourceGit.Views
             public Typeface Typeface { get; set; } = new Typeface(FontFamily.Default);
             public double FontSize { get; set; } = 0;
             public IBrush Brush { get; set; } = null;
+            public IBrush RenderBrush { get; set; } = null;
 
             public Inline(double x, FormattedText text, Models.InlineElement elem)
             {

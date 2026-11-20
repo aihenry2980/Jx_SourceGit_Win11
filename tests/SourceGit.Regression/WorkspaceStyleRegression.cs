@@ -65,8 +65,8 @@ internal static partial class Program
                         new object[] { head, isSelected }, typeof(IBrush), null, null);
                     Check(WorkspaceContrast(headText.Color, headBackground.Color) >= 4.5,
                         $"HEAD stays distinct and readable in {theme}, selected={isSelected}");
-                    Check(theme != ThemeVariant.Dark || headBackground.Color.R < 80,
-                        "Dark HEAD background does not reuse a bright light-theme surface");
+                    Check(headBackground.Color.R >= 217 && headBackground.Color.G >= 217 && headBackground.Color.B >= 217,
+                        "HEAD background stays pale independently of theme or selection");
                 }
                 var merged = new SourceGit.Models.Commit { IsMerged = true };
                 var sha = (ISolidColorBrush)SourceGit.Converters.CommitConverters.SHAForeground.Convert(new object[] { merged }, typeof(IBrush), null, null);

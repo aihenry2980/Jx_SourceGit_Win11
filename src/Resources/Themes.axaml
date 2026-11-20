@@ -27,6 +27,10 @@
       <Color x:Key="Color.History.HeadForeground">#FFB4232D</Color>
       <Color x:Key="Color.History.HeadBackground">#FFFFF0F1</Color>
       <Color x:Key="Color.History.HeadSelectedBackground">#FFFFDFE2</Color>
+      <Color x:Key="Color.History.SelectionBackground">#FFE2E5E8</Color>
+      <Color x:Key="Color.History.SelectionBorder">#FF8D959E</Color>
+      <Color x:Key="Color.History.SubjectForeground">#FF707070</Color>
+      <Color x:Key="Color.History.HoverForeground">#FF000000</Color>
       <Color x:Key="Color.Diff.EmptyBG">#10000000</Color>
       <Color x:Key="Color.Diff.AddedBG">#80BFE6C1</Color>
       <Color x:Key="Color.Diff.DeletedBG">#80FF9797</Color>
@@ -65,6 +69,10 @@
       <Color x:Key="Color.History.HeadForeground">#FFFF929B</Color>
       <Color x:Key="Color.History.HeadBackground">#FF342327</Color>
       <Color x:Key="Color.History.HeadSelectedBackground">#FF482A30</Color>
+      <Color x:Key="Color.History.SelectionBackground">#FF45494E</Color>
+      <Color x:Key="Color.History.SelectionBorder">#FF949CA6</Color>
+      <Color x:Key="Color.History.HoverForeground">#FFFFFFFF</Color>
+      <Color x:Key="Color.History.SubjectForeground">#FFA8A8A8</Color>
       <Color x:Key="Color.Diff.EmptyBG">#3C000000</Color>
       <Color x:Key="Color.Diff.AddedBG">#C03A5C3F</Color>
       <Color x:Key="Color.Diff.DeletedBG">#C0633F3E</Color>
@@ -99,11 +107,14 @@
   <SolidColorBrush x:Key="Brush.FlatButton.FloatingBorder" Color="{DynamicResource Color.FlatButton.FloatingBorder}"/>
   <SolidColorBrush x:Key="Brush.FG1" Color="{DynamicResource Color.FG1}"/>
   <SolidColorBrush x:Key="Brush.FG2" Color="{DynamicResource Color.FG2}"/>
-  <SolidColorBrush x:Key="Brush.CommitSubject" Color="{DynamicResource Color.FG2}"/>
+  <SolidColorBrush x:Key="Brush.CommitSubject" Color="{DynamicResource Color.History.SubjectForeground}"/>
   <SolidColorBrush x:Key="Brush.Hover" Color="{DynamicResource Color.Hover}"/>
   <SolidColorBrush x:Key="Brush.History.HeadForeground" Color="{DynamicResource Color.History.HeadForeground}"/>
   <SolidColorBrush x:Key="Brush.History.HeadBackground" Color="{DynamicResource Color.History.HeadBackground}"/>
   <SolidColorBrush x:Key="Brush.History.HeadSelectedBackground" Color="{DynamicResource Color.History.HeadSelectedBackground}"/>
+  <SolidColorBrush x:Key="Brush.History.SelectionBackground" Color="{DynamicResource Color.History.SelectionBackground}"/>
+  <SolidColorBrush x:Key="Brush.History.SelectionBorder" Color="{DynamicResource Color.History.SelectionBorder}"/>
+  <SolidColorBrush x:Key="Brush.History.HoverForeground" Color="{DynamicResource Color.History.HoverForeground}"/>
   <SolidColorBrush x:Key="Brush.SubtleAccent" Color="{DynamicResource SystemAccentColor}" Opacity="0.14"/>
   <SolidColorBrush x:Key="Brush.Accent" Color="{DynamicResource SystemAccentColor}"/>
   <SolidColorBrush x:Key="Brush.AccentHovered" Color="{DynamicResource SystemListLowColor}"/>

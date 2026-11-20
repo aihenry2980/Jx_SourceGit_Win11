@@ -110,7 +110,7 @@ namespace SourceGit.ViewModels
 
                 try
                 {
-                    var finished = updateCheckoutSubmodules && dump.ShowCheckoutActions
+                    var finished = updateCheckoutSubmodules && dump.ShowCheckoutSubmoduleAction
                         ? await dump.SureWithSubmodules() : await dump.Sure();
                     if (finished)
                     {

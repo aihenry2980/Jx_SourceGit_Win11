@@ -29,6 +29,14 @@
     </ResourceDictionary>
   </UserControl.Resources>
   <UserControl.Styles>
+    <Style Selector="v|CommitSubjectPresenter.history_subject">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.CommitSubject}"/>
+      <Setter Property="HoverForeground" Value="{DynamicResource Brush.History.HoverForeground}"/>
+    </Style>
+    <Style Selector="v|CommitSubjectPresenter.history_subject[UseUniformForeground=True]">
+      <Setter Property="Foreground" Value="{Binding ., Converter={x:Static c:CommitConverters.SubjectToBrush}}"/>
+      <Setter Property="HoverForeground" Value="Black"/>
+    </Style>
     <Style Selector="GridSplitter.history_details_splitter">
       <Setter Property="Background" Value="{DynamicResource History.Splitter}"/>
       <Setter Property="Template">
@@ -99,6 +107,7 @@
           </MultiBinding>
         </v:HistoriesCommitList.ExpandedRowHeight>
         <DataGrid.Resources>
+          <SolidColorBrush x:Key="DataGridRowHoveredBackgroundBrush" Color="Transparent"/>
           <SolidColorBrush x:Key="DataGridRowSelectedBackgroundBrush" Color="Transparent"/>
           <SolidColorBrush x:Key="DataGridRowSelectedHoveredBackgroundBrush" Color="Transparent"/>
           <SolidColorBrush x:Key="DataGridRowSelectedUnfocusedBackgroundBrush" Color="Transparent"/>
@@ -169,31 +178,43 @@
             </Setter>
           </Style>
 
-          <Style Selector="DataGridRow:selected">
-            <Setter Property="Background" Value="Transparent"/>
+          <Style Selector="DataGridRow">
+            <Setter Property="Background">
+              <MultiBinding Converter="{x:Static c:CommitConverters.RowBackground}">
+                <Binding/>
+                <Binding Path="IsSelected" RelativeSource="{RelativeSource Self}"/>
+                <Binding Source="{x:Static vm:Preferences.Instance}" Path="MainAccentColor"/>
+              </MultiBinding>
+            </Setter>
+          </Style>
+
+          <Style Selector="DataGridRow /template/ Rectangle#BackgroundRectangle">
+            <Setter Property="Fill" Value="Transparent"/>
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="Stroke" Value="Transparent"/>
+          </Style>
+
+          <Style Selector="DataGridRow:pointerover /template/ Rectangle#BackgroundRectangle">
+            <Setter Property="Fill" Value="Transparent"/>
           </Style>
 
           <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
-            <Setter Property="Fill" Value="{DynamicResource Brush.AccentHovered}"/>
-            <Setter Property="Opacity" Value="0.28"/>
-            <Setter Property="Stroke" Value="{DynamicResource Brush.Accent}"/>
-            <Setter Property="StrokeThickness" Value="2"/>
+            <Setter Property="Fill" Value="Transparent"/>
+            <Setter Property="Stroke" Value="{DynamicResource Brush.History.SelectionBorder}"/>
+            <Setter Property="StrokeThickness" Value="1"/>
           </Style>
 
           <Style Selector="DataGridRow:selected:pointerover /template/ Rectangle#BackgroundRectangle">
-            <Setter Property="Fill" Value="{DynamicResource Brush.AccentHovered}"/>
-            <Setter Property="Opacity" Value="0.38"/>
-            <Setter Property="Stroke" Value="{DynamicResource Brush.Accent}"/>
-            <Setter Property="StrokeThickness" Value="2"/>
+            <Setter Property="Fill" Value="Transparent"/>
+            <Setter Property="Stroke" Value="{DynamicResource Brush.History.SelectionBorder}"/>
+            <Setter Property="StrokeThickness" Value="1"/>
           </Style>
 
-          <Style Selector="DataGridRow:selected /template/ Border#RowBorder">
-            <Setter Property="Background" Value="Transparent"/>
+          <Style Selector="DataGridRow /template/ Border#RowBorder, DataGridRow:pointerover /template/ Border#RowBorder, DataGridRow:selected /template/ Border#RowBorder">
             <Setter Property="BorderThickness" Value="0"/>
           </Style>
 
           <Style Selector="DataGridRow:selected:pointerover /template/ Border#RowBorder">
-            <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
           </Style>
 
@@ -238,7 +259,7 @@
                                             FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Mode=OneWay}"
                                             FontWeight="{Binding ., Converter={x:Static c:CommitConverters.SHAFontWeight}}"
                                             ToolTip.Tip="{Binding ., Converter={x:Static c:CommitConverters.SHAToolTip}}"
-                                            Opacity="{Binding IsMerged, Converter={x:Static c:BoolConverters.IsMergedToOpacity}}">
+                                            Opacity="{Binding ., Converter={x:Static c:CommitConverters.SHAOpacity}}">
                     <v:CommitSubjectPresenter.Foreground>
                       <MultiBinding Converter="{x:Static c:CommitConverters.SHAForeground}">
                         <Binding/>
@@ -506,30 +527,20 @@
 
                     <Grid Grid.Column="4"
                           ClipToBounds="True">
-                      <Border Height="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesRowHeight, Converter={x:Static c:DoubleConverters.ToHeadSubjectHighlightHeight}}"
-                              VerticalAlignment="Center"
-                              IsHitTestVisible="False">
-                        <Border.Background>
-                          <MultiBinding Converter="{x:Static c:CommitConverters.HeadSubjectBackground}">
-                            <Binding/>
-                            <Binding Path="$parent[DataGridRow].IsSelected"/>
-                          </MultiBinding>
-                        </Border.Background>
-                      </Border>
-
                       <Rectangle Classes="head_subject_outline" IsVisible="{Binding IsCurrentHead}"
                                  Height="{Binding $parent[DataGridRow].Bounds.Height, Converter={x:Static c:DoubleConverters.ToHeadOutlineHeight}}"
                                  VerticalAlignment="Center" Margin="1,0"
                                  Stroke="{DynamicResource History.HeadOutline}" StrokeThickness="1.25"
                                  StrokeDashArray="4,3" RadiusX="3" RadiusY="3" IsHitTestVisible="False"/>
 
-                      <v:CommitSubjectPresenter Margin="{Binding ., Converter={x:Static c:CommitConverters.SubjectMargin}}" FontFamily="{DynamicResource Fonts.Default}"
+                      <v:CommitSubjectPresenter Classes="history_subject" Margin="{Binding ., Converter={x:Static c:CommitConverters.SubjectMargin}}" FontFamily="{DynamicResource Fonts.Default}"
                                                 CodeFontFamily="{DynamicResource Fonts.Monospace}"
                                                 HighlightText="{Binding $parent[v:Repository].((vm:Repository)DataContext).HistoryQuickFindAppliedText}"
                                                 InlineCodeBackground="{DynamicResource Brush.InlineCode}"
                                                 InlineCodeForeground="{DynamicResource Brush.InlineCodeFG}"
-                                                Foreground="{Binding ., Converter={x:Static c:CommitConverters.SubjectToBrush}}"
                                                 LinkForeground="{Binding ., Converter={x:Static c:CommitConverters.SubjectLinkToBrush}}"
+                                                IsRowHovered="{Binding $parent[DataGridRow].IsPointerOver}"
+                                                UseUniformForeground="{Binding IsCurrentHead}"
                                                 FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Converter={x:Static c:DoubleConverters.Decrease}, Mode=OneWay}"
                                                 Subject="{Binding HistoryDisplaySubject}"
                                                 IssueTrackers="{Binding $parent[v:Histories].IssueTrackers}"
@@ -578,7 +589,9 @@
                         <MultiBinding Converter="{x:Static c:UserConverters.NameForeground}">
                           <Binding Path="Author"/>
                           <Binding Source="{x:Static vm:Preferences.Instance}" Path="UserNameColorRevision"/>
-                          <Binding Converter="{x:Static c:CommitConverters.HeadAwareForeground}"/>
+                          <Binding Source="{DynamicResource Brush.FG1}"/>
+                          <Binding/>
+                          <Binding Source="{x:Static vm:Preferences.Instance}" Path="MainAccentColor"/>
                         </MultiBinding>
                       </TextBlock.Foreground>
                     </TextBlock>
@@ -612,12 +625,19 @@
                 <Border Padding="8,0" Background="Transparent" ClipToBounds="True">
                   <v:CommitTimeTextBlock FontFeatures="+tnum"
                                          FontWeight="{Binding IsCurrentHead, Converter={x:Static c:BoolConverters.IsBoldToFontWeight}}"
-                                         Foreground="{Binding ., Converter={x:Static c:CommitConverters.HeadAwareForeground}}"
                                          FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Mode=OneWay}"
                                          UseAuthorTime="{Binding Source={x:Static vm:Preferences.Instance}, Path=ShowAuthorTimeInGraph, Mode=OneWay}"
                                          ShowAsDateTime="{Binding Source={x:Static vm:Preferences.Instance}, Path=!DisplayTimeAsPeriodInHistories, Mode=OneWay}"
                                          DateTimeFormat="{Binding Source={x:Static vm:Preferences.Instance}, Path=DateTimeFormat, Mode=OneWay}"
-                                         Use24Hours="{Binding Source={x:Static vm:Preferences.Instance}, Path=Use24Hours, Mode=OneWay}"/>
+                                         Use24Hours="{Binding Source={x:Static vm:Preferences.Instance}, Path=Use24Hours, Mode=OneWay}">
+                    <v:CommitTimeTextBlock.Foreground>
+                      <MultiBinding Converter="{x:Static c:CommitConverters.HistoryForeground}">
+                        <Binding/>
+                        <Binding Source="{x:Static vm:Preferences.Instance}" Path="MainAccentColor"/>
+                        <Binding Source="{DynamicResource Brush.FG1}"/>
+                      </MultiBinding>
+                    </v:CommitTimeTextBlock.Foreground>
+                  </v:CommitTimeTextBlock>
                 </Border>
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
