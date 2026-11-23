@@ -196,8 +196,16 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
+        private void OnPinnedBranchTreeSelectionChanged(object _1, RoutedEventArgs _2)
+        {
+            LocalBranchTree.UnselectAll();
+            RemoteBranchTree.UnselectAll();
+            TagsList.UnselectAll();
+        }
+
         private void OnLocalBranchTreeSelectionChanged(object _1, RoutedEventArgs _2)
         {
+            PinnedBranchTree.UnselectAll();
             RemoteBranchTree.UnselectAll();
             TagsList.UnselectAll();
         }
@@ -220,12 +228,14 @@ namespace SourceGit.Views
 
         private void OnRemoteBranchTreeSelectionChanged(object _1, RoutedEventArgs _2)
         {
+            PinnedBranchTree.UnselectAll();
             LocalBranchTree.UnselectAll();
             TagsList.UnselectAll();
         }
 
         private void OnTagsSelectionChanged(object _1, RoutedEventArgs _2)
         {
+            PinnedBranchTree.UnselectAll();
             LocalBranchTree.UnselectAll();
             RemoteBranchTree.UnselectAll();
         }
@@ -337,7 +347,7 @@ namespace SourceGit.Views
                 return;
 
             var rebaseBaseBranchHeight = string.IsNullOrEmpty(vm.RebaseBaseBranchDisplayName) ? 0.0 : 35.0;
-            var visibleHeaderHeight = 28.0 + 28.0 * 2 + rebaseBaseBranchHeight + (vm.IsInfrequentGroupExpanded ? 28.0 * 3 : 0);
+            var visibleHeaderHeight = 28.0 + 28.0 * 2 + rebaseBaseBranchHeight + (vm.IsInfrequentGroupExpanded ? 28.0 * 3 : 0) + (vm.HasPinnedBranches ? 28.0 : 0);
             var leftHeight = LeftSidebarGroups.Bounds.Height - visibleHeaderHeight - 4;
             if (leftHeight <= 0)
                 return;
@@ -351,6 +361,11 @@ namespace SourceGit.Views
             var desiredWorktree = vm.IsInfrequentGroupExpanded && vm.IsWorktreeGroupExpanded ? 24.0 * vm.Worktrees.Count : 0;
             var desiredFrequent = desiredLocalBranches + desiredSubmodule;
             var desiredInfrequent = desiredRemoteBranches + desiredTag + desiredWorktree;
+            var desiredPinned = vm.HasPinnedBranches && vm.IsPinnedBranchGroupExpanded ? PinnedBranchTree.Rows.Count * 24.0 : 0;
+            var pinnedHeight = desiredFrequent + desiredInfrequent + desiredPinned > leftHeight
+                ? Math.Min(desiredPinned, Math.Min(120, leftHeight / 3)) : desiredPinned;
+            PinnedBranchTree.Height = pinnedHeight;
+            leftHeight -= pinnedHeight;
             var hasOverflow = (desiredFrequent + desiredInfrequent > leftHeight);
 
             if (vm.IsInfrequentGroupExpanded && vm.IsWorktreeGroupExpanded)

@@ -21,7 +21,7 @@ The project uses the following third-party libraries or assets
 ### AvaloniaEdit
 
 - **Official Source**: https://github.com/AvaloniaUI/AvaloniaEdit
-- **Fork (Modified)**: https://github.com/love-linger/AvaloniaEdit
+- **Fork (Modified)**: https://github.com/sourcegit-org/AvaloniaEdit
 - **Version**: Based on 12.0.x
 - **License**: MIT License
 - **License Link**: https://github.com/AvaloniaUI/AvaloniaEdit/blob/master/LICENSE

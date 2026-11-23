@@ -2470,6 +2470,18 @@ namespace SourceGit.Views
                 submenu.Items.Add(pull);
             }
 
+
+            var pin = new MenuItem();
+            pin.Header = CreateLocalizedBranchActionHeader(repo,
+                repo.IsBranchPinned(current) ? "BranchCM.Unpin" : "BranchCM.Pin", current, current.Name);
+            pin.Icon = App.CreateMenuIcon("Icons.Pin");
+            pin.Click += (_, e) =>
+            {
+                repo.TogglePinBranch(current);
+                e.Handled = true;
+            };
+            submenu.Items.Add(pin);
+
             var rename = new MenuItem();
             rename.Header = CreateLocalizedBranchActionHeader(repo, "BranchCM.Rename", current, current.Name);
             rename.Icon = App.CreateMenuIcon("Icons.Rename");
@@ -2621,6 +2633,17 @@ namespace SourceGit.Views
                 e.Handled = true;
             };
             submenu.Items.Add(push);
+
+            var pin = new MenuItem();
+            pin.Header = CreateLocalizedBranchActionHeader(repo,
+                repo.IsBranchPinned(branch) ? "BranchCM.Unpin" : "BranchCM.Pin", branch, branch.Name);
+            pin.Icon = this.CreateMenuIcon("Icons.Pin");
+            pin.Click += (_, e) =>
+            {
+                repo.TogglePinBranch(branch);
+                e.Handled = true;
+            };
+            submenu.Items.Add(pin);
 
             var rename = new MenuItem();
             rename.Header = CreateLocalizedBranchActionHeader(repo, "BranchCM.Rename", branch, branch.Name);
@@ -3149,10 +3172,7 @@ namespace SourceGit.Views
 
         private static uint GetCommitGraphColor(int colorIndex)
         {
-            if (colorIndex < 0 || colorIndex >= Models.CommitGraph.Pens.Count)
-                return 0;
-
-            if (Models.CommitGraph.Pens[colorIndex].Brush is ISolidColorBrush solid)
+            if (Models.CommitGraph.GetPen(colorIndex).Brush is ISolidColorBrush solid)
                 return solid.Color.ToUInt32();
 
             return 0;

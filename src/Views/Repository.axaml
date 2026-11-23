@@ -186,7 +186,7 @@
     <!-- Left Panel -->
     <Grid Grid.Column="0" RowDefinitions="Auto,*">
       <!-- Page Switcher for Left Contents (Dashboard or CommitSearch) -->
-      <StackPanel Grid.Row="0" Margin="0,6" Height="24" HorizontalAlignment="Center" Orientation="Horizontal">
+      <StackPanel Grid.Row="0" Margin="8,6,0,6" Height="24" HorizontalAlignment="Left" Orientation="Horizontal">
         <ToggleButton Classes="icon_button"
                       Width="24"
                       Height="24"
@@ -909,7 +909,23 @@
           </StackPanel>
         </Border>
 
-        <Grid Grid.Row="5" x:Name="LeftSidebarGroups" Margin="0,4,0,0" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" SizeChanged="OnLeftSidebarSizeChanged" IsVisible="{Binding !IsLeftSidebarCompact}">
+        <Grid Grid.Row="5" x:Name="LeftSidebarGroups" Margin="0,4,0,0" RowDefinitions="Auto,Auto,*" SizeChanged="OnLeftSidebarSizeChanged" IsVisible="{Binding !IsLeftSidebarCompact}">
+          <ToggleButton Grid.Row="0" Classes="group_expander sidebar_group"
+                        IsChecked="{Binding IsPinnedBranchGroupExpanded, Mode=TwoWay}"
+                        IsVisible="{Binding HasPinnedBranches}">
+            <Grid ColumnDefinitions="16,*,Auto">
+              <Path Grid.Column="0" Width="11" Height="11" Data="{StaticResource Icons.Pin}" Fill="{DynamicResource Brush.FG2}"/>
+              <TextBlock Grid.Column="1" Classes="group_header_label" Text="{DynamicResource Text.Repository.PinnedBranches}"/>
+              <TextBlock Grid.Column="2" Classes="group_header_label sidebar_count"
+                         Text="{Binding PinnedBranchTrees, Converter={x:Static c:ListConverters.ToCount}}"/>
+            </Grid>
+          </ToggleButton>
+          <v:BranchTree Grid.Row="1" x:Name="PinnedBranchTree" Height="0" Margin="6,0,4,0"
+                        Nodes="{Binding PinnedBranchTrees}"
+                        IsVisible="{Binding IsPinnedBranchGroupExpanded}"
+                        SelectionChanged="OnPinnedBranchTreeSelectionChanged"
+                        RowsChanged="OnLeftSidebarRowsChanged"/>
+          <Grid Grid.Row="2" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
           <!-- Rebase Base Branch -->
           <Border Grid.Row="7"
                   Height="30"
@@ -1267,6 +1283,7 @@
               </DataTemplate>
             </ListBox.ItemTemplate>
           </ListBox>
+        </Grid>
         </Grid>
       </Grid>
       </ScrollViewer>

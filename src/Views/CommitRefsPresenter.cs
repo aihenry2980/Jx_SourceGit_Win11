@@ -466,13 +466,13 @@ namespace SourceGit.Views
             if (DataContext is not Models.Commit commit)
                 return new Size(0, 0);
 
-            var refs = commit.Decorators;
-            if (refs is { Count: > 0 })
+            var refs = commit.Decorators.ToArray();
+            if (refs.Length > 0)
             {
                 var typeface = new Typeface(FontFamily);
                 var typefaceBold = new Typeface(FontFamily, FontStyle.Normal, FontWeight.Bold);
                 var fg = Foreground;
-                var normalBG = UseGraphColor ? Models.CommitGraph.Pens[commit.Color].Brush : Brushes.Gray;
+                var normalBG = UseGraphColor ? Models.CommitGraph.GetPen(commit.Color).Brush : Brushes.Gray;
                 var labelSize = FontSize;
                 var requiredHeight = 0.0;
                 var currentLineHeight = 0.0;
@@ -482,7 +482,7 @@ namespace SourceGit.Views
                 var compactTrackingBranches = CompactTrackingBranches;
                 var consumedRemoteDecoratorIndexes = compactTrackingBranches ? new HashSet<int>() : null;
 
-                for (var i = 0; i < refs.Count; i++)
+                for (var i = 0; i < refs.Length; i++)
                 {
                     if (compactTrackingBranches && consumedRemoteDecoratorIndexes.Contains(i))
                         continue;

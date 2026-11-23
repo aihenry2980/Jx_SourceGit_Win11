@@ -214,6 +214,13 @@ internal static partial class Program
             return;
         }
 
+        if (args is ["--upstream-branch-pins"])
+        {
+            TestUpstreamBranchPinningMerge();
+            Console.WriteLine($"PASS: {_checks} upstream branch pinning checks. Isolated data and previews: {_root}");
+            return;
+        }
+
         if (args is ["--branch-labels"])
         {
             TestBranchLabels();
@@ -299,6 +306,7 @@ internal static partial class Program
         TestFilterEncodingUx();
         TestWorkflowUx();
         TestWorkspaceStyle();
+        TestUpstreamBranchPinningMerge();
         TestRaisedToolbar();
         TestDailyGui();
         TestBranchLabels();

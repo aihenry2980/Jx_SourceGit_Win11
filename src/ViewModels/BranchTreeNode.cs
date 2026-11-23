@@ -16,6 +16,18 @@ namespace SourceGit.ViewModels
         public List<BranchTreeNode> Children { get; private set; } = new List<BranchTreeNode>();
         public int Counter { get; set; } = 0;
 
+        public static BranchTreeNode Create(string name, string path, object backend, ulong timeToSort)
+        {
+            return new BranchTreeNode()
+            {
+                Name = name,
+                Path = path,
+                Backend = backend,
+                IsExpanded = false,
+                TimeToSort = timeToSort,
+            };
+        }
+
         public Models.FilterMode FilterMode
         {
             get => _filterMode;

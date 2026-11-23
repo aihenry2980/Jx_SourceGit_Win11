@@ -1134,6 +1134,15 @@ namespace SourceGit.Views
             if (!branch.IsDetachedHead)
             {
                 menu.Items.Add(new MenuItem() { Header = "-" });
+                var pin = new MenuItem();
+                pin.Header = App.Text(repo.IsBranchPinned(branch) ? "BranchCM.Unpin" : "BranchCM.Pin", branch.Name);
+                pin.Icon = App.CreateMenuIcon("Icons.Pin");
+                pin.Click += (_, e) =>
+                {
+                    repo.TogglePinBranch(branch);
+                    e.Handled = true;
+                };
+                menu.Items.Add(pin);
                 menu.Items.Add(editDescription);
                 menu.Items.Add(rename);
                 menu.Items.Add(delete);

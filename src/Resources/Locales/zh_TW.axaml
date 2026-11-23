@@ -83,6 +83,7 @@
   <x:String x:Key="Text.BranchCM.InteractiveRebase.Manually" xml:space="preserve">互動式重定基底 ${0}$ 至 ${1}$</x:String>
   <x:String x:Key="Text.BranchCM.Merge" xml:space="preserve">合併 ${0}$ 到 ${1}$...</x:String>
   <x:String x:Key="Text.BranchCM.MergeMultiBranches" xml:space="preserve">合併 {0} 個分支到目前分支...</x:String>
+  <x:String x:Key="Text.BranchCM.Pin" xml:space="preserve">釘選 ${0}$</x:String>
   <x:String x:Key="Text.BranchCM.Pull" xml:space="preserve">拉取 (pull) ${0}$...</x:String>
   <x:String x:Key="Text.BranchCM.PullInto" xml:space="preserve">拉取 (pull) ${0}$ 內容至 ${1}$...</x:String>
   <x:String x:Key="Text.BranchCM.Push" xml:space="preserve">推送 (push) ${0}$...</x:String>
@@ -91,6 +92,7 @@
   <x:String x:Key="Text.BranchCM.ResetToSelectedCommit" xml:space="preserve">重設 ${0}$ 至 ${1}$...</x:String>
   <x:String x:Key="Text.BranchCM.SwitchToWorktree" xml:space="preserve">切換到 ${0}$ (工作樹)</x:String>
   <x:String x:Key="Text.BranchCM.Tracking" xml:space="preserve">切換上游分支...</x:String>
+  <x:String x:Key="Text.BranchCM.Unpin" xml:space="preserve">取消釘選 ${0}$</x:String>
   <x:String x:Key="Text.BranchTree.Ahead" xml:space="preserve">領先 {0} 次提交</x:String>
   <x:String x:Key="Text.BranchTree.AheadBehind" xml:space="preserve">領先 {0} 次提交，落後 {1} 次提交</x:String>
   <x:String x:Key="Text.BranchTree.Behind" xml:space="preserve">落後 {0} 次提交</x:String>
@@ -873,6 +875,7 @@
   <x:String x:Key="Text.Repository.OpenAsFolder" xml:space="preserve">此存放庫 (資料夾)</x:String>
   <x:String x:Key="Text.Repository.OpenIn" xml:space="preserve">在 {0} 中開啟</x:String>
   <x:String x:Key="Text.Repository.OpenWithExternalTools" xml:space="preserve">使用外部工具開啟</x:String>
+  <x:String x:Key="Text.Repository.PinnedBranches" xml:space="preserve">釘選分支</x:String>
   <x:String x:Key="Text.Repository.Remotes" xml:space="preserve">遠端列表</x:String>
   <x:String x:Key="Text.Repository.Remotes.Add" xml:space="preserve">新增遠端</x:String>
   <x:String x:Key="Text.Repository.Resolve" xml:space="preserve">解決衝突</x:String>
