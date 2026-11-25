@@ -88,7 +88,7 @@
               BorderThickness="0,1,0,0"
               BorderBrush="{DynamicResource Brush.Border2}"
               CornerRadius="0,0,4,4">
-        <Grid ColumnDefinitions="Auto,Auto,Auto,*">
+        <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*">
           <Button Grid.Column="0"
                   Classes="icon_button"
                   Width="28"
@@ -112,13 +112,23 @@
           <Button Grid.Column="2"
                   Classes="icon_button"
                   Width="28"
-                  Margin="0" Padding="0"
+                  Margin="0,0,4,0" Padding="0"
                   Click="OnOpenConventionalCommitHelper"
                   ToolTip.Tip="{DynamicResource Text.ConventionalCommit}">
             <Path Width="13" Height="13" Margin="0,1,0,0" Data="{StaticResource Icons.CommitMessageGenerator}"/>
           </Button>
 
-          <StackPanel Grid.Column="3"
+          <Button Grid.Column="3"
+                  Classes="icon_button"
+                  Width="28"
+                  Margin="0" Padding="0"
+                  Click="OnOpenIssueLinks"
+                  IsVisible="{Binding #ThisControl.ShowAdvancedOptions}"
+                  ToolTip.Tip="{DynamicResource Text.WorkingCopy.IssueLinks}">
+            <Path Width="13" Height="13" Data="{StaticResource Icons.Issue}"/>
+          </Button>
+
+          <StackPanel Grid.Column="4"
                       Margin="0,0,6,0"
                       HorizontalAlignment="Right" VerticalAlignment="Stretch"
                       Orientation="Horizontal">

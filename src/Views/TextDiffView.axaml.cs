@@ -527,6 +527,7 @@ namespace SourceGit.Views
 
             TextArea.TextView.Margin = new Thickness(2, 0);
             TextArea.TextView.BackgroundRenderers.Add(new LineBackgroundRenderer(this));
+            TextArea.TextView.BackgroundRenderers.Add(new LineFlashRenderer(this, () => _flashLine));
             TextArea.TextView.LineTransformers.Add(_lineStyleTransformer);
         }
 
@@ -541,6 +542,58 @@ namespace SourceGit.Views
                 TextArea.Caret.Line = block.Start;
                 ScrollToLine(block.Start);
             }
+        }
+
+        public int GetMaxNewLineNumber()
+        {
+            var lines = GetLines();
+            for (var i = lines.Count - 1; i >= 0; i--)
+            {
+                if (lines[i].NewLineNumber > 0)
+                    return lines[i].NewLineNumber;
+            }
+            return 0;
+        }
+
+        public void FlashLine(int line)
+        {
+            _flashLine = line;
+            _flashUntil = Environment.TickCount64 + 800;
+            TextArea.TextView.InvalidateLayer(KnownLayer.Background);
+
+            DispatcherTimer.RunOnce(() =>
+            {
+                if (Environment.TickCount64 >= _flashUntil)
+                {
+                    _flashLine = -1;
+                    TextArea.TextView.InvalidateLayer(KnownLayer.Background);
+                }
+            }, TimeSpan.FromMilliseconds(800));
+        }
+
+        public void GotoNewLine(int newLine)
+        {
+            var lines = GetLines();
+            var target = -1;
+            for (var i = 0; i < lines.Count; i++)
+            {
+                var n = lines[i].NewLineNumber;
+                if (n == 0)
+                    continue;
+                if (n >= newLine)
+                {
+                    target = i + 1; // document line is 1-based
+                    break;
+                }
+            }
+            if (target < 0)
+                target = lines.Count;
+            if (target <= 0)
+                return;
+
+            TextArea.Caret.Line = target;
+            ScrollToLine(target);
+            FlashLine(target);
         }
 
         public override void Render(DrawingContext context)
@@ -970,6 +1023,8 @@ namespace SourceGit.Views
         private TextLocation _lastSelectStart = TextLocation.Empty;
         private TextLocation _lastSelectEnd = TextLocation.Empty;
         private LineStyleTransformer _lineStyleTransformer;
+        private int _flashLine = -1;
+        private long _flashUntil;
     }
 
     public class CombinedTextDiffPresenter : ThemedTextDiffPresenter
@@ -1588,6 +1643,56 @@ namespace SourceGit.Views
 
             if (DataContext is ViewModels.TextDiffContext ctx)
                 ctx.SelectedChunk = null;
+        }
+
+        protected override void OnDataContextChanged(EventArgs e)
+        {
+            base.OnDataContextChanged(e);
+            GotoLineBar?.Close();
+        }
+
+        public void ShowGotoLine()
+        {
+            if (GotoLineBar.IsVisible)
+            {
+                GotoLineBar.Close();
+                return;
+            }
+
+            var presenter = FindNewSidePresenter();
+            if (presenter == null)
+                return;
+
+            var max = presenter.GetMaxNewLineNumber();
+            if (max <= 0)
+                return;
+
+            GotoLineBar.Open(max);
+        }
+
+        private ThemedTextDiffPresenter FindNewSidePresenter()
+        {
+            // Combined mode: single presenter. Side-by-side: pick the IsOld == false one.
+            if (this.FindDescendantOfType<CombinedTextDiffPresenter>() is { } combined)
+                return combined;
+
+            foreach (var v in this.GetVisualDescendants())
+            {
+                if (v is SingleSideTextDiffPresenter { IsOld: false } p)
+                    return p;
+            }
+            return null;
+        }
+
+        private void OnGotoLinePreview(object sender, int line)
+        {
+            FindNewSidePresenter()?.GotoNewLine(line);
+        }
+
+        private void OnGotoLineClosed(object sender, EventArgs e)
+        {
+            GotoLineBar.Close();
+            FindNewSidePresenter()?.TextArea.Focus();
         }
 
         private async void OnStageChunk(object _1, RoutedEventArgs _2)

@@ -306,6 +306,23 @@ namespace SourceGit.Views
             TextArea.LeftMargins.Add(new LineNumberMargin(this));
             TextArea.LeftMargins.Add(new VerticalSeparatorMargin());
             TextArea.TextView.BackgroundRenderers.Add(new LineBackgroundRenderer(this));
+            TextArea.TextView.BackgroundRenderers.Add(new LineFlashRenderer(this, () => _flashLine));
+        }
+
+        public void FlashLine(int line)
+        {
+            _flashLine = line;
+            _flashUntil = Environment.TickCount64 + 800;
+            TextArea.TextView.InvalidateLayer(KnownLayer.Background);
+
+            DispatcherTimer.RunOnce(() =>
+            {
+                if (Environment.TickCount64 >= _flashUntil)
+                {
+                    _flashLine = -1;
+                    TextArea.TextView.InvalidateLayer(KnownLayer.Background);
+                }
+            }, TimeSpan.FromMilliseconds(800));
         }
 
         protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
@@ -562,6 +579,8 @@ namespace SourceGit.Views
         private Models.ConflictSelectedChunk _selectedChunk = null;
         private TextMate.Installation _textMate;
         private ScrollViewer _scrollViewer;
+        private int _flashLine = -1;
+        private long _flashUntil;
     }
 
     public class MergeConflictMinimap : Control
@@ -805,6 +824,30 @@ namespace SourceGit.Views
             }
 
             e.Handled = true;
+        }
+
+        private void OnGotoLine(object sender, RoutedEventArgs e)
+        {
+            if (GotoLineBar.IsVisible)
+                GotoLineBar.Close();
+            else if (DataContext is ViewModels.MergeConflictEditor vm && vm.OursLines.Count > 0)
+                GotoLineBar.Open(vm.OursLines.Count);
+
+            e.Handled = true;
+        }
+
+        private void OnGotoLinePreview(object sender, int line)
+        {
+            // ScrollOffset binding on each presenter syncs all three panels.
+            OursPresenter.TextArea.Caret.Line = line;
+            OursPresenter.ScrollToLine(line);
+            OursPresenter.FlashLine(line);
+        }
+
+        private void OnGotoLineClosed(object sender, EventArgs e)
+        {
+            GotoLineBar.Close();
+            OursPresenter.TextArea.Focus();
         }
 
         private async void OnSaveAndStage(object sender, RoutedEventArgs e)

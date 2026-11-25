@@ -139,6 +139,22 @@
               <Path Width="12" Height="12" Stretch="Uniform" Margin="0,6,0,0" Data="{StaticResource Icons.Bottom}"/>
             </Button>
 
+            <Button x:Name="BtnGotoLine"
+                    Classes="icon_button"
+                    Width="28"
+                    Focusable="False"
+                    Click="OnGotoLine"
+                    IsVisible="{Binding IsTextDiff}">
+              <ToolTip.Tip>
+                <TextBlock>
+                  <Run Text="{DynamicResource Text.GotoLine}"/>
+                  <Run Text=" "/>
+                  <Run Text="{OnPlatform Ctrl+G, macOS=⌘+G}" FontSize="11" Foreground="{DynamicResource MenuFlyoutItemKeyboardAcceleratorTextForeground}"/>
+                </TextBlock>
+              </ToolTip.Tip>
+              <TextBlock Text="Ln" FontSize="10" FontFamily="{DynamicResource Fonts.Monospace}" Margin="0,2,0,0"/>
+            </Button>
+
             <Button Classes="icon_button"
                     Width="28"
                     Command="{Binding IncrUnified}"

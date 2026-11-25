@@ -700,6 +700,92 @@ namespace SourceGit.Views
             e.Handled = true;
         }
 
+        private void OnOpenIssueLinks(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && DataContext is ViewModels.WorkingCopy vm && _showAdvancedOptions)
+            {
+                var message = vm.CommitMessage ?? string.Empty;
+                var elems = new List<Models.InlineElement>();
+                foreach (var tracker in vm.Repository.IssueTrackers)
+                {
+                    var collector = new Models.InlineElementCollector();
+                    tracker.Matches(collector, message);
+                    for (var i = 0; i < collector.Count; i++)
+                        elems.Add(collector[i]);
+                }
+                elems.Sort((l, r) => l.Start.CompareTo(r.Start));
+
+                var foreground = this.FindResource("Brush.FG1") as IBrush;
+                var menu = new ContextMenu() { MaxWidth = 480, MaxHeight = 400 };
+                var seen = new HashSet<string>();
+
+                foreach (var elem in elems)
+                {
+                    if (elem.Type != Models.InlineElementType.Link)
+                        continue;
+
+                    var link = elem.Link;
+                    if (!seen.Add(link))
+                        continue;
+
+                    var matched = message.Substring(elem.Start, elem.Length);
+
+                    var open = new MenuItem();
+                    open.Header = App.Text("IssueLinkCM.OpenInBrowser");
+                    open.Icon = this.CreateMenuIcon("Icons.OpenWith");
+                    open.Click += (_, ev) =>
+                    {
+                        Native.OS.OpenBrowser(link);
+                        ev.Handled = true;
+                    };
+
+                    var copy = new MenuItem();
+                    copy.Header = App.Text("IssueLinkCM.CopyLink");
+                    copy.Icon = this.CreateMenuIcon("Icons.Copy");
+                    copy.Click += async (_, ev) =>
+                    {
+                        await this.CopyTextAsync(link);
+                        ev.Handled = true;
+                    };
+
+                    var icon = this.CreateMenuIcon("Icons.Issue");
+                    icon.Fill = foreground;
+
+                    var item = new MenuItem();
+                    item.Header = new TextBlock()
+                    {
+                        Text = $"{matched}  →  {link}",
+                        VerticalAlignment = VerticalAlignment.Center,
+                        TextTrimming = TextTrimming.CharacterEllipsis
+                    };
+                    item.Icon = icon;
+                    item.Items.Add(open);
+                    item.Items.Add(copy);
+
+                    menu.Items.Add(item);
+                }
+
+                if (menu.Items.Count == 0)
+                {
+                    menu.Items.Add(new MenuItem()
+                    {
+                        Header = App.Text("WorkingCopy.NoIssueLinksFound"),
+                        Icon = this.CreateMenuIcon("Icons.Issue"),
+                        IsEnabled = false
+                    });
+                }
+
+                button.IsEnabled = false;
+                menu.Placement = PlacementMode.TopEdgeAlignedLeft;
+                menu.HorizontalOffset = -2;
+                menu.VerticalOffset = 1;
+                menu.Closed += (_, _) => button.IsEnabled = true;
+                menu.Open(button);
+            }
+
+            e.Handled = true;
+        }
+
         private void DoOpenAIAssistant(ViewModels.Repository repo, AI.Service service, List<Models.Change> changes)
         {
             var owner = TopLevel.GetTopLevel(this) as Window;

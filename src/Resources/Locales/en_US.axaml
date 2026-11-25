@@ -553,6 +553,8 @@
   <x:String x:Key="Text.GitLFS.Remote" xml:space="preserve">Remote:</x:String>
   <x:String x:Key="Text.GitLFS.Track" xml:space="preserve">Track files named '{0}'</x:String>
   <x:String x:Key="Text.GitLFS.TrackByExtension" xml:space="preserve">Track all *{0} files</x:String>
+  <x:String x:Key="Text.GotoLine" xml:space="preserve">Go to Line</x:String>
+  <x:String x:Key="Text.GotoLine.Range" xml:space="preserve">Ln {0} - {1}</x:String>
   <x:String x:Key="Text.GotoRevisionSelector" xml:space="preserve">Select Commit</x:String>
   <x:String x:Key="Text.Histories.AdvancedOptions" xml:space="preserve">Advanced Options</x:String>
   <x:String x:Key="Text.Histories" xml:space="preserve">HISTORY</x:String>
@@ -1186,8 +1188,10 @@ Manually add a branch/tag history filter will disable this feature automatically
   <x:String x:Key="Text.WorkingCopy.DiscardAll" xml:space="preserve">DISCARD ALL</x:String>
   <x:String x:Key="Text.WorkingCopy.FilterChanges" xml:space="preserve">Filter Changes...</x:String>
   <x:String x:Key="Text.WorkingCopy.IncludeUntracked" xml:space="preserve">INCLUDE UNTRACKED FILES</x:String>
+  <x:String x:Key="Text.WorkingCopy.IssueLinks" xml:space="preserve">Issue Links</x:String>
   <x:String x:Key="Text.WorkingCopy.NoCommitHistories" xml:space="preserve">NO RECENT INPUT MESSAGES</x:String>
   <x:String x:Key="Text.WorkingCopy.NoCommitTemplates" xml:space="preserve">NO COMMIT TEMPLATES</x:String>
+  <x:String x:Key="Text.WorkingCopy.NoIssueLinksFound" xml:space="preserve">NO ISSUE LINKS FOUND IN COMMIT MESSAGE</x:String>
   <x:String x:Key="Text.WorkingCopy.NoVerify" xml:space="preserve">No-Verify</x:String>
   <x:String x:Key="Text.WorkingCopy.ResetAuthor" xml:space="preserve">Reset Author</x:String>
   <x:String x:Key="Text.WorkingCopy.SignOff" xml:space="preserve">SignOff</x:String>

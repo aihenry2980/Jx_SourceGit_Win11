@@ -7,6 +7,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.Threading;
 
 using AvaloniaEdit;
 using AvaloniaEdit.Document;
@@ -337,6 +338,7 @@ namespace SourceGit.Views
             TextArea.LeftMargins.Add(new VerticalSeparatorMargin(this));
             TextArea.Caret.PositionChanged += OnTextAreaCaretPositionChanged;
             TextArea.TextView.BackgroundRenderers.Add(new LineBackgroundRenderer(this));
+            TextArea.TextView.BackgroundRenderers.Add(new LineFlashRenderer(this, () => _flashLine));
             TextArea.TextView.ContextRequested += OnTextViewContextRequested;
             TextArea.TextView.VisualLinesChanged += OnTextViewVisualLinesChanged;
             TextArea.TextView.Margin = new Thickness(4, 0);
@@ -382,6 +384,22 @@ namespace SourceGit.Views
             {
                 Models.TextMateHelper.SetThemeByApp(_textMate);
             }
+        }
+
+        public void FlashLine(int line)
+        {
+            _flashLine = line;
+            _flashUntil = Environment.TickCount64 + 800;
+            TextArea.TextView.InvalidateLayer(KnownLayer.Background);
+
+            DispatcherTimer.RunOnce(() =>
+            {
+                if (Environment.TickCount64 >= _flashUntil)
+                {
+                    _flashLine = -1;
+                    TextArea.TextView.InvalidateLayer(KnownLayer.Background);
+                }
+            }, TimeSpan.FromMilliseconds(800));
         }
 
         private void OnTextAreaCaretPositionChanged(object sender, EventArgs e)
@@ -435,6 +453,8 @@ namespace SourceGit.Views
         private int _tabWidth = 4;
         private TextMate.Installation _textMate = null;
         private string _highlight = string.Empty;
+        private int _flashLine = -1;
+        private long _flashUntil;
     }
 
     public partial class Blame : ChromelessWindow
@@ -467,6 +487,37 @@ namespace SourceGit.Views
                     e.Handled = true;
                 }
             }
+        }
+
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+
+            var modifier = OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control;
+            if (e.Key == Key.G &&
+                e.KeyModifiers == modifier &&
+                Editor.BlameData is { IsBinary: false } data)
+            {
+                if (GotoLineBar.IsVisible)
+                    GotoLineBar.Close();
+                else
+                    GotoLineBar.Open(data.LineInfos.Count);
+
+                e.Handled = true;
+            }
+        }
+
+        private void OnGotoLinePreview(object sender, int line)
+        {
+            Editor.TextArea.Caret.Line = line;
+            Editor.ScrollToLine(line);
+            Editor.FlashLine(line);
+        }
+
+        private void OnGotoLineClosed(object sender, EventArgs e)
+        {
+            GotoLineBar.Close();
+            Editor.TextArea.Focus();
         }
     }
 }

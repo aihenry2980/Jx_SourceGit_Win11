@@ -148,5 +148,11 @@
         </TextBlock>
       </Button>
     </StackPanel>
+    <v:GotoLineBar x:Name="GotoLineBar"
+                   IsVisible="False"
+                   VerticalAlignment="Top" HorizontalAlignment="Center"
+                   Margin="0,4,0,0"
+                   Preview="OnGotoLinePreview"
+                   Closed="OnGotoLineClosed"/>
   </Grid>
 </UserControl>

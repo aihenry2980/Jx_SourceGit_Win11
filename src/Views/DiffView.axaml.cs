@@ -24,6 +24,7 @@ namespace SourceGit.Views
                 BtnGotoPrevChange.HotKey = KeyGesture.Parse(isMacOS ? "Cmd+Alt+Up" : "Ctrl+Alt+Up");
                 BtnGotoNextChange.HotKey = KeyGesture.Parse(isMacOS ? "Cmd+Alt+Down" : "Ctrl+Alt+Down");
                 BtnGotoLastChange.HotKey = KeyGesture.Parse(isMacOS ? "Cmd+Alt+End" : "Ctrl+Alt+End");
+                BtnGotoLine.HotKey = KeyGesture.Parse(isMacOS ? "Cmd+G" : "Ctrl+G");
                 BtnOpenExternalMergeTool.HotKey = KeyGesture.Parse(isMacOS ? "Cmd+Shift+D" : "Ctrl+Shift+D");
             }
             else
@@ -32,6 +33,7 @@ namespace SourceGit.Views
                 BtnGotoPrevChange.HotKey = null;
                 BtnGotoNextChange.HotKey = null;
                 BtnGotoLastChange.HotKey = null;
+                BtnGotoLine.HotKey = null;
                 BtnOpenExternalMergeTool.HotKey = null;
             }
         }
@@ -76,6 +78,12 @@ namespace SourceGit.Views
         private void OnGotoLastChange(object _, RoutedEventArgs e)
         {
             this.FindDescendantOfType<ThemedTextDiffPresenter>()?.GotoChange(ViewModels.BlockNavigationDirection.Last);
+            e.Handled = true;
+        }
+
+        private void OnGotoLine(object _, RoutedEventArgs e)
+        {
+            this.FindDescendantOfType<TextDiffView>()?.ShowGotoLine();
             e.Handled = true;
         }
 

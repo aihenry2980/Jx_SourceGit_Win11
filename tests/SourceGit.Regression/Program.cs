@@ -221,6 +221,13 @@ internal static partial class Program
             return;
         }
 
+        if (args is ["--editor-navigation-merge"])
+        {
+            TestEditorNavigationMerge();
+            Console.WriteLine($"PASS: {_checks} editor navigation merge checks. Isolated data and previews: {_root}");
+            return;
+        }
+
         if (args is ["--branch-labels"])
         {
             TestBranchLabels();
@@ -282,6 +289,7 @@ internal static partial class Program
 
         TestNames();
         TestUpstreamDiffIntegration();
+        TestEditorNavigationMerge();
         TestSubmoduleCommitFolding();
         TestFocusBranchMergeIntegration();
         TestMergedRepositoryStatus();

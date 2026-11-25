@@ -3,12 +3,16 @@ using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
 
 using AvaloniaEdit;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.Editing;
+using AvaloniaEdit.Rendering;
 using AvaloniaEdit.TextMate;
 
 namespace SourceGit.Views
@@ -41,6 +45,7 @@ namespace SourceGit.Views
 
             TextArea.LeftMargins[0].Margin = new Thickness(8, 0);
             TextArea.TextView.Margin = new Thickness(4, 0);
+            TextArea.TextView.BackgroundRenderers.Add(new LineFlashRenderer(this, () => _flashLine));
         }
 
         protected override void OnLoaded(RoutedEventArgs e)
@@ -95,6 +100,22 @@ namespace SourceGit.Views
                 Models.TextMateHelper.SetThemeByApp(_textMate);
         }
 
+        public void FlashLine(int line)
+        {
+            _flashLine = line;
+            _flashUntil = Environment.TickCount64 + 800;
+            TextArea.TextView.InvalidateLayer(KnownLayer.Background);
+
+            DispatcherTimer.RunOnce(() =>
+            {
+                if (Environment.TickCount64 >= _flashUntil)
+                {
+                    _flashLine = -1;
+                    TextArea.TextView.InvalidateLayer(KnownLayer.Background);
+                }
+            }, TimeSpan.FromMilliseconds(800));
+        }
+
         private void OnTextViewContextRequested(object sender, ContextRequestedEventArgs e)
         {
             var selected = SelectedText;
@@ -127,6 +148,8 @@ namespace SourceGit.Views
         }
 
         private TextMate.Installation _textMate = null;
+        private int _flashLine = -1;
+        private long _flashUntil;
     }
 
     public partial class RevisionFileContentViewer : UserControl
@@ -134,6 +157,29 @@ namespace SourceGit.Views
         public RevisionFileContentViewer()
         {
             InitializeComponent();
+        }
+
+        protected override void OnDataContextChanged(EventArgs e)
+        {
+            base.OnDataContextChanged(e);
+            FindGotoLineBar()?.Close();
+        }
+
+        protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+        {
+            base.OnPropertyChanged(change);
+
+            if (change.Property == ContentProperty)
+                FindGotoLineBar()?.Close();
+        }
+
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+
+            var modifier = OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control;
+            if (e.Key == Key.G && e.KeyModifiers == modifier && ShowGotoLine())
+                e.Handled = true;
         }
 
         private async void OnOpenBinaryFileViewer(object sender, RoutedEventArgs e)
@@ -144,5 +190,43 @@ namespace SourceGit.Views
             await this.ShowDialogAsync(new ViewModels.BinaryFileViewer(vm.Repository, vm.File, vm.Revision));
             e.Handled = true;
         }
+
+        private bool ShowGotoLine()
+        {
+            var bar = FindGotoLineBar();
+            var editor = FindEditor();
+            if (bar == null || editor?.Document == null)
+                return false;
+
+            if (bar.IsVisible)
+            {
+                bar.Close();
+                return true;
+            }
+
+            bar.Open(editor.Document.LineCount);
+            return true;
+        }
+
+        private void OnGotoLinePreview(object sender, int line)
+        {
+            var editor = FindEditor();
+            if (editor == null)
+                return;
+
+            editor.TextArea.Caret.Line = line;
+            editor.ScrollToLine(line);
+            editor.FlashLine(line);
+        }
+
+        private void OnGotoLineClosed(object sender, EventArgs e)
+        {
+            FindGotoLineBar()?.Close();
+            FindEditor()?.TextArea.Focus();
+        }
+
+        private GotoLineBar FindGotoLineBar() => this.FindDescendantOfType<GotoLineBar>();
+
+        private RevisionTextFileView FindEditor() => this.FindDescendantOfType<RevisionTextFileView>();
     }
 }

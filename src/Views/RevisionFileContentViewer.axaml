@@ -25,10 +25,17 @@
     </DataTemplate>
 
     <DataTemplate DataType="m:RevisionTextFile">
-      <v:RevisionTextFileView FontFamily="{DynamicResource Fonts.Monospace}"
-                              FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=EditorFontSize}"
-                              TabWidth="{Binding Source={x:Static vm:Preferences.Instance}, Path=EditorTabWidth}"
-                              Background="{DynamicResource Brush.Contents}"/>
+      <Grid>
+        <v:RevisionTextFileView FontFamily="{DynamicResource Fonts.Monospace}"
+                                FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=EditorFontSize}"
+                                TabWidth="{Binding Source={x:Static vm:Preferences.Instance}, Path=EditorTabWidth}"
+                                Background="{DynamicResource Brush.Contents}"/>
+        <v:GotoLineBar IsVisible="False"
+                       VerticalAlignment="Top" HorizontalAlignment="Center"
+                       Margin="0,4,0,0"
+                       Preview="OnGotoLinePreview"
+                       Closed="OnGotoLineClosed"/>
+      </Grid>
     </DataTemplate>
 
     <DataTemplate DataType="m:RevisionImageFile">

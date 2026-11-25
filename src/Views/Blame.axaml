@@ -62,7 +62,8 @@
     <!-- Body -->
     <Grid Grid.Row="2">
       <!-- Blame View -->
-      <v:BlameTextEditor HorizontalScrollBarVisibility="Auto"
+      <v:BlameTextEditor x:Name="Editor"
+                         HorizontalScrollBarVisibility="Auto"
                          VerticalScrollBarVisibility="Auto"
                          Margin="4,0,4,4"
                          BorderBrush="{DynamicResource Brush.Border2}"
@@ -93,6 +94,12 @@
 
       <!-- Loading -->
       <v:LoadingIcon Width="48" Height="48" IsVisible="{Binding Data, Converter={x:Static ObjectConverters.IsNull}}"/>
+      <v:GotoLineBar x:Name="GotoLineBar"
+                     IsVisible="False"
+                     VerticalAlignment="Top" HorizontalAlignment="Center"
+                     Margin="0,4,0,0"
+                     Preview="OnGotoLinePreview"
+                     Closed="OnGotoLineClosed"/>
     </Grid>
 
     <!-- Option -->
