@@ -1303,6 +1303,10 @@ namespace SourceGit.ViewModels
 
         public void Close()
         {
+            Interlocked.Increment(ref _refreshSubmodulesVersion);
+            IsSubmodulesLoading = false;
+            IsRecursiveFetchProgressVisible = false;
+            RecursiveFetchTask = null;
             foreach (var task in BackgroundTasks)
                 task.Log.Cancel();
             BackgroundTasks.Clear();
@@ -1696,13 +1700,19 @@ namespace SourceGit.ViewModels
         private async Task FetchAndPruneInBackgroundAsync(List<BackgroundFetchTarget> retryTargets)
         {
             if (Interlocked.CompareExchange(ref _backgroundRecursiveFetchGuard, 1, 0) != 0)
+            {
+                IsRecursiveFetchProgressVisible = true;
                 return;
+            }
 
             IsBackgroundRecursiveFetchRunning = true;
             const string operationName = "Fetch and Prune All Repositories";
             var log = CreateLog(retryTargets == null ? operationName : "Retry Failed Fetches");
             var task = TrackBackgroundTask(log);
+            RecursiveFetchTask = task;
+            task.UpdateRepository(Path.GetFileName(FullPath), FullPath);
             task.Update("Starting fetch and prune...");
+            IsRecursiveFetchProgressVisible = true;
             using var cancellation = new CancellationTokenSource();
             _backgroundRecursiveFetchCancellation = cancellation;
             log.SetCancelAction(cancellation.Cancel);
@@ -1717,6 +1727,16 @@ namespace SourceGit.ViewModels
             var completed = false;
             var totalRepositories = retryTargets?.Count ?? 0;
             var failedTargets = new List<BackgroundFetchTarget>();
+            // Sample off-thread Git output without blocking its readers or flooding the UI dispatcher.
+            string pendingOutput = null;
+            var progressTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+            progressTimer.Tick += (_, _) =>
+            {
+                var output = Interlocked.Exchange(ref pendingOutput, null);
+                if (output != null)
+                    task.UpdateOutput(output);
+            };
+            progressTimer.Start();
 
             void ReportProgress(string detail) => task.Update(detail,
                 succeededRepositories + skippedRepositories + failedRepositories, totalRepositories);
@@ -1731,6 +1751,9 @@ namespace SourceGit.ViewModels
                     if (cancellation.IsCancellationRequested)
                         return;
 
+                    var name = scope.StartsWith("submodule:", StringComparison.Ordinal) ? scope[10..] : Path.GetFileName(repositoryPath);
+                    Interlocked.Exchange(ref pendingOutput, null);
+                    task.UpdateRepository(name, repositoryPath);
                     if (remoteNames.Count == 0)
                     {
                         log.AppendLine($"[skipped] `{FormatFetchScope(scope)}` has no remote.");
@@ -1748,6 +1771,8 @@ namespace SourceGit.ViewModels
                             return;
 
                         fetchAttempted = true;
+                        Interlocked.Exchange(ref pendingOutput, null);
+                        task.UpdateRepository(name, repositoryPath, remoteName);
                         ReportProgress($"{FormatFetchScope(scope)} | {remoteName}");
                         var one = await RunSplitFetchUnitAsync(
                             repositoryPath,
@@ -1761,7 +1786,9 @@ namespace SourceGit.ViewModels
                             false,
                             cancellation.Token,
                             prunedBranches,
-                            prunedBranchKeys);
+                            prunedBranchKeys,
+                            line => Interlocked.Exchange(ref pendingOutput, line));
+                        Interlocked.Exchange(ref pendingOutput, null);
                         succeeded &= one;
                         if (!one)
                             failedRemotes.Add(remoteName);
@@ -1797,6 +1824,7 @@ namespace SourceGit.ViewModels
                     if (!cancellation.IsCancellationRequested)
                     {
                         ReportProgress("Discovering initialized nested submodules...");
+                        task.UpdateOutput(string.Empty);
                         log.AppendLine("=== Discover initialized nested submodules ===");
                         var submodules = await new Commands.QuerySubmodules(FullPath, int.MaxValue, false).GetResultAsync();
                         totalRepositories = submodules.Count + 1;
@@ -1836,6 +1864,7 @@ namespace SourceGit.ViewModels
                 {
                     log.AppendLine("=== Refresh history once ===");
                     ReportProgress("Refreshing history...");
+                    task.UpdateOutput(string.Empty);
                     await MarkFetchedAndMeasureRefreshAsync(true);
                     _watcher?.MarkSubmodulesUpdated();
                 }
@@ -1853,6 +1882,8 @@ namespace SourceGit.ViewModels
             }
             finally
             {
+                progressTimer.Stop();
+                task.UpdateOutput(string.Empty);
                 stopwatch.Stop();
                 ReportProgress($"{succeededRepositories} succeeded, {skippedRepositories} skipped, {failedRepositories} failed.");
                 log.AppendLine($"Summary: {succeededRepositories} succeeded, {skippedRepositories} skipped, {failedRepositories} failed in {stopwatch.Elapsed.TotalSeconds:0.0}s.");
@@ -1866,6 +1897,7 @@ namespace SourceGit.ViewModels
                     _backgroundRecursiveFetchCancellation = null;
                 Interlocked.Exchange(ref _backgroundRecursiveFetchGuard, 0);
                 IsBackgroundRecursiveFetchRunning = false;
+                _ = HideRecursiveFetchProgressLaterAsync(task);
             }
 
             if (cancellation.IsCancellationRequested)
@@ -3637,14 +3669,19 @@ namespace SourceGit.ViewModels
 
         public void RefreshSubmodules(bool force = false)
         {
+            var states = _uiStates;
+            if (states == null)
+                return;
+
             var refreshVersion = Interlocked.Increment(ref _refreshSubmodulesVersion);
             var queryStatus = force || Preferences.Instance.RefreshSubmoduleStatusByDefault;
+            bool IsCurrentRefresh() => refreshVersion == _refreshSubmodulesVersion && ReferenceEquals(states, _uiStates);
 
             if (!MayHaveSubmodules())
             {
                 Dispatcher.UIThread.Post(() =>
                 {
-                    if (refreshVersion != _refreshSubmodulesVersion)
+                    if (!IsCurrentRefresh())
                         return;
                     IsSubmodulesLoading = false;
 
@@ -3660,7 +3697,7 @@ namespace SourceGit.ViewModels
 
             Dispatcher.UIThread.Post(() =>
             {
-                if (refreshVersion == _refreshSubmodulesVersion)
+                if (IsCurrentRefresh())
                     IsSubmodulesLoading = true;
             });
 
@@ -3673,7 +3710,7 @@ namespace SourceGit.ViewModels
 
                     Dispatcher.UIThread.Post(() =>
                     {
-                        if (refreshVersion != _refreshSubmodulesVersion)
+                        if (!IsCurrentRefresh())
                             return;
 
                         bool hasChanged = _submodules.Count != submodules.Count;
@@ -3715,7 +3752,7 @@ namespace SourceGit.ViewModels
                 {
                     Dispatcher.UIThread.Post(() =>
                     {
-                        if (refreshVersion == _refreshSubmodulesVersion)
+                        if (IsCurrentRefresh())
                             IsSubmodulesLoading = false;
                     });
                 }
@@ -4274,7 +4311,8 @@ namespace SourceGit.ViewModels
             bool stopOnError,
             CancellationToken cancellationToken,
             List<PrunedRemoteBranch> prunedBranches = null,
-            HashSet<string> prunedBranchKeys = null)
+            HashSet<string> prunedBranchKeys = null,
+            Action<string> onProgress = null)
         {
             if (string.IsNullOrEmpty(remoteName) || cancellationToken.IsCancellationRequested)
                 return false;
@@ -4286,10 +4324,13 @@ namespace SourceGit.ViewModels
                 RaiseError = stopOnError,
                 CancellationToken = linked.Token,
             };
-            if (prune && prunedBranches != null && prunedBranchKeys != null)
+            if (onProgress != null || (prune && prunedBranches != null && prunedBranchKeys != null))
             {
                 cmd.OnOutputLine = line =>
                 {
+                    onProgress?.Invoke(line);
+                    if (!prune || prunedBranches == null || prunedBranchKeys == null)
+                        return;
                     var remoteRef = TryParsePrunedRemoteBranch(line);
                     if (string.IsNullOrEmpty(remoteRef))
                         return;

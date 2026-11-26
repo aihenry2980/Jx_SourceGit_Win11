@@ -50,7 +50,19 @@ namespace SourceGit.Views
                     button.Width *= 1.1;
             AddHandler(PointerPressedEvent, OnToolbarButtonFeedbackPointerPressed, RoutingStrategies.Tunnel);
             DataContextChanged += (_, _) => RefreshCustomActionSlots();
-            SizeChanged += (_, _) => UpdateToolbarArrangement();
+            SizeChanged += (_, _) =>
+            {
+                UpdateToolbarArrangement();
+                UpdateRecursiveFetchProgressPlacement();
+            };
+        }
+
+        private void OnRecursiveFetchProgressOpened(object sender, EventArgs e) => UpdateRecursiveFetchProgressPlacement();
+
+        private void UpdateRecursiveFetchProgressPlacement()
+        {
+            if (FetchWithSubmodulesButton.TranslatePoint(default, this) is { } position)
+                RecursiveFetchProgressPopup.VerticalOffset = Math.Max(2, Bounds.Height - position.Y - FetchWithSubmodulesButton.Bounds.Height + 2);
         }
 
         private void UpdateToolbarArrangement()

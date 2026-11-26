@@ -1,0 +1,89 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:SourceGit.Converters"
+             xmlns:vm="using:SourceGit.ViewModels"
+             x:Class="SourceGit.Views.RecursiveFetchProgress"
+             x:DataType="vm:Repository">
+  <UserControl.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="FetchProgress.Background" Color="#D9FFFFFF"/>
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="FetchProgress.Background" Color="#D92B2B2B"/>
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+    </ResourceDictionary>
+  </UserControl.Resources>
+  <UserControl.Styles>
+    <Style Selector="Button.fetch_progress_action">
+      <Setter Property="Width" Value="28"/>
+      <Setter Property="Height" Value="28"/>
+      <Setter Property="Padding" Value="7"/>
+      <Setter Property="Margin" Value="2,0,0,0"/>
+    </Style>
+  </UserControl.Styles>
+  <Border x:Name="ProgressSurface" Margin="8" Padding="12" CornerRadius="6"
+          Background="{DynamicResource FetchProgress.Background}"
+          BorderBrush="{DynamicResource Brush.PopupBorder}" BorderThickness="1"
+          BoxShadow="0 4 16 0 #30000000">
+    <Grid RowDefinitions="Auto,22" RowSpacing="6">
+      <StackPanel x:Name="ProgressDetails" Spacing="6"
+                  DataContext="{Binding RecursiveFetchTask}" x:DataType="vm:RepositoryBackgroundTask">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Text="Fetch + Subs" FontWeight="SemiBold" VerticalAlignment="Center"/>
+          <StackPanel Grid.Column="1" Orientation="Horizontal">
+            <Button x:Name="FetchProgressLogButton" Classes="icon_button fetch_progress_action" Click="OnOpenLog"
+                    ToolTip.Tip="Open fetch log" AutomationProperties.Name="Open fetch log">
+              <Path Data="{StaticResource Icons.Logs}"/>
+            </Button>
+            <Button x:Name="FetchProgressCancelButton" Classes="icon_button fetch_progress_action" Click="OnCancel"
+                    IsVisible="{Binding IsRunning}" IsEnabled="{Binding CanCancel}"
+                    ToolTip.Tip="Cancel fetch" AutomationProperties.Name="Cancel fetch">
+              <Path Data="{StaticResource Icons.Clear}"/>
+            </Button>
+            <Button x:Name="FetchProgressCloseButton" Classes="icon_button fetch_progress_action" Click="OnClose"
+                    ToolTip.Tip="Hide progress" AutomationProperties.Name="Hide fetch progress">
+              <Path Data="{StaticResource Icons.Close}"/>
+            </Button>
+          </StackPanel>
+        </Grid>
+        <Border x:Name="FetchProgressNameHighlight" Padding="8,4" MinHeight="36"
+                Background="{DynamicResource Brush.SubtleAccent}"
+                BorderBrush="{DynamicResource Brush.Accent}" BorderThickness="3,0,0,0">
+          <TextBlock x:Name="FetchProgressRepositoryName" Text="{Binding RepositoryName}" FontSize="20" FontWeight="Bold"
+                     Foreground="{DynamicResource Brush.FG1}" VerticalAlignment="Center"
+                     TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding RepositoryName}"/>
+        </Border>
+        <SelectableTextBlock x:Name="FetchProgressRepositoryPath" Text="{Binding RepositoryPath}" FontSize="12"
+                             Height="34" Foreground="{DynamicResource Brush.FG2}" TextWrapping="Wrap" MaxLines="2"
+                             TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding RepositoryPath}"/>
+        <Grid Height="18">
+          <TextBlock Text="{Binding RemoteName, StringFormat='Remote: {0}'}" FontSize="12"
+                     IsVisible="{Binding RemoteName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                     TextTrimming="CharacterEllipsis"/>
+        </Grid>
+        <TextBlock Text="{Binding Detail}" FontSize="12" Foreground="{DynamicResource Brush.FG2}"
+                   TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Detail}"/>
+        <TextBlock x:Name="FetchProgressOutput" Text="{Binding OutputLine}" FontSize="12" Height="18"
+                   TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding OutputLine}"/>
+        <TextBlock Text="{Binding Summary}" FontSize="12" FontWeight="SemiBold"
+                   TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Summary}"/>
+        <ProgressBar x:Name="FetchProgressBar" Height="4" Minimum="0" Maximum="{Binding TotalCount}"
+                     Value="{Binding CompletedCount}" Foreground="{DynamicResource Brush.Accent}">
+          <ProgressBar.IsIndeterminate>
+            <MultiBinding Converter="{x:Static BoolConverters.And}">
+              <Binding Path="IsRunning"/>
+              <Binding Path="IsIndeterminate"/>
+            </MultiBinding>
+          </ProgressBar.IsIndeterminate>
+        </ProgressBar>
+      </StackPanel>
+      <TextBlock x:Name="FetchProgressCountdown" Grid.Row="1" FontSize="12" FontWeight="SemiBold"
+                 HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="{DynamicResource Brush.FG1}"
+                 Text="{Binding RecursiveFetchCloseSeconds, StringFormat='Closing in {0}s'}"
+                 IsVisible="{Binding RecursiveFetchCloseSeconds, Converter={x:Static c:IntConverters.IsGreaterThanZero}}"/>
+    </Grid>
+  </Border>
+</UserControl>

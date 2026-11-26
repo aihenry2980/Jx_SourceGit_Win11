@@ -75,27 +75,16 @@ namespace SourceGit.Views
 
             if (change.Property == TimestampProperty)
             {
-                SetCurrentValue(TextProperty, GetDisplayText());
+                RefreshDisplay();
             }
             else if (change.Property == ShowAsDateTimeProperty)
             {
-                SetCurrentValue(TextProperty, GetDisplayText());
-
-                if (ShowAsDateTime)
-                {
-                    _refreshTimer?.Stop();
-                    HorizontalAlignment = HorizontalAlignment.Left;
-                }
-                else
-                {
-                    _refreshTimer?.Start();
-                    HorizontalAlignment = HorizontalAlignment.Center;
-                }
+                RefreshDisplay();
+                HorizontalAlignment = ShowAsDateTime ? HorizontalAlignment.Left : HorizontalAlignment.Center;
             }
             else if (change.Property == DateTimeFormatProperty || change.Property == Use24HoursProperty || change.Property == UseAuthorTimeProperty)
             {
-                if (ShowAsDateTime)
-                    SetCurrentValue(TextProperty, GetDisplayText());
+                RefreshDisplay();
             }
         }
 
@@ -110,18 +99,25 @@ namespace SourceGit.Views
             {
                 if (o is DispatcherTimer { Tag: CommitTimeTextBlock textBlock })
                 {
-                    var text = textBlock.GetDisplayText();
-                    if (!text.Equals(textBlock.Text, StringComparison.Ordinal))
-                        textBlock.Text = text;
+                    if (textBlock.ShowAsDateTime)
+                        textBlock.UpdateRecency(DateTime.Now);
+                    else
+                        textBlock.RefreshDisplay();
                 }
             };
-            _refreshTimer.IsEnabled = !ShowAsDateTime;
+            RefreshDisplay();
+            // Absolute dates also need to change color when the local day rolls over.
+            _refreshTimer.Start();
         }
 
         protected override void OnUnloaded(RoutedEventArgs e)
         {
-            _refreshTimer.Tag = null;
-            _refreshTimer.IsEnabled = false;
+            if (_refreshTimer != null)
+            {
+                _refreshTimer.Tag = null;
+                _refreshTimer.Stop();
+                _refreshTimer = null;
+            }
 
             base.OnUnloaded(e);
         }
@@ -129,21 +125,48 @@ namespace SourceGit.Views
         protected override void OnDataContextChanged(EventArgs e)
         {
             base.OnDataContextChanged(e);
-            SetCurrentValue(TextProperty, GetDisplayText());
+            RefreshDisplay();
         }
 
-        private string GetDisplayText()
+        private ulong GetTimestamp()
         {
             if (DataContext is not Models.Commit commit)
-                return string.Empty;
+                return 0;
 
             var timestamp = UseAuthorTime ? commit.AuthorTime : commit.CommitterTime;
-            if (timestamp == 0)
-                timestamp = Timestamp;
+            return timestamp == 0 ? Timestamp : timestamp;
+        }
+
+        private void RefreshDisplay()
+        {
+            var now = DateTime.Now;
+            var text = GetDisplayText(now);
+            if (!string.Equals(text, Text, StringComparison.Ordinal))
+                SetCurrentValue(TextProperty, text);
+            UpdateRecency(now);
+        }
+
+        private void UpdateRecency(DateTime now)
+        {
+            var timestamp = GetTimestamp();
+            var date = timestamp > 0 && timestamp <= s_maxTimestamp
+                ? DateTime.UnixEpoch.AddSeconds(timestamp).ToLocalTime().Date
+                : DateTime.MinValue;
+            Classes.Set("time_today", date == now.Date);
+            Classes.Set("time_yesterday", date == now.Date.AddDays(-1));
+        }
+
+        private string GetDisplayText(DateTime now)
+        {
+            if (DataContext is not Models.Commit)
+                return string.Empty;
+
+            var timestamp = GetTimestamp();
+            if (timestamp > s_maxTimestamp)
+                return string.Empty;
             if (ShowAsDateTime)
                 return Models.DateTimeFormat.Format(timestamp);
 
-            var now = DateTime.Now;
             var localTime = DateTime.UnixEpoch.AddSeconds(timestamp).ToLocalTime();
             var span = now - localTime;
             if (span.TotalMinutes < 1)
@@ -184,6 +207,8 @@ namespace SourceGit.Views
 
             return App.Text("Period.YearsAgo", diffYear);
         }
+
+        private static readonly ulong s_maxTimestamp = (ulong)DateTimeOffset.MaxValue.ToUnixTimeSeconds();
 
         private bool _showAsDateTime = true;
         private bool _use24Hours = true;

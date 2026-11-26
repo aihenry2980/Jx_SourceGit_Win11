@@ -29,6 +29,27 @@
     </ResourceDictionary>
   </UserControl.Resources>
   <UserControl.Styles>
+    <Style Selector="TextBlock.history_time">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.History.TimeOlder}"/>
+      <Setter Property="FontWeight" Value="Normal"/>
+    </Style>
+    <Style Selector="TextBlock.history_time.time_today">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.History.TimeToday}"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+    </Style>
+    <Style Selector="TextBlock.history_time.time_yesterday">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.History.TimeYesterday}"/>
+    </Style>
+    <!-- HEAD rows have a pale background even in the dark theme. -->
+    <Style Selector="TextBlock.history_time.head">
+      <Setter Property="Foreground" Value="#808080"/>
+    </Style>
+    <Style Selector="TextBlock.history_time.head.time_today">
+      <Setter Property="Foreground" Value="#10234D"/>
+    </Style>
+    <Style Selector="TextBlock.history_time.head.time_yesterday">
+      <Setter Property="Foreground" Value="#3278CA"/>
+    </Style>
     <Style Selector="v|CommitSubjectPresenter.history_subject">
       <Setter Property="Foreground" Value="{DynamicResource Brush.CommitSubject}"/>
       <Setter Property="HoverForeground" Value="{DynamicResource Brush.History.HoverForeground}"/>
@@ -623,21 +644,12 @@
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate DataType="m:Commit">
                 <Border Padding="8,0" Background="Transparent" ClipToBounds="True">
-                  <v:CommitTimeTextBlock FontFeatures="+tnum"
-                                         FontWeight="{Binding IsCurrentHead, Converter={x:Static c:BoolConverters.IsBoldToFontWeight}}"
+                  <v:CommitTimeTextBlock Classes="history_time" Classes.head="{Binding IsCurrentHead}" FontFeatures="+tnum"
                                          FontSize="{Binding Source={x:Static vm:Preferences.Instance}, Path=HistoriesFontSize, Mode=OneWay}"
                                          UseAuthorTime="{Binding Source={x:Static vm:Preferences.Instance}, Path=ShowAuthorTimeInGraph, Mode=OneWay}"
                                          ShowAsDateTime="{Binding Source={x:Static vm:Preferences.Instance}, Path=!DisplayTimeAsPeriodInHistories, Mode=OneWay}"
                                          DateTimeFormat="{Binding Source={x:Static vm:Preferences.Instance}, Path=DateTimeFormat, Mode=OneWay}"
-                                         Use24Hours="{Binding Source={x:Static vm:Preferences.Instance}, Path=Use24Hours, Mode=OneWay}">
-                    <v:CommitTimeTextBlock.Foreground>
-                      <MultiBinding Converter="{x:Static c:CommitConverters.HistoryForeground}">
-                        <Binding/>
-                        <Binding Source="{x:Static vm:Preferences.Instance}" Path="MainAccentColor"/>
-                        <Binding Source="{DynamicResource Brush.FG1}"/>
-                      </MultiBinding>
-                    </v:CommitTimeTextBlock.Foreground>
-                  </v:CommitTimeTextBlock>
+                                         Use24Hours="{Binding Source={x:Static vm:Preferences.Instance}, Path=Use24Hours, Mode=OneWay}"/>
                 </Border>
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>

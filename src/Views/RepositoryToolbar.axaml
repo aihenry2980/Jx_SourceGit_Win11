@@ -5,6 +5,7 @@
              xmlns:m="using:SourceGit.Models"
              xmlns:c="using:SourceGit.Converters"
              xmlns:vm="using:SourceGit.ViewModels"
+             xmlns:v="using:SourceGit.Views"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="SourceGit.Views.RepositoryToolbar"
              x:DataType="vm:Repository">
@@ -813,5 +814,21 @@
         </StackPanel>
       </Button>
     </StackPanel>
+    <Popup x:Name="RecursiveFetchProgressPopup"
+           PlacementTarget="{Binding #FetchWithSubmodulesButton}"
+           Placement="BottomEdgeAlignedLeft" VerticalOffset="2"
+           Opened="OnRecursiveFetchProgressOpened"
+           ShouldUseOverlayLayer="True" IsLightDismissEnabled="False"
+           MaxWidth="{Binding #ToolbarLayout.Bounds.Width}">
+      <Popup.IsOpen>
+        <MultiBinding Converter="{x:Static BoolConverters.And}">
+          <Binding Path="IsRecursiveFetchProgressVisible"/>
+          <Binding ElementName="FetchWithSubmodulesButton" Path="IsEffectivelyVisible"/>
+          <Binding Path="$parent[Window].IsActive"/>
+        </MultiBinding>
+      </Popup.IsOpen>
+      <v:RecursiveFetchProgress x:Name="FetchProgressPanel" Width="420"
+                                MaxWidth="{Binding #ToolbarLayout.Bounds.Width}"/>
+    </Popup>
   </Grid>
 </UserControl>

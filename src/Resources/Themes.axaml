@@ -29,7 +29,10 @@
       <Color x:Key="Color.History.HeadSelectedBackground">#FFFFDFE2</Color>
       <Color x:Key="Color.History.SelectionBackground">#FFE2E5E8</Color>
       <Color x:Key="Color.History.SelectionBorder">#FF8D959E</Color>
-      <Color x:Key="Color.History.SubjectForeground">#FF707070</Color>
+      <Color x:Key="Color.History.SubjectForeground">#FF808080</Color>
+      <Color x:Key="Color.History.TimeToday">#FF10234D</Color>
+      <Color x:Key="Color.History.TimeYesterday">#FF3278CA</Color>
+      <Color x:Key="Color.History.TimeOlder">#FF808080</Color>
       <Color x:Key="Color.History.HoverForeground">#FF000000</Color>
       <Color x:Key="Color.Diff.EmptyBG">#10000000</Color>
       <Color x:Key="Color.Diff.AddedBG">#80BFE6C1</Color>
@@ -72,7 +75,10 @@
       <Color x:Key="Color.History.SelectionBackground">#FF45494E</Color>
       <Color x:Key="Color.History.SelectionBorder">#FF949CA6</Color>
       <Color x:Key="Color.History.HoverForeground">#FFFFFFFF</Color>
-      <Color x:Key="Color.History.SubjectForeground">#FFA8A8A8</Color>
+      <Color x:Key="Color.History.SubjectForeground">#FFB4B4B4</Color>
+      <Color x:Key="Color.History.TimeToday">#FFDBEAFF</Color>
+      <Color x:Key="Color.History.TimeYesterday">#FF6B9FDB</Color>
+      <Color x:Key="Color.History.TimeOlder">#FF9F9F9F</Color>
       <Color x:Key="Color.Diff.EmptyBG">#3C000000</Color>
       <Color x:Key="Color.Diff.AddedBG">#C03A5C3F</Color>
       <Color x:Key="Color.Diff.DeletedBG">#C0633F3E</Color>
@@ -108,6 +114,9 @@
   <SolidColorBrush x:Key="Brush.FG1" Color="{DynamicResource Color.FG1}"/>
   <SolidColorBrush x:Key="Brush.FG2" Color="{DynamicResource Color.FG2}"/>
   <SolidColorBrush x:Key="Brush.CommitSubject" Color="{DynamicResource Color.History.SubjectForeground}"/>
+  <SolidColorBrush x:Key="Brush.History.TimeToday" Color="{DynamicResource Color.History.TimeToday}"/>
+  <SolidColorBrush x:Key="Brush.History.TimeYesterday" Color="{DynamicResource Color.History.TimeYesterday}"/>
+  <SolidColorBrush x:Key="Brush.History.TimeOlder" Color="{DynamicResource Color.History.TimeOlder}"/>
   <SolidColorBrush x:Key="Brush.Hover" Color="{DynamicResource Color.Hover}"/>
   <SolidColorBrush x:Key="Brush.History.HeadForeground" Color="{DynamicResource Color.History.HeadForeground}"/>
   <SolidColorBrush x:Key="Brush.History.HeadBackground" Color="{DynamicResource Color.History.HeadBackground}"/>

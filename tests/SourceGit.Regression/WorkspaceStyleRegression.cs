@@ -55,8 +55,9 @@ internal static partial class Program
                 PumpFor(200);
                 var subject = (ISolidColorBrush)Application.Current.FindResource("Brush.CommitSubject");
                 var contents = (ISolidColorBrush)view.FindResource("Brush.Contents");
-                Check(subject.Opacity == 1 && WorkspaceContrast(subject.Color, contents.Color) >= 4.5,
-                    "Ordinary history text has readable contrast without reducing opacity: " + theme);
+                Check(subject.Opacity == 1 && WorkspaceContrast(subject.Color, contents.Color) >= 3.5 &&
+                    subject.Color.R == subject.Color.G && subject.Color.G == subject.Color.B,
+                    "Secondary history messages use lighter neutral gray without reducing opacity: " + theme);
                 var head = new SourceGit.Models.Commit { Decorators = [new SourceGit.Models.Decorator { Type = SourceGit.Models.DecoratorType.CurrentBranchHead }] };
                 var headText = (ISolidColorBrush)SourceGit.Converters.CommitConverters.SubjectToBrush.Convert(head, typeof(IBrush), null, null);
                 foreach (var isSelected in new[] { false, true })

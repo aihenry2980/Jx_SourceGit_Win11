@@ -1,6 +1,13 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
+set "PACKAGE_SOURCE=1"
+:parse_args
+if "%~1"=="" goto args_parsed
 if /I "%~1"=="--non-interactive" set "NON_INTERACTIVE=1"
+if /I "%~1"=="--no-source" set "PACKAGE_SOURCE=0"
+shift /1
+goto parse_args
+:args_parsed
 
 set "SCRIPT_DIR=%~dp0"
 pushd "%SCRIPT_DIR%\..\.." >nul 2>&1
@@ -113,13 +120,17 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo [INFO] Packaging source with submodules...
-powershell -NoProfile -ExecutionPolicy Bypass -File build\scripts\package.source.ps1
-if errorlevel 1 (
-  echo [ERROR] Source packaging failed.
-  popd
-  if not defined NON_INTERACTIVE pause
-  exit /b 1
+if "!PACKAGE_SOURCE!"=="1" (
+  echo [INFO] Packaging source with submodules...
+  powershell -NoProfile -ExecutionPolicy Bypass -File build\scripts\package.source.ps1
+  if errorlevel 1 (
+    echo [ERROR] Source packaging failed.
+    popd
+    if not defined NON_INTERACTIVE pause
+    exit /b 1
+  )
+) else (
+  echo [INFO] Skipping source package --no-source.
 )
 
 if exist "!ZIP_FILE!" (

@@ -11,6 +11,10 @@ namespace SourceGit.ViewModels
     {
         public CommandLog Log { get; }
         public string Detail => _detail;
+        public string RepositoryName => _repositoryName;
+        public string RepositoryPath => _repositoryPath;
+        public string RemoteName => _remoteName;
+        public string OutputLine => _outputLine;
         public int CompletedCount => _completedCount;
         public int TotalCount => Math.Max(1, _totalCount);
         public bool IsIndeterminate => _totalCount == 0;
@@ -52,6 +56,16 @@ namespace SourceGit.ViewModels
             OnPropertyChanged(nameof(CanRetry));
         }
 
+        public void UpdateRepository(string name, string path, string remote = "")
+        {
+            SetProperty(ref _repositoryName, name, nameof(RepositoryName));
+            SetProperty(ref _repositoryPath, path, nameof(RepositoryPath));
+            SetProperty(ref _remoteName, remote, nameof(RemoteName));
+            UpdateOutput(string.Empty);
+        }
+
+        public void UpdateOutput(string line) => SetProperty(ref _outputLine, line, nameof(OutputLine));
+
         public async Task RetryAsync()
         {
             if (!CanRetry)
@@ -82,6 +96,10 @@ namespace SourceGit.ViewModels
         }
 
         private string _detail = string.Empty;
+        private string _repositoryName = string.Empty;
+        private string _repositoryPath = string.Empty;
+        private string _remoteName = string.Empty;
+        private string _outputLine = string.Empty;
         private int _completedCount;
         private int _totalCount;
         private Func<Task> _retry;

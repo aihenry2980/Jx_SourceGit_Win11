@@ -14,6 +14,50 @@ namespace SourceGit.ViewModels
 
         public AvaloniaList<RepositoryBackgroundTask> BackgroundTasks { get; } = [];
 
+        public RepositoryBackgroundTask RecursiveFetchTask
+        {
+            get => _recursiveFetchTask;
+            private set
+            {
+                if (SetProperty(ref _recursiveFetchTask, value))
+                    RecursiveFetchCloseSeconds = 0;
+            }
+        }
+
+        public int RecursiveFetchCloseSeconds
+        {
+            get => _recursiveFetchCloseSeconds;
+            private set => SetProperty(ref _recursiveFetchCloseSeconds, value);
+        }
+
+        public bool IsRecursiveFetchProgressVisible
+        {
+            get => _isRecursiveFetchProgressVisible;
+            set => SetProperty(ref _isRecursiveFetchProgressVisible, value);
+        }
+
+        private async Task HideRecursiveFetchProgressLaterAsync(RepositoryBackgroundTask task)
+        {
+            for (var seconds = 5; seconds >= 0; seconds--)
+            {
+                if (seconds < 5)
+                    await Task.Delay(TimeSpan.FromSeconds(1));
+
+                var active = await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    if (!ReferenceEquals(RecursiveFetchTask, task) || task.IsRunning)
+                        return false;
+
+                    RecursiveFetchCloseSeconds = seconds;
+                    if (seconds == 0)
+                        IsRecursiveFetchProgressVisible = false;
+                    return true;
+                });
+                if (!active)
+                    return;
+            }
+        }
+
         private RepositoryBackgroundTask TrackBackgroundTask(CommandLog log)
         {
             var task = new RepositoryBackgroundTask(log);
@@ -52,5 +96,9 @@ namespace SourceGit.ViewModels
             await task.RetryAsync();
             DismissBackgroundTask(task);
         }
+
+        private RepositoryBackgroundTask _recursiveFetchTask;
+        private bool _isRecursiveFetchProgressVisible;
+        private int _recursiveFetchCloseSeconds;
     }
 }

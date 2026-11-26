@@ -18,8 +18,60 @@ internal static partial class Program
     private static void TestHistoryUiPolish()
     {
         TestSubmoduleExtensionTags();
+        TestCommitTimeRecency();
         TestHistorySelectionAndHover();
         TestCheckoutWithoutSubmodules();
+    }
+
+    private static void TestCommitTimeRecency()
+    {
+        static ulong Timestamp(DateTime value) => (ulong)new DateTimeOffset(value).ToUnixTimeSeconds();
+        var today = DateTime.Today;
+        var update = typeof(CommitTimeTextBlock).GetMethod("UpdateRecency", BindingFlags.NonPublic | BindingFlags.Instance);
+        var control = new CommitTimeTextBlock();
+        foreach (var offset in new[] { -2, -1, 0, 1 })
+        foreach (var hour in new[] { 0, 23 })
+        {
+            var timestamp = Timestamp(today.AddDays(offset).AddHours(hour).AddMinutes(1));
+            control.DataContext = new Commit { CommitterTime = timestamp };
+            update.Invoke(control, [today.AddHours(12)]);
+            Check(control.Classes.Contains("time_today") == (offset == 0) &&
+                control.Classes.Contains("time_yesterday") == (offset == -1),
+                $"Time colors follow local calendar days, not elapsed hours: day={offset}, hour={hour}");
+        }
+        control.DataContext = new Commit
+        {
+            CommitterTime = Timestamp(today.AddHours(12)),
+            AuthorTime = Timestamp(today.AddDays(-5).AddHours(12)),
+        };
+        control.ShowAsDateTime = false;
+        var committerText = control.Text;
+        control.UseAuthorTime = true;
+        Check(!control.Classes.Contains("time_today") && !control.Classes.Contains("time_yesterday") && control.Text != committerText,
+            "Switching to author time refreshes both color and relative text immediately");
+        control.UseAuthorTime = false;
+        update.Invoke(control, [today.AddDays(1)]);
+        Check(control.Classes.Contains("time_yesterday") && !control.Classes.Contains("time_today"), "Midnight changes today's time color to yesterday's");
+        update.Invoke(control, [today.AddDays(2)]);
+        Check(!control.Classes.Contains("time_yesterday") && !control.Classes.Contains("time_today"), "The following midnight clears yesterday's blue");
+        control.DataContext = new Commit();
+        control.Timestamp = Timestamp(today.AddDays(-1).AddHours(12));
+        Check(control.Classes.Contains("time_yesterday"), "Timestamp fallback uses the same calendar color rules");
+        control.Timestamp = 0;
+        Check(!control.Classes.Contains("time_today") && !control.Classes.Contains("time_yesterday"), "Missing timestamps stay neutral");
+        control.Timestamp = ulong.MaxValue;
+        Check(control.Text == string.Empty && !control.Classes.Contains("time_today") && !control.Classes.Contains("time_yesterday"), "Invalid timestamps do not crash the time control");
+        control.DataContext = null;
+        Check(control.Text == string.Empty, "Recycled empty rows clear date text and recency");
+        control.ShowAsDateTime = true;
+        var window = new Window { Content = control, Width = 300, Height = 100 };
+        window.Show();
+        PumpFor(30);
+        var timer = (Avalonia.Threading.DispatcherTimer)typeof(CommitTimeTextBlock).GetField("_refreshTimer", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(control);
+        Check(timer.IsEnabled, "Absolute date mode also checks for midnight color rollover");
+        window.Close();
+        PumpFor(30);
+        Check(!timer.IsEnabled && timer.Tag == null, "Unloaded time controls stop their timer and release its target");
     }
 
     private static void TestSubmoduleExtensionTags()
@@ -83,6 +135,13 @@ internal static partial class Program
         var repo = Open(path);
         WaitUntil(() => repo.Histories.Commits.Count == 8 && !repo.Histories.IsLoading, "Polish history did not load");
         var head = repo.Histories.Commits[0];
+        var today = DateTime.Today;
+        for (var i = 0; i < repo.Histories.Commits.Count; i++)
+        {
+            var commit = repo.Histories.Commits[i];
+            commit.CommitterTime = (ulong)new DateTimeOffset(today.AddDays(-(i % 3)).AddHours(12)).ToUnixTimeSeconds();
+            commit.AuthorTime = (ulong)new DateTimeOffset(today.AddDays(-5).AddHours(12)).ToUnixTimeSeconds();
+        }
         head.IsMerged = false;
         head.HasSubmodulePointerChange = true;
         head.SubmoduleUpdateBadges = [new("auth", 0xFF0F766E), new("core", 0xFF6D28D9), new("network", 0xFF1D4ED8)];
@@ -90,6 +149,8 @@ internal static partial class Program
         var previousAccent = prefs.MainAccentColor;
         var previousZoom = prefs.HistoriesZoom;
         var previousTheme = Application.Current.RequestedThemeVariant;
+        var previousAuthorTime = prefs.ShowAuthorTimeInGraph;
+        var previousRelativeTime = prefs.DisplayTimeAsPeriodInHistories;
         var view = new Histories { DataContext = repo.Histories };
         var window = new Window { Content = view, Width = 1500, Height = 900 };
         static Color ColorOf(IBrush brush) => ((ISolidColorBrush)brush).Color;
@@ -112,6 +173,7 @@ internal static partial class Program
         try
         {
             window.Show();
+            prefs.ShowAuthorTimeInGraph = false;
             repo.Histories.SelectedCommits = [repo.Histories.Commits[1]];
             foreach (var theme in new[] { ThemeVariant.Light, ThemeVariant.Dark })
             foreach (var zoom in new[] { 1.0, 2.0 })
@@ -156,7 +218,7 @@ internal static partial class Program
                 object[] Inlines() => ((IEnumerable)field.GetValue(message)).Cast<object>().ToArray();
                 var inlines = Inlines();
                 var idleColor = ColorOf(message.Foreground);
-                var expectedIdle = theme == ThemeVariant.Light ? Color.Parse("#707070") : Color.Parse("#A8A8A8");
+                var expectedIdle = theme == ThemeVariant.Light ? Color.Parse("#808080") : Color.Parse("#B4B4B4");
                 Check(idleColor == expectedIdle && inlines.Any(i => ColorOf((IBrush)i.GetType().GetProperty("RenderBrush").GetValue(i)) == idleColor),
                     "Ordinary commit messages paint neutral gray before hover, independently of general text colors");
                 var texts = inlines.Select(i => i.GetType().GetProperty("Text").GetValue(i)).ToArray();
@@ -190,9 +252,48 @@ internal static partial class Program
                 var headInlines = ((IEnumerable)field.GetValue(headMessage)).Cast<object>().ToArray();
                 Check(headMessage.IsRowHovered && headInlines.All(i => ColorOf((IBrush)i.GetType().GetProperty("RenderBrush").GetValue(i)) == Colors.Black) &&
                     BackgroundPixel(Row(0)) == headBeforeHover, "HEAD hover paints black message text in both themes without changing its pale background");
+                foreach (var relative in new[] { false, true })
+                {
+                    prefs.DisplayTimeAsPeriodInHistories = relative;
+                    PumpFor(30);
+                    for (var i = 0; i < 4; i++)
+                    {
+                        var time = Row(i).GetVisualDescendants().OfType<CommitTimeTextBlock>().Single();
+                        var key = i % 3 == 0 ? "Brush.History.TimeToday" : i % 3 == 1 ? "Brush.History.TimeYesterday" : "Brush.History.TimeOlder";
+                        var expected = i == 0 ? Color.Parse("#10234D") : ColorOf((IBrush)view.FindResource(key));
+                        Check(ColorOf(time.Foreground) == expected,
+                            $"Graph date column paints today blue, yesterday lighter blue and older gray: row={i}, theme={theme}, relative={relative}, actual={ColorOf(time.Foreground)}, expected={expected}");
+                        Check(time.FontWeight == (i % 3 == 0 ? FontWeight.Bold : FontWeight.Normal),
+                            "Today is additionally bold, while yesterday and older dates remain regular weight");
+                    }
+                    var todayColor = ColorOf((IBrush)view.FindResource("Brush.History.TimeToday"));
+                    var yesterdayColor = ColorOf((IBrush)view.FindResource("Brush.History.TimeYesterday"));
+                    Check(WorkspaceContrast(todayColor, yesterdayColor) >= 2.0,
+                        "Today and yesterday retain clearly separated luminance in both themes");
+                    prefs.ShowAuthorTimeInGraph = true;
+                    PumpFor(30);
+                    var authorTime = Row(1).GetVisualDescendants().OfType<CommitTimeTextBlock>().Single();
+                    Check(ColorOf(authorTime.Foreground) == ColorOf((IBrush)view.FindResource("Brush.History.TimeOlder")), "Author-time selection also updates actual graph date colors");
+                    prefs.ShowAuthorTimeInGraph = false;
+                    PumpFor(30);
+                    Check(Row(3).GetVisualDescendants().OfType<CommitTimeTextBlock>().Single().FontWeight == FontWeight.Bold,
+                        "Switching back from old author dates restores today's bold emphasis");
+                }
+                window.MouseMove(new Point(4, 4));
+                PumpFor(30);
+                CaptureUxFrame(window, $"history-time-recency-{theme}-{zoom}");
             }
         }
-        finally { window.Close(); repo.Close(); prefs.MainAccentColor = previousAccent; prefs.HistoriesZoom = previousZoom; Application.Current.RequestedThemeVariant = previousTheme; }
+        finally
+        {
+            window.Close();
+            repo.Close();
+            prefs.MainAccentColor = previousAccent;
+            prefs.HistoriesZoom = previousZoom;
+            prefs.ShowAuthorTimeInGraph = previousAuthorTime;
+            prefs.DisplayTimeAsPeriodInHistories = previousRelativeTime;
+            Application.Current.RequestedThemeVariant = previousTheme;
+        }
     }
 
     private static void TestCheckoutWithoutSubmodules()
