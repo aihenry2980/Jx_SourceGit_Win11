@@ -228,6 +228,14 @@ internal static partial class Program
             return;
         }
 
+        if (args is ["--november-upstream-merge"])
+        {
+            TestNovemberUpstreamMerge();
+            TestPatchMergeIntegration();
+            Console.WriteLine($"PASS: {_checks} November upstream merge checks. Isolated data and previews: {_root}");
+            return;
+        }
+
         if (args is ["--branch-labels"])
         {
             TestBranchLabels();
@@ -294,6 +302,7 @@ internal static partial class Program
         TestFocusBranchMergeIntegration();
         TestMergedRepositoryStatus();
         TestPatchMergeIntegration();
+        TestNovemberUpstreamMerge();
         TestWelcomeUpstreamMerge();
         TestMergeLifecycle();
         TestRuntimeCrashes();

@@ -387,24 +387,33 @@ namespace SourceGit.ViewModels
                 return;
 
             IsStaging = true;
-            _selectedUnstaged = new(next != null ? new List<Models.Change> { next } : null);
 
-            using var lockWatcher = _repo.LockWatcher();
-
-            var log = _repo.CreateLog("Stage");
-            var pathSpecFile = Path.GetTempFileName();
-            await using (var writer = new StreamWriter(pathSpecFile))
+            try
             {
-                foreach (var c in canStaged)
-                    await writer.WriteLineAsync(c.Path);
+                using var lockWatcher = _repo.LockWatcher();
+
+                var log = _repo.CreateLog("Stage");
+                var pathSpecFile = Path.GetTempFileName();
+                await using (var writer = new StreamWriter(pathSpecFile))
+                {
+                    foreach (var c in canStaged)
+                        await writer.WriteLineAsync(c.Path);
+                }
+
+                var succ = await new Commands.Add(_repo.FullPath, pathSpecFile).Use(log).ExecAsync();
+                File.Delete(pathSpecFile);
+                log.Complete(succ);
+
+                if (succ)
+                {
+                    _selectedUnstaged = new(next != null ? new List<Models.Change> { next } : null);
+                    _repo.MarkWorkingCopyDirtyManually();
+                }
             }
-
-            await new Commands.Add(_repo.FullPath, pathSpecFile).Use(log).ExecAsync();
-            File.Delete(pathSpecFile);
-            log.Complete();
-
-            _repo.MarkWorkingCopyDirtyManually();
-            IsStaging = false;
+            finally
+            {
+                IsStaging = false;
+            }
         }
 
         public async Task UnstageChangesAsync(List<Models.Change> changes, Models.Change next)
@@ -414,36 +423,46 @@ namespace SourceGit.ViewModels
                 return;
 
             IsUnstaging = true;
-            _selectedStaged = new(next != null ? new List<Models.Change> { next } : null);
 
-            using var lockWatcher = _repo.LockWatcher();
+            try
+            {
+                using var lockWatcher = _repo.LockWatcher();
 
-            var log = _repo.CreateLog("Unstage");
-            if (_useAmend)
-            {
-                log.AppendLine("$ git update-index --index-info ");
-                await new Commands.UpdateIndexInfo(_repo.FullPath, changes).ExecAsync();
-            }
-            else
-            {
-                var pathSpecFile = Path.GetTempFileName();
-                await using (var writer = new StreamWriter(pathSpecFile))
+                var log = _repo.CreateLog("Unstage");
+                var succ = false;
+                if (_useAmend)
                 {
-                    foreach (var c in changes)
-                    {
-                        await writer.WriteLineAsync(c.Path);
-                        if (c.Index == Models.ChangeState.Renamed)
-                            await writer.WriteLineAsync(c.OriginalPath);
-                    }
+                    log.AppendLine("$ git update-index --index-info ");
+                    succ = await new Commands.UpdateIndexInfo(_repo.FullPath, changes).ExecAsync();
                 }
+                else
+                {
+                    var pathSpecFile = Path.GetTempFileName();
+                    await using (var writer = new StreamWriter(pathSpecFile))
+                    {
+                        foreach (var c in changes)
+                        {
+                            await writer.WriteLineAsync(c.Path);
+                            if (c.Index == Models.ChangeState.Renamed)
+                                await writer.WriteLineAsync(c.OriginalPath);
+                        }
+                    }
 
-                await new Commands.Reset(_repo.FullPath, pathSpecFile).Use(log).ExecAsync();
-                File.Delete(pathSpecFile);
+                    succ = await new Commands.Reset(_repo.FullPath, pathSpecFile).Use(log).ExecAsync();
+                    File.Delete(pathSpecFile);
+                }
+                log.Complete(succ);
+
+                if (succ)
+                {
+                    _selectedStaged = new(next != null ? new List<Models.Change> { next } : null);
+                    _repo.MarkWorkingCopyDirtyManually();
+                }
             }
-            log.Complete();
-
-            _repo.MarkWorkingCopyDirtyManually();
-            IsUnstaging = false;
+            finally
+            {
+                IsUnstaging = false;
+            }
         }
 
         public async Task SaveChangesToPatchAsync(List<Models.Change> changes, bool isUnstaged, string saveTo)
@@ -898,10 +917,7 @@ namespace SourceGit.ViewModels
             if (LoadCommitMessageFromFile(Path.Combine(_repo.GitDir, "rebase-merge", "message")))
                 return;
 
-            if (rebasing.StoppedAt == null)
-                return;
-
-            var stoppedAt = rebasing.StoppedAt.SHA;
+            var stoppedAt = rebasing.StoppedAt?.SHA ?? "HEAD";
             _ = Task.Run(async () =>
             {
                 var message = await new Commands.QueryCommitFullMessage(_repo.FullPath, stoppedAt)
@@ -909,7 +925,7 @@ namespace SourceGit.ViewModels
                     .ConfigureAwait(false);
                 Dispatcher.UIThread.Post(() =>
                 {
-                    if (_inProgressContext is RebaseInProgress current && current.StoppedAt?.SHA == stoppedAt)
+                    if (version == _inProgressRefreshVersion && ReferenceEquals(_inProgressContext, rebasing))
                         SetAutoLoadedCommitMessage(message);
                 });
             });

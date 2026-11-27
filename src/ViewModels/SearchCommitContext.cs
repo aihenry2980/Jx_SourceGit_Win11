@@ -89,6 +89,11 @@ namespace SourceGit.ViewModels
             Suggestions = null;
         }
 
+        public void StopSearch()
+        {
+            _repo.IsSearchingCommits = false;
+        }
+
         public void StartSearch()
         {
             Results = null;

@@ -10,12 +10,35 @@
              x:Class="SourceGit.Views.CommitSearchView"
              x:DataType="vm:SearchCommitContext">
   <Grid RowDefinitions="Auto,Auto,Auto,*">
-    <TextBlock Grid.Row="0"
-               Margin="0,6,0,8"
-               HorizontalAlignment="Center"
-               Text="{DynamicResource Text.Repository.Search}"
-               Foreground="{DynamicResource Brush.FG2}"
-               FontWeight="Bold"/>
+    <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto">
+      <Button Grid.Column="0"
+              Classes="icon_button"
+              Focusable="False"
+              Width="24" Height="24"
+              Margin="0,4,0,0"
+              Command="{Binding StopSearch}">
+        <ToolTip.Tip>
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <TextBlock Text="{DynamicResource Text.Repository.Search.Back}" VerticalAlignment="Center"/>
+            <TextBlock Margin="16,0,0,0"
+                       Text="{OnPlatform Ctrl+Shift+F, macOS=⌘+⇧+F}"
+                       FontSize="11"
+                       Foreground="{DynamicResource MenuFlyoutItemKeyboardAcceleratorTextForeground}"
+                       VerticalAlignment="Center"/>
+          </StackPanel>
+        </ToolTip.Tip>
+        <Path Width="14" Height="14"
+              Fill="{DynamicResource Brush.FG1}"
+              Data="{StaticResource Icons.ArrowLeft}"/>
+      </Button>
+      <TextBlock Grid.Column="1"
+                 Margin="0,6,0,8"
+                 HorizontalAlignment="Center"
+                 Text="{DynamicResource Text.Repository.Search}"
+                 Foreground="{DynamicResource Brush.FG2}"
+                 FontWeight="Bold"/>
+      <Border Grid.Column="2" Width="24"/>
+    </Grid>
 
     <!-- Search Input Box -->
     <Grid Grid.Row="1" Height="26">

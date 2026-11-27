@@ -9,7 +9,7 @@ namespace SourceGit.Commands
         {
             WorkingDirectory = repo;
             Context = repo;
-            Args = $"show --no-show-signature --decorate=full --format=%H%n%P%n%D%n%aN±%aE%n%at%n%cN±%cE%n%ct%n%s -s {sha}";
+            Args = $"show --no-show-signature --decorate=full --format=%H%n%P%n%D%n%aN±%aE%n%at%n%cN±%cE%n%ct%n%s -s {sha}^{{commit}}";
         }
 
         public Models.Commit GetResult()
@@ -39,10 +39,13 @@ namespace SourceGit.Commands
                 commit.Parents.AddRange(lines[1].Split(' ', StringSplitOptions.RemoveEmptyEntries));
             if (!string.IsNullOrEmpty(lines[2]))
                 commit.ParseDecorators(lines[2]);
+            if (!ulong.TryParse(lines[4], out var authorTime) || !ulong.TryParse(lines[6], out var committerTime))
+                return null;
+
             commit.Author = Models.User.FindOrAdd(lines[3]);
-            commit.AuthorTime = ulong.Parse(lines[4]);
+            commit.AuthorTime = authorTime;
             commit.Committer = Models.User.FindOrAdd(lines[5]);
-            commit.CommitterTime = ulong.Parse(lines[6]);
+            commit.CommitterTime = committerTime;
             commit.Subject = lines[7];
 
             return commit;

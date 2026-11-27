@@ -123,7 +123,7 @@ namespace SourceGit.ViewModels
             var stoppedSHAPath = Path.Combine(repo.GitDir, "rebase-merge", "stopped-sha");
             var stoppedSHA = File.Exists(stoppedSHAPath)
                 ? File.ReadAllText(stoppedSHAPath).Trim()
-                : await new Commands.QueryRevisionByRefName(repo.FullPath, headName).GetResultAsync();
+                : await new Commands.QueryRevisionByRefName(repo.FullPath, "HEAD").GetResultAsync();
 
             Models.Commit stoppedAt = null;
             if (!string.IsNullOrEmpty(stoppedSHA))

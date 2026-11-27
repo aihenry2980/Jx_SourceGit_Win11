@@ -1,13 +1,10 @@
 #!/usr/bin/env bash
 
-set -e
-set -o
-set -u
-set pipefail
+set -euo pipefail
 
 # ICU versions to support (Debian has no virtual package, must list all)
-# Format: space-separated version numbers
-ICU_VERSIONS="78 77 76 74 72 71 70 69 68 67 66 65 63"
+# Format: array of version numbers
+ICU_VERSIONS=( 78 77 76 74 72 71 70 69 68 67 66 65 63 )
 
 arch=
 appimage_arch=
@@ -31,17 +28,14 @@ APPIMAGETOOL_URL=https://github.com/AppImage/appimagetool/releases/download/cont
 cd build
 
 if [[ ! -f "appimagetool" ]]; then
-    curl -o appimagetool -L "$APPIMAGETOOL_URL"
+    curl --fail -o appimagetool -L "$APPIMAGETOOL_URL"
     chmod +x appimagetool
 fi
 
-rm -f SourceGit/*.dbg
-rm -f SourceGit/*.pdb
+rm -f SourceGit/{*.dbg,*.pdb}
 chmod 755 -R SourceGit
 
-mkdir -p SourceGit.AppDir/opt
-mkdir -p SourceGit.AppDir/usr/share/metainfo
-mkdir -p SourceGit.AppDir/usr/share/applications
+mkdir -p SourceGit.AppDir/opt SourceGit.AppDir/usr/share/{metainfo,applications}
 
 cp -r SourceGit SourceGit.AppDir/opt/sourcegit
 desktop-file-install resources/_common/applications/sourcegit.desktop --dir SourceGit.AppDir/usr/share/applications \
@@ -56,10 +50,7 @@ ARCH="$appimage_arch" ./appimagetool -v \
     -u "gh-releases-zsync|sourcegit-org|sourcegit|latest|sourcegit-*.linux.$arch.AppImage.zsync" \
     SourceGit.AppDir "sourcegit-$VERSION.linux.$arch.AppImage"
 
-mkdir -p resources/deb/opt/sourcegit/
-mkdir -p resources/deb/usr/bin
-mkdir -p resources/deb/usr/share/applications
-mkdir -p resources/deb/usr/share/icons
+mkdir -p resources/deb/opt/sourcegit resources/deb/usr/bin resources/deb/usr/share/{applications,icons}
 cp -f SourceGit/* resources/deb/opt/sourcegit
 ln -rsf resources/deb/opt/sourcegit/sourcegit resources/deb/usr/bin
 cp -r resources/_common/applications resources/deb/usr/share
@@ -71,8 +62,8 @@ installed_size=$(du -sk resources/deb | cut -f1)
 # Generate ICU dependencies string for Debian
 # Debian lacks libicu virtual package, must list all versions with OR operator
 icu_deps="libicu"
-for v in $ICU_VERSIONS; do
-    icu_deps="$icu_deps | libicu$v"
+for v in "${ICU_VERSIONS[@]}"; do
+    icu_deps+=" | libicu$v"
 done
 
 # Update the control file (replace placeholder, not whole Depends line)

@@ -52,13 +52,15 @@ internal static partial class Program
         var itemsField = typeof(CommitRefsPresenter).GetField("_items", BindingFlags.Instance | BindingFlags.NonPublic);
         try
         {
+            using var watcher = repo.LockWatcher();
             prefs.CompactTrackingBranches = true;
             prefs.HistoriesZoom = 1;
             window.Show();
             WaitUntil(() => repo.Histories.Commits.Count == 16, "Live wrap history did not load");
             settings.GetLogicalDescendants().OfType<TabControl>().Single().SelectedIndex = 2;
             settings.Show();
-            WaitUntil(() => !repo.Histories.IsLoading, "Initial history refresh did not settle");
+            Wait((Task)Invoke(repo, "RefreshCommitsAsync", false));
+            WaitUntil(() => !repo.Histories.IsLoading && !repo.Histories.IsBackfilling, "Initial history refresh and backfill did not settle");
             PumpFor(500);
             var slider = settings.FindControl<Slider>("BranchNameWrapLengthSlider");
             var counter = settings.FindControl<TextBlock>("BranchNameWrapLengthValue");

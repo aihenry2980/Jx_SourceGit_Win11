@@ -42,7 +42,10 @@ namespace SourceGit.Views
             }
             else if (e.Key == Key.Escape)
             {
-                ctx.ClearSuggestions();
+                if (ctx.Suggestions is { Count: > 0 })
+                    ctx.ClearSuggestions();
+                else
+                    ctx.StopSearch();
                 e.Handled = true;
             }
         }
