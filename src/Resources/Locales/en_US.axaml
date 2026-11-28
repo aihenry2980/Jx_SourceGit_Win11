@@ -876,7 +876,7 @@
   <x:String x:Key="Text.Repository.BranchSort.ByCommitterDate" xml:space="preserve">By Committer Date</x:String>
   <x:String x:Key="Text.Repository.BranchSort.ByName" xml:space="preserve">By Name</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.Empty" xml:space="preserve">No branches are shown by the preset branch filter.</x:String>
-  <x:String x:Key="Text.Repository.BranchesVisibility.PresetHeader" xml:space="preserve">PRESET BRANCH FILTER</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.PresetHeader" xml:space="preserve">Filter</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ExactNames" xml:space="preserve">Exact names</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ExactNames.Placeholder" xml:space="preserve">Type branch name</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ContainsPatterns" xml:space="preserve">Contains patterns</x:String>

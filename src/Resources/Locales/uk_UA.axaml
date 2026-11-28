@@ -680,7 +680,7 @@
   <x:String x:Key="Text.Repository.BranchesVisibility.SetPresetFilters" xml:space="preserve">Set preset filters</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ShowAll" xml:space="preserve">Show all branches</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.UsePresetFilter" xml:space="preserve">Use preset filter</x:String>
-  <x:String x:Key="Text.Repository.BranchesVisibility.PresetHeader" xml:space="preserve">PRESET BRANCH FILTER</x:String>
+  <x:String x:Key="Text.Repository.BranchesVisibility.PresetHeader" xml:space="preserve">Filter</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ExactNames" xml:space="preserve">Exact names</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ExactNames.Placeholder" xml:space="preserve">Type branch name</x:String>
   <x:String x:Key="Text.Repository.BranchesVisibility.ContainsPatterns" xml:space="preserve">Contains patterns</x:String>

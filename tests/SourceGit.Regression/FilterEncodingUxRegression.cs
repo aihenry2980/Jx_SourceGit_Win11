@@ -41,6 +41,7 @@ internal static partial class Program
             var contains = view.FindControl<TextBox>("PresetBranchContainsPatternInputBox");
             var exclude = view.FindControl<TextBox>("PresetBranchExcludeNameInputBox");
             var apply = view.FindControl<Button>("ApplyPresetBranchFilterButton");
+            TestPresetBranchRuleLayout(view, repo, window);
             exact.Text = "feature/test";
             PumpFor(50);
             Check(draft.HasChanges && apply.IsEnabled && repo.PresetBranchExactNames == "main",
@@ -186,6 +187,82 @@ internal static partial class Program
             window?.Close();
             SourceGit.App.SetLocale("en_US");
             repo.Close();
+        }
+    }
+
+    private static void TestPresetBranchRuleLayout(SourceGit.Views.Repository view, SourceGit.ViewModels.Repository repo, Window window)
+    {
+        var draft = repo.PresetBranchFilterDraft;
+        var oldWidth = repo.SidebarWidth;
+        var oldExpanded = repo.IsPresetBranchFilterEditorExpanded;
+        var oldRules = new[] { draft.ExactNames, draft.ContainsPatterns, draft.ExcludeNames };
+        var fields = new (string Name, Action<string> SetRules, string Confirm)[]
+        {
+            ("ExactName", value => draft.ExactNames = value, "OnPresetBranchExactNameInputKeyDown"),
+            ("ContainsPattern", value => draft.ContainsPatterns = value, "OnPresetBranchContainsPatternInputKeyDown"),
+            ("ExcludeName", value => draft.ExcludeNames = value, "OnPresetBranchExcludeNameInputKeyDown"),
+        };
+        try
+        {
+            repo.SidebarWidth = new GridLength(400);
+            repo.IsPresetBranchFilterEditorExpanded = true;
+            foreach (var field in fields)
+            {
+                var input = view.FindControl<TextBox>("PresetBranch" + field.Name + "InputBox");
+                var panel = input.GetVisualAncestors().OfType<SourceGit.Views.PresetBranchRulePanel>().Single();
+                field.SetRules(string.Empty);
+                PumpFor(50);
+                var emptyHeight = panel.Bounds.Height;
+                input.Text = "main";
+                Invoke(view, field.Confirm, input, new KeyEventArgs { Key = Key.Enter });
+                PumpFor(50);
+                var chip = panel.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("preset_rule_chip"));
+                var position = chip.TranslatePoint(default, panel).Value;
+                Check(panel.Bounds.Height <= emptyHeight + 2 && input.Bounds.Top < chip.Bounds.Height &&
+                    input.Bounds.Left >= position.X + chip.Bounds.Width,
+                    "First confirmed rule shares the input row without growing the field: " + field.Name);
+
+                field.SetRules("main\ndev");
+                input.Text = "unfinished/" + new string('x', 100);
+                PumpFor(50);
+                var singleRowHeight = panel.Bounds.Height;
+                Check(singleRowHeight <= emptyHeight + 2 && input.Bounds.Width >= 80 && input.IsEffectivelyVisible,
+                    "Several fitting chips and long unfinished text retain one usable row: " + field.Name);
+                CaptureUxFrame(window, "filter-inline-" + field.Name);
+
+                field.SetRules("a\nb\nc\nd\ne\nf\ng\nh");
+                PumpFor(50);
+                Check(panel.Bounds.Height > singleRowHeight && panel.Bounds.Height <= singleRowHeight * 2 + 2 &&
+                    input.Bounds.Top > 0 && input.Text.StartsWith("unfinished/"),
+                    "Overflow wraps chips and input into two rows while preserving unfinished text: " + field.Name);
+                CaptureUxFrame(window, "filter-wrapped-" + field.Name);
+
+                field.SetRules("main");
+                PumpFor(50);
+                Check(panel.Bounds.Height == singleRowHeight && input.Bounds.Top < singleRowHeight,
+                    "Removing overflow chips immediately returns the field to one row: " + field.Name);
+
+                field.SetRules(new string('x', 240));
+                PumpFor(50);
+                chip = panel.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("preset_rule_chip"));
+                var remove = chip.GetVisualDescendants().OfType<Button>().Single();
+                var removePosition = remove.TranslatePoint(default, panel).Value;
+                Check(chip.Bounds.Width <= panel.Bounds.Width && removePosition.X + remove.Bounds.Width <= panel.Bounds.Width + 1,
+                    "Long rule names stay within the field and keep their remove button accessible: " + field.Name);
+                input.Text = string.Empty;
+                field.SetRules(string.Empty);
+                PumpFor(50);
+                Check(panel.Bounds.Height == emptyHeight && input.Bounds.Width >= panel.Bounds.Width - 1,
+                    "Clearing all chips restores the full-width single-line input: " + field.Name);
+            }
+        }
+        finally
+        {
+            for (var i = 0; i < fields.Length; i++)
+                fields[i].SetRules(oldRules[i]);
+            repo.SidebarWidth = oldWidth;
+            repo.IsPresetBranchFilterEditorExpanded = oldExpanded;
+            PumpFor(50);
         }
     }
 

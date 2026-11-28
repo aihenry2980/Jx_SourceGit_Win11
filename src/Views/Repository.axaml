@@ -121,7 +121,7 @@
       <Setter Property="Background" Value="{DynamicResource Brush.Hover}"/>
     </Style>
     <Style Selector="RadioButton.preset_mode">
-      <Setter Property="Height" Value="26"/>
+      <Setter Property="Height" Value="22"/>
     </Style>
     <Style Selector="RadioButton.preset_mode TextBlock">
       <Setter Property="FontSize" Value="12"/>
@@ -555,27 +555,67 @@
           </TextBox.InnerRightContent>
         </TextBox>
 
-        <ToggleButton Grid.Row="2"
-                      Classes="group_expander"
-                      Margin="8,6,4,0"
-                      IsVisible="{Binding !IsLeftSidebarCompact}"
-                      IsChecked="{Binding IsPresetBranchFilterEditorExpanded, Mode=TwoWay}">
-          <Grid ColumnDefinitions="16,*,Auto">
-            <Path Grid.Column="0"
-                  Width="12"
-                  Height="12"
-                  HorizontalAlignment="Left"
-                  Data="{StaticResource Icons.Filter}"
-                  Fill="{DynamicResource Brush.FG2}"/>
-            <TextBlock Grid.Column="1"
-                       Classes="group_header_label"
-                       Text="{DynamicResource Text.Repository.BranchesVisibility.PresetHeader}"/>
-            <TextBlock Grid.Column="2"
-                       Classes="group_header_label"
-                       Margin="8,0,0,0"
-                       Text="{Binding PresetBranchFilterSummary}"/>
-          </Grid>
-        </ToggleButton>
+        <Grid Grid.Row="2" x:Name="BranchFilterHeader"
+              ColumnDefinitions="*,Auto"
+              Margin="8,6,4,0"
+              IsVisible="{Binding !IsLeftSidebarCompact}">
+          <ToggleButton x:Name="BranchFilterExpander"
+                        Classes="group_expander"
+                        Margin="0"
+                        Height="26"
+                        ToolTip.Tip="{Binding PresetBranchFilterSummary}"
+                        IsChecked="{Binding IsPresetBranchFilterEditorExpanded, Mode=TwoWay}">
+            <Grid ColumnDefinitions="Auto,*">
+              <TextBlock x:Name="BranchFilterTitle"
+                         Classes="group_header_label"
+                         VerticalAlignment="Center"
+                         Text="{DynamicResource Text.Repository.BranchesVisibility.PresetHeader}"/>
+              <TextBlock Grid.Column="1"
+                         Classes="group_header_label"
+                         Margin="6,0,4,0"
+                         VerticalAlignment="Center"
+                         TextTrimming="CharacterEllipsis"
+                         Text="{Binding PresetBranchFilterSummary}"/>
+            </Grid>
+          </ToggleButton>
+
+          <StackPanel Grid.Column="1" x:Name="BranchFilterActions"
+                      Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+            <Button x:Name="ApplyPresetBranchFilterButton"
+                    Classes="flat primary"
+                    Height="24"
+                    Padding="6,1"
+                    ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.ApplyFilter}"
+                    AutomationProperties.Name="{DynamicResource Text.Repository.BranchesVisibility.ApplyFilter}"
+                    Click="OnApplyPresetBranchFilter">
+              <TextBlock FontSize="11" Text="{DynamicResource Text.Repository.BranchesVisibility.ApplyFilter}"/>
+            </Button>
+            <Button x:Name="ResetPresetBranchFilterButton"
+                    Classes="icon_button sidebar_action"
+                    IsEnabled="{Binding PresetBranchFilterDraft.HasChanges}"
+                    ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.DiscardDraft}"
+                    AutomationProperties.Name="{DynamicResource Text.Repository.BranchesVisibility.DiscardDraft}"
+                    Click="OnResetPresetBranchFilterDraft">
+              <Path Width="12" Height="12" Data="{StaticResource Icons.Undo}"/>
+            </Button>
+            <Border BorderThickness="1" BorderBrush="{DynamicResource Brush.Border1}" CornerRadius="6">
+              <StackPanel Orientation="Horizontal">
+                <RadioButton x:Name="ShowAllBranchesButton"
+                             Classes="history_order_segment preset_mode" GroupName="PresetBranchFilterMode"
+                             IsChecked="{Binding IsShowingAllBranches, Mode=OneWay}"
+                             Content="{DynamicResource Text.Repository.BranchesVisibility.ModeAll}"
+                             ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.ShowAll}"
+                             Click="OnShowAllBranches"/>
+                <RadioButton x:Name="UsePresetBranchFilterButton"
+                             Classes="history_order_segment preset_mode" GroupName="PresetBranchFilterMode"
+                             IsChecked="{Binding !IsShowingAllBranches, Mode=OneWay}"
+                             Content="{DynamicResource Text.Repository.BranchesVisibility.ModeRules}"
+                             ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.UsePresetFilter}"
+                             Click="OnUsePresetBranchFilter"/>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </Grid>
 
         <Border Grid.Row="3"
                 Margin="8,0,4,0"
@@ -594,55 +634,46 @@
                     DragDrop.AllowDrop="True"
                     DragDrop.DragOver="OnPresetBranchFilterTextBoxDragOver"
                     DragDrop.Drop="OnDropToPresetBranchExactNames">
-              <StackPanel Orientation="Vertical" Spacing="2">
-                <ItemsControl IsVisible="{Binding PresetBranchFilterDraft.ExactNames, Converter={x:Static c:StringConverters.IsNotNullOrWhitespace}}"
-                              ItemsSource="{Binding PresetBranchFilterDraft.ExactNames, Converter={x:Static c:StringConverters.ToPresetBranchRuleTokens}}">
-                  <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                      <WrapPanel/>
-                    </ItemsPanelTemplate>
-                  </ItemsControl.ItemsPanel>
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                      <Border Classes="preset_rule_chip" Margin="0,0,4,4"
-                              MaxWidth="{Binding $parent[ItemsControl].Bounds.Width, Converter={x:Static c:DoubleConverters.ToRuleChipMaxWidth}}"
-                              Padding="4,2,4,2"
-                              CornerRadius="4"
-                              BorderThickness="1"
-                              DoubleTapped="OnPresetBranchRuleDoubleTapped"
-                              ContextRequested="OnPresetBranchRuleContextRequested">
-                        <Grid ColumnDefinitions="16,*,22">
-                          <TextBlock Classes="rule_kind" Text="=" FontWeight="Bold"
-                                     Foreground="{DynamicResource Brush.FG2}" VerticalAlignment="Center"
-                                     ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.ExactNames}"/>
-                          <TextBlock Grid.Column="1"
-                                     VerticalAlignment="Center"
-                                     Text="{Binding .}"
-                                     TextWrapping="NoWrap"
-                                     TextTrimming="CharacterEllipsis"
-                                     ToolTip.Tip="{Binding .}"/>
-                          <Button Grid.Column="2"
-                                  Classes="icon_button"
-                                  Width="18"
-                                  Height="18"
-                                  MinWidth="18"
-                                  Margin="2,0,0,0"
-                                  Padding="0"
-                                  VerticalAlignment="Center"
-                                  Tag="{Binding .}"
-                                  ToolTip.Tip="Remove rule"
-                                  AutomationProperties.Name="Remove exact-name rule"
-                                  Click="OnRemovePresetBranchExactName">
-                            <Path Width="7"
-                                  Height="7"
-                                  Data="{StaticResource Icons.Close}"
-                                  Fill="{DynamicResource Brush.FG2}"/>
-                          </Button>
-                        </Grid>
-                      </Border>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
+              <v:PresetBranchRulePanel Rules="{Binding PresetBranchFilterDraft.ExactNames, Converter={x:Static c:StringConverters.ToPresetBranchRuleTokens}}">
+                <v:PresetBranchRulePanel.RuleTemplate>
+                  <DataTemplate>
+                    <Border Classes="preset_rule_chip" Margin="0,0,4,0"
+                            Padding="4,2,4,2"
+                            CornerRadius="4"
+                            BorderThickness="1"
+                            DoubleTapped="OnPresetBranchRuleDoubleTapped"
+                            ContextRequested="OnPresetBranchRuleContextRequested">
+                      <Grid ColumnDefinitions="16,*,22">
+                        <TextBlock Classes="rule_kind" Text="=" FontWeight="Bold"
+                                   Foreground="{DynamicResource Brush.FG2}" VerticalAlignment="Center"
+                                   ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.ExactNames}"/>
+                        <TextBlock Grid.Column="1"
+                                   VerticalAlignment="Center"
+                                   Text="{Binding .}"
+                                   TextWrapping="NoWrap"
+                                   TextTrimming="CharacterEllipsis"
+                                   ToolTip.Tip="{Binding .}"/>
+                        <Button Grid.Column="2"
+                                Classes="icon_button"
+                                Width="18"
+                                Height="18"
+                                MinWidth="18"
+                                Margin="2,0,0,0"
+                                Padding="0"
+                                VerticalAlignment="Center"
+                                Tag="{Binding .}"
+                                ToolTip.Tip="Remove rule"
+                                AutomationProperties.Name="Remove exact-name rule"
+                                Click="OnRemovePresetBranchExactName">
+                          <Path Width="7"
+                                Height="7"
+                                Data="{StaticResource Icons.Close}"
+                                Fill="{DynamicResource Brush.FG2}"/>
+                        </Button>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </v:PresetBranchRulePanel.RuleTemplate>
 
                 <TextBox x:Name="PresetBranchExactNameInputBox"
                          Text="{Binding PresetBranchFilterDraft.ExactInput, Mode=TwoWay}"
@@ -670,7 +701,7 @@
                     </Button>
                   </TextBox.InnerRightContent>
                 </TextBox>
-              </StackPanel>
+              </v:PresetBranchRulePanel>
             </Border>
 
             <Border Classes="preset_rule_field" Margin="0,5,0,0"
@@ -680,55 +711,46 @@
                     DragDrop.AllowDrop="True"
                     DragDrop.DragOver="OnPresetBranchFilterTextBoxDragOver"
                     DragDrop.Drop="OnDropToPresetBranchContainsPatterns">
-              <StackPanel Orientation="Vertical" Spacing="2">
-                <ItemsControl IsVisible="{Binding PresetBranchFilterDraft.ContainsPatterns, Converter={x:Static c:StringConverters.IsNotNullOrWhitespace}}"
-                              ItemsSource="{Binding PresetBranchFilterDraft.ContainsPatterns, Converter={x:Static c:StringConverters.ToPresetBranchRuleTokens}}">
-                  <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                      <WrapPanel/>
-                    </ItemsPanelTemplate>
-                  </ItemsControl.ItemsPanel>
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                      <Border Classes="preset_rule_chip" Margin="0,0,4,4"
-                              MaxWidth="{Binding $parent[ItemsControl].Bounds.Width, Converter={x:Static c:DoubleConverters.ToRuleChipMaxWidth}}"
-                              Padding="4,2,4,2"
-                              CornerRadius="4"
-                              BorderThickness="1"
-                              DoubleTapped="OnPresetBranchRuleDoubleTapped"
-                              ContextRequested="OnPresetBranchRuleContextRequested">
-                        <Grid ColumnDefinitions="16,*,22">
-                          <TextBlock Classes="rule_kind" Text="*" FontWeight="Bold"
-                                     Foreground="{DynamicResource Brush.FG2}" VerticalAlignment="Center"
-                                     ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.ContainsPatterns}"/>
-                          <TextBlock Grid.Column="1"
-                                     VerticalAlignment="Center"
-                                     Text="{Binding .}"
-                                     TextWrapping="NoWrap"
-                                     TextTrimming="CharacterEllipsis"
-                                     ToolTip.Tip="{Binding .}"/>
-                          <Button Grid.Column="2"
-                                  Classes="icon_button"
-                                  Width="18"
-                                  Height="18"
-                                  MinWidth="18"
-                                  Margin="2,0,0,0"
-                                  Padding="0"
-                                  VerticalAlignment="Center"
-                                  Tag="{Binding .}"
-                                  ToolTip.Tip="Remove rule"
-                                  AutomationProperties.Name="Remove contains rule"
-                                  Click="OnRemovePresetBranchContainsPattern">
-                            <Path Width="7"
-                                  Height="7"
-                                  Data="{StaticResource Icons.Close}"
-                                  Fill="{DynamicResource Brush.FG2}"/>
-                          </Button>
-                        </Grid>
-                      </Border>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
+              <v:PresetBranchRulePanel Rules="{Binding PresetBranchFilterDraft.ContainsPatterns, Converter={x:Static c:StringConverters.ToPresetBranchRuleTokens}}">
+                <v:PresetBranchRulePanel.RuleTemplate>
+                  <DataTemplate>
+                    <Border Classes="preset_rule_chip" Margin="0,0,4,0"
+                            Padding="4,2,4,2"
+                            CornerRadius="4"
+                            BorderThickness="1"
+                            DoubleTapped="OnPresetBranchRuleDoubleTapped"
+                            ContextRequested="OnPresetBranchRuleContextRequested">
+                      <Grid ColumnDefinitions="16,*,22">
+                        <TextBlock Classes="rule_kind" Text="*" FontWeight="Bold"
+                                   Foreground="{DynamicResource Brush.FG2}" VerticalAlignment="Center"
+                                   ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.ContainsPatterns}"/>
+                        <TextBlock Grid.Column="1"
+                                   VerticalAlignment="Center"
+                                   Text="{Binding .}"
+                                   TextWrapping="NoWrap"
+                                   TextTrimming="CharacterEllipsis"
+                                   ToolTip.Tip="{Binding .}"/>
+                        <Button Grid.Column="2"
+                                Classes="icon_button"
+                                Width="18"
+                                Height="18"
+                                MinWidth="18"
+                                Margin="2,0,0,0"
+                                Padding="0"
+                                VerticalAlignment="Center"
+                                Tag="{Binding .}"
+                                ToolTip.Tip="Remove rule"
+                                AutomationProperties.Name="Remove contains rule"
+                                Click="OnRemovePresetBranchContainsPattern">
+                          <Path Width="7"
+                                Height="7"
+                                Data="{StaticResource Icons.Close}"
+                                Fill="{DynamicResource Brush.FG2}"/>
+                        </Button>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </v:PresetBranchRulePanel.RuleTemplate>
 
                 <TextBox x:Name="PresetBranchContainsPatternInputBox"
                          Text="{Binding PresetBranchFilterDraft.ContainsInput, Mode=TwoWay}"
@@ -756,7 +778,7 @@
                     </Button>
                   </TextBox.InnerRightContent>
                 </TextBox>
-              </StackPanel>
+              </v:PresetBranchRulePanel>
             </Border>
 
             <Border Classes="preset_rule_field" Margin="0,5,0,0"
@@ -766,55 +788,46 @@
                     DragDrop.AllowDrop="True"
                     DragDrop.DragOver="OnPresetBranchFilterTextBoxDragOver"
                     DragDrop.Drop="OnDropToPresetBranchExcludeNames">
-              <StackPanel Orientation="Vertical" Spacing="2">
-                <ItemsControl IsVisible="{Binding PresetBranchFilterDraft.ExcludeNames, Converter={x:Static c:StringConverters.IsNotNullOrWhitespace}}"
-                              ItemsSource="{Binding PresetBranchFilterDraft.ExcludeNames, Converter={x:Static c:StringConverters.ToPresetBranchRuleTokens}}">
-                  <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                      <WrapPanel/>
-                    </ItemsPanelTemplate>
-                  </ItemsControl.ItemsPanel>
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                      <Border Classes="preset_rule_chip" Margin="0,0,4,4"
-                              MaxWidth="{Binding $parent[ItemsControl].Bounds.Width, Converter={x:Static c:DoubleConverters.ToRuleChipMaxWidth}}"
-                              Padding="4,2,4,2"
-                              CornerRadius="4"
-                              BorderThickness="1"
-                              DoubleTapped="OnPresetBranchRuleDoubleTapped"
-                              ContextRequested="OnPresetBranchRuleContextRequested">
-                        <Grid ColumnDefinitions="16,*,22">
-                          <TextBlock Classes="rule_kind" Text="-" FontWeight="Bold"
-                                     Foreground="{DynamicResource Brush.FG2}" VerticalAlignment="Center"
-                                     ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.ExcludeNames}"/>
-                          <TextBlock Grid.Column="1"
-                                     VerticalAlignment="Center"
-                                     Text="{Binding .}"
-                                     TextWrapping="NoWrap"
-                                     TextTrimming="CharacterEllipsis"
-                                     ToolTip.Tip="{Binding .}"/>
-                          <Button Grid.Column="2"
-                                  Classes="icon_button"
-                                  Width="18"
-                                  Height="18"
-                                  MinWidth="18"
-                                  Margin="2,0,0,0"
-                                  Padding="0"
-                                  VerticalAlignment="Center"
-                                  Tag="{Binding .}"
-                                  ToolTip.Tip="Remove rule"
-                                  AutomationProperties.Name="Remove exclusion rule"
-                                  Click="OnRemovePresetBranchExcludeName">
-                            <Path Width="7"
-                                  Height="7"
-                                  Data="{StaticResource Icons.Close}"
-                                  Fill="{DynamicResource Brush.FG2}"/>
-                          </Button>
-                        </Grid>
-                      </Border>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
+              <v:PresetBranchRulePanel Rules="{Binding PresetBranchFilterDraft.ExcludeNames, Converter={x:Static c:StringConverters.ToPresetBranchRuleTokens}}">
+                <v:PresetBranchRulePanel.RuleTemplate>
+                  <DataTemplate>
+                    <Border Classes="preset_rule_chip" Margin="0,0,4,0"
+                            Padding="4,2,4,2"
+                            CornerRadius="4"
+                            BorderThickness="1"
+                            DoubleTapped="OnPresetBranchRuleDoubleTapped"
+                            ContextRequested="OnPresetBranchRuleContextRequested">
+                      <Grid ColumnDefinitions="16,*,22">
+                        <TextBlock Classes="rule_kind" Text="-" FontWeight="Bold"
+                                   Foreground="{DynamicResource Brush.FG2}" VerticalAlignment="Center"
+                                   ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.ExcludeNames}"/>
+                        <TextBlock Grid.Column="1"
+                                   VerticalAlignment="Center"
+                                   Text="{Binding .}"
+                                   TextWrapping="NoWrap"
+                                   TextTrimming="CharacterEllipsis"
+                                   ToolTip.Tip="{Binding .}"/>
+                        <Button Grid.Column="2"
+                                Classes="icon_button"
+                                Width="18"
+                                Height="18"
+                                MinWidth="18"
+                                Margin="2,0,0,0"
+                                Padding="0"
+                                VerticalAlignment="Center"
+                                Tag="{Binding .}"
+                                ToolTip.Tip="Remove rule"
+                                AutomationProperties.Name="Remove exclusion rule"
+                                Click="OnRemovePresetBranchExcludeName">
+                          <Path Width="7"
+                                Height="7"
+                                Data="{StaticResource Icons.Close}"
+                                Fill="{DynamicResource Brush.FG2}"/>
+                        </Button>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </v:PresetBranchRulePanel.RuleTemplate>
 
                 <TextBox x:Name="PresetBranchExcludeNameInputBox"
                          Text="{Binding PresetBranchFilterDraft.ExcludeInput, Mode=TwoWay}"
@@ -842,42 +855,13 @@
                     </Button>
                   </TextBox.InnerRightContent>
                 </TextBox>
-              </StackPanel>
+              </v:PresetBranchRulePanel>
             </Border>
 
             <TextBlock Margin="0,4,0,0"
                        IsVisible="{Binding PresetBranchFilterDraft.HasChanges}"
                        Foreground="{DynamicResource Brush.FG2}"
                        Text="{DynamicResource Text.Repository.BranchesVisibility.Pending}"/>
-            <WrapPanel Orientation="Horizontal" Margin="0,5,0,0">
-              <Button x:Name="ApplyPresetBranchFilterButton"
-                      Classes="flat primary"
-                      Padding="8,2"
-                      Click="OnApplyPresetBranchFilter">
-                <TextBlock Text="{DynamicResource Text.Repository.BranchesVisibility.ApplyFilter}"/>
-              </Button>
-
-              <Button Classes="icon_button" Width="28" Height="28" Margin="4,0"
-                      IsEnabled="{Binding PresetBranchFilterDraft.HasChanges}"
-                      ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.DiscardDraft}"
-                      Click="OnResetPresetBranchFilterDraft">
-                <Path Width="12" Height="12" Data="{StaticResource Icons.Undo}"/>
-              </Button>
-              <Border BorderThickness="1" BorderBrush="{DynamicResource Brush.Border1}" CornerRadius="6">
-                <StackPanel Orientation="Horizontal">
-                  <RadioButton Classes="history_order_segment preset_mode" GroupName="PresetBranchFilterMode"
-                               IsChecked="{Binding IsShowingAllBranches, Mode=OneWay}"
-                               Content="{DynamicResource Text.Repository.BranchesVisibility.ModeAll}"
-                               ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.ShowAll}"
-                               Click="OnShowAllBranches"/>
-                  <RadioButton Classes="history_order_segment preset_mode" GroupName="PresetBranchFilterMode"
-                               IsChecked="{Binding !IsShowingAllBranches, Mode=OneWay}"
-                               Content="{DynamicResource Text.Repository.BranchesVisibility.ModeRules}"
-                               ToolTip.Tip="{DynamicResource Text.Repository.BranchesVisibility.UsePresetFilter}"
-                               Click="OnUsePresetBranchFilter"/>
-                </StackPanel>
-              </Border>
-            </WrapPanel>
           </StackPanel>
         </Border>
 

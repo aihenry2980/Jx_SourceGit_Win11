@@ -33,9 +33,6 @@ namespace SourceGit.Converters
         public static readonly FuncValueConverter<double, double> Decrease =
             new FuncValueConverter<double, double>(v => v - 1.0);
 
-        public static readonly FuncValueConverter<double, double> ToRuleChipMaxWidth =
-            new FuncValueConverter<double, double>(v => Math.Max(48.0, v - 4.0));
-
         public static readonly FuncValueConverter<double, double> ToHistoryBadgeFontSize =
             new FuncValueConverter<double, double>(v => Math.Max(8.0, v - 4.0));
 
